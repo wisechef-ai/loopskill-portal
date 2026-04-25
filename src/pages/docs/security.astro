@@ -1,0 +1,42 @@
+---
+import Base from '../../layouts/Base.astro';
+import CrossSell from '../../components/CrossSell.astro';
+---
+<Base title="Security — Recipes Docs">
+  <section class="max-w-3xl mx-auto px-6 pt-16 pb-12">
+    <p class="eyebrow mb-2">Documentation · Security</p>
+    <h1 class="text-4xl font-semibold tracking-tight mb-6">Security model.</h1>
+    <div class="prose">
+      <h2>Core principles</h2>
+      <ul>
+        <li><strong>Credentials stay local.</strong> Your API keys never pass through Recipes servers. Skills hit third-party APIs directly with your env vars.</li>
+        <li><strong>Skills run locally.</strong> Recipes only serves text files. Your agent decides what to execute.</li>
+        <li><strong>Plain-text transparency.</strong> No obfuscated code, no hidden payloads. Inspect every line before running.</li>
+        <li><strong>GitHub-verified authors.</strong> Every publisher's identity is tied to a real GitHub account.</li>
+        <li><strong>Firejail sandbox.</strong> Skills declaring a <code>[sandbox]</code> block are run inside a Firejail profile — network allowlist, fs writes, exec binaries enforced at runtime.</li>
+      </ul>
+
+      <h2>Review pipeline</h2>
+      <ol>
+        <li><strong>Automated scan:</strong> Semgrep + curl-pipe-shell detection + base64 obfuscation patterns + prompt injection signatures + outbound-domain check.</li>
+        <li><strong>Human review:</strong> A real reviewer reads the SKILL.md, tests the setup, verifies the description matches the behavior. 48h SLA on Operator+ submissions.</li>
+        <li><strong>Continuous telemetry:</strong> Anonymous success/failure rates feed back into trust scoring. Skills with sustained high failure rates get flagged for re-review.</li>
+      </ol>
+
+      <h2>What Recipes never does</h2>
+      <ul>
+        <li>Never executes code. We serve text files. Your agent decides what to run.</li>
+        <li>Never has remote access to your machine.</li>
+        <li>Never proxies your third-party API calls.</li>
+        <li>Never serves obfuscated content.</li>
+      </ul>
+
+      <h2>Telemetry & privacy</h2>
+      <p>Anonymous aggregates only by default: install/use/result events with hashed agent class, hashed user ID, duration in seconds, retry count. No payload contents, no credential fingerprints, no inputs/outputs. Operator+ tier can opt into pseudonymous payload sampling to improve their own skills.</p>
+
+      <h2>Reporting a vulnerability</h2>
+      <p>Email <a href="mailto:security@wisechef.ai">security@wisechef.ai</a> with the skill slug, version, and reproduction steps. We respond within 24h. Critical vulns get hotfixed and the skill is taken offline pending review.</p>
+    </div>
+    <CrossSell />
+  </section>
+</Base>

@@ -1,0 +1,39 @@
+---
+import Base from '../../layouts/Base.astro';
+import CrossSell from '../../components/CrossSell.astro';
+---
+<Base title="Install guide — Recipes Docs">
+  <section class="max-w-3xl mx-auto px-6 pt-16 pb-12">
+    <p class="eyebrow mb-2">Documentation · Install guide</p>
+    <h1 class="text-4xl font-semibold tracking-tight mb-6">Install on any AI coding agent.</h1>
+    <div class="prose">
+      <p>The Recipes meta-skill is a plain Markdown file. Any agent that can read files and follow instructions can use it.</p>
+
+      <h2>Claude Code</h2>
+      <pre><code>mkdir -p ~/.claude/skills/recipes
+curl -sL https://recipes.wisechef.ai/skill -o ~/.claude/skills/recipes/SKILL.md</code></pre>
+      <p>Then in any session: <em>"read ~/.claude/skills/recipes/SKILL.md and follow it"</em>. Or paste it into your CLAUDE.md.</p>
+
+      <h2>OpenClaw / ClawHub</h2>
+      <pre><code>clawhub install recipes</code></pre>
+      <p>Or just ask your agent: <em>"install the recipes skill"</em>.</p>
+
+      <h2>Hermes Agent</h2>
+      <pre><code>curl -sL https://recipes.wisechef.ai/skill -o ~/.hermes/skills/recipes/SKILL.md</code></pre>
+
+      <h2>Cursor / Windsurf / Cline</h2>
+      <p>Drop into your project root or custom-instructions area:</p>
+      <pre><code>curl -sL https://recipes.wisechef.ai/skill -o SKILL.md</code></pre>
+      <p>Then reference it from your <code>.cursorrules</code> or equivalent.</p>
+
+      <h2>Set your API key (for premium skills)</h2>
+      <pre><code>export RECIPES_API_KEY=rec_xxxxxxxxxxxxxxxxxxx</code></pre>
+      <p>Get the key from <a href="/signin?mode=signup">your dashboard</a> after subscribing.</p>
+
+      <h2>Verify the install</h2>
+      <pre><code>curl https://recipes.wisechef.ai/api/healthz</code></pre>
+      <p>Should return <code>{`{"status":"ok"}`}</code>.</p>
+    </div>
+    <CrossSell />
+  </section>
+</Base>

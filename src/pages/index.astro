@@ -1,529 +1,320 @@
 ---
 import Base from '../layouts/Base.astro';
 import CrossSell from '../components/CrossSell.astro';
+import Icon from '../components/Icon.astro';
+import AgentLogos from '../components/AgentLogos.astro';
 
-const spotlightSkills = [
+let carouselToday: any[] = [];
+try {
+  const res = await fetch('http://localhost:8201/api/carousel/today', {
+    headers: { 'x-api-key': import.meta.env.RECIPES_API_KEY || 'rec_dev_internal' }
+  });
+  if (res.ok) carouselToday = await res.json();
+} catch {}
+
+const spotlight = [
   {
+    slug: 'client-reporter',
     name: 'Client Reporter',
-    tier: 'FREE',
-    tierClass: 'free',
-    emoji: '📊',
+    tier: 'free',
     tagline: 'Replaces 4h/week of manual reporting',
-    description:
-      'Pull GA4, Google Search Console, Meta Ads, and TikTok Ads data for any client. Your agent generates a branded PDF report with insights. White-label ready — your agency logo, your colours.',
-    tags: ['analytics', 'reporting', 'automation'],
-    badge: 'Viral seed skill',
+    description: 'Pull GA4, GSC, Meta Ads, TikTok Ads → branded PDF for any client. White-label-ready.',
+    badge: 'Free forever',
+    icon: 'chart',
   },
   {
-    name: 'Proposal Builder',
-    tier: 'Pro',
-    tierClass: 'pro',
-    emoji: '📝',
-    tagline: 'Replaces proposal SaaS ($49/mo)',
-    description:
-      'Agent-generated agency proposals from a discovery call transcript. Includes scope, timeline, pricing tiers, and case study inserts. Converts at 40% above average.',
-    tags: ['proposals', 'sales', 'copywriting'],
-    badge: null,
-  },
-  {
-    name: 'Content Calendar',
-    tier: 'Pro',
-    tierClass: 'pro',
-    emoji: '📅',
-    tagline: 'Replaces CoSchedule, Planable',
-    description:
-      "30-day content calendar across 4 platforms. Briefing-to-publish pipeline driven by your agent. Drops into your client's existing approval flow.",
-    tags: ['content', 'social', 'scheduling'],
-    badge: null,
-  },
-  {
+    slug: 'seo-audit-engine',
     name: 'SEO Audit Engine',
-    tier: 'Pro',
-    tierClass: 'pro',
-    emoji: '🔍',
-    tagline: 'Replaces SEMrush spot audits ($119)',
-    description:
-      'Full technical + content SEO audit for any domain. Outputs a prioritised fix list, competitor gap analysis, and a client-ready PDF. Runs in your agent in under 3 minutes.',
-    tags: ['seo', 'audit', 'reporting'],
+    tier: 'pro',
+    tagline: 'Replaces SEMrush spot audits',
+    description: 'Full technical + content SEO audit. Lighthouse + Screaming Frog + competitor gap analysis. Client-ready PDF in 3 minutes.',
     badge: null,
+    icon: 'search',
+  },
+  {
+    slug: 'proposal-builder',
+    name: 'Proposal Builder',
+    tier: 'pro',
+    tagline: 'Replaces Bonsai · PandaDoc',
+    description: 'Discovery call transcript → branded SOW with scope, pricing tiers, case-study inserts. Converts at 40% above average.',
+    badge: null,
+    icon: 'document',
+  },
+  {
+    slug: 'content-calendar',
+    name: 'Content Calendar',
+    tier: 'pro',
+    tagline: 'Replaces CoSchedule · Planable',
+    description: '30-day cross-platform content calendar from a single brand brief. Drops into your client\'s existing approval flow.',
+    badge: null,
+    icon: 'calendar',
   },
 ];
 
 const howItWorks = [
-  {
-    num: '01',
-    title: 'Describe your goal',
-    body: 'Tell your AI agent what the client needs — in plain language. No searches, no docs, no copy-paste.',
-  },
-  {
-    num: '02',
-    title: 'Your agent searches Recipes',
-    body: 'The Recipes skill gives your agent awareness of every agency tool available. It scans the full catalog to find the perfect match automatically.',
-  },
-  {
-    num: '03',
-    title: 'It downloads & configures',
-    body: 'The right skill installs locally in seconds, using your own API keys. Your client credentials never leave your machine.',
-  },
-  {
-    num: '04',
-    title: 'Results delivered',
-    body: 'Your agent runs the skill and hands back the output — a report, a calendar, an audit, a proposal. Done.',
-  },
+  { num: '01', title: 'You describe the goal', body: 'Plain language, in your existing AI agent. No searches, no docs, no copy-paste.', icon: 'lightning' },
+  { num: '02', title: 'Recipes finds the skill', body: 'The meta-skill makes your agent aware of every Recipes skill. It picks the perfect match.', icon: 'search' },
+  { num: '03', title: 'Installs locally in seconds', body: 'Skill files written to your machine. Your credentials, your data, your control.', icon: 'box' },
+  { num: '04', title: 'Results delivered', body: 'A report. A calendar. An audit. A proposal. Done — and ready for your client.', icon: 'check' },
+];
+
+const stats = [
+  { num: '30+', label: 'Launch-grade skills' },
+  { num: '7', label: 'Carousel slots, refreshed daily' },
+  { num: '< 30s', label: 'Install to first run' },
+  { num: '50%', label: 'Creator share, usage-attributed' },
 ];
 ---
-
 <Base
   title="Recipes — The recipe book for AI agents | For marketing agencies"
-  description="Agency-grade AI skills. Client reporting, proposals, content calendars, SEO audits — installed by your agent in seconds. Cook tier from $24.99/mo."
+  description="Agency-grade AI skills. Client reporting, SEO audits, content calendars, proposals — installed by your agent in seconds. From $24.99/mo. By WiseChef."
 >
-
-  <!-- ═══ HERO ═══ -->
-  <section class="hero">
-    <div class="hero-inner">
-      <div class="hero-badge">
-        <span class="hero-badge-dot"></span>
-        Vertical skills marketplace for marketing agencies
-      </div>
-      <h1 class="hero-h1">
-        The recipe book for AI agents —<br />
-        <span class="hero-accent">for marketing agencies.</span>
-      </h1>
-      <p class="hero-tagline">
-        <strong>Recipes for agent cooking.</strong> Your agent finds the right skill,
-        installs it in seconds, and delivers client-grade results. One subscription.
-        Unlimited agency superpowers.
-      </p>
-      <div class="hero-ctas">
-        <a href="/pricing" class="cta-primary">Start free — Client Reporter →</a>
-        <a href="/skills" class="cta-secondary">Browse all skills</a>
-      </div>
-
-      <!-- Terminal mockup -->
-      <div class="terminal" aria-hidden="true">
-        <div class="terminal-bar">
-          <span class="dot red"></span>
-          <span class="dot yellow"></span>
-          <span class="dot green"></span>
-          <span class="terminal-title">agent session</span>
-        </div>
-        <div class="terminal-body">
-          <p><span class="term-user">you</span>  Generate Q1 performance report for Acme Agency — GA4 + Meta Ads + TikTok.</p>
-          <p><span class="term-agent">agent</span> Searching Recipes marketplace...</p>
-          <p><span class="term-dim">       Found: client-reporter v1.3 (free skill) ✓</span></p>
-          <p><span class="term-agent">agent</span> Installing skill... pulling GA4, Meta, TikTok APIs...</p>
-          <p><span class="term-dim">       Generating branded PDF report → <span class="term-orange">Acme_Q1_Report.pdf</span></span></p>
-          <p><span class="term-ok">✓</span>  <span class="term-ok-text">Done. 4h of manual work → 47 seconds. Report ready.</span></p>
-        </div>
-      </div>
-
-      <p class="hero-sub">
-        Works with Claude Code, Cursor, OpenClaw, Hermes — any agent with a skills directory.
-      </p>
+  <!-- Hero -->
+  <section class="relative overflow-hidden">
+    <!-- Decorative grid -->
+    <div class="absolute inset-0 -z-10 opacity-[0.025] pointer-events-none"
+         style="background-image: linear-gradient(to right, #fafafa 1px, transparent 1px), linear-gradient(to bottom, #fafafa 1px, transparent 1px); background-size: 64px 64px;">
     </div>
-  </section>
+    <!-- Decorative amber blur -->
+    <div class="absolute top-32 left-1/2 -translate-x-1/2 w-[700px] h-[400px] -z-10 pointer-events-none"
+         style="background: radial-gradient(ellipse at center, rgba(255,209,102,0.18) 0%, transparent 65%);"></div>
+    <div class="absolute -top-16 right-0 w-[400px] h-[400px] -z-10 pointer-events-none"
+         style="background: radial-gradient(ellipse at center, rgba(125,211,192,0.08) 0%, transparent 65%);"></div>
 
-  <!-- ═══ HOW IT WORKS ═══ -->
-  <section class="section" id="how-it-works">
-    <div class="section-inner">
-      <div class="section-tag">How it works</div>
-      <h2 class="section-h2">Your agent knows the entire marketplace.</h2>
-      <p class="section-sub">
-        Recipes gives your AI agent awareness of every agency skill available.
-        Describe your goal — your agent finds the tool, installs it, and ships.
-        No manual searching. No copy-pasting docs. No setup friction.
-      </p>
-
-      <div class="steps-grid">
-        {howItWorks.map(({ num, title, body }) => (
-          <div class="step-card">
-            <div class="step-num">{num}</div>
-            <h3 class="step-title">{title}</h3>
-            <p class="step-body">{body}</p>
-          </div>
-        ))}
-      </div>
-    </div>
-  </section>
-
-  <!-- ═══ VALUE PROPS ═══ -->
-  <section class="section section-alt">
-    <div class="section-inner">
-      <div class="props-grid">
-        <div class="prop">
-          <div class="prop-icon">⚡</div>
-          <h3>Install in seconds</h3>
-          <p>Your agent downloads, configures, and runs skills automatically. Zero manual setup.</p>
-        </div>
-        <div class="prop">
-          <div class="prop-icon">🔒</div>
-          <h3>Your credentials stay local</h3>
-          <p>Skills run on your machine with your own API keys. We never see your client data.</p>
-        </div>
-        <div class="prop">
-          <div class="prop-icon">🏢</div>
-          <h3>Agency-grade, not generic</h3>
-          <p>Every skill is built for the 5–20-person agency. Not a developer playground — a business tool.</p>
-        </div>
-        <div class="prop">
-          <div class="prop-icon">🔄</div>
-          <h3>Daily carousel</h3>
-          <p>7 fresh skills highlighted daily. Curated rotation keeps your agent's toolkit cutting-edge.</p>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- ═══ SKILL SPOTLIGHT ═══ -->
-  <section class="section" id="skill-spotlight">
-    <div class="section-inner">
-      <div class="section-tag">Skill spotlight</div>
-      <h2 class="section-h2">These are not prompts. They are products.</h2>
-      <p class="section-sub">
-        Some skills replace entire SaaS subscriptions. Your agent installs them,
-        runs them locally, and delivers full client-ready outputs.
-      </p>
-
-      <div class="skills-grid">
-        {spotlightSkills.map(({ name, tier, tierClass, emoji, tagline, description, tags, badge }) => (
-          <div class:list={['skill-card', tierClass === 'free' && 'skill-card-featured']}>
-            {badge && <div class="skill-badge">{badge}</div>}
-            <div class="skill-header">
-              <span class="skill-emoji">{emoji}</span>
-              <span class:list={['skill-tier', `tier-${tierClass}`]}>{tier}</span>
-            </div>
-            <h3 class="skill-name">{name}</h3>
-            <p class="skill-tagline">{tagline}</p>
-            <p class="skill-desc">{description}</p>
-            <div class="skill-tags">
-              {tags.map(t => <span class="skill-tag">{t}</span>)}
-            </div>
-          </div>
-        ))}
-      </div>
-
-      <div class="spotlight-cta">
-        <a href="/skills" class="cta-secondary">Browse all {'>'}60 agency skills →</a>
-      </div>
-    </div>
-  </section>
-
-  <!-- ═══ CROSS-SELL ═══ -->
-  <section class="section">
-    <div class="section-inner">
-      <CrossSell />
-    </div>
-  </section>
-
-  <!-- ═══ PRICING TEASER ═══ -->
-  <section class="section section-alt">
-    <div class="section-inner">
-      <div class="section-tag">Pricing</div>
-      <h2 class="section-h2">One plan. Everything included.</h2>
-      <p class="section-sub">
-        Access every agency skill in the marketplace. Client Reporter is free forever.
-        Cook tier starts at $24.99/mo — undercutting the competition.
-      </p>
-      <div class="pricing-teaser-grid">
-        <div class="pricing-teaser-card">
-          <div class="pricing-teaser-name">Cook</div>
-          <div class="pricing-teaser-price"><span>$24.99</span>/mo</div>
-          <p>Full marketplace access. Perfect for solo operators and small agencies.</p>
-          <a href="/pricing" class="cta-primary">Get Cook →</a>
-        </div>
-        <div class="pricing-teaser-card pricing-teaser-featured">
-          <div class="pricing-teaser-badge">Most popular</div>
-          <div class="pricing-teaser-name">Operator</div>
-          <div class="pricing-teaser-price"><span>$79</span>/mo</div>
-          <p>Team access, private catalogs, and production receipts. For growing agencies.</p>
-          <a href="/pricing" class="cta-primary">Get Operator →</a>
-        </div>
-        <div class="pricing-teaser-card">
-          <div class="pricing-teaser-name">Studio</div>
-          <div class="pricing-teaser-price"><span>$249</span>/mo</div>
-          <p>White-label, custom skill development, and creator program access.</p>
-          <a href="/pricing" class="cta-primary">Get Studio →</a>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- ═══ SECURITY ═══ -->
-  <section class="section">
-    <div class="section-inner">
-      <div class="security-block">
-        <div class="security-copy">
-          <div class="section-tag">Security</div>
-          <h2 class="section-h2-sm">Your credentials never touch our servers.</h2>
-          <p class="section-sub">
-            Skills install and run locally. Your agent uses your own API keys to talk directly
-            to services — GA4, Meta Ads, TikTok. We never see your data, your clients, or your results.
-          </p>
-          <ul class="security-list">
-            <li><span class="check">✓</span> Zero credential access</li>
-            <li><span class="check">✓</span> Triple-layer skill review (automated + manual + sandbox)</li>
-            <li><span class="check">✓</span> GitHub-verified authors only</li>
-            <li><span class="check">✓</span> Curated catalog — every skill approved before publication</li>
-          </ul>
-        </div>
-        <div class="security-cta-col">
-          <a href="/docs/security" class="cta-secondary">Security details →</a>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- ═══ FINAL CTA ═══ -->
-  <section class="section final-cta-section">
-    <div class="section-inner">
-      <div class="final-cta">
-        <h2>Your agent is waiting.</h2>
-        <p>
-          Give your agency's AI a real toolkit. Start free with Client Reporter.
-          Upgrade for the full marketplace.
+    <div class="max-w-6xl mx-auto px-6 pt-20 md:pt-32 pb-12">
+      <div class="flex flex-col items-center text-center gap-6 max-w-3xl mx-auto">
+        <a href="https://wisechef.ai" class="group inline-flex items-center gap-2 px-3 py-1 rounded-full border border-border text-xs text-muted hover:text-text hover:border-accent/40 transition">
+          <span class="w-1.5 h-1.5 rounded-full bg-accent group-hover:animate-pulse"></span>
+          A new product from WiseChef
+          <Icon name="arrow-right" size={11} class="opacity-50 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all" />
+        </a>
+        <h1 class="text-5xl md:text-7xl font-bold tracking-tighter leading-[1.02]" style="letter-spacing: -0.04em;">
+          The <span class="text-gradient">recipe book</span><br/>for AI agents.
+        </h1>
+        <p class="text-lg md:text-xl text-muted leading-relaxed max-w-2xl">
+          Agency-grade skills for marketing teams running AI agents. Client reporting, SEO audits, content calendars, proposals — installed by your agent in seconds. <strong class="text-text font-semibold">Run locally. Credentials stay home.</strong>
         </p>
-        <div class="hero-ctas">
-          <a href="/pricing" class="cta-primary">Start free →</a>
-          <a href="/skills" class="cta-secondary">Browse skills</a>
+        <div class="flex flex-col sm:flex-row gap-3 mt-2">
+          <a href="/signin?mode=signup&plan=cook"
+             class="group inline-flex items-center justify-center gap-2 px-6 py-3 rounded-lg font-semibold text-sm bg-accent text-bg hover:bg-accent-soft transition glow-amber">
+            Get access · $24.99/mo
+            <Icon name="arrow-right" size={14} class="group-hover:translate-x-0.5 transition-transform" />
+          </a>
+          <a href="/skills/client-reporter"
+             class="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-lg font-semibold text-sm border border-border hover:border-accent text-text transition">
+            <Icon name="play" size={14} class="text-accent" />
+            Try Client Reporter free
+          </a>
+        </div>
+        <p class="text-xs text-muted-soft mt-2">
+          Launch month: $14.99 · Cancel anytime · Open-source meta-skill
+        </p>
+      </div>
+
+      <!-- Stats strip with animation hook -->
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mt-20 pt-12 border-t border-border" id="stats-strip">
+        {stats.map(s => (
+          <div class="flex flex-col gap-1">
+            <div class="text-3xl md:text-5xl font-bold text-text tracking-tight" style="letter-spacing: -0.03em;">{s.num}</div>
+            <div class="text-xs text-muted">{s.label}</div>
+          </div>
+        ))}
+      </div>
+    </div>
+  </section>
+
+  <!-- Agent compatibility logos -->
+  <AgentLogos />
+
+  <!-- Demo terminal -->
+  <section class="relative overflow-hidden">
+    <div class="absolute inset-0 -z-10 opacity-[0.015]" style="background-image: linear-gradient(to right, #fafafa 1px, transparent 1px), linear-gradient(to bottom, #fafafa 1px, transparent 1px); background-size: 32px 32px;"></div>
+    <div class="max-w-6xl mx-auto px-6 py-24">
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-12 items-start">
+        <div class="flex flex-col gap-5">
+          <p class="eyebrow text-accent">How it works</p>
+          <h2 class="text-3xl md:text-5xl font-bold tracking-tight" style="letter-spacing: -0.03em;">Your agent already does this — it just doesn't know about us yet.</h2>
+          <p class="text-muted text-lg leading-relaxed">Recipes is a single Markdown file. Drop it into your agent's skills directory. From that point on, every time you ask for something agency-related, your agent searches the catalog, installs the right skill, and runs it locally.</p>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">
+            {howItWorks.map(s => (
+              <div class="flex flex-col gap-2 p-4 bg-bg-card/50 border border-border-soft rounded-xl hover:border-border transition">
+                <div class="flex items-center gap-2.5">
+                  <div class="w-8 h-8 rounded-lg bg-accent/10 border border-accent/20 flex items-center justify-center text-accent">
+                    <Icon name={s.icon as any} size={16} />
+                  </div>
+                  <span class="font-mono text-[10px] text-muted-soft">{s.num}</span>
+                </div>
+                <span class="text-sm font-semibold text-text">{s.title}</span>
+                <span class="text-xs text-muted leading-relaxed">{s.body}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <!-- Terminal -->
+        <div class="bg-[#0d0d0d] border border-border rounded-2xl overflow-hidden shadow-2xl shadow-black/50">
+          <div class="flex items-center gap-2 px-4 py-3 border-b border-border bg-bg-elev">
+            <div class="flex gap-1.5">
+              <div class="w-2.5 h-2.5 rounded-full bg-[#ff5f56]"></div>
+              <div class="w-2.5 h-2.5 rounded-full bg-[#ffbd2e]"></div>
+              <div class="w-2.5 h-2.5 rounded-full bg-[#27c93f]"></div>
+            </div>
+            <span class="text-xs text-muted-soft ml-2 font-mono">~/clients/X — agent session</span>
+          </div>
+          <div class="p-5 font-mono text-xs leading-relaxed">
+            <div class="text-success">$ you</div>
+            <div class="text-text mb-3">install the recipes skill from recipes.wisechef.ai</div>
+            <div class="text-accent">$ agent</div>
+            <div class="text-muted mb-1">→ Fetching SKILL.md (188 lines)</div>
+            <div class="text-muted mb-3">✓ Recipes installed. <span class="text-text">30+ skills</span> across reporting · SEO · content · sales · ops.</div>
+            <div class="text-success">$ you</div>
+            <div class="text-text mb-3">pull last 30 days for client X across GA4 + Meta Ads</div>
+            <div class="text-accent">$ agent</div>
+            <div class="text-muted mb-1">→ Searching marketplace... <span class="text-text">match: client-reporter (free, 4.8★)</span></div>
+            <div class="text-muted mb-1">→ Installing skills/client-reporter/...</div>
+            <div class="text-muted mb-1">→ Pulling GA4 — <span class="text-success">5,213 sessions, +18% MoM</span></div>
+            <div class="text-muted mb-1">→ Pulling Meta Ads — <span class="text-success">€2,140 spend, 3.2x ROAS</span></div>
+            <div class="text-muted mb-1">→ Generating PDF...</div>
+            <div class="text-success font-semibold">✓ Report ready: <span class="text-accent">~/clients/X/2026-04-25.pdf</span></div>
+            <div class="mt-3 inline-flex items-center text-xs">
+              <span class="text-muted">elapsed:</span> <span class="text-success ml-1.5 font-semibold">42s</span>
+              <span class="ml-1.5 inline-block w-1.5 h-3 bg-accent animate-pulse"></span>
+            </div>
+          </div>
         </div>
       </div>
     </div>
   </section>
 
+  <!-- Spotlight -->
+  <section class="border-t border-border bg-bg-card/30">
+    <div class="max-w-6xl mx-auto px-6 py-24">
+      <div class="flex flex-col gap-3 mb-12 max-w-2xl">
+        <p class="eyebrow text-accent">Skill spotlight</p>
+        <h2 class="text-3xl md:text-5xl font-bold tracking-tight" style="letter-spacing: -0.03em;">These are not prompts.<br/>They are <span class="text-accent">products</span>.</h2>
+        <p class="text-muted text-lg">Every skill replaces a SaaS subscription or a freelancer hour. Real working software, run locally by your agent.</p>
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {spotlight.map(s => {
+          const tierClass = s.tier === 'free' ? 'badge-free' : 'badge-pro';
+          return (
+            <a href={`/skills/${s.slug}`} class="group bg-bg-card border border-border rounded-2xl p-6 card-lift flex flex-col gap-4 relative overflow-hidden">
+              {s.badge && <span class="absolute top-4 right-4 text-[10px] font-semibold uppercase tracking-wider text-success border border-success/40 rounded-full px-2 py-0.5">{s.badge}</span>}
+              <div class="flex items-start gap-4">
+                <div class="w-11 h-11 rounded-xl bg-accent/10 border border-accent/20 flex items-center justify-center text-accent shrink-0">
+                  <Icon name={s.icon as any} size={20} />
+                </div>
+                <div class="flex-1">
+                  <div class="flex items-center gap-2">
+                    <h3 class="text-xl font-semibold text-text group-hover:text-accent transition tracking-tight">{s.name}</h3>
+                    <span class={`inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] font-semibold tracking-wider ${tierClass}`}>{s.tier.toUpperCase()}</span>
+                  </div>
+                  <p class="text-xs text-muted-soft mt-0.5">{s.tagline}</p>
+                </div>
+              </div>
+              <p class="text-sm text-muted leading-relaxed">{s.description}</p>
+              <span class="text-xs text-accent inline-flex items-center gap-1 mt-auto group-hover:gap-2 transition-all">
+                View skill <Icon name="arrow-right" size={11} />
+              </span>
+            </a>
+          );
+        })}
+      </div>
+      <div class="text-center mt-10">
+        <a href="/skills" class="text-sm text-muted hover:text-accent inline-flex items-center gap-1.5 transition">
+          See all 30+ skills <Icon name="arrow-right" size={11} />
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- Today's 7 -->
+  {carouselToday.length > 0 && (
+    <section class="border-t border-border">
+      <div class="max-w-6xl mx-auto px-6 py-24">
+        <div class="flex flex-col md:flex-row md:items-end justify-between gap-3 mb-12">
+          <div class="max-w-xl">
+            <p class="eyebrow text-accent">Today's 7</p>
+            <h2 class="text-3xl md:text-5xl font-bold tracking-tight mt-2" style="letter-spacing: -0.03em;">A new skill, every<br/>midnight UTC.</h2>
+            <p class="text-muted mt-3 text-lg">The carousel is how Recipes keeps the catalog honest. Each card runs against incumbent skills for 7 days. Telemetry decides what graduates to core.</p>
+          </div>
+          <a href="/carousel" class="text-sm text-accent hover:opacity-80 inline-flex items-center gap-1.5 shrink-0">
+            See today's lineup <Icon name="arrow-right" size={11} />
+          </a>
+        </div>
+        <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-2.5">
+          {carouselToday.slice(0, 7).map((e: any) => (
+            <a href={`/skills/${e.skill_slug}`} class="bg-bg-card border border-border rounded-xl p-3 card-lift block">
+              <div class="text-[9px] font-mono text-muted-soft mb-1.5">SLOT {String(e.position + 1).padStart(2, '0')}</div>
+              <div class="text-sm font-semibold text-text leading-tight line-clamp-2">{e.skill_title}</div>
+              {e.tagline && <div class="text-[10px] text-muted-soft mt-1 line-clamp-2">{e.tagline}</div>}
+            </a>
+          ))}
+        </div>
+      </div>
+    </section>
+  )}
+
+  <!-- Free seed CTA -->
+  <section class="border-t border-border">
+    <div class="max-w-5xl mx-auto px-6 py-20">
+      <div class="bg-gradient-to-br from-bg-card via-bg-card to-bg-elev border border-accent/30 rounded-3xl p-8 md:p-14 glow-amber relative overflow-hidden">
+        <!-- Decorative glow -->
+        <div class="absolute top-0 right-0 w-96 h-96 -z-0 opacity-30 pointer-events-none"
+             style="background: radial-gradient(ellipse at center, rgba(255,209,102,0.5) 0%, transparent 70%);"></div>
+        <div class="absolute -bottom-20 -left-20 w-80 h-80 -z-0 opacity-20 pointer-events-none"
+             style="background: radial-gradient(ellipse at center, rgba(125,211,192,0.3) 0%, transparent 70%);"></div>
+
+        <div class="relative grid grid-cols-1 md:grid-cols-3 gap-8 items-center">
+          <div class="md:col-span-2 flex flex-col gap-4">
+            <div class="flex items-center gap-2">
+              <span class="badge-free inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold tracking-wider">FREE FOREVER</span>
+              <span class="text-[10px] uppercase tracking-wider text-accent">Founding skill</span>
+            </div>
+            <h2 class="text-3xl md:text-5xl font-bold tracking-tight" style="letter-spacing: -0.03em;">Start with<br/>Client Reporter.</h2>
+            <p class="text-muted leading-relaxed">
+              The skill every agency wishes they had. Connects GA4, GSC, Meta Ads, TikTok Ads. Generates branded PDFs. White-label-ready. Saves four hours per week per client. <strong class="text-text">Free, forever, no subscription required.</strong>
+            </p>
+            <div class="flex flex-col sm:flex-row gap-3 mt-2">
+              <a href="/skills/client-reporter" class="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg font-semibold text-sm bg-accent text-bg hover:bg-accent-soft transition">
+                View skill <Icon name="arrow-right" size={14} />
+              </a>
+              <a href="/docs/install" class="inline-flex items-center justify-center px-5 py-2.5 rounded-lg font-semibold text-sm border border-border hover:border-accent text-text transition">
+                Install free
+              </a>
+            </div>
+          </div>
+          <div class="hidden md:flex items-center justify-center">
+            <div class="w-32 h-32 rounded-2xl bg-bg-elev border border-border flex items-center justify-center text-accent">
+              <Icon name="chart" size={64} />
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <CrossSell variant="banner" title="Need it run for you?" body="WiseChef Framework gives you a managed AI employee — same skills as Recipes, but operated end-to-end. From €199/month." />
 </Base>
 
-<style>
-/* ── Hero ── */
-.hero { padding: 6rem 1.5rem 4rem; }
-.hero-inner { max-width: 900px; margin: 0 auto; text-align: center; }
-.hero-badge {
-  display: inline-flex; align-items: center; gap: 0.5rem;
-  font-size: 0.8rem; font-weight: 500; color: #888;
-  background: #111; border: 1px solid #222; border-radius: 999px;
-  padding: 0.375rem 0.875rem; margin-bottom: 2rem;
-}
-.hero-badge-dot { width: 6px; height: 6px; border-radius: 50%; background: #22c55e; animation: pulse 2s infinite; }
-@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
-
-.hero-h1 {
-  font-size: clamp(2.25rem, 6vw, 3.75rem);
-  font-weight: 900;
-  line-height: 1.1;
-  letter-spacing: -0.03em;
-  color: #f5f5f5;
-  margin: 0 0 1.5rem;
-}
-.hero-accent { color: #f97316; }
-.hero-tagline { font-size: 1.15rem; color: #888; line-height: 1.7; margin: 0 auto 2rem; max-width: 600px; }
-.hero-ctas { display: flex; justify-content: center; gap: 1rem; flex-wrap: wrap; margin-bottom: 3rem; }
-
-.cta-primary {
-  display: inline-block;
-  padding: 0.75rem 1.75rem;
-  background: #f97316;
-  color: #fff;
-  font-weight: 700;
-  font-size: 1rem;
-  border-radius: 0.5rem;
-  text-decoration: none;
-  transition: background 0.15s, transform 0.1s;
-}
-.cta-primary:hover { background: #ea6c0c; transform: translateY(-1px); }
-.cta-secondary {
-  display: inline-block;
-  padding: 0.75rem 1.75rem;
-  background: transparent;
-  color: #f5f5f5;
-  font-weight: 600;
-  font-size: 1rem;
-  border-radius: 0.5rem;
-  border: 1px solid #333;
-  text-decoration: none;
-  transition: border-color 0.15s, color 0.15s;
-}
-.cta-secondary:hover { border-color: #f97316; color: #f97316; }
-
-/* Terminal */
-.terminal {
-  background: #0d0d0d;
-  border: 1px solid #2a2a2a;
-  border-radius: 0.75rem;
-  overflow: hidden;
-  max-width: 680px;
-  margin: 0 auto 2rem;
-  text-align: left;
-  box-shadow: 0 20px 60px rgba(0,0,0,0.5);
-}
-.terminal-bar {
-  background: #1a1a1a;
-  padding: 0.75rem 1rem;
-  display: flex;
-  align-items: center;
-  gap: 0.375rem;
-  border-bottom: 1px solid #222;
-}
-.dot { width: 12px; height: 12px; border-radius: 50%; }
-.dot.red { background: #ff5f57; }
-.dot.yellow { background: #febc2e; }
-.dot.green { background: #28c840; }
-.terminal-title { margin-left: auto; font-size: 0.75rem; color: #555; }
-.terminal-body { padding: 1.25rem 1.5rem; font-family: 'Menlo','Monaco',monospace; font-size: 0.82rem; line-height: 2; }
-.term-user { color: #f97316; font-weight: 700; }
-.term-agent { color: #60a5fa; font-weight: 700; }
-.term-dim { color: #555; }
-.term-orange { color: #f97316; }
-.term-ok { color: #22c55e; font-weight: 700; }
-.term-ok-text { color: #86efac; }
-.terminal-body p { margin: 0; }
-
-.hero-sub { color: #555; font-size: 0.85rem; }
-
-/* ── Sections ── */
-.section { padding: 5rem 1.5rem; }
-.section-alt { background: #0d0d0d; }
-.section-inner { max-width: 1100px; margin: 0 auto; }
-.section-tag {
-  display: inline-block;
-  font-size: 0.75rem; font-weight: 600; color: #f97316;
-  text-transform: uppercase; letter-spacing: 0.1em;
-  margin-bottom: 1rem;
-}
-.section-h2 {
-  font-size: clamp(1.75rem, 4vw, 2.5rem);
-  font-weight: 800;
-  letter-spacing: -0.02em;
-  color: #f5f5f5;
-  margin: 0 0 1rem;
-  line-height: 1.15;
-}
-.section-h2-sm {
-  font-size: clamp(1.5rem, 3vw, 2rem);
-  font-weight: 800;
-  letter-spacing: -0.02em;
-  color: #f5f5f5;
-  margin: 0 0 1rem;
-}
-.section-sub { color: #888; font-size: 1rem; line-height: 1.7; max-width: 600px; margin: 0 0 3rem; }
-
-/* Steps */
-.steps-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 1.5rem;
-}
-.step-card {
-  background: #111;
-  border: 1px solid #1e1e1e;
-  border-radius: 0.75rem;
-  padding: 1.75rem;
-}
-.step-num { font-size: 2rem; font-weight: 900; color: #f97316; opacity: 0.6; margin-bottom: 0.75rem; }
-.step-title { font-size: 1.05rem; font-weight: 700; color: #f5f5f5; margin: 0 0 0.5rem; }
-.step-body { color: #888; font-size: 0.9rem; line-height: 1.6; margin: 0; }
-
-/* Props */
-.props-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 1.5rem;
-}
-.prop { padding: 1.5rem; }
-.prop-icon { font-size: 2rem; margin-bottom: 0.75rem; }
-.prop h3 { font-size: 1rem; font-weight: 700; color: #f5f5f5; margin: 0 0 0.5rem; }
-.prop p { color: #888; font-size: 0.9rem; line-height: 1.6; margin: 0; }
-
-/* Skills grid */
-.skills-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-  gap: 1.5rem;
-  margin-bottom: 2rem;
-}
-.skill-card {
-  position: relative;
-  background: #111;
-  border: 1px solid #1e1e1e;
-  border-radius: 0.75rem;
-  padding: 1.5rem;
-  transition: border-color 0.15s;
-}
-.skill-card:hover { border-color: #333; }
-.skill-card-featured {
-  border-color: rgba(249,115,22,0.4);
-  background: rgba(249,115,22,0.04);
-}
-.skill-badge {
-  position: absolute; top: 1rem; right: 1rem;
-  font-size: 0.65rem; font-weight: 700;
-  background: rgba(249,115,22,0.2); color: #f97316;
-  border: 1px solid rgba(249,115,22,0.4);
-  padding: 2px 8px; border-radius: 999px;
-  text-transform: uppercase; letter-spacing: 0.05em;
-}
-.skill-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.75rem; }
-.skill-emoji { font-size: 1.75rem; }
-.skill-tier {
-  font-size: 0.7rem; font-weight: 700; padding: 3px 10px;
-  border-radius: 999px; text-transform: uppercase; letter-spacing: 0.05em;
-}
-.tier-free { background: rgba(34,197,94,0.15); color: #22c55e; border: 1px solid rgba(34,197,94,0.3); }
-.tier-pro { background: rgba(249,115,22,0.15); color: #f97316; border: 1px solid rgba(249,115,22,0.3); }
-.skill-name { font-size: 1.1rem; font-weight: 700; color: #f5f5f5; margin: 0 0 0.25rem; }
-.skill-tagline { font-size: 0.8rem; color: #f97316; margin: 0 0 0.75rem; font-weight: 500; }
-.skill-desc { color: #888; font-size: 0.875rem; line-height: 1.6; margin: 0 0 1rem; }
-.skill-tags { display: flex; flex-wrap: wrap; gap: 0.375rem; }
-.skill-tag {
-  font-size: 0.7rem; color: #555; background: #1a1a1a;
-  border: 1px solid #222; padding: 2px 8px; border-radius: 999px;
-}
-.spotlight-cta { text-align: center; }
-
-/* Pricing teaser */
-.pricing-teaser-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 1.5rem;
-}
-.pricing-teaser-card {
-  position: relative;
-  background: #111;
-  border: 1px solid #1e1e1e;
-  border-radius: 0.75rem;
-  padding: 2rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-}
-.pricing-teaser-featured {
-  border-color: #f97316;
-  background: rgba(249,115,22,0.04);
-}
-.pricing-teaser-badge {
-  position: absolute; top: -0.75rem; left: 50%; transform: translateX(-50%);
-  background: #f97316; color: #fff;
-  font-size: 0.65rem; font-weight: 700;
-  padding: 3px 12px; border-radius: 999px;
-  text-transform: uppercase; letter-spacing: 0.08em; white-space: nowrap;
-}
-.pricing-teaser-name { font-size: 1.1rem; font-weight: 700; color: #f5f5f5; }
-.pricing-teaser-price { font-size: 1.75rem; font-weight: 900; color: #f5f5f5; }
-.pricing-teaser-price span { color: #f97316; }
-.pricing-teaser-card p { color: #888; font-size: 0.875rem; line-height: 1.5; flex: 1; margin: 0; }
-
-/* Security */
-.security-block { display: grid; grid-template-columns: 1fr auto; gap: 3rem; align-items: center; }
-.security-list { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 0.5rem; }
-.security-list li { color: #888; font-size: 0.9rem; display: flex; align-items: center; gap: 0.5rem; }
-.check { color: #22c55e; font-weight: 700; }
-.security-cta-col { flex-shrink: 0; }
-
-/* Final CTA */
-.final-cta-section { background: linear-gradient(to bottom, rgba(249,115,22,0.04), transparent); }
-.final-cta { text-align: center; max-width: 600px; margin: 0 auto; }
-.final-cta h2 { font-size: 2.25rem; font-weight: 900; color: #f5f5f5; margin: 0 0 1rem; letter-spacing: -0.03em; }
-.final-cta p { color: #888; font-size: 1rem; line-height: 1.7; margin: 0 auto 2rem; }
-
-@media (max-width: 640px) {
-  .security-block { grid-template-columns: 1fr; }
-}
-</style>
+<!-- Animated counter for stats -->
+<script>
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        entry.target.querySelectorAll<HTMLDivElement>('.text-3xl, .text-5xl').forEach(el => {
+          el.style.opacity = '0';
+          el.style.transform = 'translateY(8px)';
+          el.style.transition = 'opacity 0.6s ease, transform 0.6s ease';
+          setTimeout(() => {
+            el.style.opacity = '1';
+            el.style.transform = 'translateY(0)';
+          }, Math.random() * 200);
+        });
+        observer.disconnect();
+      }
+    });
+  }, { threshold: 0.3 });
+  const stats = document.getElementById('stats-strip');
+  if (stats) observer.observe(stats);
+</script>

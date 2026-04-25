@@ -1,0 +1,64 @@
+---
+import Base from '../../layouts/Base.astro';
+import CrossSell from '../../components/CrossSell.astro';
+
+const sections = [
+  {
+    title: 'Getting started',
+    href: '/docs/getting-started',
+    body: 'Install the Recipes meta-skill in your agent. One curl command, agent gains marketplace awareness for life.',
+  },
+  {
+    title: 'How it works',
+    href: '/docs/how-it-works',
+    body: 'Search → install → telemetry. The three-level loading model that makes a marketplace work without bloating your context.',
+  },
+  {
+    title: 'Install guide',
+    href: '/docs/install',
+    body: 'Per-agent install instructions: Claude Code, Cursor, Windsurf, Cline, OpenClaw, Hermes, Paperclip.',
+  },
+  {
+    title: 'API reference',
+    href: '/docs/api-reference',
+    body: 'Endpoints, auth, rate limits, error codes. Mirrors LarryBrain conventions for cross-marketplace creator interop.',
+  },
+  {
+    title: 'Publishing skills',
+    href: '/docs/publishing',
+    body: 'Format, security review, payouts, founder-creator program (75% locked-in for first 50 publishers).',
+  },
+  {
+    title: 'Security',
+    href: '/docs/security',
+    body: 'Plain-text skills, credentials local, GitHub-verified authors, Firejail runtime sandboxing, anonymous telemetry.',
+  },
+];
+---
+
+<Base title="Documentation — Recipes" description="Install, integrate, publish. Everything you need to use Recipes from any AI coding agent.">
+  <section class="max-w-6xl mx-auto px-6 pt-16 pb-12">
+    <div class="flex flex-col gap-3 mb-12">
+      <p class="eyebrow">Documentation</p>
+      <h1 class="text-4xl md:text-5xl font-semibold tracking-tight">Install in seconds. Integrate forever.</h1>
+      <p class="text-muted max-w-2xl">Recipes is a markdown file plus an HTTP API. No SDK to learn, no platform to lock into. Works with every major AI coding agent.</p>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      {sections.map(s => (
+        <a href={s.href} class="bg-bg-card border border-border rounded-2xl p-5 card-lift block">
+          <h3 class="text-base font-semibold text-text">{s.title}</h3>
+          <p class="text-sm text-muted mt-2 leading-relaxed">{s.body}</p>
+          <span class="text-xs text-accent mt-3 inline-flex items-center gap-1">Read →</span>
+        </a>
+      ))}
+    </div>
+
+    <div class="mt-12 bg-bg-card border border-border rounded-2xl p-6 md:p-8">
+      <p class="eyebrow mb-3">One-line install</p>
+      <pre class="text-xs md:text-sm overflow-x-auto bg-[#0d0d0d] border border-border rounded-lg p-4"><code>curl -sL https://recipes.wisechef.ai/skill -o ~/.claude/skills/recipes/SKILL.md</code></pre>
+      <p class="text-xs text-muted-soft mt-3">Then ask your agent: "Install the recipes skill, then list available skills." Done.</p>
+    </div>
+  </section>
+  <CrossSell />
+</Base>

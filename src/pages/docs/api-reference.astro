@@ -1,0 +1,56 @@
+---
+import Base from '../../layouts/Base.astro';
+import CrossSell from '../../components/CrossSell.astro';
+---
+<Base title="API reference — Recipes Docs">
+  <section class="max-w-3xl mx-auto px-6 pt-16 pb-12">
+    <p class="eyebrow mb-2">Documentation · API reference</p>
+    <h1 class="text-4xl font-semibold tracking-tight mb-6">API reference.</h1>
+    <div class="prose">
+      <p>Base URL: <code>https://recipes.wisechef.ai/api</code></p>
+      <p>Auth: <code>x-api-key</code> header (NOT <code>Authorization: Bearer</code>). Mirrors LarryBrain convention for cross-marketplace creator interop.</p>
+      <p>Rate limit: 60 req/min per key.</p>
+
+      <h2>GET /api/skills/search</h2>
+      <p>Public. No auth.</p>
+      <pre><code>curl "https://recipes.wisechef.ai/api/skills/search?q=client+report&limit=10"</code></pre>
+      <p>Params: <code>q</code> (string, required), <code>limit</code> (1–50), <code>category</code>, <code>sort</code> (popular | rating | newest).</p>
+
+      <h2>GET /api/skills/install</h2>
+      <p>Auth required for premium skills (free skills work without).</p>
+      <pre><code>curl -H "x-api-key: $RECIPES_API_KEY" \
+  "https://recipes.wisechef.ai/api/skills/install?slug=client-reporter&mode=files"</code></pre>
+      <p>Always pass <code>mode=files</code>. Response includes a signed tarball URL and per-file manifest.</p>
+
+      <h2>GET /api/skills/{`{slug}`}</h2>
+      <p>Public. Skill detail page data — title, description, install count, version, screenshots.</p>
+
+      <h2>GET /api/skills/trending</h2>
+      <p>Public. Params: <code>period</code> (week | month), <code>limit</code>.</p>
+
+      <h2>GET /api/skills/access</h2>
+      <p>Auth required. Pre-flight check before install.</p>
+
+      <h2>GET /api/carousel/today</h2>
+      <p>Public. Returns the 7 active carousel entries for today.</p>
+
+      <h2>GET /api/carousel/{`{YYYY-MM-DD}`}</h2>
+      <p>Public. Carousel by historical date. Permalinkable.</p>
+
+      <h2>POST /api/telemetry</h2>
+      <p>Auth required. Anonymous-aggregate event reporting from the meta-skill.</p>
+
+      <h2>Error codes</h2>
+      <ul>
+        <li><code>200</code> — Success</li>
+        <li><code>400</code> — Missing/invalid params</li>
+        <li><code>401</code> — Invalid or missing API key</li>
+        <li><code>403</code> — Subscription required (skill is premium)</li>
+        <li><code>404</code> — Skill not found</li>
+        <li><code>429</code> — Rate limited</li>
+        <li><code>503</code> — Temporary service issue</li>
+      </ul>
+    </div>
+    <CrossSell />
+  </section>
+</Base>

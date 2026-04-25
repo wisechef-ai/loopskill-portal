@@ -1,0 +1,74 @@
+---
+import Base from '../../layouts/Base.astro';
+import CrossSell from '../../components/CrossSell.astro';
+
+let skills: any[] = [];
+let fetchError: string | null = null;
+try {
+  const res = await fetch('http://localhost:8201/api/skills/search?limit=50', {
+    headers: { 'x-api-key': import.meta.env.RECIPES_API_KEY || 'rec_dev_internal' }
+  });
+  if (res.ok) {
+    const data = await res.json();
+    skills = data.results || [];
+  } else fetchError = `API ${res.status}`;
+} catch (e: any) { fetchError = e?.message || 'fetch failed'; }
+
+if (skills.length === 0) {
+  // Seed list for fallback rendering — uses the launch-grade-30 audit picks where possible
+  skills = [
+    { slug: 'client-reporter', title: 'Client Reporter', description: 'Pull GA4 + GSC + Meta Ads + TikTok Ads → branded PDF for any client.', category: 'reporting', tier: 'free', install_count: 0 },
+    { slug: 'seo-audit-engine', title: 'SEO Audit Engine', description: 'Lighthouse + Screaming Frog → client-ready audit PDF in 3 minutes.', category: 'seo', tier: 'pro', install_count: 0 },
+    { slug: 'proposal-builder', title: 'Proposal Builder', description: 'Discovery call transcript → branded SOW + pricing tiers.', category: 'sales', tier: 'pro', install_count: 0 },
+    { slug: 'content-calendar', title: 'Content Calendar', description: '30-day cross-platform calendar from a single brand brief.', category: 'content', tier: 'pro', install_count: 0 },
+    { slug: 'cold-outreach', title: 'Cold Outreach', description: 'Apollo + LinkedIn Sales Nav scrape, GPT personalization, sequencing.', category: 'sales', tier: 'pro', install_count: 0 },
+    { slug: 'invoice-automator', title: 'Invoice Automator', description: 'Stripe + QuickBooks sync, recurring agency invoicing.', category: 'finance', tier: 'pro', install_count: 0 },
+    { slug: 'gohighlevel-cli', title: 'GoHighLevel CLI', description: 'Direct CRM control — leads, pipelines, automations from your agent.', category: 'crm', tier: 'pro', install_count: 0 },
+    { slug: 'onboarding-wizard', title: 'Onboarding Wizard', description: 'New client → Notion + Slack + drive folders, automated.', category: 'ops', tier: 'pro', install_count: 0 },
+    { slug: 'standup-bot', title: 'Standup Bot', description: 'Daily team standup composed from yesterday\'s commits + tickets.', category: 'ops', tier: 'pro', install_count: 0 },
+    { slug: 'whitelabel-dashboard', title: 'White-label Dashboard', description: 'Local web app showing all client KPIs in one view.', category: 'reporting', tier: 'studio', install_count: 0 },
+  ];
+}
+
+const categories = Array.from(new Set(skills.map(s => s.category || 'general'))).filter(Boolean).sort();
+---
+
+<Base title="Skills — Recipes" description="Browse the full catalog. Free Client Reporter, paid SEO audit, proposal builder, content calendar, more.">
+  <section class="max-w-7xl mx-auto px-6 pt-16 pb-8">
+    <div class="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-10">
+      <div class="flex flex-col gap-2">
+        <p class="eyebrow">Catalog</p>
+        <h1 class="text-4xl md:text-5xl font-semibold tracking-tight">{skills.length} skills, ready to install.</h1>
+        <p class="text-muted">Production-grade skills for marketing agencies. Free Client Reporter to start. Pro tier unlocks the rest.</p>
+        {fetchError && <p class="text-xs text-muted-soft">(showing seed data — API: {fetchError})</p>}
+      </div>
+      <div class="flex flex-wrap gap-2">
+        <a href="/skills" class="text-xs px-3 py-1.5 rounded-full border border-accent text-accent hover:bg-accent/10 transition">All</a>
+        {categories.map(c => (
+          <a href={`/skills?category=${c}`} class="text-xs px-3 py-1.5 rounded-full border border-border text-muted hover:border-muted hover:text-text transition capitalize">{c}</a>
+        ))}
+      </div>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      {skills.map(s => {
+        const tier = s.tier || 'pro';
+        const tierClass = tier === 'free' ? 'badge-free' : tier === 'studio' ? 'badge-studio' : 'badge-pro';
+        return (
+          <a href={`/skills/${s.slug}`} class="group bg-bg-card border border-border rounded-2xl p-5 card-lift flex flex-col gap-3">
+            <div class="flex items-start justify-between gap-2">
+              <h3 class="text-base font-semibold text-text group-hover:text-accent transition leading-tight">{s.title}</h3>
+              <span class={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold tracking-wider shrink-0 ${tierClass}`}>{tier.toUpperCase()}</span>
+            </div>
+            <p class="text-sm text-muted leading-relaxed line-clamp-3">{s.description}</p>
+            <div class="flex items-center justify-between pt-3 border-t border-border-soft text-xs">
+              <span class="text-muted-soft capitalize">{s.category || 'general'}</span>
+              <span class="text-muted-soft">{(s.install_count || 0).toLocaleString()} installs</span>
+            </div>
+          </a>
+        );
+      })}
+    </div>
+  </section>
+  <CrossSell />
+</Base>

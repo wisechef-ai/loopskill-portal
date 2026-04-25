@@ -1,191 +1,74 @@
 ---
-const nav = [
-  { href: '/skills', label: 'Skills' },
-  { href: '/carousel', label: 'Carousel' },
-  { href: '/pricing', label: 'Pricing' },
-  { href: '/docs/getting-started', label: 'Docs' },
-  { href: '/publish', label: 'Publish' },
-];
-
-const current = Astro.url.pathname;
+const path = Astro.url.pathname;
+const isActive = (p: string) => path === p || (p !== '/' && path.startsWith(p));
 ---
-
-<header class="nav-header">
-  <div class="nav-inner">
-    <a href="/" class="nav-brand" aria-label="Recipes home">
-      <span class="nav-logo">🍳</span>
-      <span class="nav-name">Recipes</span>
-      <span class="nav-badge">by WiseChef</span>
-    </a>
-
-    <nav class="nav-links" aria-label="Main navigation">
-      {nav.map(({ href, label }) => (
-        <a
-          href={href}
-          class:list={['nav-link', { 'nav-link-active': current.startsWith(href) }]}
-        >
-          {label}
-        </a>
-      ))}
-    </nav>
-
-    <div class="nav-actions">
-      <a href="/signin" class="btn-ghost">Sign in</a>
-      <a href="/pricing" class="btn-primary">Get access</a>
+<header class="sticky top-0 z-50 border-b border-border bg-bg/85 backdrop-blur-md">
+  <nav class="max-w-7xl mx-auto px-6 h-14 flex items-center justify-between gap-6" aria-label="Main navigation">
+    <!-- Brand cluster: parent-WiseChef link + Recipes wordmark -->
+    <div class="flex items-center gap-4">
+      <a href="https://wisechef.ai"
+         class="hidden sm:inline-flex items-center gap-1.5 text-xs text-muted hover:text-text transition rounded px-2 py-1 -ml-2"
+         aria-label="Back to WiseChef">
+        <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true">
+          <path d="M7.5 9.5L4 6L7.5 2.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <span>WiseChef</span>
+      </a>
+      <span class="hidden sm:block w-px h-4 bg-border"></span>
+      <a href="/" class="flex items-center gap-2 group">
+        <span class="text-base font-semibold tracking-tight text-text group-hover:text-accent transition">
+          Recipes
+        </span>
+        <span class="text-[10px] uppercase tracking-widest text-muted-soft border border-border rounded-full px-1.5 py-0.5">
+          beta
+        </span>
+      </a>
     </div>
 
-    <!-- Mobile hamburger -->
-    <button class="nav-hamburger" aria-label="Toggle menu" id="nav-toggle">
-      <span></span><span></span><span></span>
-    </button>
-  </div>
-
-  <!-- Mobile menu -->
-  <div class="nav-mobile" id="nav-mobile">
-    {nav.map(({ href, label }) => (
-      <a href={href} class="nav-mobile-link">{label}</a>
-    ))}
-    <div class="nav-mobile-actions">
-      <a href="/signin" class="btn-ghost w-full text-center">Sign in</a>
-      <a href="/pricing" class="btn-primary w-full text-center">Get access</a>
+    <div class="flex items-center gap-5">
+      <div class="hidden md:flex items-center gap-5 text-sm text-muted">
+        <a href="/skills" class={`hover:text-text transition ${isActive('/skills') ? 'text-text' : ''}`}>Skills</a>
+        <a href="/carousel" class={`hover:text-text transition ${isActive('/carousel') ? 'text-text' : ''}`}>Today's 7</a>
+        <a href="/pricing" class={`hover:text-text transition ${isActive('/pricing') ? 'text-text' : ''}`}>Pricing</a>
+        <a href="/docs" class={`hover:text-text transition ${isActive('/docs') ? 'text-text' : ''}`}>Docs</a>
+        <a href="/publish" class={`hover:text-text transition ${isActive('/publish') ? 'text-text' : ''}`}>Publish</a>
+      </div>
+      <a href="/signin"
+         class="hidden md:inline-flex text-sm text-muted hover:text-text transition px-3 py-1.5 rounded-lg">
+        Sign in
+      </a>
+      <a href="/signin?mode=signup"
+         class="inline-flex items-center justify-center px-4 py-2 rounded-lg font-semibold text-sm transition bg-accent text-bg hover:bg-accent-soft focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent">
+        Get access
+      </a>
+      <details class="md:hidden relative" id="mobile-nav">
+        <summary class="list-none cursor-pointer p-2 rounded-lg text-muted hover:text-text" aria-label="Open menu">
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+            <rect y="3" width="20" height="2" rx="1" fill="currentColor"/>
+            <rect y="9" width="20" height="2" rx="1" fill="currentColor"/>
+            <rect y="15" width="20" height="2" rx="1" fill="currentColor"/>
+          </svg>
+        </summary>
+        <div class="absolute right-0 top-full mt-2 w-56 bg-bg-elev border border-border rounded-xl shadow-xl overflow-hidden">
+          <nav class="flex flex-col text-sm">
+            <a href="/skills" class="px-4 py-3 text-muted hover:text-text hover:bg-bg-card transition">Skills</a>
+            <a href="/carousel" class="px-4 py-3 text-muted hover:text-text hover:bg-bg-card transition">Today's 7</a>
+            <a href="/pricing" class="px-4 py-3 text-muted hover:text-text hover:bg-bg-card transition">Pricing</a>
+            <a href="/docs" class="px-4 py-3 text-muted hover:text-text hover:bg-bg-card transition">Docs</a>
+            <a href="/publish" class="px-4 py-3 text-muted hover:text-text hover:bg-bg-card transition">Publish</a>
+            <a href="/signin" class="px-4 py-3 text-muted hover:text-text hover:bg-bg-card transition border-t border-border">Sign in</a>
+            <a href="https://wisechef.ai" class="px-4 py-3 text-muted hover:text-text hover:bg-bg-card transition border-t border-border">← WiseChef</a>
+          </nav>
+        </div>
+      </details>
     </div>
-  </div>
+  </nav>
 </header>
-
-<style>
-  .nav-header {
-    position: sticky;
-    top: 0;
-    z-index: 50;
-    background: rgba(10,10,10,0.92);
-    backdrop-filter: blur(12px);
-    border-bottom: 1px solid #222;
-  }
-  .nav-inner {
-    max-width: 1200px;
-    margin: 0 auto;
-    padding: 0 1.5rem;
-    height: 64px;
-    display: flex;
-    align-items: center;
-    gap: 2rem;
-  }
-  .nav-brand {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    text-decoration: none;
-    flex-shrink: 0;
-  }
-  .nav-logo { font-size: 1.5rem; }
-  .nav-name {
-    font-size: 1.125rem;
-    font-weight: 700;
-    color: #f5f5f5;
-    letter-spacing: -0.025em;
-  }
-  .nav-badge {
-    font-size: 0.7rem;
-    background: rgba(249,115,22,0.15);
-    color: #f97316;
-    border: 1px solid rgba(249,115,22,0.3);
-    padding: 2px 8px;
-    border-radius: 999px;
-    font-weight: 500;
-  }
-  .nav-links {
-    display: flex;
-    align-items: center;
-    gap: 0.25rem;
-    flex: 1;
-  }
-  .nav-link {
-    padding: 0.375rem 0.75rem;
-    border-radius: 0.375rem;
-    font-size: 0.9rem;
-    color: #888;
-    text-decoration: none;
-    transition: color 0.15s, background 0.15s;
-  }
-  .nav-link:hover { color: #f5f5f5; background: #1a1a1a; }
-  .nav-link-active { color: #f97316 !important; }
-  .nav-actions {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    flex-shrink: 0;
-  }
-  .btn-ghost {
-    padding: 0.4rem 1rem;
-    border-radius: 0.375rem;
-    font-size: 0.875rem;
-    color: #888;
-    text-decoration: none;
-    transition: color 0.15s;
-  }
-  .btn-ghost:hover { color: #f5f5f5; }
-  .btn-primary {
-    padding: 0.4rem 1rem;
-    border-radius: 0.375rem;
-    font-size: 0.875rem;
-    font-weight: 600;
-    background: #f97316;
-    color: #fff;
-    text-decoration: none;
-    transition: background 0.15s;
-  }
-  .btn-primary:hover { background: #ea6c0c; }
-  .nav-hamburger {
-    display: none;
-    flex-direction: column;
-    gap: 5px;
-    background: none;
-    border: none;
-    cursor: pointer;
-    padding: 0.5rem;
-    margin-left: auto;
-  }
-  .nav-hamburger span {
-    display: block;
-    width: 22px;
-    height: 2px;
-    background: #f5f5f5;
-    border-radius: 2px;
-  }
-  .nav-mobile {
-    display: none;
-    flex-direction: column;
-    padding: 1rem 1.5rem;
-    border-top: 1px solid #222;
-    gap: 0.5rem;
-    background: #0a0a0a;
-  }
-  .nav-mobile-link {
-    padding: 0.75rem 0;
-    color: #888;
-    text-decoration: none;
-    font-size: 1rem;
-    border-bottom: 1px solid #1a1a1a;
-  }
-  .nav-mobile-link:hover { color: #f5f5f5; }
-  .nav-mobile-actions {
-    display: flex;
-    gap: 0.75rem;
-    padding-top: 0.75rem;
-  }
-  .w-full { width: 100%; }
-  .text-center { text-align: center; }
-
-  @media (max-width: 768px) {
-    .nav-links { display: none; }
-    .nav-actions { display: none; }
-    .nav-hamburger { display: flex; }
-    .nav-mobile.open { display: flex; }
-  }
-</style>
-
 <script>
-  const toggle = document.getElementById('nav-toggle');
-  const mobile = document.getElementById('nav-mobile');
-  toggle?.addEventListener('click', () => mobile?.classList.toggle('open'));
+  document.querySelectorAll('#mobile-nav nav a').forEach((link) => {
+    link.addEventListener('click', () => {
+      const d = document.getElementById('mobile-nav') as HTMLDetailsElement | null;
+      if (d) d.open = false;
+    });
+  });
 </script>

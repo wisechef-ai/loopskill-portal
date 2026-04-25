@@ -1,0 +1,57 @@
+---
+import Base from '../layouts/Base.astro';
+import CrossSell from '../components/CrossSell.astro';
+---
+<Base title="Publish a skill — Recipes" description="Build skills, earn forever. Usage-attributed payouts. First 50 publishers lock in 75% revenue share for life.">
+  <section class="max-w-4xl mx-auto px-6 pt-16 pb-12">
+    <div class="text-center max-w-2xl mx-auto flex flex-col gap-3 mb-12">
+      <p class="eyebrow">For creators</p>
+      <h1 class="text-4xl md:text-5xl font-semibold tracking-tight">Build a skill. Earn from every install.</h1>
+      <p class="text-muted">Usage-attributed payouts mean you earn for impact, not influence. Submit a skill via GitHub. Pass the security review. Earn 50–75% of subscription revenue every month.</p>
+    </div>
+
+    <ol class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-12">
+      {[
+        { num: '01', title: 'Build your skill in a GitHub repo', body: 'Standard Anthropic Skills format. SKILL.md at root, optional scripts/, references/. We provide a starter template.' },
+        { num: '02', title: 'Connect GitHub & submit', body: 'Verified identity is required. Your authorship locks to your GitHub handle for life.' },
+        { num: '03', title: 'Pass automated security scan', body: 'Semgrep + curl-pipe-shell detection + prompt injection patterns. Most skills pass cleanly.' },
+        { num: '04', title: 'Human review (48h SLA)', body: 'A real reviewer tests the setup and verifies the skill does what it claims.' },
+        { num: '05', title: 'Go live in the catalog', body: 'Searchable, carousel-eligible, and earning. New installs attribute to your usage payout pool.' },
+        { num: '06', title: 'Monthly Stripe Connect payout', body: 'EU-friendly payouts via Stripe Express. We handle VAT MOSS. You handle the craft.' },
+      ].map(s => (
+        <li class="bg-bg-card border border-border rounded-2xl p-5 flex flex-col gap-2">
+          <span class="font-mono text-xs text-muted-soft">{s.num}</span>
+          <h3 class="text-base font-semibold text-text">{s.title}</h3>
+          <p class="text-sm text-muted leading-relaxed">{s.body}</p>
+        </li>
+      ))}
+    </ol>
+
+    <div class="bg-bg-card border border-accent/30 rounded-2xl p-6 md:p-8 mb-12 glow-amber">
+      <p class="eyebrow text-accent mb-2">Founding creator program</p>
+      <h2 class="text-2xl font-semibold tracking-tight mb-2">First 50 publishers lock in 75% for life</h2>
+      <p class="text-sm text-muted mb-4 max-w-2xl">Recruitment incentive — locked in for the lifetime of every install your skill ever receives. After publisher #50, the standard tiered split applies.</p>
+      <a href="https://calendar.app.google/P9J9oaiemtHdsvG99" class="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold bg-accent text-bg hover:bg-accent-soft transition">
+        Book the founder slot
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M3 7H11M11 7L7 3M11 7L7 11" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </a>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+      {[
+        { label: 'High-impact verticals we want', items: ['Marketing agencies', 'Code review / DevTools', 'Robotics & simulation', 'Customer ops'] },
+        { label: 'Anti-patterns we reject', items: ['curl|bash from remote', 'rm -rf without scope', 'Prompt injection', 'Credential harvesting'] },
+        { label: 'What gets featured', items: ['Carousel placement', '/skills/{slug} hero', 'Editorial spotlight', 'WiseChef case studies'] },
+      ].map(b => (
+        <div class="bg-bg-card border border-border rounded-2xl p-5">
+          <p class="eyebrow mb-3">{b.label}</p>
+          <ul class="flex flex-col gap-1.5 text-sm text-muted">
+            {b.items.map(i => <li>— {i}</li>)}
+          </ul>
+        </div>
+      ))}
+    </div>
+  </section>
+
+  <CrossSell variant="banner" />
+</Base>

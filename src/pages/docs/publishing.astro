@@ -1,0 +1,46 @@
+---
+import Base from '../../layouts/Base.astro';
+import CrossSell from '../../components/CrossSell.astro';
+---
+<Base title="Publishing — Recipes Docs">
+  <section class="max-w-3xl mx-auto px-6 pt-16 pb-12">
+    <p class="eyebrow mb-2">Documentation · Publishing</p>
+    <h1 class="text-4xl font-semibold tracking-tight mb-6">Publish a skill, earn from every install.</h1>
+    <div class="prose">
+      <p>See the <a href="/publish">publisher landing page</a> for the founder-creator program (75% rev share, locked-in for life for first 50 publishers).</p>
+
+      <h2>Skill format</h2>
+      <p>Standard <a href="https://docs.anthropic.com/en/docs/agents/claude-code/skills">Anthropic Skills</a> format with our <code>[carousel]</code>, <code>[telemetry]</code>, <code>[sandbox]</code>, <code>[replaces]</code> extensions.</p>
+      <pre><code>your-skill/
+├── SKILL.md          ← required: YAML frontmatter + Markdown body
+├── scripts/          ← optional: bash/python/node
+├── references/       ← optional: docs the agent reads on demand
+└── assets/           ← optional: templates, images, configs</code></pre>
+
+      <h2>Submission flow</h2>
+      <ol>
+        <li>Build skill in a public GitHub repo.</li>
+        <li>Connect GitHub via OAuth at <a href="/signin?mode=signup">/signin</a>.</li>
+        <li>Submit at <a href="/publish">/publish</a> with repo URL + slug + category + free/premium.</li>
+        <li>Automated security scan runs (Semgrep + custom rules).</li>
+        <li>Human review (48h SLA on Operator/Studio submissions).</li>
+        <li>Live in catalog. Earnings start on next install attribution.</li>
+      </ol>
+
+      <h2>What gets rejected</h2>
+      <ul>
+        <li>Destructive commands (<code>rm -rf /</code>, <code>mkfs</code>, etc.)</li>
+        <li>Pipe-to-shell from remote URLs (<code>curl ... | bash</code>)</li>
+        <li>Eval'd remote/encoded code</li>
+        <li>Reads of <code>~/.ssh/</code>, <code>~/.aws/credentials</code>, system keychain</li>
+        <li>Outbound network calls to non-declared domains</li>
+        <li>Prompt injection patterns</li>
+        <li>Misleading descriptions</li>
+      </ul>
+
+      <h2>Payouts</h2>
+      <p>Stripe Connect Express. Monthly. EU VAT MOSS handled. Usage-attributed (not referral-attributed) — your earnings track real installs and runs of <em>your</em> skill.</p>
+    </div>
+    <CrossSell />
+  </section>
+</Base>

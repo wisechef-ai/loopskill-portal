@@ -7,55 +7,64 @@ interface Props {
   title?: string;
   description?: string;
   ogImage?: string;
+  pageType?: 'website' | 'product' | 'article';
 }
 
 const {
-  title = 'Recipes — The skill marketplace for marketing agencies',
-  description = 'Agency-grade AI skills for marketing teams. Install in seconds, run locally, ship results. The recipe book for AI agents.',
+  title = 'Recipes — The recipe book for AI agents',
+  description = 'A skill marketplace for AI agents. One install, agency-grade tools — client reporting, content calendars, SEO audits, proposals — installed by your agent in seconds. By WiseChef.',
   ogImage = '/og-default.png',
+  pageType = 'website',
 } = Astro.props;
 
 const canonicalURL = new URL(Astro.url.pathname, 'https://recipes.wisechef.ai');
+const ogTitle = title.includes('Recipes') ? title : `${title} | Recipes`;
+const siteURL = 'https://recipes.wisechef.ai';
+
+const orgSchema = {
+  '@context': 'https://schema.org',
+  '@type': 'Organization',
+  name: 'Recipes',
+  alternateName: 'Recipes by WiseChef',
+  url: siteURL,
+  logo: `${siteURL}/favicon.svg`,
+  description,
+  parentOrganization: {
+    '@type': 'Organization',
+    name: 'WiseChef',
+    url: 'https://wisechef.ai',
+  },
+};
 ---
 <!doctype html>
-<html lang="en">
+<html lang="en" class="scroll-smooth">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>{title}</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="description" content={description} />
+    <meta name="generator" content={Astro.generator} />
     <link rel="canonical" href={canonicalURL} />
-    <meta property="og:title" content={title} />
-    <meta property="og:description" content={description} />
-    <meta property="og:image" content={ogImage} />
-    <meta property="og:type" content="website" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta property="og:type" content={pageType} />
     <meta property="og:url" content={canonicalURL} />
+    <meta property="og:title" content={ogTitle} />
+    <meta property="og:description" content={description} />
+    <meta property="og:site_name" content="Recipes by WiseChef" />
+    <meta property="og:image" content={ogImage} />
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content={title} />
+    <meta name="twitter:title" content={ogTitle} />
     <meta name="twitter:description" content={description} />
     <meta name="theme-color" content="#0a0a0a" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
-    <script type="application/ld+json">
-      {JSON.stringify({
-        "@context": "https://schema.org",
-        "@type": "WebSite",
-        "name": "Recipes by WiseChef",
-        "url": "https://recipes.wisechef.ai",
-        "description": description,
-        "publisher": {
-          "@type": "Organization",
-          "name": "WiseChef",
-          "url": "https://wisechef.ai"
-        }
-      })}
-    </script>
+    <title>{ogTitle}</title>
+    <script type="application/ld+json" set:html={JSON.stringify(orgSchema)}></script>
   </head>
-  <body>
+  <body class="bg-bg text-text font-sans antialiased min-h-screen flex flex-col">
+    <a href="#main-content"
+       class="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-[100] focus:px-4 focus:py-2 focus:rounded-lg focus:bg-accent focus:text-bg focus:font-semibold focus:text-sm">
+      Skip to content
+    </a>
     <Nav />
-    <main>
+    <main id="main-content" class="flex-1">
       <slot />
     </main>
     <Footer />

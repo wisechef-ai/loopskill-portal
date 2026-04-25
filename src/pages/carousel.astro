@@ -1,0 +1,76 @@
+---
+import Base from '../layouts/Base.astro';
+import CrossSell from '../components/CrossSell.astro';
+
+// Try to fetch from API; fall back to seed data if unreachable at build time
+let entries: any[] = [];
+let fetchError: string | null = null;
+try {
+  const res = await fetch('http://localhost:8201/api/carousel/today', {
+    headers: { 'x-api-key': import.meta.env.RECIPES_API_KEY || 'rec_dev_internal' }
+  });
+  if (res.ok) entries = await res.json();
+  else fetchError = `API ${res.status}`;
+} catch (e: any) { fetchError = e?.message || 'fetch failed'; }
+
+if (!entries || entries.length === 0) {
+  entries = [
+    { skill_slug: 'client-reporter', skill_title: 'Client Reporter', skill_description: 'Free skill: GA4 + GSC + Meta Ads + TikTok Ads → branded PDF for any client.', tagline: 'Replaces 4h/week', position: 0, role: 'new-capability' },
+    { skill_slug: 'web-scraper-pro', skill_title: 'Web Scraper Pro', skill_description: 'High-performance web scraping with built-in rate limiting and proxy rotation.', tagline: 'Scrape anything', position: 1, role: 'replaces:scrapling' },
+    { skill_slug: 'email-composer', skill_title: 'Smart Email Composer', skill_description: 'AI-powered email drafting with tone control and template library.', tagline: 'Emails that get replies', position: 2, role: 'new-capability' },
+    { skill_slug: 'invoice-automator', skill_title: 'Invoice Automator', skill_description: 'Stripe + QuickBooks sync, recurring agency invoicing on autopilot.', tagline: 'Replaces Bonsai', position: 3, role: 'new-capability' },
+    { skill_slug: 'standup-bot', skill_title: 'Slack Standup Bot', skill_description: 'Daily team standup composed from yesterday\'s commits and tickets.', tagline: 'Async team daily', position: 4, role: 'experimental' },
+    { skill_slug: 'gohighlevel-cli', skill_title: 'GoHighLevel CLI', skill_description: 'Direct CRM control from your agent — leads, pipelines, automations.', tagline: 'Replaces dashboards', position: 5, role: 'new-capability' },
+    { skill_slug: 'onboarding-wizard', skill_title: 'Onboarding Wizard', skill_description: 'New client → Notion workspace + Slack channel + drive folders, automated.', tagline: 'Day-1 setup, done', position: 6, role: 'new-capability' },
+  ];
+}
+
+const today = new Date().toISOString().slice(0, 10);
+const roleLabels: Record<string, string> = {
+  'new-capability': 'New capability',
+  'experimental': 'Experimental',
+};
+function formatRole(role: string): string {
+  if (role && role.startsWith('replaces:')) return `Replaces ${role.split(':')[1]}`;
+  return roleLabels[role] || 'New capability';
+}
+---
+
+<Base title={`Today's 7 (${today}) — Recipes`} description="Seven skills. Twenty-four hours each. The Recipes carousel rotates a new entry every midnight UTC and proves which skills actually work in production.">
+  <section class="max-w-6xl mx-auto px-6 pt-16 pb-12">
+    <div class="text-center max-w-2xl mx-auto flex flex-col gap-3 mb-12">
+      <p class="eyebrow">Today's 7 · {today}</p>
+      <h1 class="text-4xl md:text-5xl font-semibold tracking-tight">Seven skills. One day each.</h1>
+      <p class="text-muted">Every midnight UTC, the oldest card drops and a fresh one enters. Each entry runs against incumbent skills for 7 days. The carousel is how we keep the catalog honest.</p>
+      {fetchError && <p class="text-xs text-muted-soft">(showing seed data — API: {fetchError})</p>}
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-7 gap-3">
+      {entries.slice(0, 7).map((e: any, i: number) => (
+        <a href={`/skills/${e.skill_slug}`}
+           class={`group bg-bg-card border border-border rounded-2xl p-4 card-lift flex flex-col gap-3 ${i === 0 ? 'lg:col-span-3' : 'lg:col-span-2'} ${i > 4 ? 'lg:col-span-2' : ''}`}>
+          <div class="flex items-start justify-between gap-2">
+            <span class="text-[10px] font-mono text-muted-soft">SLOT {String(e.position + 1).padStart(2, '0')}</span>
+            <span class="text-[9px] uppercase tracking-wider text-accent border border-accent/40 rounded-full px-2 py-0.5">{formatRole(e.role || 'new-capability')}</span>
+          </div>
+          <div>
+            <h3 class="text-base font-semibold text-text group-hover:text-accent transition leading-tight">{e.skill_title}</h3>
+            {e.tagline && <p class="text-xs text-muted-soft mt-1">{e.tagline}</p>}
+          </div>
+          <p class="text-xs text-muted leading-relaxed line-clamp-3">{e.skill_description}</p>
+          <span class="text-xs text-accent group-hover:translate-x-0.5 transition mt-auto inline-flex items-center gap-1">
+            View skill
+            <svg width="11" height="11" viewBox="0 0 11 11" fill="none"><path d="M3 5.5h5m0 0L5.5 3M8 5.5L5.5 8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+          </span>
+        </a>
+      ))}
+    </div>
+
+    <div class="mt-10 bg-bg-card border border-border rounded-2xl p-6 text-center">
+      <p class="eyebrow mb-2">How verdicts work</p>
+      <p class="text-sm text-muted max-w-2xl mx-auto">Each card collects telemetry for 7 days — install velocity, success rate, agent diversity, distinct workloads. On day 7 the verdict cron runs: <span class="text-success">Promote-to-core</span>, <span class="text-text">Hold-for-reentry</span>, <span class="text-muted">Co-list</span>, or <span class="text-muted-soft">Archive</span>. Replacement candidates that beat the incumbent get co-listed (then auto-deprecation rolls in once we know our noise floor).</p>
+    </div>
+  </section>
+
+  <CrossSell />
+</Base>

@@ -1,0 +1,43 @@
+---
+import Base from '../../layouts/Base.astro';
+import CrossSell from '../../components/CrossSell.astro';
+---
+<Base title="How it works — Recipes Docs">
+  <section class="max-w-3xl mx-auto px-6 pt-16 pb-12">
+    <p class="eyebrow mb-2">Documentation · How it works</p>
+    <h1 class="text-4xl font-semibold tracking-tight mb-6">The three-level skill loading model.</h1>
+    <div class="prose">
+      <p>Recipes ships on top of <a href="https://docs.anthropic.com/en/docs/agents/claude-code/skills">Anthropic's Agent Skills standard</a>. We didn't invent the format — we operate the marketplace on top of it.</p>
+
+      <h2>Why it works at all</h2>
+      <p>Skills load progressively:</p>
+      <ul>
+        <li><strong>Level 1 — Frontmatter:</strong> always loaded. ~100 words per skill. Tells the agent what's available.</li>
+        <li><strong>Level 2 — SKILL.md body:</strong> loaded only when the skill triggers. Usually under 2k tokens.</li>
+        <li><strong>Level 3 — Bundled resources:</strong> scripts, references, configs. Zero token cost until explicitly read.</li>
+      </ul>
+      <p>So your agent can have hundreds of skills "installed" but only pay token cost for the ones it actually uses. <strong>That's the unlock that makes a marketplace possible.</strong></p>
+
+      <h2>The full lifecycle</h2>
+      <ol>
+        <li>You install the meta-skill once. Permanent client.</li>
+        <li>You ask for something new ("audit this site's SEO").</li>
+        <li>Agent matches against the meta-skill's description. Triggers.</li>
+        <li>Agent calls <code>GET /api/skills/search?q=seo+audit</code>.</li>
+        <li>Agent picks the best match by description + rating + install count.</li>
+        <li>Agent calls <code>GET /api/skills/install?slug=seo-audit&mode=files</code>.</li>
+        <li>Files written locally. <code>_meta.json</code> records the install.</li>
+        <li>Agent reads the new SKILL.md, follows its instructions, executes locally.</li>
+        <li>Telemetry pings (anonymous: success/failure, duration, agent class). Optional — opt out at any time.</li>
+      </ol>
+
+      <h2>What you control</h2>
+      <ul>
+        <li><strong>Credentials never leave your machine.</strong> Skills hit third-party APIs directly with your env vars.</li>
+        <li><strong>Skills run in a Firejail sandbox.</strong> Network allowlist, fs writes, exec binaries — all declared in the manifest, enforced at runtime.</li>
+        <li><strong>You can delete any skill</strong> by removing its directory. No account-level lock-in.</li>
+      </ul>
+    </div>
+    <CrossSell />
+  </section>
+</Base>

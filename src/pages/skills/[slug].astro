@@ -1,0 +1,207 @@
+---
+import Base from '../../layouts/Base.astro';
+import CrossSell from '../../components/CrossSell.astro';
+
+// SSG: pre-render the launch catalog. New skills get added via a follow-up build.
+export async function getStaticPaths() {
+  let skills: any[] = [];
+  try {
+    const res = await fetch('http://localhost:8201/api/skills/search?limit=50', {
+      headers: { 'x-api-key': import.meta.env.RECIPES_API_KEY || 'rec_dev_internal' }
+    });
+    if (res.ok) {
+      const data = await res.json();
+      skills = data.results || [];
+    }
+  } catch {}
+
+  // Always include the seed skills so the page works even if API is down at build
+  const seedSlugs = ['client-reporter', 'web-scraper-pro', 'email-composer', 'invoice-automator', 'standup-bot', 'gohighlevel-cli', 'onboarding-wizard', 'seo-audit-engine', 'content-calendar', 'proposal-builder'];
+  const seedSkills = seedSlugs.map(s => ({ slug: s, title: s.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) }));
+  const all = [...skills];
+  for (const s of seedSkills) {
+    if (!all.find(x => x.slug === s.slug)) all.push(s);
+  }
+
+  return all.map(skill => ({
+    params: { slug: skill.slug },
+    props: { initialSkill: skill },
+  }));
+}
+
+const { slug } = Astro.params;
+const { initialSkill } = Astro.props;
+
+// Fetch detail at build time
+let skill: any = initialSkill;
+try {
+  const res = await fetch(`http://localhost:8201/api/skills/${slug}`, {
+    headers: { 'x-api-key': import.meta.env.RECIPES_API_KEY || 'rec_dev_internal' }
+  });
+  if (res.ok) skill = { ...initialSkill, ...(await res.json()) };
+} catch {}
+
+// Defaults for the seed/fallback case
+const fallback: Record<string, any> = {
+  'client-reporter': {
+    title: 'Client Reporter',
+    tagline: 'Replaces 4h/week of manual reporting',
+    tier: 'free',
+    description: 'Pull GA4, Google Search Console, Meta Ads, and TikTok Ads data for any client. Your agent generates a branded PDF report with insights. White-label ready — your agency logo, your colours, your client.',
+    long_description: 'Client Reporter is the skill every agency wishes they had. Connect your client\'s GA4 property, GSC site, Meta Ads account, and TikTok Ads account once. Then any time you ask your agent for a report, it pulls last 7/30/90 days, summarises wins and losses, generates an insight section using your agent\'s LLM, and outputs a polished PDF with your agency branding. Saves four hours per week per client. Multiplied across a 12-client agency, that\'s a part-time hire reclaimed.',
+    install_count: 0,
+    rating: null,
+    version: '0.1.0',
+    author: 'Recipes (founding skill)',
+    repo_url: 'https://github.com/wisechef-ai/recipes-client-reporter',
+    requires_env: ['GA4_PROPERTY_ID', 'GSC_SITE', 'META_ADS_ACCOUNT_ID', 'TIKTOK_ADS_ACCOUNT_ID', 'OPENAI_API_KEY'],
+  },
+};
+const f = fallback[slug as string] || {};
+const display = {
+  slug,
+  title: skill?.title || f.title || (slug as string).replace(/-/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase()),
+  tagline: skill?.tagline || f.tagline || '',
+  tier: skill?.tier || f.tier || 'pro',
+  description: skill?.description || f.description || 'A Recipes skill.',
+  long_description: skill?.long_description || f.long_description || '',
+  install_count: skill?.install_count ?? f.install_count ?? 0,
+  rating: skill?.rating ?? f.rating,
+  version: skill?.version || f.version || '0.1.0',
+  author: skill?.author || f.author || 'Recipes',
+  repo_url: skill?.repo_url || f.repo_url || `https://github.com/wisechef-ai/${slug}`,
+  requires_env: skill?.requires_env || f.requires_env || [],
+  category: skill?.category || 'general',
+};
+
+const tierBadgeClass = display.tier === 'free' ? 'badge-free' : display.tier === 'studio' ? 'badge-studio' : 'badge-pro';
+const isFree = display.tier === 'free';
+---
+
+<Base title={`${display.title} — Recipes`} description={display.description}>
+  <section class="max-w-5xl mx-auto px-6 pt-12 pb-12">
+    <a href="/skills" class="inline-flex items-center gap-1.5 text-xs text-muted hover:text-text transition mb-6">
+      <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M7.5 9.5L4 6L7.5 2.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      All skills
+    </a>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <!-- Main column -->
+      <div class="lg:col-span-2 flex flex-col gap-6">
+        <div class="flex flex-col gap-3">
+          <div class="flex items-center gap-2">
+            <span class={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold tracking-wider ${tierBadgeClass}`}>
+              {display.tier.toUpperCase()}
+            </span>
+            <span class="text-[10px] text-muted-soft uppercase tracking-wider">{display.category}</span>
+            <span class="text-[10px] text-muted-soft font-mono">v{display.version}</span>
+          </div>
+          <h1 class="text-3xl md:text-4xl font-semibold tracking-tight">{display.title}</h1>
+          {display.tagline && <p class="text-lg text-muted">{display.tagline}</p>}
+        </div>
+
+        <div class="bg-bg-card border border-border rounded-2xl p-6">
+          <p class="eyebrow mb-3">What it does</p>
+          <p class="text-text leading-relaxed">{display.description}</p>
+          {display.long_description && (
+            <p class="text-muted leading-relaxed mt-4 text-sm">{display.long_description}</p>
+          )}
+        </div>
+
+        <div class="bg-bg-card border border-border rounded-2xl p-6">
+          <p class="eyebrow mb-3">How to install</p>
+          <ol class="flex flex-col gap-3 text-sm">
+            <li class="flex gap-3">
+              <span class="font-mono text-xs text-muted-soft mt-0.5">01</span>
+              <div>
+                <div class="text-text">Tell your agent:</div>
+                <code class="inline-block mt-1 bg-[#0d0d0d] border border-border rounded px-2 py-1 text-xs">install the recipes skill</code>
+              </div>
+            </li>
+            <li class="flex gap-3">
+              <span class="font-mono text-xs text-muted-soft mt-0.5">02</span>
+              <div>
+                <div class="text-text">Then ask for {display.title}:</div>
+                <code class="inline-block mt-1 bg-[#0d0d0d] border border-border rounded px-2 py-1 text-xs">use {display.slug}</code>
+              </div>
+            </li>
+            <li class="flex gap-3">
+              <span class="font-mono text-xs text-muted-soft mt-0.5">03</span>
+              <div>
+                <div class="text-text">Your agent installs it locally and follows the skill's setup instructions. {isFree ? 'No subscription required — this skill is free.' : 'Subscription required for premium skills.'}</div>
+              </div>
+            </li>
+          </ol>
+        </div>
+
+        {display.requires_env && display.requires_env.length > 0 && (
+          <div class="bg-bg-card border border-border rounded-2xl p-6">
+            <p class="eyebrow mb-3">Required environment variables</p>
+            <div class="flex flex-wrap gap-2">
+              {display.requires_env.map((env: string) => (
+                <code class="text-xs bg-[#0d0d0d] border border-border rounded px-2 py-1 text-accent-soft">{env}</code>
+              ))}
+            </div>
+            <p class="text-xs text-muted-soft mt-3">These stay on your machine. Recipes never sees them.</p>
+          </div>
+        )}
+      </div>
+
+      <!-- Sidebar -->
+      <aside class="flex flex-col gap-4">
+        <div class="bg-bg-card border border-border rounded-2xl p-5 flex flex-col gap-4">
+          {isFree ? (
+            <a href="/docs/install"
+               class="block text-center px-4 py-2.5 rounded-lg font-semibold text-sm bg-accent text-bg hover:bg-accent-soft transition">
+              Install free
+            </a>
+          ) : (
+            <a href="/pricing"
+               class="block text-center px-4 py-2.5 rounded-lg font-semibold text-sm bg-accent text-bg hover:bg-accent-soft transition">
+              Subscribe to install
+            </a>
+          )}
+          <div class="text-xs text-muted-soft text-center">
+            {isFree ? 'Free forever. No subscription required.' : `Requires ${display.tier} subscription`}
+          </div>
+        </div>
+
+        <div class="bg-bg-card border border-border rounded-2xl p-5">
+          <p class="eyebrow mb-3">Details</p>
+          <dl class="text-sm flex flex-col gap-3">
+            <div class="flex justify-between">
+              <dt class="text-muted">Author</dt>
+              <dd class="text-text">{display.author}</dd>
+            </div>
+            <div class="flex justify-between">
+              <dt class="text-muted">Version</dt>
+              <dd class="text-text font-mono text-xs">{display.version}</dd>
+            </div>
+            <div class="flex justify-between">
+              <dt class="text-muted">Installs</dt>
+              <dd class="text-text">{display.install_count.toLocaleString()}</dd>
+            </div>
+            <div class="flex justify-between">
+              <dt class="text-muted">Tier</dt>
+              <dd class="text-text capitalize">{display.tier}</dd>
+            </div>
+            <div class="flex justify-between">
+              <dt class="text-muted">Compatible</dt>
+              <dd class="text-text text-xs">Claude Code · Cursor · OpenClaw · Hermes · Cline</dd>
+            </div>
+          </dl>
+        </div>
+
+        <div class="bg-bg-card border border-border rounded-2xl p-5">
+          <p class="eyebrow mb-3">Source</p>
+          <a href={display.repo_url} class="text-sm text-accent hover:opacity-80 inline-flex items-center gap-1.5" target="_blank" rel="noopener">
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0a8 8 0 0 0-2.53 15.59c.4.07.55-.17.55-.38v-1.4c-2.23.48-2.7-.94-2.7-.94-.36-.93-.89-1.18-.89-1.18-.73-.5.05-.49.05-.49.81.06 1.23.83 1.23.83.72 1.23 1.88.88 2.34.67.07-.52.28-.88.51-1.08-1.78-.2-3.65-.89-3.65-3.96 0-.87.31-1.59.83-2.15-.08-.2-.36-1.02.08-2.13 0 0 .67-.21 2.2.82a7.65 7.65 0 0 1 4 0c1.53-1.04 2.2-.82 2.2-.82.44 1.11.16 1.93.08 2.13.51.56.83 1.28.83 2.15 0 3.08-1.87 3.76-3.66 3.96.29.25.55.74.55 1.49v2.21c0 .21.15.46.55.38A8 8 0 0 0 8 0z"/></svg>
+            View on GitHub
+          </a>
+        </div>
+      </aside>
+    </div>
+
+    <CrossSell />
+  </section>
+</Base>
