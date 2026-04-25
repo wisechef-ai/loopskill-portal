@@ -275,9 +275,14 @@
           { cx: W / 2 + sideOffset, cy: cySide,   scale: sideScale,   weight: 0.22 },
         ];
       } else {
-        const centerScale = Math.min(W * 0.10, H * 0.18);
-        const sideScale   = Math.min(W * 0.078, H * 0.14);
-        const sideOffset  = Math.min(W * 0.22, 320);
+        // Desktop sizing — was W * 0.10 / 0.078 which gave hats only ~18% of canvas
+        // width vs ~40% on mobile. The constellation event was firing every 22s but
+        // particles were too sparse and the outline too dim to register visually.
+        // Bumped to W * 0.16 / 0.12 → ~32% canvas width for the center hat. Capped
+        // by H * 0.22 so tall narrow viewports don't clip the toques.
+        const centerScale = Math.min(W * 0.16, H * 0.22);
+        const sideScale   = Math.min(W * 0.12, H * 0.18);
+        const sideOffset  = Math.min(W * 0.26, 380);
         const cyCenter = desktopBandBottom - centerScale * 1.2;
         const cySide   = desktopBandBottom - sideScale   * 1.2 + 8;
         hats = [
@@ -343,16 +348,23 @@
       ctx!.scale(h.scale / 50, h.scale / 50);
       ctx!.translate(-50, -60);
 
-      // Outer halo (soft glow around outline)
-      ctx!.strokeStyle = `rgba(255, 209, 102, ${alpha * 0.32})`;
-      ctx!.lineWidth = 50 / h.scale * 7;
+      // Outer halo (soft glow around outline) — bumped 7→11 path-units for a
+      // more readable bloom, brighter alpha for desktop visibility.
+      ctx!.strokeStyle = `rgba(255, 209, 102, ${alpha * 0.45})`;
+      ctx!.lineWidth = 50 / h.scale * 11;
       ctx!.lineJoin = 'round';
       ctx!.lineCap = 'round';
       ctx!.stroke(hatPath2d!);
 
-      // Crisp outline (the silhouette)
-      ctx!.strokeStyle = `rgba(255, 230, 168, ${alpha})`;
-      ctx!.lineWidth = 50 / h.scale * 1.6;
+      // Mid-stroke (warm amber) — adds bulk to the silhouette.
+      ctx!.strokeStyle = `rgba(255, 220, 130, ${alpha * 0.7})`;
+      ctx!.lineWidth = 50 / h.scale * 4;
+      ctx!.stroke(hatPath2d!);
+
+      // Crisp outline — bumped 1.6→2.6 so the silhouette holds against
+      // the particle/ember overlay on desktop.
+      ctx!.strokeStyle = `rgba(255, 240, 200, ${alpha})`;
+      ctx!.lineWidth = 50 / h.scale * 2.6;
       ctx!.stroke(hatPath2d!);
 
       ctx!.restore();
@@ -492,12 +504,15 @@
 
       ctx!.clearRect(0, 0, W, H);
 
-      // 1. Hat outline strokes (visible during converge/hold/disperse)
+      // Hat outline strokes (visible during converge/hold/disperse).
+      // Bumped from 0.55 → 0.85 max alpha so the silhouette punches through the
+      // aurora layer on desktop. With the smaller pre-fix scale the outline was
+      // getting completely lost in the gradient blobs.
       if (hatPath2d && mode !== 'flow') {
         let outlineAlpha = 0;
-        if (mode === 'converging') outlineAlpha = (modeT / CONVERGE_DURATION) * 0.55;
-        else if (mode === 'hold')  outlineAlpha = 0.55;
-        else if (mode === 'dispersing') outlineAlpha = (1 - modeT / DISPERSE_DURATION) * 0.55;
+        if (mode === 'converging') outlineAlpha = (modeT / CONVERGE_DURATION) * 0.85;
+        else if (mode === 'hold')  outlineAlpha = 0.85;
+        else if (mode === 'dispersing') outlineAlpha = (1 - modeT / DISPERSE_DURATION) * 0.85;
         for (const h of hats) drawHatOutline(h, outlineAlpha);
       }
 
@@ -580,7 +595,10 @@
         }
       }
 
-      // 4. Embers (always-on atmosphere)
+      // 4. Embers (always-on atmosphere) — dimmed during HOLD so the toque
+      // silhouette punches through. Embers are large radial gradients that
+      // otherwise wash out the outline strokes.
+      const emberAlphaScale = mode === 'hold' ? 0.35 : (mode === 'converging' || mode === 'dispersing' ? 0.6 : 1.0);
       for (const e of embers) {
         e.x += e.vx * dt;
         e.y += e.vy * dt;
@@ -593,14 +611,14 @@
         const breathe = 0.5 + Math.sin(t * 0.5 + e.phase) * 0.5;
         const glowR = e.r * 8 * (0.7 + breathe * 0.5);
         const grad = ctx!.createRadialGradient(e.x, e.y, 0, e.x, e.y, glowR);
-        grad.addColorStop(0, `rgba(${c[0]},${c[1]},${c[2]},${0.32 * breathe})`);
-        grad.addColorStop(0.5, `rgba(${c[0]},${c[1]},${c[2]},${0.08 * breathe})`);
+        grad.addColorStop(0, `rgba(${c[0]},${c[1]},${c[2]},${0.32 * breathe * emberAlphaScale})`);
+        grad.addColorStop(0.5, `rgba(${c[0]},${c[1]},${c[2]},${0.08 * breathe * emberAlphaScale})`);
         grad.addColorStop(1, `rgba(${c[0]},${c[1]},${c[2]},0)`);
         ctx!.fillStyle = grad;
         ctx!.beginPath();
         ctx!.arc(e.x, e.y, glowR, 0, Math.PI * 2);
         ctx!.fill();
-        ctx!.fillStyle = `rgba(${c[0]},${c[1]},${c[2]},${0.5 + breathe * 0.3})`;
+        ctx!.fillStyle = `rgba(${c[0]},${c[1]},${c[2]},${(0.5 + breathe * 0.3) * emberAlphaScale})`;
         ctx!.beginPath();
         ctx!.arc(e.x, e.y, e.r * 0.6, 0, Math.PI * 2);
         ctx!.fill();
@@ -630,6 +648,19 @@
         for (const h of hats) {
           applyShine(h, modeT, holdInstanceCount - 1);
         }
+      }
+
+      // 7. Re-stroke the toque outline ON TOP of particles+embers during the
+      // converge→hold→disperse window. Step-1 painted it underneath; the second
+      // pass at higher alpha keeps the silhouette readable through the glow
+      // wash. Without this, the constellation event was visually invisible on
+      // desktop (particles + embers covered the outline).
+      if (hatPath2d && mode !== 'flow') {
+        let topAlpha = 0;
+        if (mode === 'converging') topAlpha = (modeT / CONVERGE_DURATION) * 0.55;
+        else if (mode === 'hold')  topAlpha = 0.55;
+        else if (mode === 'dispersing') topAlpha = (1 - modeT / DISPERSE_DURATION) * 0.55;
+        for (const h of hats) drawHatOutline(h, topAlpha);
       }
 
       rafId = requestAnimationFrame(frame);
