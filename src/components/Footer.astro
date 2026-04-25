@@ -1,0 +1,165 @@
+---
+const year = new Date().getFullYear();
+const footerLinks = [
+  {
+    heading: 'Product',
+    links: [
+      { href: '/skills', label: 'Marketplace' },
+      { href: '/carousel', label: 'Daily Carousel' },
+      { href: '/pricing', label: 'Pricing' },
+      { href: '/publish', label: 'Publish a skill' },
+    ],
+  },
+  {
+    heading: 'Resources',
+    links: [
+      { href: '/docs/getting-started', label: 'Documentation' },
+      { href: '/docs/api-reference', label: 'API Reference' },
+      { href: '/docs/security', label: 'Security review' },
+      { href: '/skill', label: 'Install skill (raw)' },
+    ],
+  },
+  {
+    heading: 'Legal',
+    links: [
+      { href: '/privacy', label: 'Privacy' },
+      { href: '/terms', label: 'Terms' },
+    ],
+  },
+];
+---
+
+<footer class="footer">
+  <!-- WiseChef Cross-Sell Strip -->
+  <div class="footer-crosssell">
+    <div class="footer-crosssell-inner">
+      <span class="footer-crosssell-tag">🤝 Want this <strong>run for you?</strong></span>
+      <span class="footer-crosssell-text">
+        WiseChef — managed AI employees for marketing agencies
+      </span>
+      <a
+        href="https://wisechef.ai/agencies"
+        target="_blank"
+        rel="noopener noreferrer"
+        class="footer-crosssell-link"
+      >
+        wisechef.ai/agencies →
+      </a>
+    </div>
+  </div>
+
+  <div class="footer-inner">
+    <div class="footer-brand-col">
+      <a href="/" class="footer-brand">
+        <span class="footer-logo">🍳</span>
+        <span class="footer-name">Recipes</span>
+        <span class="footer-badge">by WiseChef</span>
+      </a>
+      <p class="footer-tagline">
+        The recipe book for AI agents —<br />built for marketing agencies.
+      </p>
+      <a href="https://wisechef.ai" target="_blank" rel="noopener noreferrer" class="footer-parent-link">
+        Part of the <strong>WiseChef</strong> family →
+      </a>
+    </div>
+
+    {footerLinks.map(({ heading, links }) => (
+      <div class="footer-col">
+        <h3 class="footer-col-heading">{heading}</h3>
+        <ul class="footer-col-links">
+          {links.map(({ href, label }) => (
+            <li><a href={href} class="footer-col-link">{label}</a></li>
+          ))}
+        </ul>
+      </div>
+    ))}
+  </div>
+
+  <div class="footer-bottom">
+    <span class="footer-copy">© {year} WiseChef. All rights reserved.</span>
+    <span class="footer-copy-sub">
+      Recipes is a <a href="https://wisechef.ai" target="_blank" rel="noopener noreferrer" class="footer-wisechef-link">WiseChef</a> product — managed AI for marketing agencies.
+    </span>
+  </div>
+</footer>
+
+<style>
+  .footer {
+    border-top: 1px solid #222;
+    margin-top: 4rem;
+  }
+  .footer-crosssell {
+    background: rgba(249,115,22,0.07);
+    border-bottom: 1px solid rgba(249,115,22,0.2);
+    padding: 0.75rem 1.5rem;
+  }
+  .footer-crosssell-inner {
+    max-width: 1200px;
+    margin: 0 auto;
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.5rem 1rem;
+    font-size: 0.875rem;
+  }
+  .footer-crosssell-tag { color: #f5f5f5; font-weight: 600; }
+  .footer-crosssell-text { color: #888; }
+  .footer-crosssell-link {
+    color: #f97316;
+    text-decoration: none;
+    font-weight: 600;
+    margin-left: auto;
+  }
+  .footer-crosssell-link:hover { text-decoration: underline; }
+  .footer-inner {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 3rem 1.5rem;
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr 1fr;
+    gap: 3rem;
+  }
+  .footer-brand { display: flex; align-items: center; gap: 0.5rem; text-decoration: none; }
+  .footer-logo { font-size: 1.5rem; }
+  .footer-name { font-size: 1.1rem; font-weight: 700; color: #f5f5f5; }
+  .footer-badge {
+    font-size: 0.65rem;
+    background: rgba(249,115,22,0.15);
+    color: #f97316;
+    border: 1px solid rgba(249,115,22,0.3);
+    padding: 2px 7px;
+    border-radius: 999px;
+    font-weight: 500;
+  }
+  .footer-tagline { color: #555; font-size: 0.875rem; line-height: 1.6; margin: 1rem 0; }
+  .footer-parent-link { color: #888; font-size: 0.8rem; text-decoration: none; }
+  .footer-parent-link:hover { color: #f97316; }
+  .footer-col-heading { font-size: 0.75rem; font-weight: 600; color: #555; text-transform: uppercase; letter-spacing: 0.08em; margin: 0 0 1rem; }
+  .footer-col-links { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 0.625rem; }
+  .footer-col-link { color: #888; text-decoration: none; font-size: 0.875rem; }
+  .footer-col-link:hover { color: #f5f5f5; }
+  .footer-bottom {
+    border-top: 1px solid #1a1a1a;
+    padding: 1.25rem 1.5rem;
+    max-width: 1200px;
+    margin: 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+  .footer-copy { color: #444; font-size: 0.8rem; }
+  .footer-copy-sub { color: #444; font-size: 0.8rem; }
+  .footer-wisechef-link { color: #f97316; text-decoration: none; }
+  .footer-wisechef-link:hover { text-decoration: underline; }
+
+  @media (max-width: 900px) {
+    .footer-inner { grid-template-columns: 1fr 1fr; }
+    .footer-brand-col { grid-column: 1 / -1; }
+  }
+  @media (max-width: 600px) {
+    .footer-inner { grid-template-columns: 1fr; gap: 2rem; }
+    .footer-crosssell-link { margin-left: 0; }
+  }
+</style>

@@ -1,0 +1,529 @@
+---
+import Base from '../layouts/Base.astro';
+import CrossSell from '../components/CrossSell.astro';
+
+const spotlightSkills = [
+  {
+    name: 'Client Reporter',
+    tier: 'FREE',
+    tierClass: 'free',
+    emoji: '📊',
+    tagline: 'Replaces 4h/week of manual reporting',
+    description:
+      'Pull GA4, Google Search Console, Meta Ads, and TikTok Ads data for any client. Your agent generates a branded PDF report with insights. White-label ready — your agency logo, your colours.',
+    tags: ['analytics', 'reporting', 'automation'],
+    badge: 'Viral seed skill',
+  },
+  {
+    name: 'Proposal Builder',
+    tier: 'Pro',
+    tierClass: 'pro',
+    emoji: '📝',
+    tagline: 'Replaces proposal SaaS ($49/mo)',
+    description:
+      'Agent-generated agency proposals from a discovery call transcript. Includes scope, timeline, pricing tiers, and case study inserts. Converts at 40% above average.',
+    tags: ['proposals', 'sales', 'copywriting'],
+    badge: null,
+  },
+  {
+    name: 'Content Calendar',
+    tier: 'Pro',
+    tierClass: 'pro',
+    emoji: '📅',
+    tagline: 'Replaces CoSchedule, Planable',
+    description:
+      "30-day content calendar across 4 platforms. Briefing-to-publish pipeline driven by your agent. Drops into your client's existing approval flow.",
+    tags: ['content', 'social', 'scheduling'],
+    badge: null,
+  },
+  {
+    name: 'SEO Audit Engine',
+    tier: 'Pro',
+    tierClass: 'pro',
+    emoji: '🔍',
+    tagline: 'Replaces SEMrush spot audits ($119)',
+    description:
+      'Full technical + content SEO audit for any domain. Outputs a prioritised fix list, competitor gap analysis, and a client-ready PDF. Runs in your agent in under 3 minutes.',
+    tags: ['seo', 'audit', 'reporting'],
+    badge: null,
+  },
+];
+
+const howItWorks = [
+  {
+    num: '01',
+    title: 'Describe your goal',
+    body: 'Tell your AI agent what the client needs — in plain language. No searches, no docs, no copy-paste.',
+  },
+  {
+    num: '02',
+    title: 'Your agent searches Recipes',
+    body: 'The Recipes skill gives your agent awareness of every agency tool available. It scans the full catalog to find the perfect match automatically.',
+  },
+  {
+    num: '03',
+    title: 'It downloads & configures',
+    body: 'The right skill installs locally in seconds, using your own API keys. Your client credentials never leave your machine.',
+  },
+  {
+    num: '04',
+    title: 'Results delivered',
+    body: 'Your agent runs the skill and hands back the output — a report, a calendar, an audit, a proposal. Done.',
+  },
+];
+---
+
+<Base
+  title="Recipes — The recipe book for AI agents | For marketing agencies"
+  description="Agency-grade AI skills. Client reporting, proposals, content calendars, SEO audits — installed by your agent in seconds. Cook tier from $24.99/mo."
+>
+
+  <!-- ═══ HERO ═══ -->
+  <section class="hero">
+    <div class="hero-inner">
+      <div class="hero-badge">
+        <span class="hero-badge-dot"></span>
+        Vertical skills marketplace for marketing agencies
+      </div>
+      <h1 class="hero-h1">
+        The recipe book for AI agents —<br />
+        <span class="hero-accent">for marketing agencies.</span>
+      </h1>
+      <p class="hero-tagline">
+        <strong>Recipes for agent cooking.</strong> Your agent finds the right skill,
+        installs it in seconds, and delivers client-grade results. One subscription.
+        Unlimited agency superpowers.
+      </p>
+      <div class="hero-ctas">
+        <a href="/pricing" class="cta-primary">Start free — Client Reporter →</a>
+        <a href="/skills" class="cta-secondary">Browse all skills</a>
+      </div>
+
+      <!-- Terminal mockup -->
+      <div class="terminal" aria-hidden="true">
+        <div class="terminal-bar">
+          <span class="dot red"></span>
+          <span class="dot yellow"></span>
+          <span class="dot green"></span>
+          <span class="terminal-title">agent session</span>
+        </div>
+        <div class="terminal-body">
+          <p><span class="term-user">you</span>  Generate Q1 performance report for Acme Agency — GA4 + Meta Ads + TikTok.</p>
+          <p><span class="term-agent">agent</span> Searching Recipes marketplace...</p>
+          <p><span class="term-dim">       Found: client-reporter v1.3 (free skill) ✓</span></p>
+          <p><span class="term-agent">agent</span> Installing skill... pulling GA4, Meta, TikTok APIs...</p>
+          <p><span class="term-dim">       Generating branded PDF report → <span class="term-orange">Acme_Q1_Report.pdf</span></span></p>
+          <p><span class="term-ok">✓</span>  <span class="term-ok-text">Done. 4h of manual work → 47 seconds. Report ready.</span></p>
+        </div>
+      </div>
+
+      <p class="hero-sub">
+        Works with Claude Code, Cursor, OpenClaw, Hermes — any agent with a skills directory.
+      </p>
+    </div>
+  </section>
+
+  <!-- ═══ HOW IT WORKS ═══ -->
+  <section class="section" id="how-it-works">
+    <div class="section-inner">
+      <div class="section-tag">How it works</div>
+      <h2 class="section-h2">Your agent knows the entire marketplace.</h2>
+      <p class="section-sub">
+        Recipes gives your AI agent awareness of every agency skill available.
+        Describe your goal — your agent finds the tool, installs it, and ships.
+        No manual searching. No copy-pasting docs. No setup friction.
+      </p>
+
+      <div class="steps-grid">
+        {howItWorks.map(({ num, title, body }) => (
+          <div class="step-card">
+            <div class="step-num">{num}</div>
+            <h3 class="step-title">{title}</h3>
+            <p class="step-body">{body}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ VALUE PROPS ═══ -->
+  <section class="section section-alt">
+    <div class="section-inner">
+      <div class="props-grid">
+        <div class="prop">
+          <div class="prop-icon">⚡</div>
+          <h3>Install in seconds</h3>
+          <p>Your agent downloads, configures, and runs skills automatically. Zero manual setup.</p>
+        </div>
+        <div class="prop">
+          <div class="prop-icon">🔒</div>
+          <h3>Your credentials stay local</h3>
+          <p>Skills run on your machine with your own API keys. We never see your client data.</p>
+        </div>
+        <div class="prop">
+          <div class="prop-icon">🏢</div>
+          <h3>Agency-grade, not generic</h3>
+          <p>Every skill is built for the 5–20-person agency. Not a developer playground — a business tool.</p>
+        </div>
+        <div class="prop">
+          <div class="prop-icon">🔄</div>
+          <h3>Daily carousel</h3>
+          <p>7 fresh skills highlighted daily. Curated rotation keeps your agent's toolkit cutting-edge.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ SKILL SPOTLIGHT ═══ -->
+  <section class="section" id="skill-spotlight">
+    <div class="section-inner">
+      <div class="section-tag">Skill spotlight</div>
+      <h2 class="section-h2">These are not prompts. They are products.</h2>
+      <p class="section-sub">
+        Some skills replace entire SaaS subscriptions. Your agent installs them,
+        runs them locally, and delivers full client-ready outputs.
+      </p>
+
+      <div class="skills-grid">
+        {spotlightSkills.map(({ name, tier, tierClass, emoji, tagline, description, tags, badge }) => (
+          <div class:list={['skill-card', tierClass === 'free' && 'skill-card-featured']}>
+            {badge && <div class="skill-badge">{badge}</div>}
+            <div class="skill-header">
+              <span class="skill-emoji">{emoji}</span>
+              <span class:list={['skill-tier', `tier-${tierClass}`]}>{tier}</span>
+            </div>
+            <h3 class="skill-name">{name}</h3>
+            <p class="skill-tagline">{tagline}</p>
+            <p class="skill-desc">{description}</p>
+            <div class="skill-tags">
+              {tags.map(t => <span class="skill-tag">{t}</span>)}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div class="spotlight-cta">
+        <a href="/skills" class="cta-secondary">Browse all {'>'}60 agency skills →</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ CROSS-SELL ═══ -->
+  <section class="section">
+    <div class="section-inner">
+      <CrossSell />
+    </div>
+  </section>
+
+  <!-- ═══ PRICING TEASER ═══ -->
+  <section class="section section-alt">
+    <div class="section-inner">
+      <div class="section-tag">Pricing</div>
+      <h2 class="section-h2">One plan. Everything included.</h2>
+      <p class="section-sub">
+        Access every agency skill in the marketplace. Client Reporter is free forever.
+        Cook tier starts at $24.99/mo — undercutting the competition.
+      </p>
+      <div class="pricing-teaser-grid">
+        <div class="pricing-teaser-card">
+          <div class="pricing-teaser-name">Cook</div>
+          <div class="pricing-teaser-price"><span>$24.99</span>/mo</div>
+          <p>Full marketplace access. Perfect for solo operators and small agencies.</p>
+          <a href="/pricing" class="cta-primary">Get Cook →</a>
+        </div>
+        <div class="pricing-teaser-card pricing-teaser-featured">
+          <div class="pricing-teaser-badge">Most popular</div>
+          <div class="pricing-teaser-name">Operator</div>
+          <div class="pricing-teaser-price"><span>$79</span>/mo</div>
+          <p>Team access, private catalogs, and production receipts. For growing agencies.</p>
+          <a href="/pricing" class="cta-primary">Get Operator →</a>
+        </div>
+        <div class="pricing-teaser-card">
+          <div class="pricing-teaser-name">Studio</div>
+          <div class="pricing-teaser-price"><span>$249</span>/mo</div>
+          <p>White-label, custom skill development, and creator program access.</p>
+          <a href="/pricing" class="cta-primary">Get Studio →</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ SECURITY ═══ -->
+  <section class="section">
+    <div class="section-inner">
+      <div class="security-block">
+        <div class="security-copy">
+          <div class="section-tag">Security</div>
+          <h2 class="section-h2-sm">Your credentials never touch our servers.</h2>
+          <p class="section-sub">
+            Skills install and run locally. Your agent uses your own API keys to talk directly
+            to services — GA4, Meta Ads, TikTok. We never see your data, your clients, or your results.
+          </p>
+          <ul class="security-list">
+            <li><span class="check">✓</span> Zero credential access</li>
+            <li><span class="check">✓</span> Triple-layer skill review (automated + manual + sandbox)</li>
+            <li><span class="check">✓</span> GitHub-verified authors only</li>
+            <li><span class="check">✓</span> Curated catalog — every skill approved before publication</li>
+          </ul>
+        </div>
+        <div class="security-cta-col">
+          <a href="/docs/security" class="cta-secondary">Security details →</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ FINAL CTA ═══ -->
+  <section class="section final-cta-section">
+    <div class="section-inner">
+      <div class="final-cta">
+        <h2>Your agent is waiting.</h2>
+        <p>
+          Give your agency's AI a real toolkit. Start free with Client Reporter.
+          Upgrade for the full marketplace.
+        </p>
+        <div class="hero-ctas">
+          <a href="/pricing" class="cta-primary">Start free →</a>
+          <a href="/skills" class="cta-secondary">Browse skills</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</Base>
+
+<style>
+/* ── Hero ── */
+.hero { padding: 6rem 1.5rem 4rem; }
+.hero-inner { max-width: 900px; margin: 0 auto; text-align: center; }
+.hero-badge {
+  display: inline-flex; align-items: center; gap: 0.5rem;
+  font-size: 0.8rem; font-weight: 500; color: #888;
+  background: #111; border: 1px solid #222; border-radius: 999px;
+  padding: 0.375rem 0.875rem; margin-bottom: 2rem;
+}
+.hero-badge-dot { width: 6px; height: 6px; border-radius: 50%; background: #22c55e; animation: pulse 2s infinite; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+.hero-h1 {
+  font-size: clamp(2.25rem, 6vw, 3.75rem);
+  font-weight: 900;
+  line-height: 1.1;
+  letter-spacing: -0.03em;
+  color: #f5f5f5;
+  margin: 0 0 1.5rem;
+}
+.hero-accent { color: #f97316; }
+.hero-tagline { font-size: 1.15rem; color: #888; line-height: 1.7; margin: 0 auto 2rem; max-width: 600px; }
+.hero-ctas { display: flex; justify-content: center; gap: 1rem; flex-wrap: wrap; margin-bottom: 3rem; }
+
+.cta-primary {
+  display: inline-block;
+  padding: 0.75rem 1.75rem;
+  background: #f97316;
+  color: #fff;
+  font-weight: 700;
+  font-size: 1rem;
+  border-radius: 0.5rem;
+  text-decoration: none;
+  transition: background 0.15s, transform 0.1s;
+}
+.cta-primary:hover { background: #ea6c0c; transform: translateY(-1px); }
+.cta-secondary {
+  display: inline-block;
+  padding: 0.75rem 1.75rem;
+  background: transparent;
+  color: #f5f5f5;
+  font-weight: 600;
+  font-size: 1rem;
+  border-radius: 0.5rem;
+  border: 1px solid #333;
+  text-decoration: none;
+  transition: border-color 0.15s, color 0.15s;
+}
+.cta-secondary:hover { border-color: #f97316; color: #f97316; }
+
+/* Terminal */
+.terminal {
+  background: #0d0d0d;
+  border: 1px solid #2a2a2a;
+  border-radius: 0.75rem;
+  overflow: hidden;
+  max-width: 680px;
+  margin: 0 auto 2rem;
+  text-align: left;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+}
+.terminal-bar {
+  background: #1a1a1a;
+  padding: 0.75rem 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  border-bottom: 1px solid #222;
+}
+.dot { width: 12px; height: 12px; border-radius: 50%; }
+.dot.red { background: #ff5f57; }
+.dot.yellow { background: #febc2e; }
+.dot.green { background: #28c840; }
+.terminal-title { margin-left: auto; font-size: 0.75rem; color: #555; }
+.terminal-body { padding: 1.25rem 1.5rem; font-family: 'Menlo','Monaco',monospace; font-size: 0.82rem; line-height: 2; }
+.term-user { color: #f97316; font-weight: 700; }
+.term-agent { color: #60a5fa; font-weight: 700; }
+.term-dim { color: #555; }
+.term-orange { color: #f97316; }
+.term-ok { color: #22c55e; font-weight: 700; }
+.term-ok-text { color: #86efac; }
+.terminal-body p { margin: 0; }
+
+.hero-sub { color: #555; font-size: 0.85rem; }
+
+/* ── Sections ── */
+.section { padding: 5rem 1.5rem; }
+.section-alt { background: #0d0d0d; }
+.section-inner { max-width: 1100px; margin: 0 auto; }
+.section-tag {
+  display: inline-block;
+  font-size: 0.75rem; font-weight: 600; color: #f97316;
+  text-transform: uppercase; letter-spacing: 0.1em;
+  margin-bottom: 1rem;
+}
+.section-h2 {
+  font-size: clamp(1.75rem, 4vw, 2.5rem);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: #f5f5f5;
+  margin: 0 0 1rem;
+  line-height: 1.15;
+}
+.section-h2-sm {
+  font-size: clamp(1.5rem, 3vw, 2rem);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: #f5f5f5;
+  margin: 0 0 1rem;
+}
+.section-sub { color: #888; font-size: 1rem; line-height: 1.7; max-width: 600px; margin: 0 0 3rem; }
+
+/* Steps */
+.steps-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1.5rem;
+}
+.step-card {
+  background: #111;
+  border: 1px solid #1e1e1e;
+  border-radius: 0.75rem;
+  padding: 1.75rem;
+}
+.step-num { font-size: 2rem; font-weight: 900; color: #f97316; opacity: 0.6; margin-bottom: 0.75rem; }
+.step-title { font-size: 1.05rem; font-weight: 700; color: #f5f5f5; margin: 0 0 0.5rem; }
+.step-body { color: #888; font-size: 0.9rem; line-height: 1.6; margin: 0; }
+
+/* Props */
+.props-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1.5rem;
+}
+.prop { padding: 1.5rem; }
+.prop-icon { font-size: 2rem; margin-bottom: 0.75rem; }
+.prop h3 { font-size: 1rem; font-weight: 700; color: #f5f5f5; margin: 0 0 0.5rem; }
+.prop p { color: #888; font-size: 0.9rem; line-height: 1.6; margin: 0; }
+
+/* Skills grid */
+.skills-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+}
+.skill-card {
+  position: relative;
+  background: #111;
+  border: 1px solid #1e1e1e;
+  border-radius: 0.75rem;
+  padding: 1.5rem;
+  transition: border-color 0.15s;
+}
+.skill-card:hover { border-color: #333; }
+.skill-card-featured {
+  border-color: rgba(249,115,22,0.4);
+  background: rgba(249,115,22,0.04);
+}
+.skill-badge {
+  position: absolute; top: 1rem; right: 1rem;
+  font-size: 0.65rem; font-weight: 700;
+  background: rgba(249,115,22,0.2); color: #f97316;
+  border: 1px solid rgba(249,115,22,0.4);
+  padding: 2px 8px; border-radius: 999px;
+  text-transform: uppercase; letter-spacing: 0.05em;
+}
+.skill-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.75rem; }
+.skill-emoji { font-size: 1.75rem; }
+.skill-tier {
+  font-size: 0.7rem; font-weight: 700; padding: 3px 10px;
+  border-radius: 999px; text-transform: uppercase; letter-spacing: 0.05em;
+}
+.tier-free { background: rgba(34,197,94,0.15); color: #22c55e; border: 1px solid rgba(34,197,94,0.3); }
+.tier-pro { background: rgba(249,115,22,0.15); color: #f97316; border: 1px solid rgba(249,115,22,0.3); }
+.skill-name { font-size: 1.1rem; font-weight: 700; color: #f5f5f5; margin: 0 0 0.25rem; }
+.skill-tagline { font-size: 0.8rem; color: #f97316; margin: 0 0 0.75rem; font-weight: 500; }
+.skill-desc { color: #888; font-size: 0.875rem; line-height: 1.6; margin: 0 0 1rem; }
+.skill-tags { display: flex; flex-wrap: wrap; gap: 0.375rem; }
+.skill-tag {
+  font-size: 0.7rem; color: #555; background: #1a1a1a;
+  border: 1px solid #222; padding: 2px 8px; border-radius: 999px;
+}
+.spotlight-cta { text-align: center; }
+
+/* Pricing teaser */
+.pricing-teaser-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1.5rem;
+}
+.pricing-teaser-card {
+  position: relative;
+  background: #111;
+  border: 1px solid #1e1e1e;
+  border-radius: 0.75rem;
+  padding: 2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+.pricing-teaser-featured {
+  border-color: #f97316;
+  background: rgba(249,115,22,0.04);
+}
+.pricing-teaser-badge {
+  position: absolute; top: -0.75rem; left: 50%; transform: translateX(-50%);
+  background: #f97316; color: #fff;
+  font-size: 0.65rem; font-weight: 700;
+  padding: 3px 12px; border-radius: 999px;
+  text-transform: uppercase; letter-spacing: 0.08em; white-space: nowrap;
+}
+.pricing-teaser-name { font-size: 1.1rem; font-weight: 700; color: #f5f5f5; }
+.pricing-teaser-price { font-size: 1.75rem; font-weight: 900; color: #f5f5f5; }
+.pricing-teaser-price span { color: #f97316; }
+.pricing-teaser-card p { color: #888; font-size: 0.875rem; line-height: 1.5; flex: 1; margin: 0; }
+
+/* Security */
+.security-block { display: grid; grid-template-columns: 1fr auto; gap: 3rem; align-items: center; }
+.security-list { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 0.5rem; }
+.security-list li { color: #888; font-size: 0.9rem; display: flex; align-items: center; gap: 0.5rem; }
+.check { color: #22c55e; font-weight: 700; }
+.security-cta-col { flex-shrink: 0; }
+
+/* Final CTA */
+.final-cta-section { background: linear-gradient(to bottom, rgba(249,115,22,0.04), transparent); }
+.final-cta { text-align: center; max-width: 600px; margin: 0 auto; }
+.final-cta h2 { font-size: 2.25rem; font-weight: 900; color: #f5f5f5; margin: 0 0 1rem; letter-spacing: -0.03em; }
+.final-cta p { color: #888; font-size: 1rem; line-height: 1.7; margin: 0 auto 2rem; }
+
+@media (max-width: 640px) {
+  .security-block { grid-template-columns: 1fr; }
+}
+</style>
