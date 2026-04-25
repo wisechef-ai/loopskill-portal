@@ -1,0 +1,36 @@
+{
+    log {
+        output file /var/log/caddy/recipes-portal.log {
+            roll_size 10mb
+            roll_keep 5
+        }
+    }
+    servers :3001 {
+        protocols h1
+    }
+}
+
+:3001 {
+    encode gzip zstd
+
+    # /skill -> redirect to raw GitHub
+    redir /skill https://raw.githubusercontent.com/wisechef-ai/recipes-skill/main/SKILL.md 302
+    redir /skill/ https://raw.githubusercontent.com/wisechef-ai/recipes-skill/main/SKILL.md 302
+    redir /SKILL.md https://raw.githubusercontent.com/wisechef-ai/recipes-skill/main/SKILL.md 302
+
+    # API reverse proxy
+    handle /api/* {
+        reverse_proxy localhost:8200
+    }
+    handle /api {
+        reverse_proxy localhost:8200
+    }
+
+    # Static multi-page site. Astro emits per-route index.html files.
+    # try_files resolves: /skills -> /skills/index.html (NOT homepage fallback).
+    handle {
+        root * /home/wisechef/recipes-portal/dist
+        try_files {path} {path}/index.html {path}.html
+        file_server
+    }
+}
