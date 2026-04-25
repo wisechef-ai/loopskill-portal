@@ -37,7 +37,14 @@
     Single closed contour traces: rectangular band at bottom, three puffy lobes on top.
     ViewBox 100×120. Center (50, 60). Vision rated this 8.5/10 for toque recognition. */}
 <svg id="hat-svg-helper" width="0" height="0" viewBox="0 0 100 120" style="position:absolute;opacity:0;pointer-events:none" aria-hidden="true">
-  <path id="hat-svg-path" d="M 20 116 L 80 116 L 80 92 C 96 90, 96 64, 80 60 C 92 36, 70 24, 64 36 C 70 12, 50 4, 50 22 C 50 4, 30 12, 36 36 C 30 24, 8 36, 20 60 C 4 64, 4 90, 20 92 Z" />
+  <path id="hat-svg-path" d="M 22 88 C 12 86, 6 76, 8 64 C 4 54, 6 42, 14 36 C 12 26, 22 18, 32 22 C 32 12, 42 6, 50 8 C 58 6, 68 12, 68 22 C 78 18, 88 26, 86 36 C 94 42, 96 54, 92 64 C 94 76, 88 86, 78 88 L 78 108 C 78 116, 60 119, 50 119 C 40 119, 22 116, 22 108 Z" />
+  <path class="hat-pleat" data-i="0" d="M 28 88 Q 24 68, 18 50" />
+  <path class="hat-pleat" data-i="1" d="M 35 88 Q 31 60, 28 38" />
+  <path class="hat-pleat" data-i="2" d="M 42 88 Q 41 55, 41 28" />
+  <path class="hat-pleat" data-i="3" d="M 50 88 L 50 18" />
+  <path class="hat-pleat" data-i="4" d="M 58 88 Q 59 55, 59 28" />
+  <path class="hat-pleat" data-i="5" d="M 65 88 Q 69 60, 72 38" />
+  <path class="hat-pleat" data-i="6" d="M 72 88 Q 76 68, 82 50" />
 </svg>
 
 <style>
@@ -114,8 +121,23 @@
 
     const ACCENT = [255, 209, 102] as const;
     const COOL   = [125, 211, 192] as const;
-    // Toque outline path. Single closed contour. ViewBox 100×120. Center (50, 60).
-    const HAT_PATH_D = "M 20 116 L 80 116 L 80 92 C 96 90, 96 64, 80 60 C 92 36, 70 24, 64 36 C 70 12, 50 4, 50 22 C 50 4, 30 12, 36 36 C 30 24, 8 36, 20 60 C 4 64, 4 90, 20 92 Z";
+    // v7.3 Toque: logo-traced silhouette. ViewBox 100×120. Center (50, 60).
+    //   - Crown: 3 lobes, center tallest (y=8), sides at y=22.
+    //   - Shoulder bulges: outer flares to x=6/94 at y=64.
+    //   - Band: top y=88, bottom oval-curved from y=108 down to y=119 at center.
+    // Single closed contour, drawn for Path2D (canvas stroke).
+    const HAT_PATH_D = "M 22 88 C 12 86, 6 76, 8 64 C 4 54, 6 42, 14 36 C 12 26, 22 18, 32 22 C 32 12, 42 6, 50 8 C 58 6, 68 12, 68 22 C 78 18, 88 26, 86 36 C 94 42, 96 54, 92 64 C 94 76, 88 86, 78 88 L 78 108 C 78 116, 60 119, 50 119 C 40 119, 22 116, 22 108 Z";
+    // Internal pleats — 7 vertical-ish strokes that fan outward at the edges.
+    // Sampled into the particle constellation alongside the outline.
+    const PLEAT_PATHS_D = [
+      "M 28 88 Q 24 68, 18 50",
+      "M 35 88 Q 31 60, 28 38",
+      "M 42 88 Q 41 55, 41 28",
+      "M 50 88 L 50 18",
+      "M 58 88 Q 59 55, 59 28",
+      "M 65 88 Q 69 60, 72 38",
+      "M 72 88 Q 76 68, 82 50",
+    ];
 
     let dpr = Math.max(1, window.devicePixelRatio || 1);
     let W = 0, H = 0;
@@ -160,12 +182,18 @@
       return (a * (1 - u) + b * u) * (1 - v) + (c * (1 - u) + d * u) * v;
     }
 
-    // ───── Hat target generation: OUTLINE-ONLY sampling ──────────────────
-    // Particles converge on the silhouette, not the interior. Cleaner toque shape.
+    // ───── Hat target generation: OUTLINE + PLEATS sampling (v7.3) ────────
+    // Particles converge on (a) the silhouette (~80%) and (b) 7 internal pleats
+    // (~20%). Pleats give the constellation interior structure, matching the
+    // logo's gathered-fabric aesthetic.
     function buildHatTargets(count: number, cx: number, cy: number, scale: number)
       : Array<{ x: number; y: number; hue: 0 | 1 }> {
       const pathEl = document.getElementById('hat-svg-path') as unknown as SVGPathElement | null;
       if (!pathEl) return [];
+
+      const pleatEls = Array.from(
+        document.querySelectorAll<SVGPathElement>('#hat-svg-helper .hat-pleat')
+      );
 
       const totalLen = pathEl.getTotalLength();
 
@@ -176,15 +204,41 @@
       });
 
       const targets: Array<{ x: number; y: number; hue: 0 | 1 }> = [];
-      // 100% outline, jittered slightly (looks more organic than a hard line)
-      for (let i = 0; i < count; i++) {
-        const u = i / count + (Math.random() - 0.5) * (1 / count) * 0.5;
+
+      // 70% outline — distribute uniformly with small jitter
+      const outlineCount = Math.floor(count * 0.7);
+      for (let i = 0; i < outlineCount; i++) {
+        const u = i / outlineCount + (Math.random() - 0.5) * (1 / outlineCount) * 0.5;
         const pt = pathEl.getPointAtLength((u % 1) * totalLen);
         const c = toCanvas(pt.x, pt.y);
         c.x += (Math.random() - 0.5) * 2.5;
         c.y += (Math.random() - 0.5) * 2.5;
         targets.push({ ...c, hue: pt.x > 50 ? 0 : 1 });
       }
+
+      // 30% pleats — distribute across the 7 pleat paths proportionally to length
+      const pleatCount = count - outlineCount;
+      if (pleatEls.length > 0 && pleatCount > 0) {
+        const pleatLens = pleatEls.map(el => el.getTotalLength());
+        const pleatTotal = pleatLens.reduce((a, b) => a + b, 0);
+        let placed = 0;
+        for (let p = 0; p < pleatEls.length; p++) {
+          const share = p === pleatEls.length - 1
+            ? pleatCount - placed
+            : Math.round((pleatLens[p] / pleatTotal) * pleatCount);
+          for (let i = 0; i < share; i++) {
+            const u = (i + Math.random()) / share;
+            const pt = pleatEls[p].getPointAtLength(u * pleatLens[p]);
+            const c = toCanvas(pt.x, pt.y);
+            c.x += (Math.random() - 0.5) * 1.5;
+            c.y += (Math.random() - 0.5) * 1.5;
+            // Pleats use the warm hue for visual cohesion with the band.
+            targets.push({ ...c, hue: 0 });
+          }
+          placed += share;
+        }
+      }
+
       return targets;
     }
 
