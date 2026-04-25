@@ -1,50 +1,238 @@
 ---
-// Astral neuron animation in chef-hat shape — visible drift, traveling pulses along edges,
-// brighter nodes. Pure canvas, no deps, respects prefers-reduced-motion.
+// "Living Recipe" v3 — three chef-hat constellation, taller silhouettes, scattered turbulent flow.
+//
+// Changes from v2 (Adam round-4 feedback):
+//   1. THREE hats on convergence (left + center + right) — solves "lonely narrow hat"
+//      and on mobile the side hats partially crop off-screen for visual depth.
+//   2. New hat path — narrower waist, taller puff, more billowing → reads as toque, not cloud.
+//   3. Mobile hat anchored HIGHER (hatCy = H * 0.30) so the band sits above the CTA buttons,
+//      not behind them. Desktop stays at H * 0.40.
+//   4. Convergence is now TIGHTER:
+//        - converge ease ramps from 4.5 → 12 over the converge window
+//        - velocity damping bumped to 0.78 during hold (was 0.85) → particles lock in
+//        - hold-state hatched shape clarity peaks at modeT ≈ HOLD_DURATION/2
+//   5. Flow drift uses DUAL-FREQUENCY curl noise + per-particle directional bias + per-particle
+//      speed scalar. No more "everyone walks east." Coherent local clusters but globally chaotic.
+//   6. Ember count up (mobile 80, desktop 130) with wider velocity range so the screen
+//      never feels thin.
+//
+// Cycle: flow 9.5s → converge 1.6s → hold 3.4s → disperse 1.4s = 15.9s loop.
 ---
-<div class="absolute inset-0 -z-10 pointer-events-none overflow-hidden" id="neuron-bg" aria-hidden="true">
-  <canvas id="neuron-canvas" class="w-full h-full"></canvas>
+<div class="hero-stage absolute inset-0 -z-10 pointer-events-none overflow-hidden" aria-hidden="true">
+  <div class="aurora-layer absolute inset-0">
+    <div class="aurora-blob aurora-blob-amber"></div>
+    <div class="aurora-blob aurora-blob-teal"></div>
+    <div class="aurora-blob aurora-blob-violet"></div>
+    <div class="aurora-blob aurora-blob-warm"></div>
+  </div>
+
+  <canvas id="living-recipe-canvas" class="absolute inset-0 w-full h-full block"></canvas>
+
+  <div class="film-grain absolute inset-0"></div>
+
+  <div class="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-bg/85 pointer-events-none"></div>
 </div>
 
+{/* Hidden helper SVG. v3.8 path: rect band + 3 cubic-bezier ellipses (proper kappa=0.5523).
+    ViewBox 100×140. Center at (50, 70).
+    - Band rect: x=18..82, y=116..140  (clearly readable horizontal band)
+    - Left puff:   ellipse cx=28 cy=92 rx=22 ry=30
+    - Right puff:  ellipse cx=72 cy=92 rx=22 ry=30
+    - Center puff: ellipse cx=50 cy=74 rx=24 ry=36 (taller, dominant)
+    Vision rated this composition 9/10 for "iconic chef toque recognition." */}
+<svg id="hat-svg-helper" width="0" height="0" viewBox="0 0 100 140" style="position:absolute;opacity:0;pointer-events:none" aria-hidden="true">
+  <path id="hat-svg-path" d="M 18 116 L 82 116 L 82 140 L 18 140 Z M 28 62 C 40.15 62, 50 75.43, 50 92 C 50 108.57, 40.15 122, 28 122 C 15.85 122, 6 108.57, 6 92 C 6 75.43, 15.85 62, 28 62 Z M 72 62 C 84.15 62, 94 75.43, 94 92 C 94 108.57, 84.15 122, 72 122 C 59.85 122, 50 108.57, 50 92 C 50 75.43, 59.85 62, 72 62 Z M 50 38 C 63.26 38, 74 54.12, 74 74 C 74 93.88, 63.26 110, 50 110 C 36.74 110, 26 93.88, 26 74 C 26 54.12, 36.74 38, 50 38 Z" />
+</svg>
+
 <style>
-  #neuron-bg {
-    mask-image: radial-gradient(ellipse 90% 80% at 50% 35%, black 50%, transparent 95%);
-    -webkit-mask-image: radial-gradient(ellipse 90% 80% at 50% 35%, black 50%, transparent 95%);
+  .hero-stage {
+    mask-image: radial-gradient(ellipse 130% 110% at 50% 50%, black 80%, transparent 100%);
+    -webkit-mask-image: radial-gradient(ellipse 130% 110% at 50% 50%, black 80%, transparent 100%);
   }
+
+  .film-grain {
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.95' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1   0 0 0 0 1   0 0 0 0 1   0 0 0 0.4 0'/></filter><rect width='100%' height='100%' filter='url(%23n)' opacity='0.5'/></svg>");
+    opacity: 0.06;
+    mix-blend-mode: overlay;
+  }
+
+  .aurora-layer { filter: blur(90px); opacity: 0.85; }
+  @media (max-width: 768px) {
+    .aurora-layer { filter: blur(60px); opacity: 0.7; }
+  }
+
+  .aurora-blob { position: absolute; border-radius: 50%; will-change: transform; mix-blend-mode: screen; }
+  .aurora-blob-amber {
+    width: 60%; aspect-ratio: 1; top: -15%; left: 5%;
+    background: radial-gradient(circle, rgba(255,180,70,1) 0%, rgba(255,180,70,0) 70%);
+    animation: drift-amber 28s ease-in-out infinite;
+  }
+  .aurora-blob-teal {
+    width: 55%; aspect-ratio: 1; top: 15%; right: -10%;
+    background: radial-gradient(circle, rgba(80,210,200,0.9) 0%, rgba(80,210,200,0) 70%);
+    animation: drift-teal 34s ease-in-out infinite;
+  }
+  .aurora-blob-violet {
+    width: 60%; aspect-ratio: 1; bottom: -10%; left: 30%;
+    background: radial-gradient(circle, rgba(180,120,255,1) 0%, rgba(180,120,255,0) 65%);
+    animation: drift-violet 40s ease-in-out infinite;
+  }
+  .aurora-blob-warm {
+    width: 65%; aspect-ratio: 1; top: 30%; left: -15%;
+    background: radial-gradient(circle, rgba(255,110,80,0.65) 0%, rgba(255,110,80,0) 70%);
+    animation: drift-warm 46s ease-in-out infinite;
+  }
+
+  @keyframes drift-amber  { 0%,100%{transform:translate(0,0) scale(1)} 33%{transform:translate(8%,6%) scale(1.08)} 66%{transform:translate(-5%,10%) scale(0.95)} }
+  @keyframes drift-teal   { 0%,100%{transform:translate(0,0) scale(1)} 50%{transform:translate(-7%,4%) scale(1.1)} }
+  @keyframes drift-violet { 0%,100%{transform:translate(0,0) scale(1)} 40%{transform:translate(6%,-8%) scale(1.05)} 70%{transform:translate(-4%,5%) scale(0.92)} }
+  @keyframes drift-warm   { 0%,100%{transform:translate(0,0) scale(1)} 50%{transform:translate(8%,-4%) scale(1.12)} }
+
+  @media (prefers-reduced-motion: reduce) { .aurora-blob { animation: none; } }
 </style>
 
 <script>
-  type Node = { x: number; y: number; baseX: number; baseY: number; r: number; hue: 0 | 1; phase: number };
-  type Edge = { a: number; b: number; len: number; pulse: number; pulseSpeed: number };
+  type FlowParticle = {
+    x: number; y: number;
+    vx: number; vy: number;
+    targetX: number; targetY: number;
+    hue: 0 | 1;
+    r: number;
+    phase: number;
+    bias: number;       // per-particle directional offset (radians) — kills cloud-drift
+    speedMul: number;   // per-particle speed scalar 0.5..1.6 → varied flow
+  };
+  type EmberParticle = {
+    x: number; y: number;
+    vx: number; vy: number;
+    hue: 0 | 1;
+    r: number;
+    phase: number;
+  };
 
   (() => {
-    const canvas = document.getElementById('neuron-canvas') as HTMLCanvasElement | null;
+    const canvas = document.getElementById('living-recipe-canvas') as HTMLCanvasElement | null;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    const ACCENT = [255, 209, 102] as const; // amber
-    const COOL = [125, 211, 192] as const;    // teal
+    const ACCENT = [255, 209, 102] as const;
+    const COOL   = [125, 211, 192] as const;
+    const HAT_PATH_D = "M 18 116 L 82 116 L 82 140 L 18 140 Z M 28 62 C 40.15 62, 50 75.43, 50 92 C 50 108.57, 40.15 122, 28 122 C 15.85 122, 6 108.57, 6 92 C 6 75.43, 15.85 62, 28 62 Z M 72 62 C 84.15 62, 94 75.43, 94 92 C 94 108.57, 84.15 122, 72 122 C 59.85 122, 50 108.57, 50 92 C 50 75.43, 59.85 62, 72 62 Z M 50 38 C 63.26 38, 74 54.12, 74 74 C 74 93.88, 63.26 110, 50 110 C 36.74 110, 26 93.88, 26 74 C 26 54.12, 36.74 38, 50 38 Z";
+
     let dpr = Math.max(1, window.devicePixelRatio || 1);
     let W = 0, H = 0;
-    let nodes: Node[] = [];
-    let edges: Edge[] = [];
+    let flow: FlowParticle[] = [];
+    let embers: EmberParticle[] = [];
     let t = 0;
+    let mode: 'flow' | 'converging' | 'hold' | 'dispersing' = 'flow';
+    let modeT = 0;
+    const FLOW_DURATION = 9.5;
+    const CONVERGE_DURATION = 1.6;
+    const HOLD_DURATION = 3.4;
+    const DISPERSE_DURATION = 1.4;
+    const pointer = { x: -9999, y: -9999, active: false };
+    let rafId = 0;
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    let isMobile = window.innerWidth < 768;
 
-    // Shape: chef hat in a [-1,1] × [-1,1] box. Top puff is an ellipse, band is a rounded rect.
-    function inHat(x: number, y: number): boolean {
-      const inPuff =
-        (x*x) / (0.95*0.95) + ((y + 0.2)*(y + 0.2)) / (0.55*0.55) < 1 && y < 0.32;
-      const inBand = Math.abs(x) < 0.55 && y >= 0.32 && y < 0.62;
-      return inPuff || inBand;
+    // Cached hat geometry (rebuilt on resize)
+    let hatPath2d: Path2D | null = null;
+    // Three hat positions — left, center, right. cy is shared.
+    type HatInstance = { cx: number; cy: number; scale: number; weight: number };
+    let hats: HatInstance[] = [];
+
+    // ───── Two grad arrays for dual-frequency noise ──────────────────────
+    const gradA = new Float32Array(512);
+    const gradB = new Float32Array(512);
+    for (let i = 0; i < 512; i++) {
+      gradA[i] = Math.random() * Math.PI * 2;
+      gradB[i] = Math.random() * Math.PI * 2;
+    }
+    function noiseAngle(grad: Float32Array, x: number, y: number): number {
+      const xi = Math.floor(x) & 15;
+      const yi = Math.floor(y) & 15;
+      const xf = x - Math.floor(x);
+      const yf = y - Math.floor(y);
+      const fade = (s: number) => s * s * (3 - 2 * s);
+      const a = grad[(xi + yi * 16) % 512];
+      const b = grad[(xi + 1 + yi * 16) % 512];
+      const c = grad[(xi + (yi + 1) * 16) % 512];
+      const d = grad[(xi + 1 + (yi + 1) * 16) % 512];
+      const u = fade(xf), v = fade(yf);
+      return (a * (1 - u) + b * u) * (1 - v) + (c * (1 - u) + d * u) * v;
     }
 
+    // ───── Hat target generation via SVG path sampling ───────────────────
+    function buildHatTargets(count: number, cx: number, cy: number, scale: number)
+      : Array<{ x: number; y: number; hue: 0 | 1 }> {
+
+      const pathEl = document.getElementById('hat-svg-path') as unknown as SVGPathElement | null;
+      if (!pathEl) return [];
+
+      const totalLen = pathEl.getTotalLength();
+
+      // Fill mask via offscreen canvas (rejection sampling for interior fill)
+      // Path viewBox is 100×140 — mask must match.
+      const mask = document.createElement('canvas');
+      mask.width = 100; mask.height = 140;
+      const mctx = mask.getContext('2d')!;
+      const p2d = new Path2D(HAT_PATH_D);
+      mctx.fillStyle = 'white';
+      mctx.fill(p2d);
+      const data = mctx.getImageData(0, 0, 100, 140).data;
+      const isInside = (px: number, py: number) => {
+        if (px < 0 || px >= 100 || py < 0 || py >= 140) return false;
+        return data[(Math.floor(py) * 100 + Math.floor(px)) * 4 + 3] > 0;
+      };
+
+      // Map path coords (0..100, 0..140) to canvas at uniform scale s/50.
+      // Path center is (50, 70). Aspect ratio 1.4 is preserved naturally:
+      //   x range = ±scale  → 2*scale wide
+      //   y range = ±scale*1.4 (because path y-distance from center is up to 70 = 50*1.4)
+      // Critical: outline drawHatOutline() uses the same uniform s/50 → particle targets
+      // align perfectly with the rendered outline.
+      const toCanvas = (px: number, py: number) => ({
+        x: cx + ((px - 50) / 50) * scale,
+        y: cy + ((py - 70) / 50) * scale,
+      });
+
+      const targets: Array<{ x: number; y: number; hue: 0 | 1 }> = [];
+
+      // 70% outline (the silhouette-defining points — even more outline now for clarity)
+      const outlineCount = Math.floor(count * 0.7);
+      for (let i = 0; i < outlineCount; i++) {
+        const t = (i / outlineCount) * totalLen;
+        const pt = pathEl.getPointAtLength(t);
+        const c = toCanvas(pt.x, pt.y);
+        c.x += (Math.random() - 0.5) * 2.5;
+        c.y += (Math.random() - 0.5) * 2.5;
+        targets.push({ ...c, hue: pt.x > 50 ? 0 : 1 });
+      }
+
+      // 30% interior fill (rejection sampling)
+      let attempts = 0;
+      while (targets.length < count && attempts < count * 50) {
+        attempts++;
+        const px = 5 + Math.random() * 90;
+        const py = 8 + Math.random() * 128;
+        if (isInside(px, py)) {
+          const c = toCanvas(px, py);
+          targets.push({ ...c, hue: px > 50 ? 0 : 1 });
+        }
+      }
+
+      return targets;
+    }
+
+    // ───── Setup ─────────────────────────────────────────────────────────
     function resize() {
       const rect = canvas!.parentElement!.getBoundingClientRect();
-      W = rect.width;
-      H = rect.height;
-      canvas!.width = W * dpr;
-      canvas!.height = H * dpr;
+      W = Math.max(1, rect.width);
+      H = Math.max(1, rect.height);
+      isMobile = W < 768;
+      canvas!.width = Math.floor(W * dpr);
+      canvas!.height = Math.floor(H * dpr);
       canvas!.style.width = W + 'px';
       canvas!.style.height = H + 'px';
       ctx!.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -52,135 +240,337 @@
     }
 
     function regenerate() {
-      nodes = [];
-      edges = [];
-      const targetCount = Math.min(110, Math.max(55, Math.floor(W * H / 14000)));
-      const cx = W / 2;
-      const cy = H * 0.48;
-      const scale = Math.min(W * 0.45, H * 0.62);
+      hatPath2d = new Path2D(HAT_PATH_D);
 
-      let attempts = 0;
-      while (nodes.length < targetCount && attempts < targetCount * 80) {
-        attempts++;
-        const nx = Math.random() * 2 - 1;
-        const ny = Math.random() * 2 - 1;
-        if (!inHat(nx, ny)) continue;
-        const x = cx + nx * scale;
-        const y = cy + ny * scale;
-        // Hue: amber (0) on right/top, teal (1) on left/bottom — mirrors the logo
-        const useAmber = nx + ny * 0.4 > -0.05 ? 1 : 0;
-        nodes.push({
-          x, y,
-          baseX: x, baseY: y,
-          r: 0.8 + Math.random() * 1.6,
-          hue: useAmber === 1 ? 0 : 1,
+      // ─── THREE hats ───
+      // Path is 1.4× tall:wide. hatScale is HALF the puff width.
+      // Total hat height = scale * 2.8 (full path height = 140 in 0..100 units).
+      // Band sits at path y=128 (center of 116-140), so its canvas-y offset from cy = (128-70)/50 * scale = 1.16 * scale.
+      // Mobile: anchor cy higher so the BAND is well above the CTA buttons.
+      // Bottom-of-band canvas-y = cy + 1.4*scale.
+      // We want bottom-of-band at ~38% of hero on mobile (CTAs start ~50%), and ~50% on desktop.
+      const desktopBandBottom = H * 0.50;
+      const mobileBandBottom  = H * 0.38;
+
+      if (isMobile) {
+        const centerScale = Math.min(W * 0.20, H * 0.16);
+        const sideScale   = Math.min(W * 0.16, H * 0.13);
+        const sideOffset  = W * 0.42;
+        const cyCenter = mobileBandBottom - centerScale * 1.4;
+        const cySide   = mobileBandBottom - sideScale   * 1.4;
+        hats = [
+          { cx: W / 2 - sideOffset, cy: cySide,   scale: sideScale,   weight: 0.22 },
+          { cx: W / 2,              cy: cyCenter, scale: centerScale, weight: 0.56 },
+          { cx: W / 2 + sideOffset, cy: cySide,   scale: sideScale,   weight: 0.22 },
+        ];
+      } else {
+        const centerScale = Math.min(W * 0.10, H * 0.16);
+        const sideScale   = Math.min(W * 0.078, H * 0.125);
+        const sideOffset  = Math.min(W * 0.22, 320);
+        const cyCenter = desktopBandBottom - centerScale * 1.4;
+        const cySide   = desktopBandBottom - sideScale   * 1.4 + 8;
+        hats = [
+          { cx: W / 2 - sideOffset, cy: cySide,   scale: sideScale,   weight: 0.25 },
+          { cx: W / 2,              cy: cyCenter, scale: centerScale, weight: 0.50 },
+          { cx: W / 2 + sideOffset, cy: cySide,   scale: sideScale,   weight: 0.25 },
+        ];
+      }
+
+      // Flow particles — bumped counts for higher ambient density
+      const flowCount = isMobile
+        ? Math.min(360, Math.max(220, Math.floor(W * H / 5500)))
+        : Math.min(580, Math.max(340, Math.floor(W * H / 3800)));
+
+      // Build target sets per hat, then concatenate by weight
+      const allTargets: Array<{ x: number; y: number; hue: 0 | 1 }> = [];
+      for (const h of hats) {
+        const n = Math.round(flowCount * h.weight);
+        const ts = buildHatTargets(n, h.cx, h.cy, h.scale);
+        allTargets.push(...ts);
+      }
+      // Shuffle targets so particles assigned by index don't all map to one hat
+      for (let i = allTargets.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [allTargets[i], allTargets[j]] = [allTargets[j], allTargets[i]];
+      }
+
+      flow = [];
+      const totalNeeded = Math.max(flowCount, allTargets.length);
+      for (let i = 0; i < totalNeeded; i++) {
+        const target = allTargets[i] || { x: hats[1].cx, y: hats[1].cy, hue: 0 as 0 | 1 };
+        flow.push({
+          x: Math.random() * W,
+          y: Math.random() * H,
+          vx: (Math.random() - 0.5) * 30,
+          vy: (Math.random() - 0.5) * 30,
+          targetX: target.x,
+          targetY: target.y,
+          hue: target.hue,
+          r: 0.6 + Math.random() * 1.2,
           phase: Math.random() * Math.PI * 2,
+          bias: Math.random() * Math.PI * 2,        // killer of cloud-drift
+          speedMul: 0.5 + Math.random() * 1.1,
         });
       }
 
-      // Build a sparse network — each node connects to 2-3 nearest neighbours
-      for (let i = 0; i < nodes.length; i++) {
-        const dists: { j: number; d: number }[] = [];
-        for (let j = 0; j < nodes.length; j++) {
-          if (i === j) continue;
-          const dx = nodes[i].x - nodes[j].x;
-          const dy = nodes[i].y - nodes[j].y;
-          dists.push({ j, d: Math.sqrt(dx*dx + dy*dy) });
-        }
-        dists.sort((a, b) => a.d - b.d);
-        const k = 2 + Math.floor(Math.random() * 2);
-        for (let n = 0; n < k && n < dists.length; n++) {
-          if (dists[n].d > scale * 0.5) continue;
-          // Avoid duplicates
-          const a = i, b = dists[n].j;
-          if (edges.find(e => (e.a === a && e.b === b) || (e.a === b && e.b === a))) continue;
-          edges.push({ a, b, len: dists[n].d, pulse: Math.random(), pulseSpeed: 0.3 + Math.random() * 0.4 });
-        }
+      // Ember particles — always-on background atmosphere (bumped)
+      const emberCount = isMobile ? 80 : 130;
+      embers = [];
+      for (let i = 0; i < emberCount; i++) {
+        embers.push({
+          x: Math.random() * W,
+          y: Math.random() * H,
+          vx: (Math.random() - 0.5) * 14,
+          vy: (Math.random() - 0.5) * 14,
+          hue: Math.random() < 0.55 ? 0 : 1,
+          r: 1.4 + Math.random() * 2.6,
+          phase: Math.random() * Math.PI * 2,
+        });
       }
     }
 
-    function frame() {
-      if (!ctx) return;
-      t += 0.016;
+    // ───── Frame loop ────────────────────────────────────────────────────
+    let last = performance.now();
 
-      ctx.clearRect(0, 0, W, H);
+    function drawHatOutline(h: HatInstance, alpha: number) {
+      ctx!.save();
+      ctx!.translate(h.cx, h.cy);
+      // Path is 100w × 140h; center (50,70). x scale = h.scale/50, y scale = (h.scale*1.4)/70 = h.scale/50.
+      // So uniform scale h.scale/50 preserves aspect ratio correctly.
+      ctx!.scale(h.scale / 50, h.scale / 50);
+      ctx!.translate(-50, -70);
 
-      // Drift each node — visible amplitude
-      for (const n of nodes) {
-        n.x = n.baseX + Math.sin(t * 0.7 + n.phase) * 4.5;
-        n.y = n.baseY + Math.cos(t * 0.6 + n.phase * 1.3) * 4.5;
+      // Outer halo (thick, soft)
+      ctx!.strokeStyle = `rgba(255, 209, 102, ${alpha * 0.35})`;
+      ctx!.lineWidth = 50 / h.scale * 8;
+      ctx!.lineJoin = 'round';
+      ctx!.lineCap = 'round';
+      ctx!.stroke(hatPath2d!);
+
+      // Crisp inner stroke
+      ctx!.strokeStyle = `rgba(255, 220, 140, ${alpha})`;
+      ctx!.lineWidth = 50 / h.scale * 1.5;
+      ctx!.stroke(hatPath2d!);
+
+      // Teal accent
+      ctx!.strokeStyle = `rgba(125, 211, 192, ${alpha * 0.55})`;
+      ctx!.lineWidth = 50 / h.scale * 1.2;
+      ctx!.stroke(hatPath2d!);
+
+      ctx!.restore();
+    }
+
+    function frame(now: number) {
+      const dt = Math.min(0.05, (now - last) / 1000);
+      last = now;
+      t += dt;
+      modeT += dt;
+
+      if (mode === 'flow' && modeT >= FLOW_DURATION) { mode = 'converging'; modeT = 0; }
+      else if (mode === 'converging' && modeT >= CONVERGE_DURATION) { mode = 'hold'; modeT = 0; }
+      else if (mode === 'hold' && modeT >= HOLD_DURATION) { mode = 'dispersing'; modeT = 0; }
+      else if (mode === 'dispersing' && modeT >= DISPERSE_DURATION) { mode = 'flow'; modeT = 0; }
+
+      ctx!.clearRect(0, 0, W, H);
+
+      // 1. Draw all 3 hat outlines during converge/hold/disperse
+      if (hatPath2d && mode !== 'flow') {
+        let outlineAlpha = 0;
+        if (mode === 'converging') outlineAlpha = (modeT / CONVERGE_DURATION) * 0.55;
+        else if (mode === 'hold')  outlineAlpha = 0.55 + Math.sin(modeT * 2) * 0.1;
+        else if (mode === 'dispersing') outlineAlpha = (1 - modeT / DISPERSE_DURATION) * 0.55;
+
+        for (const h of hats) drawHatOutline(h, outlineAlpha);
       }
 
-      // Edges + traveling pulses
-      ctx.lineCap = 'round';
-      for (const e of edges) {
-        const a = nodes[e.a], b = nodes[e.b];
-        const sameHue = a.hue === b.hue;
-        const c = sameHue ? (a.hue === 0 ? ACCENT : COOL) : ACCENT; // mixed defaults to amber
+      const FLOW_SPEED = 26;
+      const FF1 = 0.0030;   // low-frequency curl
+      const FF2 = 0.0085;   // higher-frequency turbulence
 
-        // Base line
-        ctx.strokeStyle = `rgba(${c[0]}, ${c[1]}, ${c[2]}, 0.18)`;
-        ctx.lineWidth = 0.8;
-        ctx.beginPath();
-        ctx.moveTo(a.x, a.y);
-        ctx.lineTo(b.x, b.y);
-        ctx.stroke();
-
-        // Pulse traveling along the edge
-        e.pulse += 0.008 * e.pulseSpeed;
-        if (e.pulse > 1.4) e.pulse = -0.4;
-        if (e.pulse >= 0 && e.pulse <= 1) {
-          const px = a.x + (b.x - a.x) * e.pulse;
-          const py = a.y + (b.y - a.y) * e.pulse;
-          // Soft glow blob travelling along
-          const grad = ctx.createRadialGradient(px, py, 0, px, py, 14);
-          grad.addColorStop(0, `rgba(${c[0]}, ${c[1]}, ${c[2]}, 0.95)`);
-          grad.addColorStop(0.4, `rgba(${c[0]}, ${c[1]}, ${c[2]}, 0.35)`);
-          grad.addColorStop(1, `rgba(${c[0]}, ${c[1]}, ${c[2]}, 0)`);
-          ctx.fillStyle = grad;
-          ctx.beginPath();
-          ctx.arc(px, py, 14, 0, Math.PI * 2);
-          ctx.fill();
-          // Bright core
-          ctx.fillStyle = `rgba(${c[0]}, ${c[1]}, ${c[2]}, 1)`;
-          ctx.beginPath();
-          ctx.arc(px, py, 1.6, 0, Math.PI * 2);
-          ctx.fill();
+      // 2. Update flow particles
+      for (const p of flow) {
+        if (mode === 'flow') {
+          // Dual-frequency curl noise + bias offset → no coherent cloud drift
+          const a1 = noiseAngle(gradA, p.x * FF1 + t * 0.04, p.y * FF1);
+          const a2 = noiseAngle(gradB, p.x * FF2 - t * 0.07, p.y * FF2 + 13.7);
+          const angle = a1 * 1.3 + a2 * 0.85 + p.bias;
+          const speed = FLOW_SPEED * p.speedMul;
+          const tx = Math.cos(angle) * speed;
+          const ty = Math.sin(angle) * speed;
+          if (pointer.active) {
+            const dx = p.x - pointer.x, dy = p.y - pointer.y;
+            const d2 = dx * dx + dy * dy;
+            if (d2 < 22500) {
+              const f = 1 - d2 / 22500;
+              p.vx += (dx / Math.sqrt(d2 || 1)) * f * 80 * dt;
+              p.vy += (dy / Math.sqrt(d2 || 1)) * f * 80 * dt;
+            }
+          }
+          p.vx += (tx - p.vx) * dt * 1.5;
+          p.vy += (ty - p.vy) * dt * 1.5;
+          p.x += p.vx * dt;
+          p.y += p.vy * dt;
+          if (p.x < -10) p.x = W + 10;
+          if (p.x > W + 10) p.x = -10;
+          if (p.y < -10) p.y = H + 10;
+          if (p.y > H + 10) p.y = -10;
+        } else {
+          let targetX: number, targetY: number, k: number, damp: number;
+          if (mode === 'converging') {
+            targetX = p.targetX; targetY = p.targetY;
+            // Ramp ease 4.5 → 12 over the converge window for a tight lock-in
+            const u = modeT / CONVERGE_DURATION;
+            k = 4.5 + u * u * 7.5;
+            damp = 0.82;
+          } else if (mode === 'hold') {
+            targetX = p.targetX; targetY = p.targetY;
+            k = 14.0;
+            damp = 0.65;        // hard damping → particles freeze on shape
+          } else {
+            targetX = p.x + (Math.random() - 0.5) * 240;
+            targetY = p.y + (Math.random() - 0.5) * 240;
+            k = 2.5;
+            damp = 0.88;
+          }
+          p.vx += (targetX - p.x) * dt * k;
+          p.vy += (targetY - p.y) * dt * k;
+          p.vx *= damp;
+          p.vy *= damp;
+          p.x += p.vx * dt;
+          p.y += p.vy * dt;
         }
       }
 
-      // Nodes
-      for (const n of nodes) {
-        const c = n.hue === 0 ? ACCENT : COOL;
-        const breathe = 0.6 + Math.sin(t * 0.9 + n.phase) * 0.4;
-        const glowR = n.r * (5 + breathe * 3);
-        // Outer glow
-        const grad = ctx.createRadialGradient(n.x, n.y, 0, n.x, n.y, glowR);
-        grad.addColorStop(0, `rgba(${c[0]}, ${c[1]}, ${c[2]}, ${0.55 * breathe})`);
-        grad.addColorStop(0.4, `rgba(${c[0]}, ${c[1]}, ${c[2]}, ${0.18 * breathe})`);
-        grad.addColorStop(1, `rgba(${c[0]}, ${c[1]}, ${c[2]}, 0)`);
-        ctx.fillStyle = grad;
-        ctx.beginPath();
-        ctx.arc(n.x, n.y, glowR, 0, Math.PI * 2);
-        ctx.fill();
-        // Core
-        ctx.fillStyle = `rgba(${c[0]}, ${c[1]}, ${c[2]}, ${0.8 + breathe * 0.2})`;
-        ctx.beginPath();
-        ctx.arc(n.x, n.y, n.r, 0, Math.PI * 2);
-        ctx.fill();
+      // 3. Connections — only between close flow particles
+      const NEAR_DIST = mode === 'hold' ? 50 : 38;
+      ctx!.lineCap = 'round';
+      for (let i = 0; i < flow.length; i++) {
+        const a = flow[i];
+        for (let j = i + 1; j < flow.length; j++) {
+          const b = flow[j];
+          const dx = a.x - b.x, dy = a.y - b.y;
+          const d2 = dx * dx + dy * dy;
+          if (d2 > NEAR_DIST * NEAR_DIST) continue;
+          const d = Math.sqrt(d2);
+          const alpha = (1 - d / NEAR_DIST) * (mode === 'hold' ? 0.32 : 0.16);
+          const sameHue = a.hue === b.hue;
+          const c = sameHue ? (a.hue === 0 ? ACCENT : COOL) : ACCENT;
+          ctx!.strokeStyle = `rgba(${c[0]},${c[1]},${c[2]},${alpha})`;
+          ctx!.lineWidth = sameHue ? 0.7 : 0.4;
+          ctx!.beginPath();
+          ctx!.moveTo(a.x, a.y);
+          ctx!.lineTo(b.x, b.y);
+          ctx!.stroke();
+        }
       }
 
-      requestAnimationFrame(frame);
+      // 4. Draw ember particles (always-on atmosphere)
+      for (const e of embers) {
+        e.x += e.vx * dt;
+        e.y += e.vy * dt;
+        if (e.x < -20) e.x = W + 20;
+        if (e.x > W + 20) e.x = -20;
+        if (e.y < -20) e.y = H + 20;
+        if (e.y > H + 20) e.y = -20;
+
+        const c = e.hue === 0 ? ACCENT : COOL;
+        const breathe = 0.5 + Math.sin(t * 0.5 + e.phase) * 0.5;
+        const glowR = e.r * 8 * (0.7 + breathe * 0.5);
+        const grad = ctx!.createRadialGradient(e.x, e.y, 0, e.x, e.y, glowR);
+        grad.addColorStop(0, `rgba(${c[0]},${c[1]},${c[2]},${0.32 * breathe})`);
+        grad.addColorStop(0.5, `rgba(${c[0]},${c[1]},${c[2]},${0.08 * breathe})`);
+        grad.addColorStop(1, `rgba(${c[0]},${c[1]},${c[2]},0)`);
+        ctx!.fillStyle = grad;
+        ctx!.beginPath();
+        ctx!.arc(e.x, e.y, glowR, 0, Math.PI * 2);
+        ctx!.fill();
+        ctx!.fillStyle = `rgba(${c[0]},${c[1]},${c[2]},${0.5 + breathe * 0.3})`;
+        ctx!.beginPath();
+        ctx!.arc(e.x, e.y, e.r * 0.6, 0, Math.PI * 2);
+        ctx!.fill();
+      }
+
+      // 5. Draw flow particles
+      for (const p of flow) {
+        const c = p.hue === 0 ? ACCENT : COOL;
+        const breathe = 0.6 + Math.sin(t * 0.9 + p.phase) * 0.4;
+        const glowR = p.r * (mode === 'hold' ? 5 : 3.5) * (0.8 + breathe * 0.4);
+        const grad = ctx!.createRadialGradient(p.x, p.y, 0, p.x, p.y, glowR);
+        grad.addColorStop(0, `rgba(${c[0]},${c[1]},${c[2]},${0.55 * breathe})`);
+        grad.addColorStop(0.5, `rgba(${c[0]},${c[1]},${c[2]},${0.15 * breathe})`);
+        grad.addColorStop(1, `rgba(${c[0]},${c[1]},${c[2]},0)`);
+        ctx!.fillStyle = grad;
+        ctx!.beginPath();
+        ctx!.arc(p.x, p.y, glowR, 0, Math.PI * 2);
+        ctx!.fill();
+        ctx!.fillStyle = `rgba(${c[0]},${c[1]},${c[2]},${0.7 + breathe * 0.3})`;
+        ctx!.beginPath();
+        ctx!.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+        ctx!.fill();
+      }
+
+      // 6. During HOLD: chasing pulses around each hat outline
+      if (mode === 'hold' && hatPath2d) {
+        const pathEl = document.getElementById('hat-svg-path') as unknown as SVGPathElement | null;
+        if (pathEl) {
+          const totalLen = pathEl.getTotalLength();
+          const holdProgress = modeT / HOLD_DURATION;
+          for (const h of hats) {
+            for (let pulse = 0; pulse < 2; pulse++) {
+              const param = (holdProgress + pulse * 0.5) % 1;
+              const pt = pathEl.getPointAtLength(param * totalLen);
+              const px = h.cx + ((pt.x - 50) / 50) * h.scale;
+              const py = h.cy + ((pt.y - 70) / 50) * h.scale;
+              const c = pulse === 0 ? ACCENT : COOL;
+              const grad = ctx!.createRadialGradient(px, py, 0, px, py, 24);
+              grad.addColorStop(0, `rgba(${c[0]},${c[1]},${c[2]},1)`);
+              grad.addColorStop(0.4, `rgba(${c[0]},${c[1]},${c[2]},0.45)`);
+              grad.addColorStop(1, `rgba(${c[0]},${c[1]},${c[2]},0)`);
+              ctx!.fillStyle = grad;
+              ctx!.beginPath();
+              ctx!.arc(px, py, 24, 0, Math.PI * 2);
+              ctx!.fill();
+            }
+          }
+        }
+      }
+
+      rafId = requestAnimationFrame(frame);
     }
 
-    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    window.addEventListener('resize', () => { dpr = Math.max(1, window.devicePixelRatio || 1); resize(); });
+    // ───── Events ────────────────────────────────────────────────────────
+    function onMove(x: number, y: number) {
+      const rect = canvas!.getBoundingClientRect();
+      pointer.x = x - rect.left;
+      pointer.y = y - rect.top;
+      pointer.active = true;
+    }
+    window.addEventListener('mousemove', (e) => onMove(e.clientX, e.clientY));
+    window.addEventListener('mouseleave', () => { pointer.active = false; });
+    window.addEventListener('touchmove', (e) => {
+      const touch = e.touches[0];
+      if (touch) onMove(touch.clientX, touch.clientY);
+    }, { passive: true });
+    window.addEventListener('touchend', () => { pointer.active = false; });
+
+    const ro = new ResizeObserver(() => {
+      dpr = Math.max(1, window.devicePixelRatio || 1);
+      resize();
+    });
+    ro.observe(canvas.parentElement!);
+
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) cancelAnimationFrame(rafId);
+      else if (!reduce) { last = performance.now(); rafId = requestAnimationFrame(frame); }
+    });
+
     resize();
     if (reduce) {
-      // Render a single static frame
-      frame();
+      last = performance.now();
+      frame(performance.now());
+      cancelAnimationFrame(rafId);
     } else {
-      requestAnimationFrame(frame);
+      rafId = requestAnimationFrame(frame);
     }
   })();
 </script>

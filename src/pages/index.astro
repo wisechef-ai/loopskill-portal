@@ -51,12 +51,12 @@ const verticals = [
   title="Recipes — The recipe book for AI agents"
   description="Production-grade skills for AI agents. Client reporting, code writing, web scraping, SEO audits, content calendars, proposals — installed by your agent in seconds. From $24.99/mo. By WiseChef."
 >
-  <section class="relative overflow-hidden">
+  <section class="relative overflow-hidden min-h-[88vh] md:min-h-screen flex items-center">
     <NeuronAnimation />
     <div class="absolute inset-0 -z-20 opacity-[0.025] pointer-events-none"
          style="background-image: linear-gradient(to right, #fafafa 1px, transparent 1px), linear-gradient(to bottom, #fafafa 1px, transparent 1px); background-size: 64px 64px;"></div>
 
-    <div class="max-w-6xl mx-auto px-6 pt-20 md:pt-32 pb-12 relative">
+    <div class="max-w-6xl mx-auto px-6 pt-20 md:pt-28 pb-16 relative w-full">
       <div class="flex flex-col items-center text-center gap-6 max-w-3xl mx-auto">
         <a href="https://wisechef.ai" class="group inline-flex items-center gap-2 px-3 py-1 rounded-full border border-border text-xs text-muted hover:text-text hover:border-accent/40 transition backdrop-blur-sm bg-bg/40">
           <span class="w-1.5 h-1.5 rounded-full bg-accent group-hover:animate-pulse"></span>
@@ -64,7 +64,7 @@ const verticals = [
           <Icon name="arrow-right" size={11} class="opacity-50 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all" />
         </a>
         <h1 class="text-5xl md:text-7xl font-bold tracking-tighter leading-[1.02]" style="letter-spacing: -0.04em;">
-          The <span class="text-gradient">recipe book</span><br/>for AI agents.
+          The <span class="text-gradient hero-glow">recipe book</span><br/>for AI agents.
         </h1>
         <p class="text-lg md:text-xl text-muted leading-relaxed max-w-2xl">
           We've burned through years of trial-and-error so your agent doesn't have to.
@@ -222,23 +222,51 @@ const verticals = [
         <div class="flex flex-col md:flex-row md:items-end justify-between gap-3 mb-12">
           <div class="max-w-xl">
             <p class="eyebrow text-accent">Today's 7</p>
-            <h2 class="text-3xl md:text-5xl font-bold tracking-tight mt-2" style="letter-spacing: -0.03em;">A new skill, every<br/>midnight UTC.</h2>
+            <h2 class="text-3xl md:text-5xl font-bold tracking-tight mt-2" style="letter-spacing: -0.03em;">A new skill, every<br/>5 AM London time.</h2>
             <p class="text-muted mt-3 text-lg">The carousel is how Recipes keeps the catalog honest. Each card runs against incumbent skills for 7 days. Telemetry decides what graduates to core.</p>
           </div>
           <a href="/carousel" class="text-sm text-accent hover:opacity-80 inline-flex items-center gap-1.5 shrink-0">
             See today's lineup <Icon name="arrow-right" size={11} />
           </a>
         </div>
-        <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-2.5">
+        <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-2.5" id="carousel-strip">
           {carouselToday.slice(0, 7).map((e: any) => (
-            <a href={`/skills/${e.skill_slug}`} class="bg-bg-card border border-border rounded-xl p-3 card-lift block">
-              <div class="text-[9px] font-mono text-muted-soft mb-1.5">SLOT {String(e.position + 1).padStart(2, '0')}</div>
+            <a href={`/skills/${e.skill_slug}`}
+               data-archives-at={e.archives_at || ''}
+               class="carousel-strip-card bg-bg-card border border-border rounded-xl p-3 card-lift block">
+              <div class="flex items-center justify-between gap-1 mb-1.5">
+                <span class="text-[9px] font-mono text-muted-soft">SLOT {String(e.position + 1).padStart(2, '0')}</span>
+                <span class="strip-countdown text-[9px] font-mono text-muted-soft">—</span>
+              </div>
               <div class="text-sm font-semibold text-text leading-tight line-clamp-2">{e.skill_title}</div>
               {e.tagline && <div class="text-[10px] text-muted-soft mt-1 line-clamp-2">{e.tagline}</div>}
             </a>
           ))}
         </div>
       </div>
+      <script is:inline>
+        (function() {
+          function fmt(sec) {
+            if (sec <= 0) return 'rotating';
+            const d = Math.floor(sec / 86400), h = Math.floor((sec % 86400) / 3600);
+            if (d >= 1) return d + 'd ' + h + 'h';
+            const m = Math.floor((sec % 3600) / 60);
+            return h + 'h ' + m + 'm';
+          }
+          function tick() {
+            const now = Date.now();
+            document.querySelectorAll('.carousel-strip-card').forEach(function(c) {
+              const at = c.dataset.archivesAt;
+              if (!at) return;
+              const sec = Math.max(0, Math.floor((new Date(at).getTime() - now) / 1000));
+              const el = c.querySelector('.strip-countdown');
+              if (el) el.textContent = fmt(sec) + ' left';
+            });
+          }
+          tick();
+          setInterval(tick, 60000);
+        })();
+      </script>
     </section>
   )}
 
@@ -269,7 +297,7 @@ const verticals = [
             </div>
           </div>
           <div class="hidden md:flex items-center justify-center">
-            <img src="/brand/recipes-logo-256.png" alt="" width="160" height="160" class="opacity-95" />
+            <img src="/brand/mark-256.png" alt="" width="180" height="180" class="opacity-95 drop-shadow-[0_0_40px_rgba(255,209,102,0.35)]" />
           </div>
         </div>
       </div>

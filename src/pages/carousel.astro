@@ -2,7 +2,6 @@
 import Base from '../layouts/Base.astro';
 import CrossSell from '../components/CrossSell.astro';
 
-// Try to fetch from API; fall back to seed data if unreachable at build time
 let entries: any[] = [];
 let fetchError: string | null = null;
 try {
@@ -15,13 +14,7 @@ try {
 
 if (!entries || entries.length === 0) {
   entries = [
-    { skill_slug: 'client-reporter', skill_title: 'Client Reporter', skill_description: 'Free skill: GA4 + GSC + Meta Ads + TikTok Ads → branded PDF for any client.', tagline: 'Replaces 4h/week', position: 0, role: 'new-capability' },
-    { skill_slug: 'web-scraper-pro', skill_title: 'Web Scraper Pro', skill_description: 'High-performance web scraping with built-in rate limiting and proxy rotation.', tagline: 'Scrape anything', position: 1, role: 'replaces:scrapling' },
-    { skill_slug: 'email-composer', skill_title: 'Smart Email Composer', skill_description: 'AI-powered email drafting with tone control and template library.', tagline: 'Emails that get replies', position: 2, role: 'new-capability' },
-    { skill_slug: 'invoice-automator', skill_title: 'Invoice Automator', skill_description: 'Stripe + QuickBooks sync, recurring agency invoicing on autopilot.', tagline: 'Replaces Bonsai', position: 3, role: 'new-capability' },
-    { skill_slug: 'standup-bot', skill_title: 'Slack Standup Bot', skill_description: 'Daily team standup composed from yesterday\'s commits and tickets.', tagline: 'Async team daily', position: 4, role: 'experimental' },
-    { skill_slug: 'gohighlevel-cli', skill_title: 'GoHighLevel CLI', skill_description: 'Direct CRM control from your agent — leads, pipelines, automations.', tagline: 'Replaces dashboards', position: 5, role: 'new-capability' },
-    { skill_slug: 'onboarding-wizard', skill_title: 'Onboarding Wizard', skill_description: 'New client → Notion workspace + Slack channel + drive folders, automated.', tagline: 'Day-1 setup, done', position: 6, role: 'new-capability' },
+    { skill_slug: 'client-reporter', skill_title: 'Client Reporter', skill_description: 'Free skill: GA4 + GSC + Meta Ads + TikTok Ads → branded PDF for any client.', tagline: 'Replaces 4h/week', position: 0, role: 'new-capability', seconds_until_archive: 7 * 86400 },
   ];
 }
 
@@ -36,19 +29,21 @@ function formatRole(role: string): string {
 }
 ---
 
-<Base title={`Today's 7 (${today}) — Recipes`} description="Seven skills. Twenty-four hours each. The Recipes carousel rotates a new entry every midnight UTC and proves which skills actually work in production.">
+<Base title={`Today's 7 (${today}) — Recipes`} description="Seven skills. Seven days each. The Recipes carousel rotates a new entry every 5 AM London time and proves which skills actually work in production.">
   <section class="max-w-6xl mx-auto px-6 pt-16 pb-12">
     <div class="text-center max-w-2xl mx-auto flex flex-col gap-3 mb-12">
       <p class="eyebrow">Today's 7 · {today}</p>
-      <h1 class="text-4xl md:text-5xl font-semibold tracking-tight">Seven skills. One day each.</h1>
-      <p class="text-muted">Every midnight UTC, the oldest card drops and a fresh one enters. Each entry runs against incumbent skills for 7 days. The carousel is how we keep the catalog honest.</p>
+      <h1 class="text-4xl md:text-5xl font-semibold tracking-tight">Seven skills. Seven days each.</h1>
+      <p class="text-muted">Every day at <strong class="text-text">5 AM London time</strong>, the oldest card drops out and a fresh one enters. Each skill stays in rotation for seven days, gathering telemetry. On exit, the verdict cron decides what graduates to core.</p>
       {fetchError && <p class="text-xs text-muted-soft">(showing seed data — API: {fetchError})</p>}
     </div>
 
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-7 gap-3">
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-7 gap-3" id="carousel-grid">
       {entries.slice(0, 7).map((e: any, i: number) => (
         <a href={`/skills/${e.skill_slug}`}
-           class={`group bg-bg-card border border-border rounded-2xl p-4 card-lift flex flex-col gap-3 ${i === 0 ? 'lg:col-span-3' : 'lg:col-span-2'} ${i > 4 ? 'lg:col-span-2' : ''}`}>
+           data-archives-at={e.archives_at || ''}
+           data-seconds-left={e.seconds_until_archive || ''}
+           class={`carousel-card group bg-bg-card border border-border rounded-2xl p-4 card-lift flex flex-col gap-3 relative overflow-hidden ${i === 0 ? 'lg:col-span-3' : 'lg:col-span-2'} ${i > 4 ? 'lg:col-span-2' : ''}`}>
           <div class="flex items-start justify-between gap-2">
             <span class="text-[10px] font-mono text-muted-soft">SLOT {String(e.position + 1).padStart(2, '0')}</span>
             <span class="text-[9px] uppercase tracking-wider text-accent border border-accent/40 rounded-full px-2 py-0.5">{formatRole(e.role || 'new-capability')}</span>
@@ -58,10 +53,18 @@ function formatRole(role: string): string {
             {e.tagline && <p class="text-xs text-muted-soft mt-1">{e.tagline}</p>}
           </div>
           <p class="text-xs text-muted leading-relaxed line-clamp-3">{e.skill_description}</p>
-          <span class="text-xs text-accent group-hover:translate-x-0.5 transition mt-auto inline-flex items-center gap-1">
-            View skill
-            <svg width="11" height="11" viewBox="0 0 11 11" fill="none"><path d="M3 5.5h5m0 0L5.5 3M8 5.5L5.5 8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
-          </span>
+
+          {/* Countdown chip — populated by client JS for live tick */}
+          <div class="flex items-center justify-between mt-auto pt-2 border-t border-border-soft">
+            <span class="countdown text-[10px] font-mono text-muted-soft inline-flex items-center gap-1.5">
+              <span class="countdown-dot inline-block w-1.5 h-1.5 rounded-full bg-success"></span>
+              <span class="countdown-text">—</span>
+            </span>
+            <span class="text-xs text-accent group-hover:translate-x-0.5 transition inline-flex items-center gap-1">
+              View
+              <svg width="11" height="11" viewBox="0 0 11 11" fill="none" aria-hidden="true"><path d="M3 5.5h5m0 0L5.5 3M8 5.5L5.5 8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+            </span>
+          </div>
         </a>
       ))}
     </div>
@@ -73,4 +76,42 @@ function formatRole(role: string): string {
   </section>
 
   <CrossSell />
+
+  <script is:inline>
+    // Live countdown ticker — runs every 30 seconds.
+    // Format: "5d left" / "23h left" / "47m left" / "rotating now…"
+    function formatRemaining(seconds) {
+      if (seconds <= 0) return 'rotating now…';
+      const days = Math.floor(seconds / 86400);
+      const hours = Math.floor((seconds % 86400) / 3600);
+      const minutes = Math.floor((seconds % 3600) / 60);
+      if (days >= 2) return `${days}d ${hours}h left`;
+      if (days === 1) return `1d ${hours}h left`;
+      if (hours >= 2) return `${hours}h ${minutes}m left`;
+      if (hours === 1) return `1h ${minutes}m left`;
+      return `${minutes}m left`;
+    }
+
+    function dotColorForSeconds(seconds) {
+      if (seconds <= 0) return '#fbbf24';                // amber: rotating
+      if (seconds < 24 * 3600) return '#fb7185';         // rose: <1d
+      if (seconds < 3 * 24 * 3600) return '#f59e0b';     // amber: <3d
+      return '#34d399';                                   // green: healthy
+    }
+
+    function tick() {
+      const now = Date.now();
+      document.querySelectorAll('.carousel-card').forEach((card) => {
+        const archivesAt = card.dataset.archivesAt;
+        if (!archivesAt) return;
+        const remainingSec = Math.max(0, Math.floor((new Date(archivesAt).getTime() - now) / 1000));
+        const textEl = card.querySelector('.countdown-text');
+        const dotEl = card.querySelector('.countdown-dot');
+        if (textEl) textEl.textContent = formatRemaining(remainingSec);
+        if (dotEl) dotEl.style.background = dotColorForSeconds(remainingSec);
+      });
+    }
+    tick();
+    setInterval(tick, 30 * 1000);
+  </script>
 </Base>
