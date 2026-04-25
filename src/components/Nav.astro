@@ -4,8 +4,7 @@ const isActive = (p: string) => path === p || (p !== '/' && path.startsWith(p));
 ---
 <header class="sticky top-0 z-50 border-b border-border bg-bg/85 backdrop-blur-md">
   <nav class="max-w-7xl mx-auto px-6 h-14 flex items-center justify-between gap-6" aria-label="Main navigation">
-    <!-- Brand cluster: parent-WiseChef link + Recipes wordmark -->
-    <div class="flex items-center gap-4">
+    <div class="flex items-center gap-3">
       <a href="https://wisechef.ai"
          class="hidden sm:inline-flex items-center gap-1.5 text-xs text-muted hover:text-text transition rounded px-2 py-1 -ml-2"
          aria-label="Back to WiseChef">
@@ -16,6 +15,7 @@ const isActive = (p: string) => path === p || (p !== '/' && path.startsWith(p));
       </a>
       <span class="hidden sm:block w-px h-4 bg-border"></span>
       <a href="/" class="flex items-center gap-2 group">
+        <img src="/brand/recipes-logo-64.png" alt="" width="22" height="22" class="select-none" />
         <span class="text-base font-semibold tracking-tight text-text group-hover:text-accent transition">
           Recipes
         </span>
@@ -33,8 +33,7 @@ const isActive = (p: string) => path === p || (p !== '/' && path.startsWith(p));
         <a href="/docs" class={`hover:text-text transition ${isActive('/docs') ? 'text-text' : ''}`}>Docs</a>
         <a href="/publish" class={`hover:text-text transition ${isActive('/publish') ? 'text-text' : ''}`}>Publish</a>
       </div>
-      <a href="/signin"
-         class="hidden md:inline-flex text-sm text-muted hover:text-text transition px-3 py-1.5 rounded-lg">
+      <a href="/signin" class="hidden md:inline-flex text-sm text-muted hover:text-text transition px-3 py-1.5 rounded-lg">
         Sign in
       </a>
       <a href="/signin?mode=signup"

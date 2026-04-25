@@ -1,0 +1,163 @@
+---
+// Astral neuron animation in chef-hat shape — pure SVG/canvas, no deps.
+// Renders behind the hero. Pulses, glows, and connects nodes in real-time.
+---
+<div class="absolute inset-0 -z-10 pointer-events-none overflow-hidden" id="neuron-bg" aria-hidden="true">
+  <canvas id="neuron-canvas" class="w-full h-full"></canvas>
+</div>
+
+<style>
+  #neuron-bg {
+    mask-image: radial-gradient(ellipse 80% 60% at 50% 40%, black 30%, transparent 80%);
+    -webkit-mask-image: radial-gradient(ellipse 80% 60% at 50% 40%, black 30%, transparent 80%);
+  }
+</style>
+
+<script>
+  // Chef-hat neuron field — generated client-side once, animated continuously.
+  // Designed to feel calm, not flashy. Subtle drift, occasional pulse along edges.
+  const canvas = document.getElementById('neuron-canvas') as HTMLCanvasElement | null;
+  if (canvas) {
+    const ctx = canvas.getContext('2d');
+    if (ctx) {
+      let dpr = Math.max(1, window.devicePixelRatio || 1);
+      let W = 0, H = 0;
+      let nodes: { x: number; y: number; vx: number; vy: number; baseX: number; baseY: number; r: number; hue: number; glow: number }[] = [];
+      let edges: [number, number, number][] = []; // [a, b, length]
+      const ACCENT = '255, 209, 102';   // amber
+      const COOL = '125, 211, 192';     // soft teal
+
+      function resize() {
+        if (!canvas || !ctx) return;
+        const rect = canvas.parentElement!.getBoundingClientRect();
+        W = rect.width;
+        H = rect.height;
+        canvas.width = W * dpr;
+        canvas.height = H * dpr;
+        canvas.style.width = W + 'px';
+        canvas.style.height = H + 'px';
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        regenerate();
+      }
+
+      // Sample N points inside a chef-hat-shaped silhouette
+      function inHat(nx: number, ny: number): boolean {
+        // Normalised coords centered at (0,0), hat fits roughly within [-1, 1]
+        const x = nx;
+        const y = ny;
+        // Top puff: an ellipse centered at (0, -0.2) with rx=0.95, ry=0.55
+        const inPuff = (x*x)/(0.95*0.95) + ((y + 0.2)*(y + 0.2))/(0.55*0.55) < 1 && y < 0.3;
+        // Band: rounded rectangle from (-0.55, 0.3) to (0.55, 0.6)
+        const inBand = Math.abs(x) < 0.55 && y > 0.3 && y < 0.6;
+        return inPuff || inBand;
+      }
+
+      function regenerate() {
+        nodes = [];
+        edges = [];
+        const targetCount = Math.min(80, Math.max(40, Math.floor(W * H / 18000)));
+        // Hat sits in the upper-center of the canvas
+        const cx = W / 2;
+        const cy = H * 0.42;
+        const scale = Math.min(W * 0.42, H * 0.55);
+
+        let attempts = 0;
+        while (nodes.length < targetCount && attempts < targetCount * 50) {
+          attempts++;
+          const nx = (Math.random() * 2 - 1);
+          const ny = (Math.random() * 2 - 1);
+          if (!inHat(nx, ny)) continue;
+          const x = cx + nx * scale;
+          const y = cy + ny * scale;
+          // 60% amber (right/upper), 40% teal (left/lower) — like Adam's logo
+          const useAmber = nx + ny * 0.5 > -0.1;
+          nodes.push({
+            x, y,
+            vx: 0, vy: 0,
+            baseX: x, baseY: y,
+            r: 1 + Math.random() * 1.5,
+            hue: useAmber ? 0 : 1,
+            glow: Math.random(),
+          });
+        }
+        // Build edges to nearest 2-3 neighbours
+        for (let i = 0; i < nodes.length; i++) {
+          const dists: { j: number; d: number }[] = [];
+          for (let j = 0; j < nodes.length; j++) {
+            if (i === j) continue;
+            const dx = nodes[i].x - nodes[j].x;
+            const dy = nodes[i].y - nodes[j].y;
+            dists.push({ j, d: Math.sqrt(dx*dx + dy*dy) });
+          }
+          dists.sort((a, b) => a.d - b.d);
+          const k = 2 + Math.floor(Math.random() * 2);
+          for (let n = 0; n < k && n < dists.length; n++) {
+            if (dists[n].d > scale * 0.55) continue;
+            edges.push([i, dists[n].j, dists[n].d]);
+          }
+        }
+      }
+
+      let t = 0;
+      function frame() {
+        if (!ctx) return;
+        t += 0.008;
+        ctx.clearRect(0, 0, W, H);
+
+        // Subtle drift: each node oscillates around its base
+        for (const n of nodes) {
+          n.x = n.baseX + Math.sin(t + n.baseX * 0.01) * 1.5;
+          n.y = n.baseY + Math.cos(t * 1.2 + n.baseY * 0.01) * 1.5;
+          n.glow = (Math.sin(t * 0.8 + n.baseX * 0.02) + 1) / 2;
+        }
+
+        // Edges
+        ctx.lineWidth = 0.5;
+        for (const [a, b] of edges) {
+          const na = nodes[a], nb = nodes[b];
+          const hue = na.hue === nb.hue ? na.hue : 0.5;
+          const c = hue === 0 ? ACCENT : hue === 1 ? COOL : '180,210,180';
+          const alpha = 0.10 + (na.glow + nb.glow) * 0.08;
+          ctx.strokeStyle = `rgba(${c}, ${alpha})`;
+          ctx.beginPath();
+          ctx.moveTo(na.x, na.y);
+          ctx.lineTo(nb.x, nb.y);
+          ctx.stroke();
+        }
+
+        // Nodes
+        for (const n of nodes) {
+          const c = n.hue === 0 ? ACCENT : COOL;
+          // Outer glow
+          const glowR = n.r * (4 + n.glow * 3);
+          const grad = ctx.createRadialGradient(n.x, n.y, 0, n.x, n.y, glowR);
+          grad.addColorStop(0, `rgba(${c}, ${0.5 + n.glow * 0.3})`);
+          grad.addColorStop(0.4, `rgba(${c}, ${0.15 + n.glow * 0.1})`);
+          grad.addColorStop(1, `rgba(${c}, 0)`);
+          ctx.fillStyle = grad;
+          ctx.beginPath();
+          ctx.arc(n.x, n.y, glowR, 0, Math.PI * 2);
+          ctx.fill();
+          // Core
+          ctx.fillStyle = `rgba(${c}, ${0.7 + n.glow * 0.3})`;
+          ctx.beginPath();
+          ctx.arc(n.x, n.y, n.r, 0, Math.PI * 2);
+          ctx.fill();
+        }
+
+        requestAnimationFrame(frame);
+      }
+
+      // Respect prefers-reduced-motion
+      const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      window.addEventListener('resize', resize);
+      resize();
+      if (!reduce) {
+        requestAnimationFrame(frame);
+      } else {
+        // single static frame
+        frame();
+      }
+    }
+  }
+</script>

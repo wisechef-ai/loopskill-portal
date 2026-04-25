@@ -3,59 +3,32 @@ import Base from '../layouts/Base.astro';
 import CrossSell from '../components/CrossSell.astro';
 import Icon from '../components/Icon.astro';
 import AgentLogos from '../components/AgentLogos.astro';
+import NeuronAnimation from '../components/NeuronAnimation.astro';
 
 let carouselToday: any[] = [];
 try {
-  const res = await fetch('http://localhost:8201/api/carousel/today', {
+  const res = await fetch('https://recipes.wisechef.ai/api/carousel/today', {
     headers: { 'x-api-key': import.meta.env.RECIPES_API_KEY || 'rec_dev_internal' }
   });
   if (res.ok) carouselToday = await res.json();
 } catch {}
 
 const spotlight = [
-  {
-    slug: 'client-reporter',
-    name: 'Client Reporter',
-    tier: 'free',
-    tagline: 'Replaces 4h/week of manual reporting',
-    description: 'Pull GA4, GSC, Meta Ads, TikTok Ads → branded PDF for any client. White-label-ready.',
-    badge: 'Free forever',
-    icon: 'chart',
-  },
-  {
-    slug: 'seo-audit-engine',
-    name: 'SEO Audit Engine',
-    tier: 'pro',
-    tagline: 'Replaces SEMrush spot audits',
-    description: 'Full technical + content SEO audit. Lighthouse + Screaming Frog + competitor gap analysis. Client-ready PDF in 3 minutes.',
-    badge: null,
-    icon: 'search',
-  },
-  {
-    slug: 'proposal-builder',
-    name: 'Proposal Builder',
-    tier: 'pro',
-    tagline: 'Replaces Bonsai · PandaDoc',
-    description: 'Discovery call transcript → branded SOW with scope, pricing tiers, case-study inserts. Converts at 40% above average.',
-    badge: null,
-    icon: 'document',
-  },
-  {
-    slug: 'content-calendar',
-    name: 'Content Calendar',
-    tier: 'pro',
-    tagline: 'Replaces CoSchedule · Planable',
-    description: '30-day cross-platform content calendar from a single brand brief. Drops into your client\'s existing approval flow.',
-    badge: null,
-    icon: 'calendar',
-  },
+  { slug: 'client-reporter', name: 'Client Reporter', tier: 'free', tagline: 'Replaces 4h/week of manual reporting',
+    description: 'Pull GA4, GSC, Meta Ads, TikTok Ads → branded PDF for any client. White-label-ready.', badge: 'Free forever', icon: 'chart' },
+  { slug: 'web-scraper-pro', name: 'Web Scraper Pro', tier: 'pro', tagline: 'Stealth scraping with proxy rotation',
+    description: 'Extract data from any site — JS-rendered SPAs, Cloudflare-protected pages, paginated tables. Built-in rate limiting and headless browser sandbox.', badge: null, icon: 'search' },
+  { slug: 'seo-audit-engine', name: 'SEO Audit Engine', tier: 'pro', tagline: 'Replaces SEMrush spot audits',
+    description: 'Full technical + content SEO audit. Lighthouse + Screaming Frog + competitor gap analysis. Client-ready PDF in 3 minutes.', badge: null, icon: 'document' },
+  { slug: 'proposal-builder', name: 'Proposal Builder', tier: 'pro', tagline: 'Replaces Bonsai · PandaDoc',
+    description: 'Discovery call transcript → branded SOW with scope, pricing tiers, case-study inserts. Converts at 40% above average.', badge: null, icon: 'calendar' },
 ];
 
 const howItWorks = [
   { num: '01', title: 'You describe the goal', body: 'Plain language, in your existing AI agent. No searches, no docs, no copy-paste.', icon: 'lightning' },
   { num: '02', title: 'Recipes finds the skill', body: 'The meta-skill makes your agent aware of every Recipes skill. It picks the perfect match.', icon: 'search' },
   { num: '03', title: 'Installs locally in seconds', body: 'Skill files written to your machine. Your credentials, your data, your control.', icon: 'box' },
-  { num: '04', title: 'Results delivered', body: 'A report. A calendar. An audit. A proposal. Done — and ready for your client.', icon: 'check' },
+  { num: '04', title: 'Results delivered', body: 'A report. A scrape. A calendar. A patch. Done — and ready to ship.', icon: 'check' },
 ];
 
 const stats = [
@@ -64,26 +37,28 @@ const stats = [
   { num: '< 30s', label: 'Install to first run' },
   { num: '50%', label: 'Creator share, usage-attributed' },
 ];
+
+const verticals = [
+  { label: 'Marketing', icon: 'chart', desc: 'Reports, calendars, audits, proposals' },
+  { label: 'Code', icon: 'terminal', desc: 'Code review, refactors, test scaffolds' },
+  { label: 'Web scraping', icon: 'search', desc: 'Stealth scrapers, structured extraction' },
+  { label: 'Ops', icon: 'box', desc: 'Onboarding, invoicing, standups' },
+  { label: 'Sales', icon: 'mail', desc: 'Outreach, CRM ops, proposals' },
+  { label: 'Sim & robotics', icon: 'lightning', desc: 'ROS workflows, simulation pipelines' },
+];
 ---
 <Base
-  title="Recipes — The recipe book for AI agents | For marketing agencies"
-  description="Agency-grade AI skills. Client reporting, SEO audits, content calendars, proposals — installed by your agent in seconds. From $24.99/mo. By WiseChef."
+  title="Recipes — The recipe book for AI agents"
+  description="Production-grade skills for AI agents. Client reporting, code writing, web scraping, SEO audits, content calendars, proposals — installed by your agent in seconds. From $24.99/mo. By WiseChef."
 >
-  <!-- Hero -->
   <section class="relative overflow-hidden">
-    <!-- Decorative grid -->
-    <div class="absolute inset-0 -z-10 opacity-[0.025] pointer-events-none"
-         style="background-image: linear-gradient(to right, #fafafa 1px, transparent 1px), linear-gradient(to bottom, #fafafa 1px, transparent 1px); background-size: 64px 64px;">
-    </div>
-    <!-- Decorative amber blur -->
-    <div class="absolute top-32 left-1/2 -translate-x-1/2 w-[700px] h-[400px] -z-10 pointer-events-none"
-         style="background: radial-gradient(ellipse at center, rgba(255,209,102,0.18) 0%, transparent 65%);"></div>
-    <div class="absolute -top-16 right-0 w-[400px] h-[400px] -z-10 pointer-events-none"
-         style="background: radial-gradient(ellipse at center, rgba(125,211,192,0.08) 0%, transparent 65%);"></div>
+    <NeuronAnimation />
+    <div class="absolute inset-0 -z-20 opacity-[0.025] pointer-events-none"
+         style="background-image: linear-gradient(to right, #fafafa 1px, transparent 1px), linear-gradient(to bottom, #fafafa 1px, transparent 1px); background-size: 64px 64px;"></div>
 
-    <div class="max-w-6xl mx-auto px-6 pt-20 md:pt-32 pb-12">
+    <div class="max-w-6xl mx-auto px-6 pt-20 md:pt-32 pb-12 relative">
       <div class="flex flex-col items-center text-center gap-6 max-w-3xl mx-auto">
-        <a href="https://wisechef.ai" class="group inline-flex items-center gap-2 px-3 py-1 rounded-full border border-border text-xs text-muted hover:text-text hover:border-accent/40 transition">
+        <a href="https://wisechef.ai" class="group inline-flex items-center gap-2 px-3 py-1 rounded-full border border-border text-xs text-muted hover:text-text hover:border-accent/40 transition backdrop-blur-sm bg-bg/40">
           <span class="w-1.5 h-1.5 rounded-full bg-accent group-hover:animate-pulse"></span>
           A new product from WiseChef
           <Icon name="arrow-right" size={11} class="opacity-50 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all" />
@@ -92,7 +67,7 @@ const stats = [
           The <span class="text-gradient">recipe book</span><br/>for AI agents.
         </h1>
         <p class="text-lg md:text-xl text-muted leading-relaxed max-w-2xl">
-          Agency-grade skills for marketing teams running AI agents. Client reporting, SEO audits, content calendars, proposals — installed by your agent in seconds. <strong class="text-text font-semibold">Run locally. Credentials stay home.</strong>
+          Production-grade skills for scaling teams running AI agents. Client reporting, SEO audits, content calendars, proposals, code writing, web scraping — installed by your agent in seconds. <strong class="text-text font-semibold">Run locally. Credentials stay home.</strong>
         </p>
         <div class="flex flex-col sm:flex-row gap-3 mt-2">
           <a href="/signin?mode=signup&plan=cook"
@@ -101,17 +76,14 @@ const stats = [
             <Icon name="arrow-right" size={14} class="group-hover:translate-x-0.5 transition-transform" />
           </a>
           <a href="/skills/client-reporter"
-             class="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-lg font-semibold text-sm border border-border hover:border-accent text-text transition">
+             class="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-lg font-semibold text-sm border border-border hover:border-accent text-text transition backdrop-blur-sm bg-bg/40">
             <Icon name="play" size={14} class="text-accent" />
             Try Client Reporter free
           </a>
         </div>
-        <p class="text-xs text-muted-soft mt-2">
-          Launch month: $14.99 · Cancel anytime · Open-source meta-skill
-        </p>
+        <p class="text-xs text-muted-soft mt-2">Launch month: $14.99 · Cancel anytime · Open-source meta-skill</p>
       </div>
 
-      <!-- Stats strip with animation hook -->
       <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mt-20 pt-12 border-t border-border" id="stats-strip">
         {stats.map(s => (
           <div class="flex flex-col gap-1">
@@ -123,10 +95,25 @@ const stats = [
     </div>
   </section>
 
-  <!-- Agent compatibility logos -->
+  <section class="border-t border-border bg-bg-card/30">
+    <div class="max-w-6xl mx-auto px-6 py-12">
+      <p class="eyebrow text-center mb-8">Built for every team running agents</p>
+      <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+        {verticals.map(v => (
+          <div class="flex flex-col items-center gap-2 p-4 bg-bg-card border border-border-soft rounded-xl hover:border-border transition group">
+            <div class="w-10 h-10 rounded-lg bg-accent/10 border border-accent/20 flex items-center justify-center text-accent group-hover:bg-accent/20 transition">
+              <Icon name={v.icon as any} size={18} />
+            </div>
+            <span class="text-sm font-semibold text-text">{v.label}</span>
+            <span class="text-[10px] text-muted-soft text-center leading-relaxed">{v.desc}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  </section>
+
   <AgentLogos />
 
-  <!-- Demo terminal -->
   <section class="relative overflow-hidden">
     <div class="absolute inset-0 -z-10 opacity-[0.015]" style="background-image: linear-gradient(to right, #fafafa 1px, transparent 1px), linear-gradient(to bottom, #fafafa 1px, transparent 1px); background-size: 32px 32px;"></div>
     <div class="max-w-6xl mx-auto px-6 py-24">
@@ -134,7 +121,7 @@ const stats = [
         <div class="flex flex-col gap-5">
           <p class="eyebrow text-accent">How it works</p>
           <h2 class="text-3xl md:text-5xl font-bold tracking-tight" style="letter-spacing: -0.03em;">Your agent already does this — it just doesn't know about us yet.</h2>
-          <p class="text-muted text-lg leading-relaxed">Recipes is a single Markdown file. Drop it into your agent's skills directory. From that point on, every time you ask for something agency-related, your agent searches the catalog, installs the right skill, and runs it locally.</p>
+          <p class="text-muted text-lg leading-relaxed">Recipes is a single Markdown file. Drop it into your agent's skills directory. From that point on, every time you ask for something Recipes covers, your agent searches the catalog, installs the right skill, and runs it locally.</p>
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">
             {howItWorks.map(s => (
               <div class="flex flex-col gap-2 p-4 bg-bg-card/50 border border-border-soft rounded-xl hover:border-border transition">
@@ -151,7 +138,6 @@ const stats = [
           </div>
         </div>
 
-        <!-- Terminal -->
         <div class="bg-[#0d0d0d] border border-border rounded-2xl overflow-hidden shadow-2xl shadow-black/50">
           <div class="flex items-center gap-2 px-4 py-3 border-b border-border bg-bg-elev">
             <div class="flex gap-1.5">
@@ -166,7 +152,7 @@ const stats = [
             <div class="text-text mb-3">install the recipes skill from recipes.wisechef.ai</div>
             <div class="text-accent">$ agent</div>
             <div class="text-muted mb-1">→ Fetching SKILL.md (188 lines)</div>
-            <div class="text-muted mb-3">✓ Recipes installed. <span class="text-text">30+ skills</span> across reporting · SEO · content · sales · ops.</div>
+            <div class="text-muted mb-3">✓ Recipes installed. <span class="text-text">30+ skills</span> across reporting · code · scraping · ops · sales.</div>
             <div class="text-success">$ you</div>
             <div class="text-text mb-3">pull last 30 days for client X across GA4 + Meta Ads</div>
             <div class="text-accent">$ agent</div>
@@ -186,7 +172,6 @@ const stats = [
     </div>
   </section>
 
-  <!-- Spotlight -->
   <section class="border-t border-border bg-bg-card/30">
     <div class="max-w-6xl mx-auto px-6 py-24">
       <div class="flex flex-col gap-3 mb-12 max-w-2xl">
@@ -228,7 +213,6 @@ const stats = [
     </div>
   </section>
 
-  <!-- Today's 7 -->
   {carouselToday.length > 0 && (
     <section class="border-t border-border">
       <div class="max-w-6xl mx-auto px-6 py-24">
@@ -255,16 +239,13 @@ const stats = [
     </section>
   )}
 
-  <!-- Free seed CTA -->
   <section class="border-t border-border">
     <div class="max-w-5xl mx-auto px-6 py-20">
       <div class="bg-gradient-to-br from-bg-card via-bg-card to-bg-elev border border-accent/30 rounded-3xl p-8 md:p-14 glow-amber relative overflow-hidden">
-        <!-- Decorative glow -->
         <div class="absolute top-0 right-0 w-96 h-96 -z-0 opacity-30 pointer-events-none"
              style="background: radial-gradient(ellipse at center, rgba(255,209,102,0.5) 0%, transparent 70%);"></div>
         <div class="absolute -bottom-20 -left-20 w-80 h-80 -z-0 opacity-20 pointer-events-none"
              style="background: radial-gradient(ellipse at center, rgba(125,211,192,0.3) 0%, transparent 70%);"></div>
-
         <div class="relative grid grid-cols-1 md:grid-cols-3 gap-8 items-center">
           <div class="md:col-span-2 flex flex-col gap-4">
             <div class="flex items-center gap-2">
@@ -285,9 +266,7 @@ const stats = [
             </div>
           </div>
           <div class="hidden md:flex items-center justify-center">
-            <div class="w-32 h-32 rounded-2xl bg-bg-elev border border-border flex items-center justify-center text-accent">
-              <Icon name="chart" size={64} />
-            </div>
+            <img src="/brand/recipes-logo-256.png" alt="" width="160" height="160" class="opacity-95" />
           </div>
         </div>
       </div>
@@ -296,25 +275,3 @@ const stats = [
 
   <CrossSell variant="banner" title="Need it run for you?" body="WiseChef Framework gives you a managed AI employee — same skills as Recipes, but operated end-to-end. From €199/month." />
 </Base>
-
-<!-- Animated counter for stats -->
-<script>
-  const observer = new IntersectionObserver((entries) => {
-    entries.forEach(entry => {
-      if (entry.isIntersecting) {
-        entry.target.querySelectorAll<HTMLDivElement>('.text-3xl, .text-5xl').forEach(el => {
-          el.style.opacity = '0';
-          el.style.transform = 'translateY(8px)';
-          el.style.transition = 'opacity 0.6s ease, transform 0.6s ease';
-          setTimeout(() => {
-            el.style.opacity = '1';
-            el.style.transform = 'translateY(0)';
-          }, Math.random() * 200);
-        });
-        observer.disconnect();
-      }
-    });
-  }, { threshold: 0.3 });
-  const stats = document.getElementById('stats-strip');
-  if (stats) observer.observe(stats);
-</script>
