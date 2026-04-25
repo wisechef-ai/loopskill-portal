@@ -1,24 +1,25 @@
 ---
+import AgentMark from './AgentMark.astro';
 const compatibleAgents = [
-  { name: 'Claude Code', symbol: 'CC' },
-  { name: 'Cursor', symbol: 'CUR' },
-  { name: 'OpenClaw', symbol: 'OC' },
-  { name: 'Hermes', symbol: 'H' },
-  { name: 'Cline', symbol: 'CL' },
-  { name: 'Windsurf', symbol: 'WS' },
+  { name: 'Claude Code', mark: 'claude' },
+  { name: 'Cursor', mark: 'cursor' },
+  { name: 'OpenClaw', mark: 'openclaw' },
+  { name: 'Hermes', mark: 'hermes' },
+  { name: 'Cline', mark: 'cline' },
+  { name: 'Windsurf', mark: 'windsurf' },
 ];
 ---
 <div class="border-y border-border bg-bg-card/30">
-  <div class="max-w-6xl mx-auto px-6 py-8">
-    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+  <div class="max-w-6xl mx-auto px-6 py-10">
+    <div class="flex flex-col md:flex-row md:items-center justify-between gap-6">
       <p class="text-xs text-muted-soft uppercase tracking-widest md:max-w-[180px]">
         Works with every<br/>major AI agent
       </p>
-      <div class="flex flex-wrap gap-2 md:gap-3">
+      <div class="flex flex-wrap items-center gap-x-7 gap-y-4">
         {compatibleAgents.map(a => (
-          <div class="flex items-center gap-2 px-3 py-1.5 bg-bg-card border border-border rounded-lg text-xs text-muted">
-            <span class="font-mono text-[10px] font-bold text-accent bg-accent/10 rounded px-1.5 py-0.5">{a.symbol}</span>
-            <span>{a.name}</span>
+          <div class="flex items-center gap-2 text-muted hover:text-text transition group">
+            <AgentMark name={a.mark as any} size={20} class="text-muted group-hover:text-accent transition" />
+            <span class="text-sm font-medium tracking-tight">{a.name}</span>
           </div>
         ))}
       </div>

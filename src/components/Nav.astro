@@ -3,7 +3,7 @@ const path = Astro.url.pathname;
 const isActive = (p: string) => path === p || (p !== '/' && path.startsWith(p));
 ---
 <header class="sticky top-0 z-50 border-b border-border bg-bg/85 backdrop-blur-md">
-  <nav class="max-w-7xl mx-auto px-6 h-14 flex items-center justify-between gap-6" aria-label="Main navigation">
+  <nav class="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between gap-6" aria-label="Main navigation">
     <div class="flex items-center gap-3">
       <a href="https://wisechef.ai"
          class="hidden sm:inline-flex items-center gap-1.5 text-xs text-muted hover:text-text transition rounded px-2 py-1 -ml-2"
@@ -13,10 +13,12 @@ const isActive = (p: string) => path === p || (p !== '/' && path.startsWith(p));
         </svg>
         <span>WiseChef</span>
       </a>
-      <span class="hidden sm:block w-px h-4 bg-border"></span>
-      <a href="/" class="flex items-center gap-2 group">
-        <img src="/brand/recipes-logo-64.png" alt="" width="22" height="22" class="select-none" />
-        <span class="text-base font-semibold tracking-tight text-text group-hover:text-accent transition">
+      <span class="hidden sm:block w-px h-5 bg-border"></span>
+      <a href="/" class="flex items-center gap-2.5 group">
+        <span class="relative flex items-center justify-center w-10 h-10 rounded-xl bg-accent/10 border border-accent/30 transition group-hover:bg-accent/20">
+          <img src="/brand/recipes-logo-128.png" alt="" width="32" height="32" class="select-none" />
+        </span>
+        <span class="text-lg font-semibold tracking-tight text-text group-hover:text-accent transition">
           Recipes
         </span>
         <span class="text-[10px] uppercase tracking-widest text-muted-soft border border-border rounded-full px-1.5 py-0.5">

@@ -37,11 +37,13 @@ try {
   if (res.ok) skill = { ...initialSkill, ...(await res.json()) };
 } catch {}
 
-// Repo URL mapping — explicit so links never 404
-const repoMap: Record<string, string> = {
-  'client-reporter': 'https://github.com/wisechef-ai/recipes-client-reporter',
-};
-const repoUrl = repoMap[slug as string] || null; // null hides the link instead of breaking it
+// Repo URL mapping — all free skills live in awesome-agent-recipes monorepo
+const REPO_BASE = 'https://github.com/wisechef-ai/awesome-agent-recipes';
+const monorepoSkills = ['client-reporter', 'web-scraper', 'web-scraper-pro', 'email-composer', 'standup-bot', 'onboarding-wizard', 'invoice-automator', 'gohighlevel-cli'];
+const repoMap: Record<string, string> = Object.fromEntries(
+  monorepoSkills.map(s => [s, `${REPO_BASE}/tree/main/skills/${s.replace(/-pro$/, '')}`])
+);
+const repoUrl = repoMap[slug as string] || null;
 
 const fallbackBySlug: Record<string, any> = {
   'client-reporter': {
