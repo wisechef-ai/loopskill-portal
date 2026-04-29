@@ -35,13 +35,37 @@ const isActive = (p: string) => path === p || (p !== '/' && path.startsWith(p));
         <a href="/docs" class={`hover:text-text transition ${isActive('/docs') ? 'text-text' : ''}`}>Docs</a>
         <a href="/publish" class={`hover:text-text transition ${isActive('/publish') ? 'text-text' : ''}`}>Publish</a>
       </div>
-      <a href="/signin" class="hidden md:inline-flex text-sm text-muted hover:text-text transition px-3 py-1.5 rounded-lg">
+      <a href="/signin" class="hidden md:inline-flex text-sm text-muted hover:text-text transition px-3 py-1.5 rounded-lg" data-auth-anon>
         Sign in
       </a>
       <a href="/signin?mode=signup"
-         class="nav-cta inline-flex items-center justify-center gap-1.5 rounded-full font-semibold transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent">
+         class="nav-cta inline-flex items-center justify-center gap-1.5 rounded-full font-semibold transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+         data-auth-anon>
         <span class="nav-cta-label">Get access</span>
       </a>
+
+      <!-- Authenticated user dropdown — hidden until /api/auth/me confirms auth -->
+      <details id="user-menu" class="relative hidden" data-auth-authed>
+        <summary class="list-none cursor-pointer flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-bg-card transition">
+          <span id="user-avatar" class="w-8 h-8 rounded-full bg-bg-card border border-border flex items-center justify-center text-sm font-semibold text-text overflow-hidden">
+            <span id="user-initials">·</span>
+          </span>
+          <span id="user-name-label" class="hidden md:inline text-sm text-muted max-w-[10rem] truncate">…</span>
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true">
+            <path d="M3 4.5L6 7.5L9 4.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </summary>
+        <div class="absolute right-0 top-full mt-2 w-56 bg-bg-elev border border-border rounded-xl shadow-xl overflow-hidden z-50">
+          <nav class="flex flex-col text-sm">
+            <a href="/library" class="px-4 py-3 text-muted hover:text-text hover:bg-bg-card transition">Library</a>
+            <a href="/pricing" class="px-4 py-3 text-muted hover:text-text hover:bg-bg-card transition">Pricing</a>
+            <a href="/skills" class="px-4 py-3 text-muted hover:text-text hover:bg-bg-card transition">Skills</a>
+            <button id="signout-btn" type="button" class="text-left px-4 py-3 text-muted hover:text-accent hover:bg-bg-card transition border-t border-border">
+              Sign out
+            </button>
+          </nav>
+        </div>
+      </details>
       <details class="md:hidden relative" id="mobile-nav">
         <summary class="list-none cursor-pointer p-2 rounded-lg text-muted hover:text-text" aria-label="Open menu">
           <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
@@ -119,4 +143,57 @@ const isActive = (p: string) => path === p || (p !== '/' && path.startsWith(p));
       if (d) d.open = false;
     });
   });
+
+  // Auth-aware nav: poll /api/auth/me on mount, swap anonymous/authed UI
+  (async () => {
+    try {
+      const res = await fetch('/api/auth/me', { credentials: 'include' });
+      if (!res.ok) return;  // 401 anon — keep default UI
+      const user = await res.json();
+
+      // Hide anon-only buttons, show user menu
+      document.querySelectorAll<HTMLElement>('[data-auth-anon]').forEach(el => el.classList.add('hidden'));
+      const menu = document.getElementById('user-menu');
+      if (menu) menu.classList.remove('hidden');
+
+      // Populate avatar / name
+      const initials = (user.display_name || user.email || '?').slice(0, 1).toUpperCase();
+      const initialsEl = document.getElementById('user-initials');
+      if (initialsEl) initialsEl.textContent = initials;
+
+      const nameLabel = document.getElementById('user-name-label');
+      if (nameLabel) nameLabel.textContent = user.display_name || user.email || 'Account';
+
+      if (user.avatar_url) {
+        const avatar = document.getElementById('user-avatar');
+        if (avatar) {
+          avatar.innerHTML = `<img src="${user.avatar_url}" alt="" class="w-full h-full object-cover" referrerpolicy="no-referrer"/>`;
+        }
+      }
+
+      // Mobile nav: replace "Sign in" link with "Library" + "Sign out"
+      const mobileNav = document.querySelector('#mobile-nav nav');
+      if (mobileNav) {
+        const signInLink = mobileNav.querySelector('a[href="/signin"]');
+        if (signInLink) {
+          signInLink.outerHTML = `
+            <a href="/library" class="px-4 py-3 text-muted hover:text-text hover:bg-bg-card transition border-t border-border">Library</a>
+            <button type="button" data-mobile-signout class="text-left px-4 py-3 text-muted hover:text-accent hover:bg-bg-card transition border-t border-border">Sign out</button>
+          `;
+        }
+      }
+
+      // Sign out handlers
+      const signOut = async () => {
+        try { await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' }); } catch {}
+        // Belt-and-suspenders: clear cookie client-side too
+        document.cookie = 'wr_jwt=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+        window.location.href = '/';
+      };
+      document.getElementById('signout-btn')?.addEventListener('click', signOut);
+      document.querySelector('[data-mobile-signout]')?.addEventListener('click', signOut);
+    } catch (err) {
+      // Silent fail — anon UI is already the default
+    }
+  })();
 </script>

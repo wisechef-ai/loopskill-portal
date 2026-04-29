@@ -2,44 +2,95 @@
 import Base from '../layouts/Base.astro';
 import CrossSell from '../components/CrossSell.astro';
 ---
-<Base title="Publish a skill — Recipes" description="Build skills, earn forever. Usage-attributed payouts. First 50 publishers lock in 75% revenue share for life.">
-  <section class="max-w-4xl mx-auto px-6 pt-16 pb-12">
-    <div class="text-center max-w-2xl mx-auto flex flex-col gap-3 mb-12">
+
+<Base title="Publish a skill — Recipes" description="Build skills. Earn forever. Usage-attributed payouts via Stripe Connect.">
+  <section class="max-w-3xl mx-auto px-6 pt-16 pb-24">
+    <header class="text-center mb-12">
       <p class="eyebrow">For creators</p>
-      <h1 class="text-4xl md:text-5xl font-semibold tracking-tight">Build a skill. Earn from every install.</h1>
-      <p class="text-muted">Usage-attributed payouts mean you earn for impact, not influence. Submit a skill via GitHub. Pass the security review. Earn 50–75% of subscription revenue every month.</p>
+      <h1 class="text-4xl md:text-5xl font-semibold tracking-tight">Build skills. Earn forever.</h1>
+      <p class="text-muted mt-3 max-w-xl mx-auto">Usage-attributed payouts via Stripe Connect. The more your skill gets installed and run, the more you earn — every month.</p>
+    </header>
+
+    <!-- State router — populated by client script -->
+    <div id="publish-checking" class="text-center py-16 text-muted">
+      <p class="text-sm">Loading…</p>
     </div>
 
-    <ol class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-12">
-      {[
-        { num: '01', title: 'Build your skill in a GitHub repo', body: 'Standard Anthropic Skills format. SKILL.md at root, optional scripts/, references/. We provide a starter template.' },
-        { num: '02', title: 'Connect GitHub & submit', body: 'Verified identity is required. Your authorship locks to your GitHub handle for life.' },
-        { num: '03', title: 'Pass automated security scan', body: 'Semgrep + curl-pipe-shell detection + prompt injection patterns. Most skills pass cleanly.' },
-        { num: '04', title: 'Human review (48h SLA)', body: 'A real reviewer tests the setup and verifies the skill does what it claims.' },
-        { num: '05', title: 'Go live in the catalog', body: 'Searchable, carousel-eligible, and earning. New installs attribute to your usage payout pool.' },
-        { num: '06', title: 'Monthly Stripe Connect payout', body: 'EU-friendly payouts via Stripe Express. We handle VAT MOSS. You handle the craft.' },
-      ].map(s => (
-        <li class="bg-bg-card border border-border rounded-2xl p-5 flex flex-col gap-2">
-          <span class="font-mono text-xs text-muted-soft">{s.num}</span>
-          <h3 class="text-base font-semibold text-text">{s.title}</h3>
-          <p class="text-sm text-muted leading-relaxed">{s.body}</p>
-        </li>
-      ))}
-    </ol>
-
-    <div class="bg-bg-card border border-accent/30 rounded-2xl p-6 md:p-8 mb-12 glow-amber">
-      <p class="eyebrow text-accent mb-2">Founding creator program</p>
-      <h2 class="text-2xl font-semibold tracking-tight mb-2">First 50 publishers lock in 75% for life</h2>
-      <p class="text-sm text-muted mb-4 max-w-2xl">Recruitment incentive — locked in for the lifetime of every install your skill ever receives. After publisher #50, the standard tiered split applies.</p>
-      <a href="https://calendar.app.google/P9J9oaiemtHdsvG99" class="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold bg-accent text-bg hover:bg-accent-soft transition">
-        Book the founder slot
-        <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M3 7H11M11 7L7 3M11 7L7 11" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
-      </a>
+    <!-- A. Anonymous -->
+    <div id="publish-anon" class="hidden">
+      <div class="bg-bg-card border border-border rounded-2xl p-8 mb-10">
+        <h2 class="text-lg font-semibold tracking-tight mb-3">Sign in to start publishing</h2>
+        <p class="text-sm text-muted mb-5">You'll need a GitHub or Google account. We'll guide you through Stripe Connect onboarding (so we can pay you), then you submit a GitHub repo for review.</p>
+        <a href="/signin?next=/publish" class="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg bg-accent text-bg text-sm font-semibold hover:bg-accent-soft transition">
+          Sign in →
+        </a>
+      </div>
     </div>
 
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+    <!-- B. Authed, no Stripe Connect yet -->
+    <div id="publish-needs-onboard" class="hidden">
+      <div class="bg-bg-card border border-border rounded-2xl p-8 mb-10">
+        <p class="eyebrow text-accent mb-2">Step 1 of 2</p>
+        <h2 class="text-lg font-semibold tracking-tight mb-3">Set up payouts</h2>
+        <p class="text-sm text-muted mb-3">We use Stripe Connect Express to pay creators. You'll be redirected to Stripe to enter your payout account details (KYC, tax info — Stripe handles all of it).</p>
+        <p class="text-xs text-muted-soft mb-5">Standard rate: 50% of subscription revenue attributed to your skill. <span class="text-accent">First 50 publishers lock in 75% for life.</span></p>
+        <button id="onboard-stripe-btn" class="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg bg-accent text-bg text-sm font-semibold hover:bg-accent-soft transition">
+          Set up payouts →
+        </button>
+      </div>
+    </div>
+
+    <!-- C. Onboarded but Stripe says charges_enabled=false (continue onboarding) -->
+    <div id="publish-onboard-pending" class="hidden">
+      <div class="bg-bg-card border border-border rounded-2xl p-8 mb-10">
+        <p class="eyebrow text-accent mb-2">Almost there</p>
+        <h2 class="text-lg font-semibold tracking-tight mb-3">Continue Stripe setup</h2>
+        <p class="text-sm text-muted mb-5">Stripe needs more info before payouts can be enabled. Click below to resume onboarding.</p>
+        <button id="continue-onboard-btn" class="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg bg-accent text-bg text-sm font-semibold hover:bg-accent-soft transition">
+          Continue setup →
+        </button>
+      </div>
+    </div>
+
+    <!-- D. Fully onboarded — submission form -->
+    <div id="publish-form" class="hidden">
+      <div class="bg-bg-card border border-border rounded-2xl p-8 mb-6">
+        <p class="eyebrow text-success mb-2">✓ Payouts enabled</p>
+        <h2 class="text-lg font-semibold tracking-tight mb-1">Submit a skill</h2>
+        <p class="text-sm text-muted mb-6">Push your skill to a public GitHub repo with a SKILL.md at the root. We'll fetch + review within 24h.</p>
+
+        <form id="submit-form" class="space-y-5">
+          <div>
+            <label class="block text-xs uppercase tracking-wider text-muted mb-2" for="repo-url">GitHub repo URL</label>
+            <input type="url" id="repo-url" required
+                   placeholder="https://github.com/your-username/your-skill"
+                   class="w-full bg-bg-elev border border-border rounded-lg px-3 py-2 text-sm font-mono focus:border-accent focus:outline-none transition" />
+            <p class="text-[11px] text-muted-soft mt-1">Public repo only. Must contain SKILL.md at the root.</p>
+          </div>
+
+          <div>
+            <label class="block text-xs uppercase tracking-wider text-muted mb-2" for="tier-select">Tier</label>
+            <select id="tier-select" class="w-full bg-bg-elev border border-border rounded-lg px-3 py-2 text-sm focus:border-accent focus:outline-none transition">
+              <option value="free">Free — public catalog, no install gate</option>
+              <option value="cook" selected>Cook — paywalled to Cook+ subscribers</option>
+              <option value="operator">Operator — paywalled to Operator+ subscribers</option>
+              <option value="studio">Studio — paywalled to Studio subscribers</option>
+            </select>
+          </div>
+
+          <button type="submit" class="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg bg-accent text-bg text-sm font-semibold hover:bg-accent-soft transition disabled:opacity-50 disabled:cursor-not-allowed" id="submit-btn">
+            Submit for review →
+          </button>
+
+          <p id="submit-status" class="text-sm hidden"></p>
+        </form>
+      </div>
+    </div>
+
+    <!-- Always-visible quality bar -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-10">
       {[
-        { label: 'High-impact verticals we want', items: ['Marketing agencies', 'Code review / DevTools', 'Robotics & simulation', 'Customer ops'] },
+        { label: 'High-impact verticals', items: ['Marketing agencies', 'Code review / DevTools', 'Robotics & simulation', 'Customer ops'] },
         { label: 'Anti-patterns we reject', items: ['curl|bash from remote', 'rm -rf without scope', 'Prompt injection', 'Credential harvesting'] },
         { label: 'What gets featured', items: ['Carousel placement', '/skills/{slug} hero', 'Editorial spotlight', 'WiseChef case studies'] },
       ].map(b => (
@@ -55,3 +106,94 @@ import CrossSell from '../components/CrossSell.astro';
 
   <CrossSell variant="banner" />
 </Base>
+
+<script>
+  type StripeStatus = {
+    connect_account_id?: string | null;
+    charges_enabled?: boolean;
+    payouts_enabled?: boolean;
+    details_submitted?: boolean;
+  };
+
+  const $ = (id: string) => document.getElementById(id) as HTMLElement;
+
+  async function fetchJson<T>(url: string, opts: RequestInit = {}): Promise<T | null> {
+    try {
+      const res = await fetch(url, { credentials: 'include', ...opts });
+      if (!res.ok) return null;
+      return await res.json();
+    } catch { return null; }
+  }
+
+  function show(id: string) {
+    ['publish-checking','publish-anon','publish-needs-onboard','publish-onboard-pending','publish-form']
+      .forEach(s => document.getElementById(s)?.classList.toggle('hidden', s !== id));
+  }
+
+  async function startOnboard() {
+    const data = await fetchJson<{ url: string }>('/api/stripe/onboard', { method: 'POST' });
+    if (data?.url) window.location.href = data.url;
+    else alert('Stripe onboarding error. Please try again.');
+  }
+
+  $('onboard-stripe-btn').addEventListener('click', startOnboard);
+  $('continue-onboard-btn').addEventListener('click', startOnboard);
+
+  $('submit-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const repoUrl = ($('repo-url') as HTMLInputElement).value.trim();
+    const tier = ($('tier-select') as HTMLSelectElement).value;
+    const status = $('submit-status');
+    const btn = $('submit-btn') as HTMLButtonElement;
+
+    btn.disabled = true;
+    btn.textContent = 'Submitting…';
+    status.classList.add('hidden');
+
+    try {
+      const res = await fetch('/api/skills/_publish', {
+        method: 'POST', credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ repo_url: repoUrl, tier }),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        status.classList.remove('hidden');
+        status.className = 'text-sm text-success';
+        status.textContent = `✓ Submitted — review queue typically <24h. We'll email you at the address on file when approved. (id: ${data.id || 'queued'})`;
+        btn.textContent = 'Submitted ✓';
+      } else {
+        const err = await res.json().catch(() => ({}));
+        status.classList.remove('hidden');
+        status.className = 'text-sm text-accent';
+        status.textContent = `Submission failed: ${err.detail || res.status}`;
+        btn.textContent = 'Submit for review →';
+        btn.disabled = false;
+      }
+    } catch (err: any) {
+      status.classList.remove('hidden');
+      status.className = 'text-sm text-accent';
+      status.textContent = `Submission failed: ${err?.message || 'network error'}`;
+      btn.textContent = 'Submit for review →';
+      btn.disabled = false;
+    }
+  });
+
+  // Boot
+  (async () => {
+    const me = await fetchJson<any>('/api/auth/me');
+    if (!me) { show('publish-anon'); return; }
+
+    const stripe = await fetchJson<StripeStatus>('/api/stripe/status');
+    if (!stripe || !stripe.connect_account_id) {
+      show('publish-needs-onboard');
+      return;
+    }
+    if (!stripe.charges_enabled || !stripe.payouts_enabled) {
+      show('publish-onboard-pending');
+      return;
+    }
+    show('publish-form');
+  })();
+</script>

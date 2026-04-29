@@ -10,7 +10,8 @@ const tiers = [
     tagline: 'For solo agents and small agencies',
     badgeClass: 'badge-free',
     cta: 'Start with Cook',
-    ctaHref: '/signin?mode=signup&plan=cook',
+    ctaHref: '/signin?next=/api/checkout/cook',
+    ctaTier: 'cook',
     accent: false,
     features: [
       'Unlimited skill installs',
@@ -28,7 +29,8 @@ const tiers = [
     tagline: 'For founders running 2–5 agents',
     badgeClass: 'badge-pro',
     cta: 'Start with Operator',
-    ctaHref: '/signin?mode=signup&plan=operator',
+    ctaHref: '/signin?next=/api/checkout/operator',
+    ctaTier: 'operator',
     accent: true,
     features: [
       'Everything in Cook',
@@ -102,7 +104,8 @@ const creatorEcon = [
             ))}
           </ul>
           <a href={t.ctaHref}
-             class={`block text-center px-4 py-2.5 rounded-lg font-semibold text-sm transition ${t.accent ? 'bg-accent text-bg hover:bg-accent-soft' : 'border border-border hover:border-accent text-text'}`}>
+             data-tier={t.ctaTier}
+             class={`tier-cta block text-center px-4 py-2.5 rounded-lg font-semibold text-sm transition ${t.accent ? 'bg-accent text-bg hover:bg-accent-soft' : 'border border-border hover:border-accent text-text'}`}>
             {t.cta}
           </a>
         </div>
@@ -139,3 +142,54 @@ const creatorEcon = [
 
   <CrossSell variant="banner" title="Need it run for you?" body="WiseChef Framework gives you a managed AI employee — same skills as Recipes, but operated end-to-end. Starting at €199/month." />
 </Base>
+
+<script>
+  // Smart pricing CTAs (WIS-645): if authed, hit checkout directly;
+  // if not, send to /signin?next=/api/checkout/{tier} so the OAuth callback resumes.
+  (async () => {
+    const buttons = document.querySelectorAll<HTMLAnchorElement>('a.tier-cta[data-tier]');
+    if (buttons.length === 0) return;
+
+    let authed: boolean | null = null;
+    const checkAuth = async (): Promise<boolean> => {
+      if (authed !== null) return authed;
+      try {
+        const r = await fetch('/api/auth/me', { credentials: 'include' });
+        authed = r.ok;
+      } catch {
+        authed = false;
+      }
+      return authed!;
+    };
+
+    buttons.forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        const tier = btn.getAttribute('data-tier');
+        if (!tier) return;  // Studio "Talk to us" lacks data-tier — falls through to default href
+        e.preventDefault();
+        btn.textContent = 'Loading…';
+        const isAuthed = await checkAuth();
+        if (isAuthed) {
+          // POST checkout, redirect to Stripe Checkout URL
+          try {
+            const res = await fetch(`/api/checkout/${tier}`, {
+              method: 'POST', credentials: 'include',
+              headers: { 'Content-Type': 'application/json' },
+              body: '{}',
+            });
+            if (res.ok) {
+              const data = await res.json();
+              window.location.href = data.url;
+              return;
+            }
+            // Fall through on error
+          } catch { /* fall through */ }
+          window.location.href = btn.getAttribute('href') || '/signin';
+        } else {
+          // Send to signin with next= so OAuth callback resumes checkout
+          window.location.href = btn.getAttribute('href') || '/signin';
+        }
+      });
+    });
+  })();
+</script>

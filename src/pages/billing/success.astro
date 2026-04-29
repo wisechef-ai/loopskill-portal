@@ -1,0 +1,90 @@
+---
+import Base from '../../layouts/Base.astro';
+---
+
+<Base title="Welcome to Recipes — Subscription confirmed" description="Your Recipes subscription is now active.">
+  <section class="max-w-2xl mx-auto px-6 pt-20 pb-16">
+    <div id="success-state" class="hidden">
+      <div class="text-center mb-8">
+        <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-accent/15 border border-accent/40 mb-5">
+          <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+            <path d="M9 16L14 21L23 12" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" class="text-accent"/>
+          </svg>
+        </div>
+        <h1 class="text-3xl font-semibold tracking-tight">🎉 Welcome to <span id="tier-label" class="text-accent">Recipes</span></h1>
+        <p class="text-muted mt-2 text-sm">Your subscription is active. Time to make Recipes useful.</p>
+      </div>
+
+      <div class="bg-bg-card border border-border rounded-2xl p-6 space-y-4">
+        <h2 class="text-base font-semibold tracking-tight">What's next</h2>
+        <ol class="space-y-3 text-sm text-muted list-decimal list-inside marker:text-accent">
+          <li><a href="/library" class="text-accent hover:opacity-80 underline">Generate your API key</a> on the Library page</li>
+          <li><a href="/skills/client-reporter" class="text-accent hover:opacity-80 underline">Try the Client Reporter</a> — free, agency-vertical viral skill</li>
+          <li>Want a managed AI agent doing the work for you? <a id="demo-link" href="https://calendar.app.google/P9J9oaiemtHdsvG99" target="_blank" rel="noopener" class="text-accent hover:opacity-80 underline">Book a WiseChef demo</a> — 40% off first 3 months for Cook customers</li>
+        </ol>
+      </div>
+
+      <div class="mt-6 text-center">
+        <a href="/library" class="inline-flex items-center justify-center gap-2 px-6 py-2.5 rounded-lg bg-accent text-bg font-semibold text-sm hover:bg-accent-soft transition">
+          Go to Library →
+        </a>
+      </div>
+    </div>
+
+    <div id="checking-state" class="text-center py-16 text-muted">
+      <p class="text-sm">Confirming your subscription…</p>
+      <div class="mt-4 w-8 h-8 border-2 border-accent border-t-transparent rounded-full animate-spin mx-auto"></div>
+    </div>
+
+    <div id="error-state" class="hidden bg-bg-card border border-border rounded-2xl p-8 text-center">
+      <h2 class="text-lg font-semibold tracking-tight mb-2">Hmm — that's odd</h2>
+      <p class="text-sm text-muted mb-5">Your payment may have gone through but our system hasn't synced yet. Try refreshing in a moment, or contact us.</p>
+      <div class="flex justify-center gap-3">
+        <button onclick="window.location.reload()" class="px-4 py-2 rounded-lg border border-border hover:border-accent text-text text-sm font-medium transition">Refresh</button>
+        <a href="/library" class="px-4 py-2 rounded-lg bg-accent text-bg text-sm font-semibold hover:bg-accent-soft transition">Go to Library →</a>
+      </div>
+    </div>
+  </section>
+</Base>
+
+<script>
+  // Poll /api/billing/me up to 30s for subscription_status to become active
+  // Stripe webhook race: the redirect can arrive before the webhook lands.
+  type Billing = { subscription_status: string | null; subscription_tier: string | null };
+
+  const $ = (id: string) => document.getElementById(id) as HTMLElement;
+
+  async function checkBilling(): Promise<Billing | null> {
+    try {
+      const res = await fetch('/api/billing/me', { credentials: 'include' });
+      if (!res.ok) return null;
+      return await res.json();
+    } catch { return null; }
+  }
+
+  (async () => {
+    // Must be authed first
+    const meRes = await fetch('/api/auth/me', { credentials: 'include' });
+    if (!meRes.ok) { window.location.href = '/signin?next=/library'; return; }
+
+    const TIER_LABELS: Record<string, string> = { cook: 'Cook', operator: 'Operator', studio: 'Studio' };
+
+    const start = Date.now();
+    const TIMEOUT = 30_000;
+    while (Date.now() - start < TIMEOUT) {
+      const billing = await checkBilling();
+      if (billing && (billing.subscription_status === 'active' || billing.subscription_status === 'trialing')) {
+        const tier = billing.subscription_tier || '';
+        $('tier-label').textContent = TIER_LABELS[tier] || 'Recipes';
+        $('checking-state').classList.add('hidden');
+        $('success-state').classList.remove('hidden');
+        return;
+      }
+      await new Promise(r => setTimeout(r, 3000));
+    }
+
+    // Timeout — show error state
+    $('checking-state').classList.add('hidden');
+    $('error-state').classList.remove('hidden');
+  })();
+</script>

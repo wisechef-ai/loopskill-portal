@@ -129,6 +129,42 @@ const isFree = display.tier === 'free';
           </div>
         </div>
 
+        <!-- Auth-aware install gate (WIS-647) — hidden by default, populated by client-side script -->
+        <div id="install-auth-gate" data-skill-slug={display.slug} data-skill-tier={display.tier} class="hidden bg-bg-card border border-border rounded-2xl p-5">
+          <p class="eyebrow mb-3">Your install command</p>
+
+          <!-- State A: not authed -->
+          <div data-state="anon" class="hidden">
+            <p class="text-sm text-muted mb-3">Sign in to get your API key and the personalized install command.</p>
+            <a id="install-signin-link" href="/signin" class="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-accent text-bg text-sm font-semibold hover:bg-accent-soft transition">
+              Sign in to install →
+            </a>
+          </div>
+
+          <!-- State B: authed, tier insufficient -->
+          <div data-state="locked" class="hidden">
+            <p class="text-sm text-muted mb-3">This skill requires <span data-required-tier class="text-accent font-semibold">Cook</span>. Upgrade to install.</p>
+            <a href="/pricing" class="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-accent text-bg text-sm font-semibold hover:bg-accent-soft transition">
+              See plans →
+            </a>
+          </div>
+
+          <!-- State C: authed + tier OK — show install command -->
+          <div data-state="ready" class="hidden">
+            <p class="text-sm text-muted mb-3">Copy and paste into your agent's environment:</p>
+            <div class="space-y-2">
+              <div class="flex items-center gap-2">
+                <code class="font-mono text-xs bg-bg-elev border border-border rounded px-3 py-2 flex-1">export RECIPES_API_KEY=<span data-key-prefix>rec_live_…</span></code>
+                <a href="/library" class="text-xs text-accent hover:opacity-80 underline shrink-0">Get key →</a>
+              </div>
+              <code class="block font-mono text-xs bg-bg-elev border border-border rounded px-3 py-2">recipes install <span data-skill-slug-display>{display.slug}</span></code>
+            </div>
+            <p class="text-[11px] text-muted-soft mt-3">First time? <a href="/library" class="text-accent hover:opacity-80 underline">Generate your API key</a> on the Library page.</p>
+          </div>
+
+          <div data-state="loading" class="text-xs text-muted">Checking…</div>
+        </div>
+
         <!-- Required environment variables -->
         {display.requires_env && display.requires_env.length > 0 && (
           <section class="bg-bg-card border border-border rounded-2xl p-6">
@@ -242,3 +278,66 @@ const isFree = display.tier === 'free';
     </div>
   </section>
 </Base>
+
+<script>
+  // Auth-aware install gate (WIS-647)
+  // Tier hierarchy: free < cook < operator < studio
+  const TIER_RANK: Record<string, number> = { free: 0, cook: 1, operator: 2, studio: 3 };
+
+  (async () => {
+    const gate = document.getElementById('install-auth-gate');
+    if (!gate) return;
+    gate.classList.remove('hidden');
+
+    const slug = gate.getAttribute('data-skill-slug') || '';
+    const reqTier = gate.getAttribute('data-skill-tier') || 'free';
+    const setState = (state: 'anon' | 'locked' | 'ready' | 'loading') => {
+      gate.querySelectorAll<HTMLElement>('[data-state]').forEach(el => {
+        el.classList.toggle('hidden', el.getAttribute('data-state') !== state);
+      });
+    };
+
+    setState('loading');
+
+    try {
+      const meRes = await fetch('/api/auth/me', { credentials: 'include' });
+      if (!meRes.ok) {
+        const link = document.getElementById('install-signin-link') as HTMLAnchorElement | null;
+        if (link) link.href = `/signin?next=/skills/${slug}`;
+        setState('anon');
+        return;
+      }
+
+      // Authed — check tier
+      const billingRes = await fetch('/api/billing/me', { credentials: 'include' });
+      const billing = billingRes.ok ? await billingRes.json() : null;
+      const userTier = billing?.subscription_tier || 'free';
+      const userRank = TIER_RANK[userTier] ?? 0;
+      const reqRank = TIER_RANK[reqTier] ?? 0;
+
+      if (userRank < reqRank) {
+        const reqEl = gate.querySelector('[data-required-tier]');
+        if (reqEl) reqEl.textContent = reqTier.charAt(0).toUpperCase() + reqTier.slice(1);
+        setState('locked');
+        return;
+      }
+
+      // Authed + tier OK — fetch user's API key prefix
+      let prefix = 'rec_live_…';
+      try {
+        const keysRes = await fetch('/api/api-keys', { credentials: 'include' });
+        if (keysRes.ok) {
+          const data = await keysRes.json();
+          const active = (data.keys || []).find((k: any) => k.is_active);
+          if (active) prefix = active.prefix + '…';
+        }
+      } catch { /* prefix stays as placeholder */ }
+
+      const prefixEl = gate.querySelector('[data-key-prefix]');
+      if (prefixEl) prefixEl.textContent = prefix;
+      setState('ready');
+    } catch {
+      setState('anon');
+    }
+  })();
+</script>
