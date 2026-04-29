@@ -8,8 +8,25 @@ try {
   const res = await fetch('https://recipes.wisechef.ai/api/carousel/today', {
     headers: { 'x-api-key': import.meta.env.RECIPES_API_KEY || 'rec_dev_internal' }
   });
-  if (res.ok) entries = await res.json();
-  else fetchError = `API ${res.status}`;
+  if (res.ok) {
+    const data = await res.json();
+    // API may return either a bare array (legacy) or {date, entries: [...]} (typed v0.4+)
+    entries = Array.isArray(data) ? data : (data?.entries ?? []);
+    // Normalise shape: typed-API entries use {slot, skill: {slug, title, ...}, role, tagline}
+    // legacy entries use {position, skill_slug, skill_title, role, tagline}
+    entries = entries.map((e: any) => ({
+      position: typeof e.position === 'number' ? e.position : (e.slot ? e.slot - 1 : 0),
+      skill_slug: e.skill_slug ?? e.skill?.slug ?? '',
+      skill_title: e.skill_title ?? e.skill?.title ?? '',
+      skill_description: e.skill_description ?? e.skill?.description ?? '',
+      tagline: e.tagline ?? '',
+      role: e.role ?? 'new-capability',
+      archives_at: e.archives_at ?? null,
+      seconds_until_archive: e.seconds_until_archive ?? null,
+    }));
+  } else {
+    fetchError = `API ${res.status}`;
+  }
 } catch (e: any) { fetchError = e?.message || 'fetch failed'; }
 
 if (!entries || entries.length === 0) {
