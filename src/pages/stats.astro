@@ -1,5 +1,6 @@
 ---
 import Base from '../layouts/Base.astro';
+import { fetchApi } from '../lib/api';
 
 interface Stats {
   total_skills: number;
@@ -8,14 +9,17 @@ interface Stats {
   by_tier: Record<string, number>;
   by_category: { category: string; count: number }[];
   top_installed: { slug: string; installs: number }[];
+  trending_pairs?: { a: string; b: string; weight: number }[];
   generated_at: string;
 }
 
-let stats: Stats | null = null;
-try {
-  const res = await fetch('https://recipes.wisechef.ai/api/stats');
-  if (res.ok) stats = await res.json();
-} catch {}
+const result = await fetchApi<Stats>('/api/stats', {
+  authed: false,
+  maxAttempts: 8,
+  initialDelayMs: 600,
+  maxDelayMs: 12000,
+});
+const stats: Stats | null = result.ok ? result.data : null;
 
 const lastUpdated = stats?.generated_at
   ? new Date(stats.generated_at).toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' })
@@ -141,6 +145,34 @@ const tierLabel: Record<string, string> = {
           </ol>
         </div>
 
+        {/* Trending pairs (Stage 2 / G16 — derived skill-graph edges) */}
+        {stats.trending_pairs && stats.trending_pairs.length > 0 && (
+          <div class="bg-bg-card border border-border rounded-2xl p-6 mt-6">
+            <div class="flex items-start justify-between gap-4 mb-5">
+              <div>
+                <h2 class="text-lg font-semibold tracking-tight">Trending skill pairs</h2>
+                <p class="text-xs text-muted-soft mt-1">
+                  Skills that work well together — derived from shared tags, category, and co-install patterns.
+                </p>
+              </div>
+              <a href="/graph" class="text-xs text-accent hover:underline shrink-0 mt-1">View full graph →</a>
+            </div>
+            <ul class="space-y-2.5">
+              {stats.trending_pairs.map((p, i) => (
+                <li class="flex items-center justify-between gap-4 py-1.5">
+                  <div class="flex items-center gap-3 min-w-0">
+                    <span class="text-xs font-mono text-muted-soft w-6">#{i + 1}</span>
+                    <a href={`/skills/${p.a}`} class="text-sm text-text hover:text-accent transition truncate">{p.a}</a>
+                    <span class="text-muted-soft text-xs">↔</span>
+                    <a href={`/skills/${p.b}`} class="text-sm text-text hover:text-accent transition truncate">{p.b}</a>
+                  </div>
+                  <span class="text-xs font-mono text-muted">w={p.weight.toFixed(2)}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
         <div class="text-center mt-12 text-xs text-muted-soft">
           Want this data programmatically? Hit
           <code class="font-mono text-muted bg-bg-elev border border-border-soft rounded px-1.5 py-0.5">GET /api/stats</code>
@@ -148,9 +180,57 @@ const tierLabel: Record<string, string> = {
         </div>
       </>
     ) : (
-      <div class="bg-bg-card border border-border rounded-2xl p-12 text-center">
-        <p class="text-muted">Stats temporarily unavailable. The API may be redeploying — try again in 30 seconds.</p>
+      <div class="bg-bg-card border border-border rounded-2xl p-12 text-center" id="stats-fallback">
+        <p class="text-muted" id="stats-fallback-msg">Loading marketplace stats…</p>
       </div>
     )}
   </section>
+
+  <script>
+    // Client-side fallback: if the build-time fetch failed (rate-limited),
+    // try again from the browser. We render a minimal version inline rather
+    // than re-doing the whole layout — clean degradation.
+    (async () => {
+      const fallback = document.getElementById('stats-fallback');
+      if (!fallback) return;
+      try {
+        const res = await fetch('/api/stats');
+        if (!res.ok) throw new Error('API ' + res.status);
+        const s = await res.json();
+        const trending = (s.trending_pairs || []).slice(0, 10);
+        fallback.innerHTML = `
+          <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8 text-left">
+            <div><div class="text-3xl font-bold text-text">${s.total_skills}</div><div class="text-xs text-muted">Skills</div></div>
+            <div><div class="text-3xl font-bold text-accent">${(s.total_installs_lifetime || 0).toLocaleString()}</div><div class="text-xs text-muted">Lifetime installs</div></div>
+            <div><div class="text-3xl font-bold text-text">${(s.installs_last_7d || 0).toLocaleString()}</div><div class="text-xs text-muted">Installs · 7d</div></div>
+            <div><div class="text-3xl font-bold text-text">${(s.by_category || []).length}</div><div class="text-xs text-muted">Categories</div></div>
+          </div>
+          ${trending.length ? `
+            <div class="text-left mt-6">
+              <h2 class="text-lg font-semibold mb-3">Trending skill pairs</h2>
+              <ul class="space-y-1.5">
+                ${trending.map((p: any, i: number) => `
+                  <li class="flex items-center justify-between py-1 text-sm">
+                    <div class="flex items-center gap-2">
+                      <span class="text-xs text-muted-soft">#${i + 1}</span>
+                      <a href="/skills/${p.a}" class="text-text hover:text-accent">${p.a}</a>
+                      <span class="text-muted-soft">↔</span>
+                      <a href="/skills/${p.b}" class="text-text hover:text-accent">${p.b}</a>
+                    </div>
+                    <span class="text-xs font-mono text-muted">w=${p.weight.toFixed(2)}</span>
+                  </li>
+                `).join('')}
+              </ul>
+              <p class="text-xs text-muted-soft mt-3">
+                <a href="/graph" class="text-accent hover:underline">View full graph →</a>
+              </p>
+            </div>
+          ` : ''}
+        `;
+      } catch (e) {
+        const msg = document.getElementById('stats-fallback-msg');
+        if (msg) msg.textContent = 'Stats temporarily unavailable. Reload in a moment.';
+      }
+    })();
+  </script>
 </Base>

@@ -3,18 +3,24 @@ import Base from '../../layouts/Base.astro';
 import CrossSell from '../../components/CrossSell.astro';
 import Icon from '../../components/Icon.astro';
 import { marked } from 'marked';
+import { fetchApi } from '../../lib/api';
 
 export async function getStaticPaths() {
-  let skills: any[] = [];
-  try {
-    const res = await fetch('https://recipes.wisechef.ai/api/skills/search?page_size=100', {
-      headers: { 'x-api-key': import.meta.env.RECIPES_API_KEY || 'rec_dev_internal' }
-    });
-    if (res.ok) {
-      const data = await res.json();
-      skills = data.results || [];
+  const result = await fetchApi<{ results: any[]; total: number }>(
+    '/api/skills/search?page_size=100',
+  );
+  let skills = (result.ok && result.data?.results) || [];
+  // Walk additional pages serially if the catalog is bigger than 100
+  if (skills.length === 100 && result.data?.total && result.data.total > 100) {
+    const lastPage = Math.ceil(result.data.total / 100);
+    for (let p = 2; p <= lastPage; p++) {
+      const r = await fetchApi<{ results: any[] }>(
+        `/api/skills/search?page_size=100&page=${p}`,
+      );
+      if (r.ok && r.data?.results) skills = skills.concat(r.data.results);
+      else break;
     }
-  } catch {}
+  }
 
   // Always include a base set so pages exist even if API is briefly down at build
   const seedSlugs = ['client-reporter', 'web-scraper-pro', 'email-composer', 'invoice-automator', 'standup-bot', 'gohighlevel-cli', 'onboarding-wizard', 'seo-audit-engine', 'content-calendar', 'proposal-builder', 'cold-outreach', 'whitelabel-dashboard'];
@@ -23,19 +29,65 @@ export async function getStaticPaths() {
   for (const s of seedSkills) {
     if (!all.find(x => x.slug === s.slug)) all.push(s);
   }
-  return all.map(skill => ({ params: { slug: skill.slug }, props: { initialSkill: skill } }));
+
+  // Build-time graph fetch (Stage 3): pull the full graph ONCE and pre-compute
+  // the per-slug adjacency map so each skill page doesn't fire its own fetch
+  // (which would 80x the build time and trip the rate limiter).
+  const graphRes = await fetchApi<{
+    nodes: { slug: string; title: string; category: string; tier: string; install_count: number }[];
+    edges: { source: string; target: string; weight: number }[];
+  }>('/api/skills/graph', { authed: false });
+  const nodesBySlug = new Map<string, any>();
+  if (graphRes.ok && graphRes.data) {
+    for (const n of graphRes.data.nodes) nodesBySlug.set(n.slug, n);
+  }
+  const adjacency = new Map<string, { slug: string; weight: number }[]>();
+  if (graphRes.ok && graphRes.data) {
+    for (const e of graphRes.data.edges) {
+      (adjacency.get(e.source) ?? adjacency.set(e.source, []).get(e.source)!).push({ slug: e.target, weight: e.weight });
+      (adjacency.get(e.target) ?? adjacency.set(e.target, []).get(e.target)!).push({ slug: e.source, weight: e.weight });
+    }
+    // Sort each adjacency list by weight desc
+    for (const list of adjacency.values()) list.sort((a, b) => b.weight - a.weight);
+  }
+
+  return all.map(skill => {
+    const neighbours = (adjacency.get(skill.slug) || []).slice(0, 12);
+    const related = neighbours
+      .map(({ slug }) => nodesBySlug.get(slug))
+      .filter(Boolean);
+    return {
+      params: { slug: skill.slug },
+      props: {
+        initialSkill: skill,
+        related,
+      },
+    };
+  });
 }
 
 const { slug } = Astro.params;
-const { initialSkill } = Astro.props;
+const { initialSkill, related: relatedFromBuild } = Astro.props;
 
 let skill: any = initialSkill;
-try {
-  const res = await fetch(`https://recipes.wisechef.ai/api/skills/${slug}`, {
-    headers: { 'x-api-key': import.meta.env.RECIPES_API_KEY || 'rec_dev_internal' }
-  });
-  if (res.ok) skill = { ...initialSkill, ...(await res.json()) };
-} catch {}
+const detail = await fetchApi<any>(`/api/skills/${slug}`);
+if (detail.ok && detail.data) {
+  skill = { ...initialSkill, ...detail.data };
+}
+
+// Stage 3 (G17) related-skills rail. Data already fetched in getStaticPaths
+// (one graph dump for the whole build) and passed via props.
+interface RelatedSkill {
+  slug: string; title: string; category?: string | null; tier?: string | null;
+}
+const related: RelatedSkill[] = (relatedFromBuild as RelatedSkill[]) || [];
+
+// Mark which related-rail entries were author-declared (Stage 1) vs derived (Stage 2)
+// — the per-skill /api/skills/{slug}/graph endpoint exposes this distinction at
+// runtime (skill.related field). Use it when present, fall back to an empty set.
+const declaredSlugs = new Set<string>(
+  ((skill?.related || []) as { slug: string }[]).map((s) => s.slug),
+);
 
 // Repo URL mapping — all free skills live in awesome-agent-recipes monorepo
 const REPO_BASE = 'https://github.com/wisechef-ai/awesome-agent-recipes';
@@ -276,6 +328,47 @@ const isFree = display.tier === 'free';
         </div>
       </aside>
     </div>
+
+    {related.length > 0 && (
+      <div class="mt-12 pt-8 border-t border-border">
+        <div class="flex items-end justify-between gap-4 mb-5">
+          <div>
+            <p class="eyebrow">Skill graph</p>
+            <h2 class="text-2xl font-semibold tracking-tight">Works well with</h2>
+            <p class="text-xs text-muted-soft mt-1">
+              Recommended by tag overlap, category, and co-install patterns.
+              <a href="/graph" class="text-accent hover:underline">See full graph →</a>
+            </p>
+          </div>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+          {related.map((r) => {
+            const tier = r.tier || 'cook';
+            const tierClass = tier === 'free' ? 'badge-free' : tier === 'studio' ? 'badge-studio' : 'badge-pro';
+            const isDeclared = declaredSlugs.has(r.slug);
+            return (
+              <a
+                href={`/skills/${r.slug}`}
+                class="group bg-bg-card border border-border rounded-xl p-4 card-lift flex flex-col gap-2"
+              >
+                <div class="flex items-start justify-between gap-2">
+                  <h3 class="text-sm font-semibold text-text group-hover:text-accent transition leading-tight">{r.title}</h3>
+                  <div class="flex items-center gap-1.5 shrink-0">
+                    {isDeclared && (
+                      <span class="text-[9px] uppercase tracking-wider text-muted-soft" title="Hand-picked by the author">handpicked</span>
+                    )}
+                    <span class={`inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] font-semibold tracking-wider ${tierClass}`}>{tier.toUpperCase()}</span>
+                  </div>
+                </div>
+                {r.category && (
+                  <span class="text-[10px] text-muted-soft capitalize">{r.category}</span>
+                )}
+              </a>
+            );
+          })}
+        </div>
+      </div>
+    )}
   </section>
 </Base>
 

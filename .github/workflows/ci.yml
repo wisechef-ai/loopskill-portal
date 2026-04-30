@@ -35,6 +35,8 @@ jobs:
         # If a flaky upstream type makes it block, downgrade to `|| true` ONLY with a TODO + ticket.
 
       - name: Build
+        env:
+          RECIPES_API_KEY: ${{ secrets.RECIPES_API_KEY }}
         run: npm run build
 
       - name: Verify multi-page output (no SPA-fallback regression)
@@ -44,7 +46,7 @@ jobs:
         run: |
           set -e
           home_size=$(stat -c %s dist/index.html)
-          for route in skills pricing carousel stats integrations; do
+          for route in skills pricing carousel stats integrations graph; do
             page="dist/$route/index.html"
             if [ ! -f "$page" ]; then
               echo "ERROR: $route/index.html not built"
@@ -57,6 +59,32 @@ jobs:
             fi
             echo "✓ /$route ($page_size bytes, distinct from /)"
           done
+
+      - name: Verify /graph page renders skill-graph nodes
+        # Stage 3 (G17): /graph embeds the full skill graph as inline JSON
+        # so the client can run a force-directed layout without re-fetching.
+        # If the API was unreachable at build time, the JSON shrinks to {nodes:[]}
+        # — render becomes a useless empty box. Catch that here.
+        run: |
+          set -e
+          NODES=$(grep -oE '"slug":"[^"]+"' dist/graph/index.html | wc -l)
+          if [ "$NODES" -lt 10 ]; then
+            echo "ERROR: /graph contains only $NODES nodes — build-time API fetch failed or graph is empty"
+            exit 1
+          fi
+          echo "✓ /graph contains $NODES nodes"
+
+      - name: Verify /skills renders the full catalog
+        # Regression guard against build-time rate-limit causing fallback-to-seed
+        # (where /skills shows just 'client-reporter' and nothing else).
+        run: |
+          set -e
+          CARDS=$(grep -oE 'href="/skills/[a-z][a-z0-9-]+"' dist/skills/index.html | sort -u | wc -l)
+          if [ "$CARDS" -lt 10 ]; then
+            echo "ERROR: /skills page renders only $CARDS skill cards — likely build-time API failure"
+            exit 1
+          fi
+          echo "✓ /skills renders $CARDS skill cards"
 
       - name: Verify auth-aware nav helper present in bundles
         # Regression guard for the "Sign in / Get access still visible while logged in"

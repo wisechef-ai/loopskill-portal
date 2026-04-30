@@ -1,20 +1,36 @@
 ---
 import Base from '../../layouts/Base.astro';
 import CrossSell from '../../components/CrossSell.astro';
+import { fetchApi } from '../../lib/api';
 
-let skills: any[] = [];
-let fetchError: string | null = null;
+const result = await fetchApi<{ results: any[]; total: number }>(
+  '/api/skills/search?page_size=100',
+);
+let pageOne: any[] = [];
 let total = 0;
-try {
-  const res = await fetch('https://recipes.wisechef.ai/api/skills/search?page_size=200', {
-    headers: { 'x-api-key': import.meta.env.RECIPES_API_KEY || 'rec_dev_internal' }
-  });
-  if (res.ok) {
-    const data = await res.json();
-    skills = data.results || [];
-    total = data.total || skills.length;
-  } else fetchError = `API ${res.status}`;
-} catch (e: any) { fetchError = e?.message || 'fetch failed'; }
+let fetchError: string | null = null;
+if (result.ok && result.data) {
+  pageOne = result.data.results || [];
+  total = result.data.total || pageOne.length;
+} else {
+  fetchError = result.error;
+}
+
+// Pagination: walk additional pages serially so we keep the rate limiter happy.
+let skills = [...pageOne];
+if (pageOne.length === 100 && total > 100) {
+  const lastPage = Math.ceil(total / 100);
+  for (let p = 2; p <= lastPage; p++) {
+    const r = await fetchApi<{ results: any[] }>(
+      `/api/skills/search?page_size=100&page=${p}`,
+    );
+    if (r.ok && r.data?.results) {
+      skills = skills.concat(r.data.results);
+    } else {
+      break;
+    }
+  }
+}
 
 if (skills.length === 0) {
   skills = [
