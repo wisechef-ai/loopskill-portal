@@ -7,7 +7,7 @@ import { marked } from 'marked';
 export async function getStaticPaths() {
   let skills: any[] = [];
   try {
-    const res = await fetch('https://recipes.wisechef.ai/api/skills/search?limit=100', {
+    const res = await fetch('https://recipes.wisechef.ai/api/skills/search?page_size=100', {
       headers: { 'x-api-key': import.meta.env.RECIPES_API_KEY || 'rec_dev_internal' }
     });
     if (res.ok) {

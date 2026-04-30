@@ -13,6 +13,18 @@ try {
   if (res.ok) carouselToday = await res.json();
 } catch {}
 
+// Pull live skill count for the stats strip (fallback to 80 if API unreachable at build).
+let liveSkillCount = 80;
+try {
+  const res = await fetch('https://recipes.wisechef.ai/api/skills/search?page_size=1', {
+    headers: { 'x-api-key': import.meta.env.RECIPES_API_KEY || 'rec_dev_internal' }
+  });
+  if (res.ok) {
+    const data = await res.json();
+    if (typeof data.total === 'number' && data.total > 0) liveSkillCount = data.total;
+  }
+} catch {}
+
 const spotlight = [
   { slug: 'client-reporter', name: 'Client Reporter', tier: 'free', tagline: 'Replaces 4h/week of manual reporting',
     description: 'Pull GA4, GSC, Meta Ads, TikTok Ads → branded PDF for any client. White-label-ready.', badge: 'Free forever', icon: 'chart' },
@@ -32,7 +44,7 @@ const howItWorks = [
 ];
 
 const stats = [
-  { num: '30+', label: 'Launch-grade skills' },
+  { num: `${liveSkillCount}+`, label: 'Production skills, live' },
   { num: '7', label: 'Carousel slots, refreshed daily' },
   { num: '< 30s', label: 'Install to first run' },
   { num: '50%', label: 'Creator share, usage-attributed' },
@@ -155,7 +167,7 @@ const verticals = [
             <div class="text-text mb-3">install the recipes skill from recipes.wisechef.ai</div>
             <div class="text-accent">$ agent</div>
             <div class="text-muted mb-1">→ Fetching SKILL.md (188 lines)</div>
-            <div class="text-muted mb-3">✓ Recipes installed. <span class="text-text">30+ skills</span> across reporting · code · scraping · ops · sales.</div>
+            <div class="text-muted mb-3">✓ Recipes installed. <span class="text-text">{liveSkillCount}+ skills</span> across reporting · code · scraping · ops · sales.</div>
             <div class="text-success">$ you</div>
             <div class="text-text mb-3">pull last 30 days for client X across GA4 + Meta Ads</div>
             <div class="text-accent">$ agent</div>
@@ -210,7 +222,7 @@ const verticals = [
       </div>
       <div class="text-center mt-10">
         <a href="/skills" class="text-sm text-muted hover:text-accent inline-flex items-center gap-1.5 transition">
-          See all 30+ skills <Icon name="arrow-right" size={11} />
+          See all {liveSkillCount}+ skills <Icon name="arrow-right" size={11} />
         </a>
       </div>
     </div>
