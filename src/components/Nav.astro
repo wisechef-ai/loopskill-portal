@@ -30,6 +30,7 @@ const isActive = (p: string) => path === p || (p !== '/' && path.startsWith(p));
     <div class="flex items-center gap-5">
       <div class="hidden md:flex items-center gap-5 text-sm text-muted">
         <a href="/skills" class={`hover:text-text transition ${isActive('/skills') ? 'text-text' : ''}`}>Skills</a>
+        <a href="/carousel" class={`hover:text-text transition ${isActive('/carousel') ? 'text-text' : ''}`}>Today's 7</a>
         <a href="/integrations" class={`hover:text-text transition ${isActive('/integrations') ? 'text-text' : ''}`}>Integrations</a>
         <a href="/stats" class={`hover:text-text transition ${isActive('/stats') ? 'text-text' : ''}`}>Stats</a>
         <a href="/pricing" class={`hover:text-text transition ${isActive('/pricing') ? 'text-text' : ''}`}>Pricing</a>

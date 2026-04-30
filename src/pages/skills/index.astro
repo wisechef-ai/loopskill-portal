@@ -173,13 +173,32 @@ for (const s of skills) {
       apply();
     });
 
-    // Honor ?category=X from URL on landing
+    // Honor ?category=X and ?tier=Y from URL on landing.
+    // If the requested category doesn't exist in the rendered set, fall back
+    // to "all" with a soft empty-state hint instead of showing zero results.
     const params = new URLSearchParams(window.location.search);
     const cat = params.get('category');
+    const tierParam = params.get('tier');
+    const validCats = new Set<string>();
+    cards.forEach(c => { if (c.dataset.category) validCats.add(c.dataset.category); });
+
     if (cat) {
-      activeCat = cat;
-      setActivePill('cat', activeCat);
-      apply();
+      if (validCats.has(cat)) {
+        activeCat = cat;
+        setActivePill('cat', activeCat);
+      } else {
+        // Show a soft hint above the grid so the user understands.
+        const hint = document.createElement('div');
+        hint.className = 'mb-4 px-4 py-3 rounded-lg border border-border bg-bg-card text-sm text-muted';
+        hint.innerHTML = `No category called <code class="text-accent">${cat.replace(/[<>"']/g, '')}</code>. Showing all skills — pick a category below.`;
+        const grid = document.getElementById('skill-grid');
+        grid?.parentElement?.insertBefore(hint, grid);
+      }
     }
+    if (tierParam && ['free', 'cook', 'operator', 'studio'].includes(tierParam)) {
+      activeTier = tierParam;
+      setActivePill('tier', activeTier);
+    }
+    if (cat || tierParam) apply();
   })();
 </script>
