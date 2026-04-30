@@ -61,7 +61,7 @@ const verticals = [
 ---
 <Base
   title="Recipes — The recipe book for AI agents"
-  description="Production-grade skills for AI agents. Client reporting, code writing, web scraping, SEO audits, content calendars, proposals — installed by your agent in seconds. From $24.99/mo. By WiseChef."
+  description="Production-grade skills for AI agents. Client reporting, code writing, web scraping, SEO audits, content calendars, proposals — installed by your agent in seconds. From $5/mo. By WiseChef."
 >
   <section class="relative overflow-hidden min-h-[88vh] md:min-h-screen flex items-center">
     <NeuronAnimation />
@@ -85,9 +85,16 @@ const verticals = [
           <strong class="text-text font-semibold">Run locally. Credentials stay home.</strong>
         </p>
         <div class="flex flex-col sm:flex-row gap-3 mt-2">
-          <a href="/signin?mode=signup&plan=cook"
+          <!-- Anon CTA: signup -->
+          <a href="/signin?mode=signup&plan=cook" data-auth-anon
              class="group inline-flex items-center justify-center gap-2 px-6 py-3 rounded-lg font-semibold text-sm bg-accent text-bg hover:bg-accent-soft transition glow-amber">
-            Get access · $24.99/mo
+            Get access · from $5/mo
+            <Icon name="arrow-right" size={14} class="group-hover:translate-x-0.5 transition-transform" />
+          </a>
+          <!-- Authed CTA: go to library (hidden until /api/auth/me confirms) -->
+          <a href="/library" data-auth-authed
+             class="group hidden items-center justify-center gap-2 px-6 py-3 rounded-lg font-semibold text-sm bg-accent text-bg hover:bg-accent-soft transition glow-amber">
+            Open your library
             <Icon name="arrow-right" size={14} class="group-hover:translate-x-0.5 transition-transform" />
           </a>
           <a href="/skills/client-reporter"
@@ -96,7 +103,7 @@ const verticals = [
             Try Client Reporter free
           </a>
         </div>
-        <p class="text-xs text-muted-soft mt-2">Launch month: $14.99 · Cancel anytime · Open-source meta-skill</p>
+        <p class="text-xs text-muted-soft mt-2" data-auth-anon>Cancel anytime · Open-source meta-skill · EU VAT MOSS handled</p>
       </div>
 
       <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mt-20 pt-12 border-t border-border" id="stats-strip">

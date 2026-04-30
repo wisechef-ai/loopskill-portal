@@ -151,8 +151,15 @@ const isActive = (p: string) => path === p || (p !== '/' && path.startsWith(p));
       if (!res.ok) return;  // 401 anon — keep default UI
       const user = await res.json();
 
-      // Hide anon-only buttons, show user menu
+      // Hide anon-only buttons, show authed-only buttons + user menu
       document.querySelectorAll<HTMLElement>('[data-auth-anon]').forEach(el => el.classList.add('hidden'));
+      document.querySelectorAll<HTMLElement>('[data-auth-authed]').forEach(el => {
+        el.classList.remove('hidden');
+        // Restore the right display mode for known component types
+        if (el.tagName === 'A' || el.tagName === 'BUTTON') {
+          el.classList.add('inline-flex');
+        }
+      });
       const menu = document.getElementById('user-menu');
       if (menu) menu.classList.remove('hidden');
 

@@ -5,11 +5,12 @@ import CrossSell from '../components/CrossSell.astro';
 const tiers = [
   {
     name: 'Cook',
-    price: '24.99',
+    price: '5',
     cadence: 'per month',
     tagline: 'For solo agents and small agencies',
     badgeClass: 'badge-free',
     cta: 'Start with Cook',
+    ctaAuthed: 'Switch to Cook',
     ctaHref: '/signin?next=/api/checkout/cook',
     ctaTier: 'cook',
     accent: false,
@@ -24,11 +25,12 @@ const tiers = [
   },
   {
     name: 'Operator',
-    price: '79',
+    price: '25',
     cadence: 'per month',
     tagline: 'For founders running 2–5 agents',
     badgeClass: 'badge-pro',
     cta: 'Start with Operator',
+    ctaAuthed: 'Upgrade to Operator',
     ctaHref: '/signin?next=/api/checkout/operator',
     ctaTier: 'operator',
     accent: true,
@@ -44,11 +46,12 @@ const tiers = [
   },
   {
     name: 'Studio',
-    price: '249',
+    price: '99',
     cadence: 'per month',
     tagline: 'For agencies running fleets',
     badgeClass: 'badge-studio',
     cta: 'Talk to us',
+    ctaAuthed: 'Talk to us',
     ctaHref: 'https://calendar.app.google/P9J9oaiemtHdsvG99',
     accent: false,
     features: [
@@ -72,7 +75,7 @@ const creatorEcon = [
 ];
 ---
 
-<Base title="Pricing — Recipes" description="Simple plans for agents, agencies, and fleets. Cook from $24.99/mo. Operator $79/mo. Studio $249/mo. Usage-attributed creator economy.">
+<Base title="Pricing — Recipes" description="Simple plans for agents, agencies, and fleets. Cook $5/mo. Operator $25/mo. Studio $99/mo. Usage-attributed creator economy.">
   <section class="max-w-6xl mx-auto px-6 pt-16 pb-12">
     <div class="text-center max-w-2xl mx-auto flex flex-col gap-3 mb-14">
       <p class="eyebrow">Pricing</p>
@@ -105,6 +108,8 @@ const creatorEcon = [
           </ul>
           <a href={t.ctaHref}
              data-tier={t.ctaTier}
+             data-cta-anon={t.cta}
+             data-cta-authed={t.ctaAuthed}
              class={`tier-cta block text-center px-4 py-2.5 rounded-lg font-semibold text-sm transition ${t.accent ? 'bg-accent text-bg hover:bg-accent-soft' : 'border border-border hover:border-accent text-text'}`}>
             {t.cta}
           </a>
@@ -112,7 +117,7 @@ const creatorEcon = [
       ))}
     </div>
 
-    <p class="text-center text-xs text-muted-soft mt-8">Launch month: Cook tier $14.99. Cancel anytime. EU pricing includes VAT MOSS handling.</p>
+    <p class="text-center text-xs text-muted-soft mt-8">Cancel anytime. EU pricing includes VAT MOSS handling.</p>
   </section>
 
   <!-- Creator economy -->
@@ -146,30 +151,41 @@ const creatorEcon = [
 <script>
   // Smart pricing CTAs (WIS-645): if authed, hit checkout directly;
   // if not, send to /signin?next=/api/checkout/{tier} so the OAuth callback resumes.
+  // Auth-aware label swap (WIS-684 follow-up): "Start with Cook" → "Switch to Cook" when logged in.
   (async () => {
     const buttons = document.querySelectorAll<HTMLAnchorElement>('a.tier-cta[data-tier]');
     if (buttons.length === 0) return;
 
-    let authed: boolean | null = null;
-    const checkAuth = async (): Promise<boolean> => {
-      if (authed !== null) return authed;
-      try {
-        const r = await fetch('/api/auth/me', { credentials: 'include' });
-        authed = r.ok;
-      } catch {
-        authed = false;
-      }
-      return authed!;
-    };
+    // Probe auth once on mount and swap labels + highlight current tier.
+    let me: any = null;
+    try {
+      const r = await fetch('/api/auth/me', { credentials: 'include' });
+      if (r.ok) me = await r.json();
+    } catch { /* ignore */ }
+
+    if (me) {
+      const currentTier = (me.subscription_tier || '').toLowerCase();
+      buttons.forEach(btn => {
+        const tier = (btn.getAttribute('data-tier') || '').toLowerCase();
+        const authedLabel = btn.getAttribute('data-cta-authed');
+        if (authedLabel) btn.textContent = authedLabel;
+        if (currentTier && tier === currentTier) {
+          btn.textContent = 'Current plan ✓';
+          btn.classList.add('opacity-60', 'pointer-events-none');
+          btn.setAttribute('aria-disabled', 'true');
+        }
+      });
+    }
 
     buttons.forEach(btn => {
       btn.addEventListener('click', async (e) => {
+        if (btn.getAttribute('aria-disabled') === 'true') { e.preventDefault(); return; }
         const tier = btn.getAttribute('data-tier');
         if (!tier) return;  // Studio "Talk to us" lacks data-tier — falls through to default href
         e.preventDefault();
+        const originalText = btn.textContent;
         btn.textContent = 'Loading…';
-        const isAuthed = await checkAuth();
-        if (isAuthed) {
+        if (me) {
           // POST checkout, redirect to Stripe Checkout URL
           try {
             const res = await fetch(`/api/checkout/${tier}`, {
@@ -184,6 +200,7 @@ const creatorEcon = [
             }
             // Fall through on error
           } catch { /* fall through */ }
+          btn.textContent = originalText;
           window.location.href = btn.getAttribute('href') || '/signin';
         } else {
           // Send to signin with next= so OAuth callback resumes checkout
