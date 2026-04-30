@@ -265,8 +265,15 @@ const inlineJson = JSON.stringify(graph);
         root.setAttribute('transform', `translate(${tx} ${ty}) scale(${scale})`);
       }
 
+      // Forward declarations — referenced in endPointer below before being assigned
+      let highlighted: number | null = null;
+      let touchTooltipShown = false;
+
       // Active pointers (used for both single-finger pan and two-finger pinch)
-      type Pt = { id: number; x: number; y: number; startX: number; startY: number; startedOnNode: boolean };
+      type Pt = {
+        id: number; x: number; y: number; startX: number; startY: number;
+        startedOnNode: boolean; nodeIdx: number | null;
+      };
       const pointers = new Map<number, Pt>();
       let panAnchorX = 0, panAnchorY = 0;        // tx/ty when single-pointer pan started
       let pinchStartDist = 0;                     // initial finger distance
@@ -283,23 +290,26 @@ const inlineJson = JSON.stringify(graph);
 
       svg.addEventListener('pointerdown', (e: PointerEvent) => {
         const p = svgPoint(e);
-        const onNode = (e.target as Element).tagName === 'circle';
+        const targetEl = e.target as Element;
+        const onNode = targetEl.tagName === 'circle';
+        const nodeIdx = onNode
+          ? Number(targetEl.getAttribute('data-idx'))
+          : null;
         pointers.set(e.pointerId, {
           id: e.pointerId,
           x: p.x, y: p.y,
           startX: p.x, startY: p.y,
           startedOnNode: onNode,
+          nodeIdx: Number.isFinite(nodeIdx) ? nodeIdx : null,
         });
         // Capture so we keep getting events even if the pointer leaves the SVG
         try { svg.setPointerCapture(e.pointerId); } catch { /* ignore */ }
 
         if (pointers.size === 1) {
-          // Begin pan (only if not started on a node — node click should still navigate)
           movedSinceDown = false;
           panAnchorX = tx; panAnchorY = ty;
           if (!onNode) svg.style.cursor = 'grabbing';
         } else if (pointers.size === 2) {
-          // Begin pinch
           const pts = Array.from(pointers.values());
           const dx = pts[0].x - pts[1].x, dy = pts[0].y - pts[1].y;
           pinchStartDist = Math.hypot(dx, dy) || 1;
@@ -345,9 +355,38 @@ const inlineJson = JSON.stringify(graph);
       });
 
       function endPointer(e: PointerEvent) {
-        if (!pointers.has(e.pointerId)) return;
+        const tracked = pointers.get(e.pointerId);
+        if (!tracked) return;
         pointers.delete(e.pointerId);
         try { svg.releasePointerCapture(e.pointerId); } catch { /* ignore */ }
+
+        // Touch-tap detection: pointer lifted without significant movement, no other pointers down.
+        // We handle nav at the SVG level (not on each circle) because setPointerCapture redirects
+        // pointerup to the capturing element — per-circle pointerup never fires.
+        const wasTap = (e.pointerType === 'touch' || e.pointerType === 'pen')
+          && !movedSinceDown
+          && pointers.size === 0;
+
+        if (wasTap) {
+          if (tracked.startedOnNode && tracked.nodeIdx !== null) {
+            const i = tracked.nodeIdx;
+            if (touchTooltipShown && highlighted === i) {
+              // Second tap on the same highlighted node — navigate
+              window.location.href = `/skills/${nodes[i].slug}`;
+              return;
+            }
+            // First tap on a node — show tooltip + highlight
+            highlight(i);
+            showTip(i, e);
+            touchTooltipShown = true;
+          } else if (touchTooltipShown) {
+            // Tap on empty area — dismiss tooltip
+            tip.classList.add('hidden');
+            highlight(null);
+            touchTooltipShown = false;
+          }
+        }
+
         if (pointers.size === 0) {
           svg.style.cursor = 'grab';
         } else if (pointers.size === 1) {
@@ -379,7 +418,6 @@ const inlineJson = JSON.stringify(graph);
       }, { passive: false });
 
       // Hover + click
-      let highlighted: number | null = null;
       function highlight(i: number | null) {
         highlighted = i;
         if (i === null) {
@@ -397,25 +435,45 @@ const inlineJson = JSON.stringify(graph);
         });
       }
 
-      function showTip(i: number, evt: MouseEvent) {
+      function showTip(i: number, evt: { clientX: number; clientY: number }) {
         const n = nodes[i];
         const degree = (adj[i] || new Set()).size;
         tip.innerHTML = `
           <div style="font-weight:600">${n.title}</div>
           <div style="color:#9ba1ad; margin-top:2px">${n.category} · ${n.tier} · ${n.install_count} installs</div>
           <div style="color:#9ba1ad">${degree} connection${degree === 1 ? '' : 's'}</div>
-          <div style="margin-top:4px"><a href="/skills/${n.slug}" style="color:#f4b942">/skills/${n.slug} →</a></div>
+          <div style="margin-top:6px">
+            <a href="/skills/${n.slug}"
+               style="color:#f4b942; pointer-events:auto; touch-action:manipulation; display:inline-block; padding:6px 0; min-height:32px;"
+            >Open /skills/${n.slug} →</a>
+          </div>
         `;
         tip.classList.remove('hidden');
         const rect = container.getBoundingClientRect();
-        tip.style.left = `${evt.clientX - rect.left + 12}px`;
-        tip.style.top = `${evt.clientY - rect.top + 12}px`;
+        // Initial position so we can measure
+        tip.style.left = '0px';
+        tip.style.top = '0px';
+        const tipRect = tip.getBoundingClientRect();
+        const offset = 14;
+        let left = evt.clientX - rect.left + offset;
+        let top = evt.clientY - rect.top + offset;
+        // Flip to the other side if it would overflow the container
+        if (left + tipRect.width > rect.width) left = evt.clientX - rect.left - tipRect.width - offset;
+        if (top + tipRect.height > rect.height) top = evt.clientY - rect.top - tipRect.height - offset;
+        tip.style.left = `${Math.max(8, left)}px`;
+        tip.style.top = `${Math.max(8, top)}px`;
       }
 
       nodeEls.forEach((el, i) => {
         el.addEventListener('mouseenter', (e: any) => { highlight(i); showTip(i, e); });
         el.addEventListener('mousemove', (e: any) => { if (highlighted === i) showTip(i, e); });
-        el.addEventListener('mouseleave', () => { tip.classList.add('hidden'); highlight(null); });
+        el.addEventListener('mouseleave', () => {
+          if (touchTooltipShown) return; // don't auto-hide a touch-shown tooltip on synthesized mouseleave
+          tip.classList.add('hidden');
+          highlight(null);
+        });
+        // Desktop: click navigates immediately. Touch nav is handled in endPointer at the SVG
+        // level because setPointerCapture redirects all per-pointer events to the SVG.
         el.addEventListener('click', () => { window.location.href = `/skills/${nodes[i].slug}`; });
       });
 
