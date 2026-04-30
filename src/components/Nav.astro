@@ -163,10 +163,17 @@ const isActive = (p: string) => path === p || (p !== '/' && path.startsWith(p));
       if (!res.ok) return;  // 401 anon — keep default UI
       const user = await res.json();
 
-      // Hide anon-only buttons, show authed-only buttons + user menu
-      document.querySelectorAll<HTMLElement>('[data-auth-anon]').forEach(el => el.classList.add('hidden'));
+      // Hide anon-only buttons, show authed-only buttons + user menu.
+      // Use inline style.display to beat Tailwind's md:inline-flex which would
+      // otherwise re-show the elements at md+ breakpoints (the "Sign in/Get access
+      // still visible while logged in" bug).
+      document.querySelectorAll<HTMLElement>('[data-auth-anon]').forEach(el => {
+        el.classList.add('hidden');
+        el.style.display = 'none';
+      });
       document.querySelectorAll<HTMLElement>('[data-auth-authed]').forEach(el => {
         el.classList.remove('hidden');
+        el.style.display = '';
         if (el.tagName === 'A' || el.tagName === 'BUTTON') {
           el.classList.add('inline-flex');
         }
