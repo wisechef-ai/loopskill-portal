@@ -32,6 +32,17 @@ import Base from '../layouts/Base.astro';
             </div>
             <span id="sub-status-badge" class="text-[10px] uppercase tracking-wider px-2 py-0.5 rounded-full border border-border text-muted-soft">…</span>
           </div>
+
+          <!-- Active plan summary (shown only when a paid sub is active) -->
+          <div id="sub-active-card" class="hidden mb-4 p-4 rounded-xl bg-accent/10 border border-accent/40">
+            <div class="flex items-baseline justify-between gap-3">
+              <span id="sub-tier-name" class="text-2xl font-semibold text-text">—</span>
+              <span id="sub-tier-price" class="text-xs text-muted-soft font-mono">—</span>
+            </div>
+            <p id="sub-renews-line" class="text-xs text-muted mt-1.5">—</p>
+          </div>
+
+          <!-- Detail rows (always rendered for completeness) -->
           <div id="sub-body" class="space-y-3 text-sm">
             <div class="flex items-baseline justify-between">
               <span class="text-muted">Tier</span>
@@ -42,10 +53,14 @@ import Base from '../layouts/Base.astro';
               <span id="sub-renews" class="text-text">—</span>
             </div>
           </div>
+
           <div class="mt-5 flex flex-col gap-2">
             <button id="manage-billing-btn" class="hidden inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg border border-border hover:border-accent text-text text-sm font-medium transition">
               Manage billing →
             </button>
+            <a id="upgrade-plan-link" href="/pricing" class="hidden inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg border border-border hover:border-accent text-text text-sm font-medium transition">
+              See other plans →
+            </a>
             <a id="choose-plan-link" href="/pricing" class="hidden inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-accent text-bg text-sm font-semibold hover:bg-accent-soft transition">
               Choose a plan →
             </a>
@@ -132,7 +147,9 @@ import Base from '../layouts/Base.astro';
   // ────────────────────────────────────────────────────────────────────
   // /library hydration — vanilla JS, no framework
   // ────────────────────────────────────────────────────────────────────
-  type User = { id: string; display_name?: string; email?: string; avatar_url?: string };
+  type User = { id: string; display_name?: string; email?: string; avatar_url?: string;
+                 subscription_tier?: string | null; subscription_status?: string | null;
+                 subscription_current_period_end?: string | null };
   type Billing = { user_id: string; stripe_customer_id: string | null;
                    subscription_status: string | null; subscription_tier: string | null;
                    subscription_current_period_end: string | null };
@@ -143,6 +160,12 @@ import Base from '../layouts/Base.astro';
   const TIER_BADGE_COPY: Record<string, string> = {
     cook: 'COOK', operator: 'OPERATOR', studio: 'STUDIO',
   };
+  const TIER_PRICE: Record<string, string> = {
+    cook: '$5/mo', operator: '$25/mo', studio: '$99/mo',
+  };
+  const TIER_NAME: Record<string, string> = {
+    cook: 'Cook', operator: 'Operator', studio: 'Studio',
+  };
 
   function fmtRenewsIn(iso: string | null): string {
     if (!iso) return '—';
@@ -152,6 +175,13 @@ import Base from '../layouts/Base.astro';
     if (days === 0) return 'today';
     if (days === 1) return 'tomorrow';
     return `in ${days} days`;
+  }
+
+  function fmtRenewsDate(iso: string | null): string {
+    if (!iso) return '';
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) return '';
+    return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
   }
 
   async function fetchJson<T>(url: string, opts: RequestInit = {}): Promise<T | null> {
@@ -170,15 +200,34 @@ import Base from '../layouts/Base.astro';
 
     const status = billing.subscription_status || 'none';
     const tier = billing.subscription_tier;
+    const isPaidActive = !!tier && (status === 'active' || status === 'trialing' || status === 'past_due');
 
-    $('sub-status-badge').textContent = status.toUpperCase();
-    $('sub-tier').textContent = tier ? (TIER_BADGE_COPY[tier] || tier) : 'None';
-    $('sub-renews').textContent = fmtRenewsIn(billing.subscription_current_period_end);
+    $('sub-status-badge').textContent = status === 'none' ? 'FREE' : status.toUpperCase();
+    $('sub-tier').textContent = tier ? (TIER_BADGE_COPY[tier] || tier) : 'Free';
+    $('sub-renews').textContent = isPaidActive ? fmtRenewsIn(billing.subscription_current_period_end) : '—';
 
-    if (status === 'active' || status === 'trialing' || status === 'past_due') {
+    if (isPaidActive) {
+      // Active paid sub — show big tier card + manage billing + (optional) upgrade link
+      $('sub-active-card').classList.remove('hidden');
+      $('sub-tier-name').textContent = TIER_NAME[tier!] || tier!;
+      $('sub-tier-price').textContent = TIER_PRICE[tier!] || '';
+      const renewsDate = fmtRenewsDate(billing.subscription_current_period_end);
+      $('sub-renews-line').textContent = renewsDate
+        ? `Renews ${renewsDate} (${fmtRenewsIn(billing.subscription_current_period_end)})`
+        : 'Active subscription';
+
       $('manage-billing-btn').classList.remove('hidden');
       $('sub-status-badge').classList.add('text-accent', 'border-accent/40');
+
+      // Show "See other plans" only if not on the highest tier
+      if (tier !== 'studio') {
+        $('upgrade-plan-link').classList.remove('hidden');
+      }
+
+      // CRITICAL: never show "Choose a plan" alongside an active sub
+      $('choose-plan-link').classList.add('hidden');
     } else {
+      // No active sub — Free user. Show Choose a plan CTA.
       $('choose-plan-link').classList.remove('hidden');
     }
 
@@ -285,6 +334,12 @@ import Base from '../layouts/Base.astro';
     }
 
     $('welcome-line').textContent = `Welcome back, ${user.display_name || 'friend'}`;
+    // Personalize subtitle with current plan once known (loadBilling will refine)
+    const subtitleEl = document.querySelector<HTMLElement>('header p.text-muted');
+    if (subtitleEl && user.subscription_tier && (user.subscription_status === 'active' || user.subscription_status === 'trialing')) {
+      const planName = (user.subscription_tier as string).charAt(0).toUpperCase() + (user.subscription_tier as string).slice(1);
+      subtitleEl.innerHTML = `<span class="text-accent font-semibold">${planName} plan</span> · manage your subscription, API key, and skills.`;
+    }
     $('auth-checking').classList.add('hidden');
     $('library-main').classList.remove('hidden');
 

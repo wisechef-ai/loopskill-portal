@@ -52,15 +52,25 @@ const isActive = (p: string) => path === p || (p !== '/' && path.startsWith(p));
             <span id="user-initials">·</span>
           </span>
           <span id="user-name-label" class="hidden md:inline text-sm text-muted max-w-[10rem] truncate">…</span>
+          <span id="user-plan-badge" class="hidden md:inline text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded-full border border-border-soft text-muted-soft"></span>
           <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true">
             <path d="M3 4.5L6 7.5L9 4.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
           </svg>
         </summary>
-        <div class="absolute right-0 top-full mt-2 w-56 bg-bg-elev border border-border rounded-xl shadow-xl overflow-hidden z-50">
+        <div class="absolute right-0 top-full mt-2 w-64 bg-bg-elev border border-border rounded-xl shadow-xl overflow-hidden z-50">
+          <div class="px-4 py-3 border-b border-border bg-bg-card/40">
+            <div id="user-menu-name" class="text-sm font-medium text-text truncate">…</div>
+            <div id="user-menu-email" class="text-[11px] text-muted-soft truncate">…</div>
+            <div id="user-menu-plan" class="hidden mt-2 flex items-center gap-2">
+              <span class="text-[10px] uppercase tracking-wider text-muted-soft">Plan</span>
+              <span id="user-menu-plan-name" class="text-[11px] font-semibold text-accent"></span>
+              <span id="user-menu-plan-renews" class="text-[10px] text-muted-soft"></span>
+            </div>
+          </div>
           <nav class="flex flex-col text-sm">
             <a href="/library" class="px-4 py-3 text-muted hover:text-text hover:bg-bg-card transition">Library</a>
-            <a href="/pricing" class="px-4 py-3 text-muted hover:text-text hover:bg-bg-card transition">Pricing</a>
-            <a href="/skills" class="px-4 py-3 text-muted hover:text-text hover:bg-bg-card transition">Skills</a>
+            <a href="/pricing" class="px-4 py-3 text-muted hover:text-text hover:bg-bg-card transition">Plans &amp; billing</a>
+            <a href="/skills" class="px-4 py-3 text-muted hover:text-text hover:bg-bg-card transition">Browse skills</a>
             <button id="signout-btn" type="button" class="text-left px-4 py-3 text-muted hover:text-accent hover:bg-bg-card transition border-t border-border">
               Sign out
             </button>
@@ -157,7 +167,6 @@ const isActive = (p: string) => path === p || (p !== '/' && path.startsWith(p));
       document.querySelectorAll<HTMLElement>('[data-auth-anon]').forEach(el => el.classList.add('hidden'));
       document.querySelectorAll<HTMLElement>('[data-auth-authed]').forEach(el => {
         el.classList.remove('hidden');
-        // Restore the right display mode for known component types
         if (el.tagName === 'A' || el.tagName === 'BUTTON') {
           el.classList.add('inline-flex');
         }
@@ -172,6 +181,41 @@ const isActive = (p: string) => path === p || (p !== '/' && path.startsWith(p));
 
       const nameLabel = document.getElementById('user-name-label');
       if (nameLabel) nameLabel.textContent = user.display_name || user.email || 'Account';
+
+      // Plan badge — visible top-bar pill + dropdown row.
+      const tier: string | undefined = (user.subscription_tier || '').toLowerCase();
+      const status: string = user.subscription_status || '';
+      const isActive = status === 'active' || status === 'trialing' || status === 'past_due';
+
+      const planBadge = document.getElementById('user-plan-badge');
+      if (planBadge && tier && isActive) {
+        planBadge.textContent = tier.toUpperCase();
+        planBadge.classList.remove('text-muted-soft', 'border-border-soft');
+        planBadge.classList.add('text-accent', 'border-accent/40', 'bg-accent/10');
+      } else if (planBadge) {
+        planBadge.textContent = 'FREE';
+      }
+
+      // Dropdown header
+      const menuName = document.getElementById('user-menu-name');
+      const menuEmail = document.getElementById('user-menu-email');
+      const menuPlan = document.getElementById('user-menu-plan');
+      const menuPlanName = document.getElementById('user-menu-plan-name');
+      const menuPlanRenews = document.getElementById('user-menu-plan-renews');
+      if (menuName) menuName.textContent = user.display_name || 'Account';
+      if (menuEmail) menuEmail.textContent = user.email || '';
+      if (tier && isActive && menuPlan) {
+        menuPlan.classList.remove('hidden');
+        menuPlan.classList.add('flex');
+        if (menuPlanName) menuPlanName.textContent = tier.charAt(0).toUpperCase() + tier.slice(1);
+        if (menuPlanRenews && user.subscription_current_period_end) {
+          const ts = new Date(user.subscription_current_period_end).getTime();
+          if (!isNaN(ts)) {
+            const days = Math.max(0, Math.round((ts - Date.now()) / 86400000));
+            menuPlanRenews.textContent = `· renews in ${days}d`;
+          }
+        }
+      }
 
       if (user.avatar_url) {
         const avatar = document.getElementById('user-avatar');
