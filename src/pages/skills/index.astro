@@ -6,8 +6,7 @@ let skills: any[] = [];
 let fetchError: string | null = null;
 let total = 0;
 try {
-  // Use page_size (not limit — that's silently ignored, FastAPI uses page_size)
-  const res = await fetch('https://recipes.wisechef.ai/api/skills/search?page_size=100', {
+  const res = await fetch('https://recipes.wisechef.ai/api/skills/search?page_size=200', {
     headers: { 'x-api-key': import.meta.env.RECIPES_API_KEY || 'rec_dev_internal' }
   });
   if (res.ok) {
@@ -18,8 +17,6 @@ try {
 } catch (e: any) { fetchError = e?.message || 'fetch failed'; }
 
 if (skills.length === 0) {
-  // Hard fallback (only if API completely unreachable at build time).
-  // This list is intentionally small — if you see it, the API is dead.
   skills = [
     { slug: 'client-reporter', title: 'Client Reporter', description: 'Pull GA4 + GSC + Meta Ads + TikTok Ads → branded PDF for any client.', category: 'reporting', tier: 'free', install_count: 0 },
   ];
@@ -27,44 +24,162 @@ if (skills.length === 0) {
 }
 
 const categories = Array.from(new Set(skills.map(s => s.category || 'general'))).filter(Boolean).sort();
+const tiers = ['free', 'cook', 'operator', 'studio'];
+const tierLabel: Record<string, string> = { free: 'Free', cook: 'Cook · $5', operator: 'Operator · $25', studio: 'Studio · $99' };
+const tierCount: Record<string, number> = {};
+for (const s of skills) {
+  const t = s.tier || 'cook';
+  tierCount[t] = (tierCount[t] || 0) + 1;
+}
 ---
 
 <Base title="Skills — Recipes" description="Browse the full catalog. Production-grade skills for marketing agencies. Free Client Reporter to start.">
   <section class="max-w-7xl mx-auto px-6 pt-16 pb-8">
-    <div class="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-10">
+    <div class="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-8">
       <div class="flex flex-col gap-2">
         <p class="eyebrow">Catalog</p>
-        <h1 class="text-4xl md:text-5xl font-semibold tracking-tight">{total} skills, ready to install.</h1>
-        <p class="text-muted">Production-grade skills for marketing agencies. Free Client Reporter to start. Cook tier €25/mo unlocks the rest.</p>
+        <h1 class="text-4xl md:text-5xl font-semibold tracking-tight" id="skills-heading">{total} skills, ready to install.</h1>
+        <p class="text-muted">Production-grade skills for marketing agencies, dev teams, and AI fleets. Free skills to start. Cook tier $5/mo unlocks 54 more.</p>
         {fetchError && <p class="text-xs text-muted-soft">(showing seed data — API: {fetchError})</p>}
       </div>
-      <div class="flex flex-wrap gap-2">
-        <a href="/skills" class="text-xs px-3 py-1.5 rounded-full border border-accent text-accent hover:bg-accent/10 transition">All</a>
+    </div>
+
+    {/* Tier + search filter row */}
+    <div class="flex flex-col gap-3 mb-6">
+      <div class="flex flex-wrap gap-2 items-center">
+        <input
+          id="skill-search"
+          type="search"
+          placeholder="Filter skills…"
+          class="px-4 py-2 rounded-lg bg-bg-card border border-border text-sm text-text placeholder:text-muted-soft focus:outline-none focus:border-accent transition flex-1 min-w-[180px] max-w-md"
+        />
+        <button data-tier-filter="all" class="tier-pill text-xs px-3 py-1.5 rounded-full border border-accent text-accent bg-accent/10 transition">All · {total}</button>
+        {tiers.filter(t => tierCount[t]).map(t => (
+          <button data-tier-filter={t} class="tier-pill text-xs px-3 py-1.5 rounded-full border border-border text-muted hover:border-muted hover:text-text transition">
+            {tierLabel[t] ?? t} · {tierCount[t]}
+          </button>
+        ))}
+      </div>
+      <div class="flex flex-wrap gap-2 items-center">
+        <span class="text-[10px] uppercase tracking-wider text-muted-soft">Category:</span>
+        <button data-cat-filter="all" class="cat-pill text-[11px] px-2.5 py-1 rounded-full border border-border text-muted hover:text-text transition active-cat" style="border-color:var(--accent);color:var(--accent)">All</button>
         {categories.map(c => (
-          <a href={`/skills?category=${c}`} class="text-xs px-3 py-1.5 rounded-full border border-border text-muted hover:border-muted hover:text-text transition capitalize">{c}</a>
+          <button data-cat-filter={c} class="cat-pill text-[11px] px-2.5 py-1 rounded-full border border-border text-muted hover:text-text transition capitalize">{c}</button>
         ))}
       </div>
     </div>
 
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+    <div id="skill-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
       {skills.map(s => {
         const tier = s.tier || 'cook';
         const tierClass = tier === 'free' ? 'badge-free' : tier === 'studio' ? 'badge-studio' : 'badge-pro';
+        const cat = s.category || 'general';
         return (
-          <a href={`/skills/${s.slug}`} class="group bg-bg-card border border-border rounded-2xl p-5 card-lift flex flex-col gap-3">
+          <a
+            href={`/skills/${s.slug}`}
+            class="skill-card group bg-bg-card border border-border rounded-2xl p-5 card-lift flex flex-col gap-3"
+            data-tier={tier}
+            data-category={cat}
+            data-search={`${s.title} ${s.description} ${s.slug} ${cat}`.toLowerCase()}
+          >
             <div class="flex items-start justify-between gap-2">
               <h3 class="text-base font-semibold text-text group-hover:text-accent transition leading-tight">{s.title}</h3>
               <span class={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold tracking-wider shrink-0 ${tierClass}`}>{tier.toUpperCase()}</span>
             </div>
             <p class="text-sm text-muted leading-relaxed line-clamp-3">{s.description}</p>
             <div class="flex items-center justify-between pt-3 border-t border-border-soft text-xs">
-              <span class="text-muted-soft capitalize">{s.category || 'general'}</span>
+              <span class="text-muted-soft capitalize">{cat}</span>
               <span class="text-muted-soft">{(s.install_count || 0).toLocaleString()} installs</span>
             </div>
           </a>
         );
       })}
     </div>
+
+    <p id="skill-empty" class="hidden text-center text-muted py-12">No skills match those filters. Try clearing them.</p>
   </section>
   <CrossSell />
 </Base>
+
+<script>
+  // Client-side filter — operates on already-rendered cards. No new fetches.
+  (() => {
+    const cards = document.querySelectorAll<HTMLElement>('.skill-card');
+    const heading = document.getElementById('skills-heading')!;
+    const empty = document.getElementById('skill-empty')!;
+    const search = document.getElementById('skill-search') as HTMLInputElement;
+    const totalCount = cards.length;
+
+    let activeTier = 'all';
+    let activeCat = 'all';
+    let activeQuery = '';
+
+    function apply() {
+      let visible = 0;
+      cards.forEach(c => {
+        const t = c.dataset.tier;
+        const cat = c.dataset.category;
+        const haystack = c.dataset.search ?? '';
+        const matchTier = activeTier === 'all' || t === activeTier;
+        const matchCat = activeCat === 'all' || cat === activeCat;
+        const matchQ = activeQuery === '' || haystack.includes(activeQuery);
+        const show = matchTier && matchCat && matchQ;
+        c.style.display = show ? '' : 'none';
+        if (show) visible++;
+      });
+      heading.textContent = visible === totalCount
+        ? `${totalCount} skills, ready to install.`
+        : `${visible} of ${totalCount} skills.`;
+      empty.classList.toggle('hidden', visible > 0);
+    }
+
+    function setActivePill(group: string, value: string) {
+      document.querySelectorAll<HTMLButtonElement>(`[data-${group}-filter]`).forEach(b => {
+        const isActive = b.dataset[`${group}Filter` as 'tierFilter'] === value;
+        if (group === 'tier') {
+          b.classList.toggle('border-accent', isActive);
+          b.classList.toggle('text-accent', isActive);
+          b.classList.toggle('bg-accent/10', isActive);
+          b.classList.toggle('border-border', !isActive);
+          b.classList.toggle('text-muted', !isActive);
+        } else {
+          if (isActive) {
+            b.style.borderColor = 'var(--accent)';
+            b.style.color = 'var(--accent)';
+          } else {
+            b.style.borderColor = '';
+            b.style.color = '';
+          }
+        }
+      });
+    }
+
+    document.querySelectorAll<HTMLButtonElement>('[data-tier-filter]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        activeTier = btn.dataset.tierFilter ?? 'all';
+        setActivePill('tier', activeTier);
+        apply();
+      });
+    });
+    document.querySelectorAll<HTMLButtonElement>('[data-cat-filter]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        activeCat = btn.dataset.catFilter ?? 'all';
+        setActivePill('cat', activeCat);
+        apply();
+      });
+    });
+    search?.addEventListener('input', () => {
+      activeQuery = search.value.toLowerCase().trim();
+      apply();
+    });
+
+    // Honor ?category=X from URL on landing
+    const params = new URLSearchParams(window.location.search);
+    const cat = params.get('category');
+    if (cat) {
+      activeCat = cat;
+      setActivePill('cat', activeCat);
+      apply();
+    }
+  })();
+</script>

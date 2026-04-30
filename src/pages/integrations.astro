@@ -1,0 +1,146 @@
+---
+import Base from '../layouts/Base.astro';
+import Icon from '../components/Icon.astro';
+
+const clients = [
+  {
+    name: 'Claude Code',
+    status: 'Native',
+    icon: '🟠',
+    note: 'Drop SKILL.md into ~/.claude/skills/recipes/. Auto-discovered.',
+    setup: 'curl -sL https://recipes.wisechef.ai/skill -o ~/.claude/skills/recipes/SKILL.md',
+  },
+  {
+    name: 'Codex CLI',
+    status: 'Native',
+    icon: '⚡',
+    note: 'Drop SKILL.md into ~/.codex/skills/recipes/. Same format as Claude Code.',
+    setup: 'curl -sL https://recipes.wisechef.ai/skill -o ~/.codex/skills/recipes/SKILL.md',
+  },
+  {
+    name: 'Claude Desktop',
+    status: 'MCP',
+    icon: '🪟',
+    note: 'Configure recipes-mcp server. Search/install skills via tool calls.',
+    setup: 'See /docs/mcp for claude_desktop_config.json snippet',
+  },
+  {
+    name: 'Cursor',
+    status: 'MCP',
+    icon: '⌨️',
+    note: 'MCP server. Same Python script, different config location.',
+    setup: 'See /docs/mcp for Cursor MCP config',
+  },
+  {
+    name: 'Cline (VS Code)',
+    status: 'MCP',
+    icon: '🧩',
+    note: 'MCP server. The recipes_install tool drops skills into the project.',
+    setup: 'See /docs/mcp for Cline setup',
+  },
+  {
+    name: 'Continue.dev',
+    status: 'MCP',
+    icon: '↻',
+    note: 'MCP server registered in continue/config.json.',
+    setup: 'See /docs/mcp for Continue.dev config',
+  },
+  {
+    name: 'Zed',
+    status: 'MCP',
+    icon: '⚙️',
+    note: 'MCP server via context_servers in ~/.config/zed/settings.json.',
+    setup: 'See /docs/mcp for Zed setup',
+  },
+  {
+    name: 'Any agent',
+    status: 'REST',
+    icon: '🌐',
+    note: 'Hit /api/skills/search and /api/skills/install directly with x-api-key.',
+    setup: 'See /docs/api-reference',
+  },
+];
+
+const statusBadge: Record<string, string> = {
+  Native: 'bg-success/15 text-success border-success/40',
+  MCP: 'bg-accent/15 text-accent border-accent/40',
+  REST: 'bg-cool/15 text-cool border-cool/40',
+};
+---
+
+<Base
+  title="Integrations — Recipes"
+  description="Recipes works with Claude Code, Codex, Claude Desktop, Cursor, Cline, Continue.dev, Zed, and any agent that speaks REST or MCP. Native skills + MCP server + raw API."
+>
+  <section class="max-w-6xl mx-auto px-6 pt-16 pb-8">
+    <div class="text-center max-w-2xl mx-auto flex flex-col gap-3 mb-12">
+      <p class="eyebrow">Integrations</p>
+      <h1 class="text-4xl md:text-5xl font-semibold tracking-tight">One marketplace. Every agent.</h1>
+      <p class="text-muted">
+        Three integration modes — native SKILL.md drop, MCP server, raw REST — covering
+        Claude Code, Codex, Claude Desktop, Cursor, Cline, Continue.dev, Zed, and any agent
+        you can write a tool call from.
+      </p>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      {clients.map(c => (
+        <div class="bg-bg-card border border-border rounded-2xl p-5 flex flex-col gap-3">
+          <div class="flex items-start justify-between gap-3">
+            <div class="flex items-center gap-3">
+              <span class="text-2xl">{c.icon}</span>
+              <h3 class="text-base font-semibold text-text">{c.name}</h3>
+            </div>
+            <span class={`text-[10px] font-semibold tracking-wider px-2 py-0.5 rounded-full border ${statusBadge[c.status] ?? 'bg-bg-elev text-muted border-border'}`}>{c.status.toUpperCase()}</span>
+          </div>
+          <p class="text-sm text-muted leading-relaxed">{c.note}</p>
+          <code class="font-mono text-[11px] bg-bg-elev border border-border-soft rounded px-2 py-1.5 text-muted-soft truncate">{c.setup}</code>
+        </div>
+      ))}
+    </div>
+  </section>
+
+  <!-- Three modes explainer -->
+  <section class="border-t border-border bg-bg-card/30">
+    <div class="max-w-6xl mx-auto px-6 py-20">
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div class="flex flex-col gap-3">
+          <span class="text-[10px] font-semibold uppercase tracking-wider text-success">Native</span>
+          <h3 class="text-lg font-semibold text-text">SKILL.md drop</h3>
+          <p class="text-sm text-muted leading-relaxed">
+            For Claude Code &amp; Codex CLI, the meta-skill is a single Markdown file dropped into
+            <code class="text-xs bg-bg-elev rounded px-1">~/.claude/skills/recipes/</code> or
+            <code class="text-xs bg-bg-elev rounded px-1">~/.codex/skills/recipes/</code>.
+            The agent auto-discovers it on next session, learns about the marketplace, and starts
+            installing skills as it works.
+          </p>
+        </div>
+        <div class="flex flex-col gap-3">
+          <span class="text-[10px] font-semibold uppercase tracking-wider text-accent">MCP</span>
+          <h3 class="text-lg font-semibold text-text">Model Context Protocol</h3>
+          <p class="text-sm text-muted leading-relaxed">
+            For Claude Desktop, Cursor, Cline, Continue.dev, and Zed — we ship a small Python
+            MCP server. Five tools: <code class="text-xs bg-bg-elev rounded px-1">recipes_search</code>,
+            <code class="text-xs bg-bg-elev rounded px-1">recipes_detail</code>,
+            <code class="text-xs bg-bg-elev rounded px-1">recipes_install</code>,
+            <code class="text-xs bg-bg-elev rounded px-1">recipes_trending</code>,
+            <code class="text-xs bg-bg-elev rounded px-1">recipes_stats</code>.
+            <a href="/docs/mcp" class="text-accent hover:opacity-80 underline">Setup guide →</a>
+          </p>
+        </div>
+        <div class="flex flex-col gap-3">
+          <span class="text-[10px] font-semibold uppercase tracking-wider text-cool">REST</span>
+          <h3 class="text-lg font-semibold text-text">Raw API</h3>
+          <p class="text-sm text-muted leading-relaxed">
+            Build your own integration. The marketplace is a stable JSON API:
+            <code class="text-xs bg-bg-elev rounded px-1">GET /api/skills/search</code>,
+            <code class="text-xs bg-bg-elev rounded px-1">GET /api/skills/install</code>,
+            HMAC-signed download URLs, public stats. Auth is a single
+            <code class="text-xs bg-bg-elev rounded px-1">x-api-key</code> header.
+            <a href="/docs/api-reference" class="text-accent hover:opacity-80 underline">API reference →</a>
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+</Base>

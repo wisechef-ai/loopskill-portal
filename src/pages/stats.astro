@@ -1,0 +1,156 @@
+---
+import Base from '../layouts/Base.astro';
+
+interface Stats {
+  total_skills: number;
+  total_installs_lifetime: number;
+  installs_last_7d: number;
+  by_tier: Record<string, number>;
+  by_category: { category: string; count: number }[];
+  top_installed: { slug: string; installs: number }[];
+  generated_at: string;
+}
+
+let stats: Stats | null = null;
+try {
+  const res = await fetch('https://recipes.wisechef.ai/api/stats');
+  if (res.ok) stats = await res.json();
+} catch {}
+
+const lastUpdated = stats?.generated_at
+  ? new Date(stats.generated_at).toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' })
+  : '—';
+
+// Sort tier order for consistent display
+const tierOrder = ['free', 'cook', 'operator', 'studio'];
+const tierEntries = stats
+  ? tierOrder
+      .filter((t) => stats!.by_tier[t] !== undefined)
+      .map((t) => ({ tier: t, count: stats!.by_tier[t] }))
+  : [];
+
+const tierLabel: Record<string, string> = {
+  free: 'Free',
+  cook: 'Cook · $5/mo',
+  operator: 'Operator · $25/mo',
+  studio: 'Studio · $99/mo',
+};
+---
+
+<Base
+  title="Marketplace Stats — Recipes"
+  description="Public transparency dashboard for the Recipes skill marketplace. Real install counts, tier distribution, top skills. Updated live from production."
+>
+  <section class="max-w-6xl mx-auto px-6 pt-16 pb-8">
+    <div class="text-center max-w-2xl mx-auto flex flex-col gap-3 mb-12">
+      <p class="eyebrow">Transparency</p>
+      <h1 class="text-4xl md:text-5xl font-semibold tracking-tight">Marketplace stats, live.</h1>
+      <p class="text-muted">
+        Every number on this page is computed from production data the moment you load it.
+        Compare to whatever your incumbent shows you. Updated {lastUpdated} UTC.
+      </p>
+    </div>
+
+    {stats ? (
+      <>
+        {/* Hero stats */}
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-12">
+          <div class="bg-bg-card border border-border rounded-2xl p-6 flex flex-col gap-1">
+            <div class="text-4xl md:text-5xl font-bold text-text tracking-tight" style="letter-spacing: -0.03em;">{stats.total_skills}</div>
+            <div class="text-xs text-muted">Production skills</div>
+          </div>
+          <div class="bg-bg-card border border-accent/40 rounded-2xl p-6 flex flex-col gap-1 glow-amber">
+            <div class="text-4xl md:text-5xl font-bold text-accent tracking-tight" style="letter-spacing: -0.03em;">{stats.total_installs_lifetime.toLocaleString()}</div>
+            <div class="text-xs text-muted">Lifetime installs</div>
+          </div>
+          <div class="bg-bg-card border border-border rounded-2xl p-6 flex flex-col gap-1">
+            <div class="text-4xl md:text-5xl font-bold text-text tracking-tight" style="letter-spacing: -0.03em;">{stats.installs_last_7d.toLocaleString()}</div>
+            <div class="text-xs text-muted">Installs · last 7d</div>
+          </div>
+          <div class="bg-bg-card border border-border rounded-2xl p-6 flex flex-col gap-1">
+            <div class="text-4xl md:text-5xl font-bold text-text tracking-tight" style="letter-spacing: -0.03em;">{stats.by_category.length}</div>
+            <div class="text-xs text-muted">Categories covered</div>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Tiers */}
+          <div class="bg-bg-card border border-border rounded-2xl p-6">
+            <div class="flex items-center justify-between mb-5">
+              <div>
+                <h2 class="text-lg font-semibold tracking-tight">Catalog by tier</h2>
+                <p class="text-xs text-muted-soft mt-1">Which plan unlocks each skill.</p>
+              </div>
+            </div>
+            <ul class="space-y-3">
+              {tierEntries.map(({ tier, count }) => (
+                <li class="flex items-center justify-between gap-4">
+                  <span class="text-sm text-text">{tierLabel[tier] ?? tier}</span>
+                  <div class="flex items-center gap-3 flex-1 max-w-xs">
+                    <div class="flex-1 h-1.5 bg-bg-elev rounded-full overflow-hidden">
+                      <div
+                        class="h-full bg-accent"
+                        style={`width:${Math.round((count / stats.total_skills) * 100)}%`}
+                      ></div>
+                    </div>
+                    <span class="text-sm font-mono text-muted w-10 text-right">{count}</span>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          {/* Top categories */}
+          <div class="bg-bg-card border border-border rounded-2xl p-6">
+            <h2 class="text-lg font-semibold tracking-tight mb-5">Top categories</h2>
+            <ul class="space-y-2.5">
+              {stats.by_category.slice(0, 10).map((c) => (
+                <li class="flex items-center justify-between gap-4">
+                  <a href={`/skills?category=${c.category}`} class="text-sm text-text hover:text-accent transition truncate">
+                    {c.category}
+                  </a>
+                  <span class="text-xs font-mono text-muted-soft">{c.count}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+
+        {/* Top installed */}
+        <div class="bg-bg-card border border-border rounded-2xl p-6 mt-6">
+          <div class="flex items-center justify-between mb-5">
+            <div>
+              <h2 class="text-lg font-semibold tracking-tight">Most installed skills · all time</h2>
+              <p class="text-xs text-muted-soft mt-1">Ranked by install events. Data not editable by sellers.</p>
+            </div>
+          </div>
+          <ol class="space-y-2.5">
+            {stats.top_installed.length === 0 ? (
+              <li class="text-sm text-muted">No install events yet — be the first.</li>
+            ) : (
+              stats.top_installed.map((s, i) => (
+                <li class="flex items-center justify-between gap-4 py-1.5">
+                  <div class="flex items-center gap-3 min-w-0">
+                    <span class="text-xs font-mono text-muted-soft w-6">#{i + 1}</span>
+                    <a href={`/skills/${s.slug}`} class="text-sm text-text hover:text-accent transition truncate">{s.slug}</a>
+                  </div>
+                  <span class="text-xs font-mono text-muted">{s.installs.toLocaleString()} installs</span>
+                </li>
+              ))
+            )}
+          </ol>
+        </div>
+
+        <div class="text-center mt-12 text-xs text-muted-soft">
+          Want this data programmatically? Hit
+          <code class="font-mono text-muted bg-bg-elev border border-border-soft rounded px-1.5 py-0.5">GET /api/stats</code>
+          — no auth required.
+        </div>
+      </>
+    ) : (
+      <div class="bg-bg-card border border-border rounded-2xl p-12 text-center">
+        <p class="text-muted">Stats temporarily unavailable. The API may be redeploying — try again in 30 seconds.</p>
+      </div>
+    )}
+  </section>
+</Base>
