@@ -2,44 +2,56 @@
 import Base from '../../layouts/Base.astro';
 import CrossSell from '../../components/CrossSell.astro';
 ---
-<Base title="Publishing — Recipes Docs">
+<Base title="Requesting a skill — Recipes Docs">
   <section class="max-w-3xl mx-auto px-6 pt-16 pb-12">
-    <p class="eyebrow mb-2">Documentation · Publishing</p>
-    <h1 class="text-4xl font-semibold tracking-tight mb-6">Publish a skill, earn from every install.</h1>
+    <p class="eyebrow mb-2">Documentation · Skill requests</p>
+    <h1 class="text-4xl font-semibold tracking-tight mb-6">Don't publish. Request.</h1>
     <div class="prose">
-      <p>See the <a href="/publish">publisher landing page</a> for the founder-creator program (75% rev share, locked-in for life for first 50 publishers).</p>
+      <p>
+        Recipes is a <strong>single-publisher catalog</strong>. Every skill is curated and
+        maintained by the WiseChef team. We don't take submissions — we take requests.
+      </p>
 
-      <h2>Skill format</h2>
-      <p>Standard <a href="https://docs.anthropic.com/en/docs/agents/claude-code/skills">Anthropic Skills</a> format with our <code>[carousel]</code>, <code>[telemetry]</code>, <code>[sandbox]</code>, <code>[replaces]</code> extensions.</p>
-      <pre><code>your-skill/
-├── SKILL.md          ← required: YAML frontmatter + Markdown body
-├── scripts/          ← optional: bash/python/node
-├── references/       ← optional: docs the agent reads on demand
-└── assets/           ← optional: templates, images, configs</code></pre>
+      <p>
+        Tell us what's broken in your fleet, what your team is doing manually that should
+        be automated, or what your agent fails at and we'll ship a skill that fixes it.
+      </p>
 
-      <h2>Submission flow</h2>
-      <ol>
-        <li>Build skill in a public GitHub repo.</li>
-        <li>Connect GitHub via OAuth at <a href="/signin?mode=signup">/signin</a>.</li>
-        <li>Submit at <a href="/publish">/publish</a> with repo URL + slug + category + free/premium.</li>
-        <li>Automated security scan runs (Semgrep + custom rules).</li>
-        <li>Human review (48h SLA on Operator/Studio submissions).</li>
-        <li>Live in catalog. Earnings start on next install attribution.</li>
-      </ol>
-
-      <h2>What gets rejected</h2>
+      <h2>Why single-publisher?</h2>
+      <p>
+        Building a publisher trust ladder before publishers exist is wasted work. We want
+        the catalog to be excellent, not large. Every skill on Recipes was authored against
+        a real production failure mode. That's the bar.
+      </p>
       <ul>
-        <li>Destructive commands (<code>rm -rf /</code>, <code>mkfs</code>, etc.)</li>
-        <li>Pipe-to-shell from remote URLs (<code>curl ... | bash</code>)</li>
-        <li>Eval'd remote/encoded code</li>
-        <li>Reads of <code>~/.ssh/</code>, <code>~/.aws/credentials</code>, system keychain</li>
-        <li>Outbound network calls to non-declared domains</li>
-        <li>Prompt injection patterns</li>
-        <li>Misleading descriptions</li>
+        <li>Fewer skills, deeper coverage.</li>
+        <li>One quality bar — ours.</li>
+        <li>Auto-improve telemetry feeds back into the next version.</li>
+        <li>Architecture-aware install means the skill won't crash on your hardware.</li>
       </ul>
 
-      <h2>Payouts</h2>
-      <p>Stripe Connect Express. Monthly. EU VAT MOSS handled. Usage-attributed (not referral-attributed) — your earnings track real installs and runs of <em>your</em> skill.</p>
+      <h2>How to request a skill</h2>
+      <ol>
+        <li>Go to <a href="https://recipes.wisechef.ai/request-skill">/request-skill</a> and submit the form (or DM <a href="https://wisechef.ai">WiseChef</a> directly).</li>
+        <li>We triage requests by signal: how many fleets would use this, how broken is the alternative, how recurring is the pain.</li>
+        <li>Time-to-skill for matched requests: 7 days for a working install, 14 days for full polish.</li>
+        <li>Studio subscribers get priority + a dedicated review SLA.</li>
+      </ol>
+
+      <h2>What makes a good request</h2>
+      <ul>
+        <li>A real workflow your team runs (or wants to run) repeatedly.</li>
+        <li>The hours/week that go into it manually today.</li>
+        <li>The failure mode you'd want telemetry on.</li>
+        <li>Whether the result needs a UI, a report, an API call, or just a side-effect.</li>
+      </ul>
+
+      <h2>The future of publishing</h2>
+      <p>
+        We may open invitation-only publishing later, with explicit per-publisher
+        agreements and 1:1 onboarding. We will <em>never</em> automate it. If you think
+        you're an exception, <a href="https://recipes.wisechef.ai/request-skill">tell us</a>.
+      </p>
     </div>
     <CrossSell />
   </section>

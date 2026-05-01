@@ -14,21 +14,25 @@ import CrossSell from '../../components/CrossSell.astro';
 curl -sL https://recipes.wisechef.ai/skill -o ~/.claude/skills/recipes/SKILL.md</code></pre>
       <p>Then in any session: <em>"read ~/.claude/skills/recipes/SKILL.md and follow it"</em>. Or paste it into your CLAUDE.md.</p>
 
-      <h2>OpenClaw / ClawHub</h2>
-      <pre><code>clawhub install recipes</code></pre>
+      <h2>OpenClaw</h2>
+      <pre><code>mkdir -p ~/.openclaw/skills/recipes
+curl -sL https://recipes.wisechef.ai/skill -o ~/.openclaw/skills/recipes/SKILL.md</code></pre>
       <p>Or just ask your agent: <em>"install the recipes skill"</em>.</p>
 
       <h2>Hermes Agent</h2>
-      <pre><code>curl -sL https://recipes.wisechef.ai/skill -o ~/.hermes/skills/recipes/SKILL.md</code></pre>
+      <pre><code>mkdir -p ~/.hermes/skills/recipes
+curl -sL https://recipes.wisechef.ai/skill -o ~/.hermes/skills/recipes/SKILL.md</code></pre>
 
-      <h2>Cursor / Windsurf / Cline</h2>
-      <p>Drop into your project root or custom-instructions area:</p>
-      <pre><code>curl -sL https://recipes.wisechef.ai/skill -o SKILL.md</code></pre>
-      <p>Then reference it from your <code>.cursorrules</code> or equivalent.</p>
+      <h2>Codex CLI</h2>
+      <pre><code>mkdir -p ~/.codex/skills/recipes
+curl -sL https://recipes.wisechef.ai/skill -o ~/.codex/skills/recipes/SKILL.md</code></pre>
 
-      <h2>Set your API key (for premium skills)</h2>
-      <pre><code>export RECIPES_API_KEY=rec_xxxxxxxxxxxxxxxxxxx</code></pre>
-      <p>Get the key from <a href="/signin?mode=signup">your dashboard</a> after subscribing.</p>
+      <h2>Cursor / Cline / Continue.dev / Zed</h2>
+      <p>These speak MCP. See <a href="/docs/mcp">/docs/mcp</a> for per-client config snippets pointing at <code>recipes-mcp</code>.</p>
+
+      <h2>Set your API key</h2>
+      <pre><code>export RECIPES_API_KEY=rec_xx...</code></pre>
+      <p>Required for every install — including free skills (free signup gives you a free key). Get it from <a href="/signin?mode=signup">your dashboard</a>.</p>
 
       <h2>Verify the install</h2>
       <pre><code>curl https://recipes.wisechef.ai/api/healthz</code></pre>

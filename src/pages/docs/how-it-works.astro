@@ -34,7 +34,8 @@ import CrossSell from '../../components/CrossSell.astro';
       <h2>What you control</h2>
       <ul>
         <li><strong>Credentials never leave your machine.</strong> Skills hit third-party APIs directly with your env vars.</li>
-        <li><strong>Skills run in a Firejail sandbox.</strong> Network allowlist, fs writes, exec binaries — all declared in the manifest, enforced at runtime.</li>
+        <li><strong>Optional sandbox.</strong> Skills declaring a <code>[sandbox]</code> block are isolated by bubblewrap or firejail (publisher's choice; host must have one available).</li>
+        <li><strong>Architecture-aware install.</strong> The runtime probe refuses to install on incompatible hardware before any side effect happens.</li>
         <li><strong>You can delete any skill</strong> by removing its directory. No account-level lock-in.</li>
       </ul>
     </div>

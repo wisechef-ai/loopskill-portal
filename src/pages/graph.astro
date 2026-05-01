@@ -409,11 +409,26 @@ const inlineJson = JSON.stringify(graph);
         }
       }, true);
 
-      // Desktop mouse wheel zoom (unchanged) — pointer events don't cover scroll-wheel
+      // Desktop mouse wheel zoom — anchored to the cursor position so the
+      // point under the pointer stays fixed in screen space across the zoom.
       svg.addEventListener('wheel', (e: WheelEvent) => {
         e.preventDefault();
         const factor = e.deltaY < 0 ? 1.1 : 0.9;
-        scale = Math.max(0.3, Math.min(3, scale * factor));
+        const newScale = Math.max(0.3, Math.min(3, scale * factor));
+        if (newScale === scale) return;
+        // Map cursor screen-space → SVG user-space using the inverse CTM
+        const pt = (svg as SVGSVGElement).createSVGPoint();
+        pt.x = e.clientX;
+        pt.y = e.clientY;
+        const ctm = (root as SVGGElement).getScreenCTM();
+        if (ctm) {
+          const svgPt = pt.matrixTransform(ctm.inverse());
+          // After scale change, we want this svgPt to remain visually anchored.
+          // tx_new = svgPt.x - (svgPt.x - tx) * (newScale / scale)
+          tx = svgPt.x - (svgPt.x - tx) * (newScale / scale);
+          ty = svgPt.y - (svgPt.y - ty) * (newScale / scale);
+        }
+        scale = newScale;
         applyTransform();
       }, { passive: false });
 

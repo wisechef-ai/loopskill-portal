@@ -13,11 +13,11 @@ import CrossSell from '../../components/CrossSell.astro';
 
       <h2>GET /api/skills/search</h2>
       <p>Public. No auth.</p>
-      <pre><code>curl "https://recipes.wisechef.ai/api/skills/search?q=client+report&limit=10"</code></pre>
-      <p>Params: <code>q</code> (string, required), <code>limit</code> (1–50), <code>category</code>, <code>sort</code> (popular | rating | newest).</p>
+      <pre><code>curl "https://recipes.wisechef.ai/api/skills/search?q=client+report&page_size=10"</code></pre>
+      <p>Params: <code>q</code> (string, optional — full-text on title + description), <code>page_size</code> (1–100, default 20), <code>page</code> (1+), <code>category</code>, <code>vertical</code> (marketing | code | web-scraping | ops | sales | sim-robotics), <code>tier</code> (free | cook | operator | studio), <code>sort</code> (updated_at | created_at | title).</p>
 
       <h2>GET /api/skills/install</h2>
-      <p>Auth required for premium skills (free skills work without).</p>
+      <p>Auth required (every install needs a key — including free-tier skills).</p>
       <pre><code>curl -H "x-api-key: $RECIPES_API_KEY" \
   "https://recipes.wisechef.ai/api/skills/install?slug=client-reporter&mode=files"</code></pre>
       <p>Always pass <code>mode=files</code>. Response includes a signed tarball URL and per-file manifest.</p>

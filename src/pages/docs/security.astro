@@ -12,16 +12,19 @@ import CrossSell from '../../components/CrossSell.astro';
         <li><strong>Credentials stay local.</strong> Your API keys never pass through Recipes servers. Skills hit third-party APIs directly with your env vars.</li>
         <li><strong>Skills run locally.</strong> Recipes only serves text files. Your agent decides what to execute.</li>
         <li><strong>Plain-text transparency.</strong> No obfuscated code, no hidden payloads. Inspect every line before running.</li>
-        <li><strong>GitHub-verified authors.</strong> Every publisher's identity is tied to a real GitHub account.</li>
-        <li><strong>Firejail sandbox.</strong> Skills declaring a <code>[sandbox]</code> block are run inside a Firejail profile — network allowlist, fs writes, exec binaries enforced at runtime.</li>
+        <li><strong>Single-publisher catalog.</strong> Every skill is curated and maintained by the WiseChef team. No external submissions, no third-party authors to vet — the catalog's quality is our problem.</li>
+        <li><strong>Architecture-aware install.</strong> The runtime probe refuses to install a skill on incompatible hardware (wrong OS, insufficient VRAM, missing CUDA) and suggests an alternative from the graph.</li>
       </ul>
 
-      <h2>Review pipeline</h2>
+      <h2>Publish-time review pipeline</h2>
       <ol>
-        <li><strong>Automated scan:</strong> Semgrep + curl-pipe-shell detection + base64 obfuscation patterns + prompt injection signatures + outbound-domain check.</li>
-        <li><strong>Human review:</strong> A real reviewer reads the SKILL.md, tests the setup, verifies the description matches the behavior. 48h SLA on Operator+ submissions.</li>
-        <li><strong>Continuous telemetry:</strong> Anonymous success/failure rates feed back into trust scoring. Skills with sustained high failure rates get flagged for re-review.</li>
+        <li><strong>Discipline linter (A.7):</strong> blocks user-name leaks, <code>curl | bash</code> patterns, hardcoded $HOME paths, internal-infra references, and unallowlisted external promo links at publish time.</li>
+        <li><strong>Manual curation:</strong> every skill is read, tested, and approved by a human reviewer before it lands in the catalog. We are the publisher.</li>
+        <li><strong>Continuous telemetry:</strong> the auto-improve incident network clusters anonymized failure reports across the fleet. Skills with high incident rates get flagged for the patch council and rolled through canary stages with auto-rollback.</li>
       </ol>
+
+      <h2>Optional sandbox (declared per-skill)</h2>
+      <p>Skills can declare a <code>[sandbox]</code> block in <code>skill.toml</code> with a network allowlist, filesystem write paths, and allowed executable list. When enforced, the sandbox runner uses <a href="https://github.com/containers/bubblewrap">bubblewrap</a> or <a href="https://firejail.wordpress.com/">firejail</a> (publisher's choice) to isolate the skill's setup and runtime. The host must have at least one available — runtime check at install time.</p>
 
       <h2>What Recipes never does</h2>
       <ul>

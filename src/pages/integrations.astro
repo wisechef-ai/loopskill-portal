@@ -4,6 +4,20 @@ import Icon from '../components/Icon.astro';
 
 const clients = [
   {
+    name: 'Hermes',
+    status: 'Native',
+    icon: '🜲',
+    note: 'Hermes auto-discovers SKILL.md in ~/.hermes/skills/. The recipes meta-skill becomes a tool the agent uses to search and install skills on demand.',
+    setup: 'mkdir -p ~/.hermes/skills/recipes && curl -sL https://recipes.wisechef.ai/skill -o ~/.hermes/skills/recipes/SKILL.md',
+  },
+  {
+    name: 'OpenClaw',
+    status: 'Native',
+    icon: '⚙️',
+    note: 'OpenClaw mounts the same skill directory layout as Claude Code/Codex. Drop the meta-skill in once; every spawned agent inherits it.',
+    setup: 'mkdir -p ~/.openclaw/skills/recipes && curl -sL https://recipes.wisechef.ai/skill -o ~/.openclaw/skills/recipes/SKILL.md',
+  },
+  {
     name: 'Claude Code',
     status: 'Native',
     icon: '🟠',
