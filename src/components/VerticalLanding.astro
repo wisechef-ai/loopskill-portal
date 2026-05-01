@@ -1,0 +1,86 @@
+---
+import Base from '../layouts/Base.astro';
+import CrossSell from './CrossSell.astro';
+import SkillCard from './SkillCard.astro';
+import Icon from './Icon.astro';
+import { VERTICALS, skillVertical, type VerticalSlug } from '../lib/verticals';
+import { fetchApi } from '../lib/api';
+
+interface Props {
+  vertical: VerticalSlug;
+  title?: string;
+  description?: string;
+}
+
+const { vertical, title, description } = Astro.props;
+const meta = VERTICALS.find(v => v.slug === vertical)!;
+
+// Try the new ?vertical= filter first; fall back to fetching all and
+// filtering client-side via classifyCategory(). Either way we end up
+// with a list of skills tagged for this vertical.
+const direct = await fetchApi<{ results: any[]; total: number }>(
+  `/api/skills/search?vertical=${vertical}&page_size=100`,
+);
+let skills: any[] = [];
+let fetchError: string | null = null;
+if (direct.ok && direct.data?.results?.length) {
+  skills = direct.data.results;
+} else {
+  // Fallback: pull the full catalog, filter by classifier.
+  const all = await fetchApi<{ results: any[]; total: number }>(
+    '/api/skills/search?page_size=100',
+  );
+  if (all.ok && all.data?.results) {
+    let pool = all.data.results;
+    if (pool.length === 100 && all.data.total > 100) {
+      const lastPage = Math.ceil(all.data.total / 100);
+      for (let p = 2; p <= lastPage; p++) {
+        const r = await fetchApi<{ results: any[] }>(
+          `/api/skills/search?page_size=100&page=${p}`,
+        );
+        if (r.ok && r.data?.results) pool = pool.concat(r.data.results);
+        else break;
+      }
+    }
+    skills = pool.filter(s => skillVertical(s) === vertical);
+  } else {
+    fetchError = direct.error || all.error;
+  }
+}
+
+const pageTitle = title ?? `${meta.label} skills — Recipes`;
+const pageDesc = description ?? `Production-grade ${meta.label.toLowerCase()} skills for AI agents. ${meta.desc}.`;
+---
+
+<Base title={pageTitle} description={pageDesc}>
+  <section class="max-w-7xl mx-auto px-6 pt-16 pb-8">
+    <div class="flex flex-col gap-3 mb-8 max-w-3xl">
+      <p class="eyebrow">Vertical · {meta.label}</p>
+      <h1 class="text-4xl md:text-5xl font-semibold tracking-tight">{skills.length} {meta.label.toLowerCase()} skills, ready to install.</h1>
+      <p class="text-muted">{meta.desc}.</p>
+      {fetchError && <p class="text-xs text-muted-soft">(catalog unavailable — API: {fetchError})</p>}
+    </div>
+
+    <div class="flex flex-wrap gap-2 items-center mb-8">
+      <a href="/skills" class="text-[11px] px-2.5 py-1 rounded-full border border-border text-muted hover:text-text transition">All skills</a>
+      {VERTICALS.map(v => (
+        <a
+          href={`/skills/${v.slug}`}
+          class={`text-[11px] px-2.5 py-1 rounded-full border transition inline-flex items-center gap-1.5 ${v.slug === vertical ? 'border-accent text-accent bg-accent/10' : 'border-border text-muted hover:text-text'}`}
+        >
+          <Icon name={v.icon as any} size={10} />
+          {v.label}
+        </a>
+      ))}
+    </div>
+
+    {skills.length > 0 ? (
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {skills.map(s => <SkillCard skill={s} />)}
+      </div>
+    ) : (
+      <p class="text-center text-muted py-16">No skills tagged <code class="text-accent">{vertical}</code> yet. Check back after the migration applies.</p>
+    )}
+  </section>
+  <CrossSell />
+</Base>

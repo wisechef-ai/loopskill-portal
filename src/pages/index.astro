@@ -47,7 +47,12 @@ const stats = [
   { num: `${liveSkillCount}+`, label: 'Production skills, live' },
   { num: '7', label: 'Carousel slots, refreshed daily' },
   { num: '< 30s', label: 'Install to first run' },
-  { num: '50%', label: 'Creator share, usage-attributed' },
+];
+
+const heroPillars = [
+  { title: 'Self-healing', body: 'Skills that report failures, propose fixes, and ship them through canary rollouts.', icon: 'check' },
+  { title: 'Fleet-deployable', body: 'One install command bootstraps an entire agent stack on a fresh box.', icon: 'box' },
+  { title: 'Cross-host', body: 'Architecture-aware install. Refuses to install on incompatible hardware. Suggests alternatives.', icon: 'terminal' },
 ];
 
 const verticals = [
@@ -76,37 +81,53 @@ const verticals = [
           <Icon name="arrow-right" size={11} class="opacity-50 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all" />
         </a>
         <h1 class="text-5xl md:text-7xl font-bold tracking-tighter leading-[1.02]" style="letter-spacing: -0.04em;">
-          The <span class="text-gradient hero-glow">recipe book</span><br/>for AI agents.
+          Your agents work.<br/><span class="text-gradient hero-glow">Until they don't.</span>
         </h1>
         <p class="text-lg md:text-xl text-muted leading-relaxed max-w-2xl">
-          We've burned through years of trial-and-error so your agent doesn't have to.
-          Production-grade skills — client reporting, SEO audits, content calendars, proposals,
-          code writing, web scraping — installed in seconds.
+          Production infrastructure for teams running AI in production.
           <strong class="text-text font-semibold">Run locally. Credentials stay home.</strong>
         </p>
-        <div class="flex flex-col sm:flex-row gap-3 mt-2">
-          <!-- Anon CTA: signup -->
-          <a href="/signin?mode=signup&plan=cook" data-auth-anon
+
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-4 w-full max-w-4xl text-left">
+          {heroPillars.map(p => (
+            <div class="flex flex-col gap-2 p-5 bg-bg-card/60 border border-border-soft rounded-xl backdrop-blur-sm hover:border-accent/40 transition">
+              <div class="flex items-center gap-2.5">
+                <div class="w-8 h-8 rounded-lg bg-accent/10 border border-accent/20 flex items-center justify-center text-accent">
+                  <Icon name={p.icon as any} size={16} />
+                </div>
+                <span class="text-sm font-semibold text-text">{p.title}</span>
+              </div>
+              <p class="text-xs text-muted leading-relaxed">{p.body}</p>
+            </div>
+          ))}
+        </div>
+
+        <div class="flex flex-col sm:flex-row gap-3 mt-4">
+          <a href="/assets/demo-self-heal.mp4"
              class="group inline-flex items-center justify-center gap-2 px-6 py-3 rounded-lg font-semibold text-sm bg-accent text-bg hover:bg-accent-soft transition glow-amber">
-            Get access · from $5/mo
-            <Icon name="arrow-right" size={14} class="group-hover:translate-x-0.5 transition-transform" />
+            <Icon name="play" size={14} />
+            Watch demo
           </a>
-          <!-- Authed CTA: go to library (hidden until /api/auth/me confirms) -->
-          <a href="/library" data-auth-authed
-             class="group hidden items-center justify-center gap-2 px-6 py-3 rounded-lg font-semibold text-sm bg-accent text-bg hover:bg-accent-soft transition glow-amber">
-            Open your library
-            <Icon name="arrow-right" size={14} class="group-hover:translate-x-0.5 transition-transform" />
-          </a>
-          <a href="/skills/client-reporter"
+          <a href="/docs/install"
              class="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-lg font-semibold text-sm border border-border hover:border-accent text-text transition backdrop-blur-sm bg-bg/40">
-            <Icon name="play" size={14} class="text-accent" />
-            Try Client Reporter free
+            <Icon name="terminal" size={14} class="text-accent" />
+            Drop in meta-skill
           </a>
         </div>
-        <p class="text-xs text-muted-soft mt-2" data-auth-anon>Cancel anytime · Open-source meta-skill · EU VAT MOSS handled</p>
+        <p class="text-xs text-muted-soft mt-2" data-auth-anon>Open-source meta-skill · From $5/mo · Cancel anytime</p>
       </div>
 
-      <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mt-20 pt-12 border-t border-border" id="stats-strip">
+      <div class="mt-12 max-w-4xl mx-auto rounded-2xl overflow-hidden border border-border bg-bg-card/40 backdrop-blur-sm">
+        <video
+          src="/assets/demo-self-heal.mp4"
+          controls
+          preload="none"
+          poster="/assets/demo-poster.svg"
+          class="w-full h-auto block aspect-video bg-bg-elev"
+        ></video>
+      </div>
+
+      <div class="grid grid-cols-3 gap-4 mt-20 pt-12 border-t border-border" id="stats-strip">
         {stats.map(s => (
           <div class="flex flex-col gap-1">
             <div class="text-3xl md:text-5xl font-bold text-text tracking-tight" style="letter-spacing: -0.03em;">{s.num}</div>
@@ -119,7 +140,7 @@ const verticals = [
 
   <section class="border-t border-border bg-bg-card/30">
     <div class="max-w-6xl mx-auto px-6 py-12">
-      <p class="eyebrow text-center mb-8">Built for every team running agents</p>
+      <p class="eyebrow text-center mb-8">Production infrastructure for teams running AI in production</p>
       <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
         {verticals.map(v => (
           <div class="flex flex-col items-center gap-2 p-4 bg-bg-card border border-border-soft rounded-xl hover:border-border transition group">

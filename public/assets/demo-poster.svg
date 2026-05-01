@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720" preserveAspectRatio="xMidYMid slice">
+  <defs>
+    <radialGradient id="g" cx="50%" cy="40%" r="60%">
+      <stop offset="0%" stop-color="#3a2a10"/>
+      <stop offset="60%" stop-color="#0d0d0d"/>
+      <stop offset="100%" stop-color="#000"/>
+    </radialGradient>
+  </defs>
+  <rect width="1280" height="720" fill="url(#g)"/>
+  <g font-family="Inter, system-ui, -apple-system, Segoe UI, sans-serif" text-anchor="middle">
+    <text x="640" y="320" font-size="84" font-weight="700" fill="#fafafa" letter-spacing="-3">Your agents work.</text>
+    <text x="640" y="420" font-size="84" font-weight="700" fill="#FFD166" letter-spacing="-3">Until they don't.</text>
+    <text x="640" y="500" font-size="22" font-weight="500" fill="#9a9a9a" letter-spacing="2">DEMO · SELF-HEALING SKILLS</text>
+  </g>
+  <circle cx="640" cy="600" r="44" fill="rgba(255,209,102,0.18)" stroke="#FFD166" stroke-width="2"/>
+  <polygon points="624,580 624,620 660,600" fill="#FFD166"/>
+</svg>

@@ -1,7 +1,9 @@
 ---
 import Base from '../../layouts/Base.astro';
 import CrossSell from '../../components/CrossSell.astro';
+import Icon from '../../components/Icon.astro';
 import { fetchApi } from '../../lib/api';
+import { VERTICALS, skillVertical } from '../../lib/verticals';
 
 const result = await fetchApi<{ results: any[]; total: number }>(
   '/api/skills/search?page_size=100',
@@ -34,9 +36,15 @@ if (pageOne.length === 100 && total > 100) {
 
 if (skills.length === 0) {
   skills = [
-    { slug: 'client-reporter', title: 'Client Reporter', description: 'Pull GA4 + GSC + Meta Ads + TikTok Ads → branded PDF for any client.', category: 'reporting', tier: 'free', install_count: 0 },
+    { slug: 'client-reporter', title: 'Client Reporter', description: 'Pull GA4 + GSC + Meta Ads + TikTok Ads → branded PDF for any client.', category: 'reporting', tier: 'free', install_count_total: 0, install_count_7d: 0 },
   ];
   total = 1;
+}
+
+// Tag every skill with a vertical (server-side classification when the
+// API hasn't backfilled the column yet). Used for the new vertical pills.
+for (const s of skills) {
+  s.__vertical = skillVertical(s);
 }
 
 const categories = Array.from(new Set(skills.map(s => s.category || 'general'))).filter(Boolean).sort();
@@ -58,6 +66,18 @@ for (const s of skills) {
         <p class="text-muted">Production-grade skills for marketing agencies, dev teams, and AI fleets. Free skills to start. Cook tier $5/mo unlocks 54 more.</p>
         {fetchError && <p class="text-xs text-muted-soft">(showing seed data — API: {fetchError})</p>}
       </div>
+    </div>
+
+    {/* Vertical pills — link out to the 6 vertical landing pages */}
+    <div class="flex flex-wrap gap-2 items-center mb-4">
+      <span class="text-[10px] uppercase tracking-wider text-muted-soft">Vertical:</span>
+      <button data-vert-filter="all" class="vert-pill text-[11px] px-2.5 py-1 rounded-full border border-accent text-accent bg-accent/10 transition inline-flex items-center gap-1.5">All</button>
+      {VERTICALS.map(v => (
+        <button data-vert-filter={v.slug} class="vert-pill text-[11px] px-2.5 py-1 rounded-full border border-border text-muted hover:text-text transition inline-flex items-center gap-1.5">
+          <Icon name={v.icon as any} size={10} />
+          {v.label}
+        </button>
+      ))}
     </div>
 
     {/* Tier + search filter row */}
@@ -96,6 +116,7 @@ for (const s of skills) {
             class="skill-card group bg-bg-card border border-border rounded-2xl p-5 card-lift flex flex-col gap-3"
             data-tier={tier}
             data-category={cat}
+            data-vertical={s.__vertical}
             data-search={`${s.title} ${s.description} ${s.slug} ${cat}`.toLowerCase()}
           >
             <div class="flex items-start justify-between gap-2">
@@ -105,7 +126,9 @@ for (const s of skills) {
             <p class="text-sm text-muted leading-relaxed line-clamp-3">{s.description}</p>
             <div class="flex items-center justify-between pt-3 border-t border-border-soft text-xs">
               <span class="text-muted-soft capitalize">{cat}</span>
-              <span class="text-muted-soft">{(s.install_count || 0).toLocaleString()} installs</span>
+              {typeof s.install_count_total === 'number' && (
+                <span class="text-muted-soft">{s.install_count_total.toLocaleString()} installs</span>
+              )}
             </div>
           </a>
         );
@@ -128,6 +151,7 @@ for (const s of skills) {
 
     let activeTier = 'all';
     let activeCat = 'all';
+    let activeVert = 'all';
     let activeQuery = '';
 
     function apply() {
@@ -135,11 +159,13 @@ for (const s of skills) {
       cards.forEach(c => {
         const t = c.dataset.tier;
         const cat = c.dataset.category;
+        const vert = c.dataset.vertical;
         const haystack = c.dataset.search ?? '';
         const matchTier = activeTier === 'all' || t === activeTier;
         const matchCat = activeCat === 'all' || cat === activeCat;
+        const matchVert = activeVert === 'all' || vert === activeVert;
         const matchQ = activeQuery === '' || haystack.includes(activeQuery);
-        const show = matchTier && matchCat && matchQ;
+        const show = matchTier && matchCat && matchVert && matchQ;
         c.style.display = show ? '' : 'none';
         if (show) visible++;
       });
@@ -151,8 +177,9 @@ for (const s of skills) {
 
     function setActivePill(group: string, value: string) {
       document.querySelectorAll<HTMLButtonElement>(`[data-${group}-filter]`).forEach(b => {
-        const isActive = b.dataset[`${group}Filter` as 'tierFilter'] === value;
-        if (group === 'tier') {
+        const key = `${group}Filter` as keyof DOMStringMap;
+        const isActive = b.dataset[key] === value;
+        if (group === 'tier' || group === 'vert') {
           b.classList.toggle('border-accent', isActive);
           b.classList.toggle('text-accent', isActive);
           b.classList.toggle('bg-accent/10', isActive);
@@ -181,6 +208,13 @@ for (const s of skills) {
       btn.addEventListener('click', () => {
         activeCat = btn.dataset.catFilter ?? 'all';
         setActivePill('cat', activeCat);
+        apply();
+      });
+    });
+    document.querySelectorAll<HTMLButtonElement>('[data-vert-filter]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        activeVert = btn.dataset.vertFilter ?? 'all';
+        setActivePill('vert', activeVert);
         apply();
       });
     });
@@ -215,6 +249,12 @@ for (const s of skills) {
       activeTier = tierParam;
       setActivePill('tier', activeTier);
     }
-    if (cat || tierParam) apply();
+    const vertParam = params.get('vertical');
+    const validVerts = ['marketing', 'code', 'web-scraping', 'ops', 'sales', 'sim-robotics'];
+    if (vertParam && validVerts.includes(vertParam)) {
+      activeVert = vertParam;
+      setActivePill('vert', activeVert);
+    }
+    if (cat || tierParam || vertParam) apply();
   })();
 </script>

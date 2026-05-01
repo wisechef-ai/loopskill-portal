@@ -7,7 +7,8 @@ const tiers = [
     name: 'Cook',
     price: '5',
     cadence: 'per month',
-    tagline: 'For solo agents and small agencies',
+    tagline: 'Self-healing catalog. All skills.',
+    headline: 'Self-healing catalog. All skills. Auto-improvement updates. Architecture-aware install.',
     badgeClass: 'badge-free',
     cta: 'Start with Cook',
     ctaAuthed: 'Switch to Cook',
@@ -15,11 +16,11 @@ const tiers = [
     ctaTier: 'cook',
     accent: false,
     features: [
-      'Unlimited skill installs',
-      'Public catalog access',
+      'Self-healing catalog — every skill',
+      'Auto-improvement updates',
+      'Architecture-aware install',
       'Daily 7-card carousel',
       'API library (30+ specs)',
-      'x-api-key auth, 60 req/min',
       'Community support',
     ],
   },
@@ -27,7 +28,8 @@ const tiers = [
     name: 'Operator',
     price: '25',
     cadence: 'per month',
-    tagline: 'For founders running 2–5 agents',
+    tagline: 'Cook + personal forks.',
+    headline: 'Cook + personal forks. Edit any skill, version it, share with your team.',
     badgeClass: 'badge-pro',
     cta: 'Start with Operator',
     ctaAuthed: 'Upgrade to Operator',
@@ -36,34 +38,50 @@ const tiers = [
     accent: true,
     features: [
       'Everything in Cook',
-      'Private skill submission',
+      'Personal forks of any skill',
+      'Edit, version, and ship',
+      'Share forks with your team',
       'Usage analytics dashboard',
-      'Carousel placement preference',
-      'Paperclip routine import',
       'Priority review (48h SLA)',
-      'Email support',
     ],
   },
   {
     name: 'Studio',
     price: '99',
     cadence: 'per month',
-    tagline: 'For agencies running fleets',
+    tagline: 'Operator + fleet bootstrap + white-label.',
+    headline: 'Operator + fleet bootstrap + white-label. One command spins up your full agent stack on any host.',
     badgeClass: 'badge-studio',
     cta: 'Talk to us',
     ctaAuthed: 'Talk to us',
     ctaHref: 'https://calendar.app.google/P9J9oaiemtHdsvG99',
     accent: false,
+    moneyBack: '14-day money-back',
     features: [
       'Everything in Operator',
+      'Fleet bootstrap — one command',
+      'White-label option',
       'Private catalog (org-only skills)',
       '10 team seats included',
       'Team analytics & telemetry',
-      'Recipe Bundles included',
       'Dedicated 24h review SLA',
-      'White-label option',
-      'Production Receipts',
+      '14-day money-back guarantee',
     ],
+  },
+];
+
+const faqs = [
+  {
+    q: 'What does the Studio money-back guarantee cover?',
+    a: 'If Studio doesn\'t spin up your agent stack the way you expected within 14 days of subscribing, email support and we refund the full month — no clawback on payouts to creators, no questions tied to usage. One-time per organization.',
+  },
+  {
+    q: 'How does fleet bootstrap work?',
+    a: 'Studio ships a single install command that provisions the meta-skill, your private catalog, and any pinned skills onto a fresh host. Architecture-aware: it refuses to install on incompatible hardware and suggests alternatives instead of failing silently.',
+  },
+  {
+    q: 'Can I cancel anytime?',
+    a: 'Yes. All tiers cancel at the end of the current billing period. Your installed skills keep running locally; only auto-improvement updates and new catalog access stop.',
   },
 ];
 
@@ -98,6 +116,12 @@ const creatorEcon = [
             <span class="text-4xl md:text-5xl font-semibold text-text">${t.price}</span>
             <span class="text-sm text-muted">/{t.cadence.replace('per ', '')}</span>
           </div>
+          {t.headline && <p class="text-sm text-muted leading-relaxed">{t.headline}</p>}
+          {t.moneyBack && (
+            <span class="inline-flex items-center self-start gap-1.5 px-2 py-0.5 rounded-full border border-success/40 text-success text-[10px] font-semibold uppercase tracking-wider bg-success/10">
+              {t.moneyBack}
+            </span>
+          )}
           <ul class="flex flex-col gap-2.5 text-sm text-muted">
             {t.features.map(f => (
               <li class="flex items-start gap-2">
@@ -141,6 +165,28 @@ const creatorEcon = [
         <a href="/publish" class="inline-flex items-center gap-1.5 text-sm text-accent hover:opacity-80">
           Start publishing →
         </a>
+      </div>
+    </div>
+  </section>
+
+  <section class="border-t border-border">
+    <div class="max-w-3xl mx-auto px-6 py-20">
+      <div class="flex flex-col items-center text-center gap-3 mb-10">
+        <p class="eyebrow">FAQ</p>
+        <h2 class="text-3xl md:text-4xl font-semibold tracking-tight">Common questions</h2>
+      </div>
+      <div class="flex flex-col gap-3">
+        {faqs.map(f => (
+          <details class="group bg-bg-card border border-border rounded-xl px-5 py-4 open:border-accent/40 transition">
+            <summary class="cursor-pointer list-none flex items-center justify-between gap-4 text-sm font-semibold text-text">
+              <span>{f.q}</span>
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" class="shrink-0 text-muted-soft transition-transform group-open:rotate-180" aria-hidden="true">
+                <path d="M3 5L7 9L11 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </summary>
+            <p class="text-sm text-muted leading-relaxed mt-3">{f.a}</p>
+          </details>
+        ))}
       </div>
     </div>
   </section>
