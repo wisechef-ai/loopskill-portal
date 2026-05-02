@@ -4,24 +4,21 @@ import CrossSell from '../components/CrossSell.astro';
 import Icon from '../components/Icon.astro';
 import AgentLogos from '../components/AgentLogos.astro';
 import NeuronAnimation from '../components/NeuronAnimation.astro';
+import { fetchApi } from '../lib/api';
 
+// Fetch carousel with retry+jitter (prevents silent 429 fallback that caused WIS-737).
 let carouselToday: any[] = [];
 try {
-  const res = await fetch('https://recipes.wisechef.ai/api/carousel/today', {
-    headers: { 'x-api-key': import.meta.env.RECIPES_API_KEY || 'rec_dev_internal' }
-  });
-  if (res.ok) carouselToday = await res.json();
+  const result = await fetchApi<any[]>('/api/carousel/today');
+  if (result.ok && result.data) carouselToday = result.data;
 } catch {}
 
-// Pull live skill count for the stats strip (fallback to 80 if API unreachable at build).
+// Pull live skill count for the stats strip (retry+jitter; fallback to 80 if API unreachable).
 let liveSkillCount = 80;
 try {
-  const res = await fetch('https://recipes.wisechef.ai/api/skills/search?page_size=1', {
-    headers: { 'x-api-key': import.meta.env.RECIPES_API_KEY || 'rec_dev_internal' }
-  });
-  if (res.ok) {
-    const data = await res.json();
-    if (typeof data.total === 'number' && data.total > 0) liveSkillCount = data.total;
+  const result = await fetchApi<{ total: number }>('/api/skills/search?page_size=1');
+  if (result.ok && result.data && typeof result.data.total === 'number' && result.data.total > 0) {
+    liveSkillCount = result.data.total;
   }
 } catch {}
 
