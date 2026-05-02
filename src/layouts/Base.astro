@@ -59,6 +59,20 @@ const orgSchema = {
     <script type="application/ld+json" set:html={JSON.stringify(orgSchema)}></script>
   </head>
   <body class="bg-bg text-text font-sans antialiased min-h-screen flex flex-col">
+    <script is:inline>
+      // WIS-660: Detect ?ref=<code> on any page → set referral cookie (30-day TTL)
+      (function() {
+        var p = new URLSearchParams(window.location.search);
+        var ref = p.get('ref');
+        if (ref && /^[A-Za-z0-9]{4,16}$/.test(ref)) {
+          document.cookie = 'recipes_ref=' + ref + '; Max-Age=2592000; Path=/; SameSite=Lax';
+          // Clean URL
+          var u = new URL(window.location.href);
+          u.searchParams.delete('ref');
+          window.history.replaceState({}, '', u.toString());
+        }
+      })();
+    </script>
     <a href="#main-content"
        class="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-[100] focus:px-4 focus:py-2 focus:rounded-lg focus:bg-accent focus:text-bg focus:font-semibold focus:text-sm">
       Skip to content

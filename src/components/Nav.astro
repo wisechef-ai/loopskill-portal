@@ -36,6 +36,7 @@ const isActive = (p: string) => path === p || (p !== '/' && path.startsWith(p));
         <a href="/graph" class={`hover:text-text transition ${isActive('/graph') ? 'text-text' : ''}`}>Graph</a>
         <a href="/pricing" class={`hover:text-text transition ${isActive('/pricing') ? 'text-text' : ''}`}>Pricing</a>
         <a href="/docs" class={`hover:text-text transition ${isActive('/docs') ? 'text-text' : ''}`}>Docs</a>
+        <a href="/blog" class={`hover:text-text transition ${isActive('/blog') ? 'text-text' : ''}`}>Blog</a>
       </div>
       <a href="/signin" class="hidden md:inline-flex text-sm text-muted hover:text-text transition px-3 py-1.5 rounded-lg" data-auth-anon>
         Sign in
@@ -94,6 +95,7 @@ const isActive = (p: string) => path === p || (p !== '/' && path.startsWith(p));
             <a href="/graph" class="px-4 py-3 text-muted hover:text-text hover:bg-bg-card transition">Graph</a>
             <a href="/pricing" class="px-4 py-3 text-muted hover:text-text hover:bg-bg-card transition">Pricing</a>
             <a href="/docs" class="px-4 py-3 text-muted hover:text-text hover:bg-bg-card transition">Docs</a>
+            <a href="/blog" class="px-4 py-3 text-muted hover:text-text hover:bg-bg-card transition">Blog</a>
             <a href="/signin" class="px-4 py-3 text-muted hover:text-text hover:bg-bg-card transition border-t border-border">Sign in</a>
             <a href="https://wisechef.ai" class="px-4 py-3 text-muted hover:text-text hover:bg-bg-card transition border-t border-border">← WiseChef</a>
           </nav>
