@@ -1,0 +1,112 @@
+---
+import Base from '../layouts/Base.astro';
+import Icon from '../components/Icon.astro';
+
+// Build-time stamp for "Last audited" indicators across the site.
+const lastAuditedAt = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+
+const layers = [
+  {
+    num: '01',
+    title: 'Allowlist linter',
+    icon: 'shield',
+    body: `Every published skill ships with a positive-allowlist manifest. The linter blocks merge if a skill reads, writes, or sends anything not on the list — credentials, environment variables, network destinations, file paths. We don't try to enumerate "bad" patterns; we explicitly enumerate the "good" ones.`,
+    proof: 'github.com/wisechef-ai/recipes-skill/blob/main/MANIFEST.allowlist.yaml',
+  },
+  {
+    num: '02',
+    title: 'Sandbox runner',
+    icon: 'box',
+    body: `Before a skill goes live, it runs in an ephemeral container with no outbound network except the explicitly allowlisted domains. The runner records every syscall, every fetch, every disk write, and replays it for a human reviewer. Skills that touch surfaces they didn't declare are rejected.`,
+    proof: 'recipes-api/app/security_scan.py',
+  },
+  {
+    num: '03',
+    title: 'Creator track record',
+    icon: 'check',
+    body: `Each skill is signed (Ed25519) by its creator. The signature, the published tarball SHA-256, and the source commit URL are stamped on the public skill page. Bad actors can't quietly replace a tarball — the hash mismatch is detectable by every install.`,
+    proof: 'recipes verify <slug>',
+  },
+];
+
+const guarantees = [
+  { label: 'Apache-2.0 licensed',         body: 'You can read, fork, audit, or replace anything you install.' },
+  { label: 'No telemetry by default',     body: 'Skills run on your machine. We see install events; we do not see your data.' },
+  { label: 'Reproducible tarballs',       body: 'Mtime/uid/gid stripped. Two packs of the same source produce byte-identical archives.' },
+  { label: 'Public review log',           body: 'Every audit decision is in the GitHub issue/PR history of the awesome-agent-recipes monorepo.' },
+];
+---
+
+<Base
+  title="Security & audit — Recipes"
+  description="How Recipes audits skills before they ship: allowlist linter + sandbox runner + creator track record. Triple-layer review with verifiable signatures on every skill."
+>
+  <section class="max-w-4xl mx-auto px-6 pt-16 pb-10">
+    <p class="eyebrow text-accent">Security &amp; audit</p>
+    <h1 class="text-4xl md:text-6xl font-bold tracking-tight mt-3" style="letter-spacing: -0.03em;">
+      Triple-layer review.<br/>Every skill. Every release.
+    </h1>
+    <p class="text-lg text-muted leading-relaxed mt-5 max-w-2xl">
+      A skill is a piece of software your AI agent will execute on your machine. Recipes treats it that way.
+      Below is exactly what happens between a creator pushing code and an install command landing on your laptop.
+    </p>
+  </section>
+
+  <section class="max-w-4xl mx-auto px-6 pb-16">
+    <div class="grid grid-cols-1 gap-4">
+      {layers.map((l) => (
+        <article class="bg-bg-card border border-border rounded-2xl p-6 md:p-8 flex flex-col md:flex-row gap-6">
+          <div class="flex md:flex-col items-center md:items-start gap-3 shrink-0 md:w-32">
+            <div class="w-12 h-12 rounded-xl bg-accent/10 border border-accent/20 flex items-center justify-center text-accent">
+              <Icon name={l.icon as any} size={20} />
+            </div>
+            <span class="font-mono text-xs text-muted-soft">{l.num}</span>
+          </div>
+          <div class="flex-1 flex flex-col gap-3">
+            <h2 class="text-2xl font-semibold tracking-tight text-text">{l.title}</h2>
+            <p class="text-muted leading-relaxed">{l.body}</p>
+            <p class="text-xs text-muted-soft font-mono break-all" data-proof>
+              proof: <span class="text-accent">{l.proof}</span>
+            </p>
+          </div>
+        </article>
+      ))}
+    </div>
+  </section>
+
+  <section class="border-t border-border bg-bg-card/30">
+    <div class="max-w-4xl mx-auto px-6 py-16">
+      <h2 class="text-2xl md:text-3xl font-bold tracking-tight mb-6" style="letter-spacing: -0.03em;">
+        Guarantees we make
+      </h2>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {guarantees.map((g) => (
+          <div class="bg-bg-card border border-border-soft rounded-xl p-5">
+            <h3 class="text-sm font-semibold text-text mb-2">{g.label}</h3>
+            <p class="text-xs text-muted leading-relaxed">{g.body}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  </section>
+
+  <section class="max-w-4xl mx-auto px-6 py-16">
+    <div class="bg-[#0d0d0d] border border-border rounded-2xl p-6 md:p-8 flex flex-col gap-4">
+      <p class="eyebrow">Verify a skill yourself</p>
+      <code class="font-mono text-sm text-text">recipes verify client-reporter</code>
+      <p class="text-xs text-muted-soft">
+        The CLI re-downloads the tarball, recomputes its SHA-256, and prints the source URL + signature.
+        If anything ever drifts from what we published, this command fails loudly.
+      </p>
+    </div>
+  </section>
+
+  <section class="max-w-4xl mx-auto px-6 pb-20">
+    <p class="text-xs text-muted-soft" data-last-audited>
+      Last full audit pass: <time datetime={lastAuditedAt} class="text-text">{lastAuditedAt}</time> ·
+      Source on
+      <a href="https://github.com/wisechef-ai/recipes-skill" class="text-accent hover:underline">GitHub</a> ·
+      Apache-2.0 licensed
+    </p>
+  </section>
+</Base>

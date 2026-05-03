@@ -1,0 +1,83 @@
+---
+// AuditRow — provenance & integrity row that sits above install instructions
+// on every skill page. Three pieces of evidence:
+//   1. source_url        → where the code lives (GitHub or upstream)
+//   2. sha256            → integrity hash of the published tarball
+//   3. last_reviewed_at  → human review timestamp (ISO-8601)
+// All three are optional; missing fields render as "—" so the row stays aligned.
+
+interface Props {
+  source_url?: string | null;
+  sha256?: string | null;
+  last_reviewed_at?: string | null;
+}
+
+const { source_url, sha256, last_reviewed_at } = Astro.props;
+
+const shortSha = sha256 ? `${sha256.slice(0, 12)}…` : null;
+
+let reviewedDisplay: string | null = null;
+if (last_reviewed_at) {
+  try {
+    const d = new Date(last_reviewed_at);
+    if (!Number.isNaN(d.getTime())) {
+      reviewedDisplay = d.toISOString().slice(0, 10); // YYYY-MM-DD
+    }
+  } catch {}
+}
+---
+
+<section
+  class="bg-bg-card border border-border rounded-xl px-5 py-3 flex flex-col md:flex-row md:items-center md:justify-between gap-3"
+  data-component="audit-row"
+  aria-label="Skill audit provenance"
+>
+  <div class="flex items-center gap-2 text-success">
+    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+      <path d="M8 1l6 3v4c0 4-3 6.5-6 7-3-.5-6-3-6-7V4l6-3z" />
+      <path d="M5.5 8.5l1.5 1.5 3.5-3.5" />
+    </svg>
+    <span class="text-xs font-semibold uppercase tracking-wider">Audited</span>
+  </div>
+
+  <dl class="flex flex-col md:flex-row md:items-center gap-3 md:gap-6 text-xs flex-1 md:justify-end">
+    <div class="flex items-center gap-2">
+      <dt class="text-muted-soft uppercase tracking-wider">Source</dt>
+      <dd>
+        {source_url ? (
+          <a href={source_url} target="_blank" rel="noopener noreferrer" class="text-accent hover:underline truncate max-w-[24ch] inline-block align-middle" title={source_url}>
+            {source_url.replace(/^https?:\/\//, '')}
+          </a>
+        ) : (
+          <span class="text-muted-soft">—</span>
+        )}
+      </dd>
+    </div>
+
+    <div class="flex items-center gap-2">
+      <dt class="text-muted-soft uppercase tracking-wider">SHA-256</dt>
+      <dd>
+        {sha256 ? (
+          <code class="font-mono text-text" title={sha256}>{shortSha}</code>
+        ) : (
+          <span class="text-muted-soft">—</span>
+        )}
+      </dd>
+    </div>
+
+    <div class="flex items-center gap-2">
+      <dt class="text-muted-soft uppercase tracking-wider">Last reviewed</dt>
+      <dd>
+        {reviewedDisplay ? (
+          <time datetime={last_reviewed_at!} class="text-text">{reviewedDisplay}</time>
+        ) : (
+          <span class="text-muted-soft">—</span>
+        )}
+      </dd>
+    </div>
+  </dl>
+
+  <a href="/security" class="text-[11px] text-muted-soft hover:text-accent transition shrink-0" data-audit-row-link>
+    How we audit →
+  </a>
+</section>

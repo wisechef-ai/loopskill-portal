@@ -2,6 +2,7 @@
 import Base from '../../layouts/Base.astro';
 import CrossSell from '../../components/CrossSell.astro';
 import Icon from '../../components/Icon.astro';
+import AuditRow from '../../components/AuditRow.astro';
 import { marked } from 'marked';
 import { fetchApi } from '../../lib/api';
 
@@ -128,6 +129,11 @@ const display = {
   license: skill?.license || f.license || null,
   readme: skill?.readme || null,
   versions: skill?.versions || [],
+  // Audit metadata (Phase B): these may be absent until the audit-backfill script
+  // (scripts/backfill_audit_metadata.py) populates them via PATCH /api/skills/{slug}/audit.
+  source_url: skill?.source_url || skill?.audit?.source_url || repoUrl || null,
+  sha256: skill?.sha256 || skill?.checksum_sha256 || skill?.audit?.sha256 || null,
+  last_reviewed_at: skill?.last_reviewed_at || skill?.audit?.last_reviewed_at || null,
 };
 
 // Render the readme markdown to HTML server-side
@@ -166,6 +172,13 @@ const isFree = display.tier === 'free';
           {display.tagline && <p class="text-lg md:text-xl text-muted">{display.tagline}</p>}
           <p class="text-text leading-relaxed mt-2">{display.description}</p>
         </header>
+
+        <!-- Audit row (Phase B trust) — provenance + integrity above install -->
+        <AuditRow
+          source_url={display.source_url}
+          sha256={display.sha256}
+          last_reviewed_at={display.last_reviewed_at}
+        />
 
         <!-- Quick install banner -->
         <div class="bg-[#0d0d0d] border border-border rounded-xl p-5 flex flex-col gap-3">
