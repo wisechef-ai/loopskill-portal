@@ -1,0 +1,92 @@
+---
+import Base from '../layouts/Base.astro';
+
+// stabilization_2605 Phase C — runtime compatibility matrix.
+// Single source of truth: keep this list in sync with starter-skills/*/recipe.yaml
+// in the recipes-skill repo (each ships a `runtimes` block).
+const runtimes = [
+  { key: 'hermes',          label: 'Hermes' },
+  { key: 'openclaw',        label: 'OpenClaw' },
+  { key: 'byoa-codex',      label: 'Codex' },
+  { key: 'byoa-claudecode', label: 'Claude Code' },
+];
+
+type Status = 'supported' | 'wip' | 'unsupported';
+
+const skills: Array<{
+  slug: string;
+  tier: 'free' | 'paid';
+  summary: string;
+  status: Record<string, Status>;
+}> = [
+  { slug: 'recipes-skill',       tier: 'free', summary: 'Entry meta-skill — gives an agent marketplace awareness.',
+    status: { 'hermes': 'supported', 'openclaw': 'supported', 'byoa-codex': 'supported', 'byoa-claudecode': 'supported' } },
+  { slug: 'client-reporter',     tier: 'free', summary: 'Branded white-label client report — multi-platform marketing metrics.',
+    status: { 'hermes': 'supported', 'openclaw': 'supported', 'byoa-codex': 'supported', 'byoa-claudecode': 'supported' } },
+  { slug: 'cold-outreach',       tier: 'paid', summary: 'Drafts and schedules multi-touch cold outreach sequences.',
+    status: { 'hermes': 'supported', 'openclaw': 'supported', 'byoa-codex': 'supported', 'byoa-claudecode': 'supported' } },
+  { slug: 'content-calendar',    tier: 'paid', summary: 'Thirty-day social content calendar generator.',
+    status: { 'hermes': 'supported', 'openclaw': 'supported', 'byoa-codex': 'supported', 'byoa-claudecode': 'supported' } },
+  { slug: 'seo-audit',           tier: 'paid', summary: 'Technical and on-page site audit with ranked remediation plan.',
+    status: { 'hermes': 'supported', 'openclaw': 'supported', 'byoa-codex': 'supported', 'byoa-claudecode': 'supported' } },
+  { slug: 'proposal-builder',    tier: 'paid', summary: 'Client proposal generator with PDF + editable source.',
+    status: { 'hermes': 'supported', 'openclaw': 'supported', 'byoa-codex': 'supported', 'byoa-claudecode': 'supported' } },
+  { slug: 'client-onboarding',   tier: 'paid', summary: 'Async kickoff wizard.',
+    status: { 'hermes': 'supported', 'openclaw': 'supported', 'byoa-codex': 'supported', 'byoa-claudecode': 'supported' } },
+  { slug: 'invoice-automation',  tier: 'paid', summary: 'Recurring client invoice generator.',
+    status: { 'hermes': 'supported', 'openclaw': 'supported', 'byoa-codex': 'supported', 'byoa-claudecode': 'supported' } },
+  { slug: 'slack-standup',       tier: 'paid', summary: 'Async daily standup runner.',
+    status: { 'hermes': 'supported', 'openclaw': 'supported', 'byoa-codex': 'supported', 'byoa-claudecode': 'supported' } },
+  { slug: 'gohighlevel-toolkit', tier: 'paid', summary: 'Wrapper toolkit for the marketing automation suite.',
+    status: { 'hermes': 'supported', 'openclaw': 'supported', 'byoa-codex': 'supported', 'byoa-claudecode': 'supported' } },
+];
+
+function badge(s: Status): string {
+  if (s === 'supported') return '✅';
+  if (s === 'wip') return '🚧';
+  return '❌';
+}
+---
+
+<Base title="Compatibility — Recipes" description="Which Recipes skills run on which agent runtimes — Hermes, OpenClaw, Codex, Claude Code.">
+  <section class="max-w-5xl mx-auto px-6 pt-16 pb-12">
+    <p class="eyebrow mb-2">Reference</p>
+    <h1 class="text-4xl font-semibold tracking-tight mb-4">Runtime compatibility</h1>
+    <p class="text-lg text-neutral-300 max-w-2xl mb-10">
+      Every skill ships a <code>recipe.yaml</code> with an explicit <code>runtimes</code>
+      block. ✅ supported · 🚧 work in progress · ❌ unsupported.
+    </p>
+
+    <div class="overflow-x-auto rounded-lg border border-neutral-800">
+      <table class="w-full text-sm">
+        <thead class="bg-neutral-900 text-neutral-300">
+          <tr>
+            <th class="text-left px-4 py-3 font-medium">Skill</th>
+            <th class="text-left px-4 py-3 font-medium">Tier</th>
+            {runtimes.map(r => (
+              <th class="text-center px-4 py-3 font-medium">{r.label}</th>
+            ))}
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-neutral-900">
+          {skills.map(s => (
+            <tr class="hover:bg-neutral-950/40">
+              <td class="px-4 py-3">
+                <div class="font-medium">{s.slug}</div>
+                <div class="text-neutral-400 text-xs">{s.summary}</div>
+              </td>
+              <td class="px-4 py-3 text-neutral-400">{s.tier}</td>
+              {runtimes.map(r => (
+                <td class="px-4 py-3 text-center text-lg">{badge(s.status[r.key])}</td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+
+    <p class="text-sm text-neutral-500 mt-6">
+      Don't see your runtime? See <a class="link" href="/docs/new-agent">Adding a new agent runtime</a>.
+    </p>
+  </section>
+</Base>

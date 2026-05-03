@@ -18,6 +18,11 @@
     redir /skill/ https://raw.githubusercontent.com/wisechef-ai/recipes-skill/main/SKILL.md 302
     redir /SKILL.md https://raw.githubusercontent.com/wisechef-ai/recipes-skill/main/SKILL.md 302
 
+    # /fleet -> framework installer (stabilization_2605 Phase C).
+    # The static portal serves a self-contained fallback at /fleet/install.sh.
+    # The redirect points operators at the always-fresh GitHub HEAD.
+    redir /fleet https://raw.githubusercontent.com/wisechef-ai/recipes-skill/main/recipes-installer/install-fleet.sh 302
+
     # API reverse proxy
     handle /api/* {
         reverse_proxy localhost:8200

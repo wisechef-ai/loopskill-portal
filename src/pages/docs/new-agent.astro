@@ -1,0 +1,60 @@
+---
+import Base from '../../layouts/Base.astro';
+---
+
+<Base title="Adding a new agent runtime — Recipes Docs"
+      description="10-minute guide to add a Recipes runtime profile for an agent the four built-in profiles don't yet cover.">
+  <section class="max-w-3xl mx-auto px-6 pt-16 pb-12">
+    <p class="eyebrow mb-2">Documentation · New runtime</p>
+    <h1 class="text-4xl font-semibold tracking-tight mb-6">Adding a new agent runtime (10-minute guide)</h1>
+    <div class="prose">
+      <p>
+        The Recipes installer ships four runtime profiles out of the box: Hermes (default),
+        OpenClaw, Codex (BYOA), and Claude Code (BYOA). If your agent isn't on that list,
+        this guide gets it onto a fleet in roughly ten minutes — no fork required.
+      </p>
+
+      <h2>1. Confirm host capabilities</h2>
+      <p>From any shell:</p>
+      <pre><code>recipes capabilities --json</code></pre>
+      <p>You want at least <code>git</code>, <code>python</code>, <code>ssh</code>, and
+      <code>tmux</code> to read <code>ok</code>. Docker is needed only if your runtime uses
+      the bundled compose stack.</p>
+
+      <h2>2. Choose a closest-fit profile</h2>
+      <ul>
+        <li><strong>Native binary on the host?</strong> Mirror the <code>hermes</code> or
+            <code>openclaw</code> profile — those clone, set up, and Docker-compose.</li>
+        <li><strong>BYOA — agent already installed?</strong> Mirror the <code>byoa-codex</code>
+            or <code>byoa-claudecode</code> profile — those just emit a paste-ready prompt
+            for the existing agent to install MCP servers and the skill bundle.</li>
+      </ul>
+
+      <h2>3. MCP server config</h2>
+      <p>Most modern agent runtimes accept the same MCP server config shape. The Recipes
+      MCP server publishes its config under the marketplace; load it from the bundle entry
+      point and merge into the agent's MCP config file.</p>
+
+      <h2>4. Drop the skill bundle</h2>
+      <p>Use <code>recipes onboard --goal=fleet</code> to get the 10-skill bundle list, then
+      install via <code>recipes install &lt;slug&gt;</code> for each.</p>
+
+      <h2>5. Common troubleshooting</h2>
+      <ul>
+        <li><strong>"command not found: recipes"</strong> — install the meta-skill first:
+            <code>pip install wisechef-recipes</code> or
+            <code>npm i -g @wisechef/recipes</code>.</li>
+        <li><strong>Compose stack fails</strong> — Docker is missing or rootless mode is
+            misconfigured. Re-run <code>recipes capabilities</code> to confirm.</li>
+        <li><strong>Skills install but agent ignores them</strong> — the agent's skills
+            directory is non-standard. Check with the agent's docs and copy the bundled
+            skills there manually.</li>
+      </ul>
+
+      <h2>6. Contribute the profile back</h2>
+      <p>If you got a new runtime working, send a PR to <code>recipes-installer/profiles/</code>.
+      Once two operators have validated it on different machines, we add the column to the
+      <a class="link" href="/compatibility">compatibility matrix</a>.</p>
+    </div>
+  </section>
+</Base>
