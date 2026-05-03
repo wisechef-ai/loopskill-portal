@@ -24,7 +24,7 @@ Here are the five highest-ROI skills for agencies from the WiseChef library.
 
 [Read the full guide](/blog/automate-client-reporting)
 
-## 2. Proposal Builder (Operator tier)
+## 2. Proposal Builder (All-in tier)
 
 **What it does:** Generates custom proposals from your templates, pulling in client-specific data, case studies, and pricing.
 
@@ -32,7 +32,7 @@ Here are the five highest-ROI skills for agencies from the WiseChef library.
 
 **ROI math:** If you send 5 proposals/month and each takes 5 hours, that's 25 hours. Proposal Builder cuts it to 2.5 hours. At $50/hr, that's $1,125/month saved — and proposals go out faster, which means higher close rates.
 
-## 3. SEO Audit Runner (Cook tier)
+## 3. SEO Audit Runner (Pro tier)
 
 **What it does:** Runs technical SEO audits on any website — crawl issues, Core Web Vitals, meta tags, schema, internal linking.
 
@@ -40,7 +40,7 @@ Here are the five highest-ROI skills for agencies from the WiseChef library.
 
 **ROI math:** Sell 4 SEO audits/month at $500 each = $2,000 revenue. With SEO Audit Runner, your cost to produce is under an hour of review time.
 
-## 4. Cold Outreach Automation (Operator tier)
+## 4. Cold Outreach Automation (All-in tier)
 
 **What it does:** Researches prospects, writes personalized outreach emails, and sends them via your existing email infrastructure.
 
@@ -48,7 +48,7 @@ Here are the five highest-ROI skills for agencies from the WiseChef library.
 
 **ROI math:** Sending 50 personalized emails/week with a 5% reply rate = 10 conversations/week. At a 20% close rate and $2,000 MRR/client, that's $4,000 MRR added per month from outreach alone.
 
-## 5. Competitive Intelligence (Cook tier)
+## 5. Competitive Intelligence (Pro tier)
 
 **What it does:** Monitors competitor websites, social media, and ad campaigns. Delivers a weekly briefing on what changed.
 
@@ -65,7 +65,7 @@ pipx install wiserecipes
 wiserecipes install client-reporter  # Free forever
 ```
 
-The Cook tier ($5/month) gives you the full catalog including SEO Audit Runner and Competitive Intelligence. Operator ($25/month) adds Proposal Builder, Cold Outreach, and custom skill forks.
+The Pro tier (€20/month) gives you the full catalog including SEO Audit Runner, Competitive Intelligence, and Proposal Builder. All-in (€100/month) adds Cold Outreach, custom skill forks, the framework installer, and 30-day async onboarding.
 
 [Browse all 80+ skills](/library) or [see pricing](/pricing).
 

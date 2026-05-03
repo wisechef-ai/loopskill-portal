@@ -66,7 +66,7 @@ wiserecipes install gohighlevel-cli
 ghl config set --api-key="your_key" --location="your_location_id"
 ```
 
-GoHighLevel CLI is available on the Operator tier ($25/month).
+GoHighLevel CLI is available on the All-in tier (€100/month).
 
 ## Pro Tips
 
@@ -76,4 +76,4 @@ GoHighLevel CLI is available on the Operator tier ($25/month).
 
 ---
 
-*GoHighLevel CLI is part of the WiseChef Operator tier. [Get started](/signin?next=/api/checkout/operator).*
+*GoHighLevel CLI is part of the WiseChef All-in tier. [Get started](/signin?next=/api/checkout/studio).*

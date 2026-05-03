@@ -42,7 +42,7 @@ That's it. No code, no API keys to manage, no maintenance burden.
 
 Client Reporter is free because it's the best marketing WiseChef has. You install it, it works, you tell other agency owners about it. That's the deal.
 
-The paid tiers (Cook, Operator, Studio) unlock additional skills like proposal building, cold outreach automation, and custom skill forks — but client reporting should be free for everyone.
+The paid tiers (Pro and All-in) unlock additional skills like proposal building, cold outreach automation, and custom skill forks — but client reporting should be free for everyone.
 
 ## Real-World Results
 

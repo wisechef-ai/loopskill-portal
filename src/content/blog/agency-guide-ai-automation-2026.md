@@ -54,7 +54,7 @@ The "hire an AI employee" pitch is still mostly hype. What works today are *disc
 2. **Install one skill** — start free with Client Reporter
 3. **Measure the time saved** — track hours before and after
 4. **Add more skills** — expand to proposals, SEO audits, competitive intelligence
-5. **Build your own** — the Studio tier lets you fork and customize any skill
+5. **Build your own** — the All-in tier lets you fork and customize any skill
 
 The key insight: don't try to automate everything at once. Start with one repetitive task, prove the ROI, and expand from there.
 
@@ -62,9 +62,9 @@ The key insight: don't try to automate everything at once. Start with one repeti
 
 WiseChef is the skill platform built specifically for agencies. 80+ skills across marketing, sales, operations, and analytics. Three tiers:
 
-- **Cook ($5/mo)** — Full catalog, auto-updates, API access
-- **Operator ($25/mo)** — Everything in Cook + custom forks, priority support
-- **Studio ($99/mo)** — Everything in Operator + skill builder, team sharing, white-label
+- **Free ($0)** — Browse the catalog, install free skills (Client Reporter, Gif Search, Ascii Art)
+- **Pro (€20/mo)** — Full catalog, auto-updates, API access, signed receipts, priority Discord
+- **All-in (€100/mo)** — Everything in Pro + framework installer, fork any skill, team sharing, white-label, 30-day async onboarding
 
 [Start free with Client Reporter](/signin).
 
