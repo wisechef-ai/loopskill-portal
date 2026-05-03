@@ -4,67 +4,71 @@ import CrossSell from '../components/CrossSell.astro';
 
 const tiers = [
   {
-    name: 'Cook',
-    price: '5',
-    cadence: 'per month',
-    tagline: 'Self-healing catalog. All skills.',
-    headline: 'Self-healing catalog. All skills. Auto-improvement updates. Architecture-aware install.',
+    name: 'Free',
+    price: '0',
+    cadence: 'forever',
+    currency: '$',
+    tagline: 'Try it. Keep it.',
+    headline: 'Browse the catalog, install one skill, run it locally. No card. No clawback if you cancel later — your installed skills keep working on your machine.',
     badgeClass: 'badge-free',
-    cta: 'Start with Cook',
-    ctaAuthed: 'Switch to Cook',
-    ctaHref: '/signin?next=/api/checkout/cook',
-    ctaTier: 'cook',
+    cta: 'Start free',
+    ctaAuthed: 'You\'re on Free',
+    ctaHref: '/signin?next=/library',
+    ctaTier: 'free',
     accent: false,
     features: [
-      'Self-healing catalog — every skill',
-      'Auto-improvement updates',
-      'Architecture-aware install',
       'Daily 7-card carousel',
-      'API library (30+ specs)',
-      'Community support',
+      'Browse the full catalog',
+      'Install one community skill',
+      'Local-first — runs on your hardware',
+      'Cross-vendor: works on Codex, Claude, OpenClaw',
     ],
   },
   {
-    name: 'Operator',
-    price: '25',
+    name: 'Pro',
+    price: '20',
     cadence: 'per month',
-    tagline: 'Cook + personal forks.',
-    headline: 'Cook + personal forks. Edit any skill, version it, share with your team.',
+    currency: '€',
+    tagline: 'Every skill. Auto-improvement updates.',
+    headline: 'Unlimited installs. Auto-improvement updates. Architecture-aware install that refuses to break your machine. Same engine on every host you own.',
     badgeClass: 'badge-pro',
-    cta: 'Start with Operator',
-    ctaAuthed: 'Upgrade to Operator',
-    ctaHref: '/signin?next=/api/checkout/operator',
-    ctaTier: 'operator',
+    cta: 'Start Pro — €20/mo',
+    ctaAuthed: 'Switch to Pro',
+    ctaHref: '/signin?next=/api/checkout/cook',
+    ctaTier: 'cook',
     accent: true,
     features: [
-      'Everything in Cook',
+      'Unlimited skills, every catalog',
+      'Auto-improvement updates',
+      'Architecture-aware install',
+      'API library (30+ specs)',
       'Personal forks of any skill',
-      'Edit, version, and ship',
-      'Share forks with your team',
-      'Usage analytics dashboard',
-      'Priority review (48h SLA)',
+      'Cross-vendor portability — bring your agent, we bring the skills',
+      'Community + email support',
     ],
   },
   {
-    name: 'Studio',
-    price: '99',
+    name: 'All-in',
+    price: '100',
     cadence: 'per month',
-    tagline: 'Operator + fleet bootstrap + white-label.',
-    headline: 'Operator + fleet bootstrap + white-label. One command spins up your full agent stack on any host.',
+    currency: '€',
+    tagline: 'Skills + framework installer + onboarding.',
+    headline: 'Pro, plus the framework installer (one command spins up your full agent stack on a fresh host) and a 60-min white-glove onboarding. Cancel back to Pro any time — proration kicks in.',
     badgeClass: 'badge-studio',
-    cta: 'Talk to us',
-    ctaAuthed: 'Talk to us',
-    ctaHref: 'https://calendar.app.google/P9J9oaiemtHdsvG99',
+    cta: 'Start All-in — €100/mo',
+    ctaAuthed: 'Upgrade to All-in',
+    ctaHref: '/signin?next=/api/checkout/studio',
+    ctaTier: 'studio',
     accent: false,
     moneyBack: '14-day money-back',
     features: [
-      'Everything in Operator',
-      'Fleet bootstrap — one command',
-      'White-label option',
+      'Everything in Pro',
+      'Framework installer — one command',
+      '60-minute onboarding call',
       'Private catalog (org-only skills)',
       '10 team seats included',
-      'Team analytics & telemetry',
-      'Dedicated 24h review SLA',
+      'Priority review (24h SLA)',
+      'Proration if you switch back to Pro',
       '14-day money-back guarantee',
     ],
   },
@@ -72,33 +76,34 @@ const tiers = [
 
 const faqs = [
   {
-    q: 'What does the Studio money-back guarantee cover?',
-    a: 'If Studio doesn\'t spin up your agent stack the way you expected within 14 days of subscribing, email support and we refund the full month — no clawback on payouts to creators, no questions tied to usage. One-time per organization.',
+    q: 'Does my install stop working if I cancel All-in?',
+    a: 'No. The skills you have already installed keep running on your machine — they live locally, not in our cloud. Cancellation only stops auto-improvement updates and access to new catalog content. You can re-subscribe later and pick up exactly where you left off.',
   },
   {
-    q: 'How does fleet bootstrap work?',
-    a: 'Studio ships a single install command that provisions the meta-skill, your private catalog, and any pinned skills onto a fresh host. Architecture-aware: it refuses to install on incompatible hardware and suggests alternatives instead of failing silently.',
+    q: 'What if I switch from All-in to Pro?',
+    a: 'Use the in-app downgrade button (or hit POST /api/subscriptions/downgrade). Stripe applies prorated credit for the unused portion of All-in to your next Pro invoice — no money lost, no surprise charge. Your private catalog and onboarding artefacts stay accessible until the end of the billing period.',
   },
   {
-    q: 'Can I cancel anytime?',
-    a: 'Yes. All tiers cancel at the end of the current billing period. Your installed skills keep running locally; only auto-improvement updates and new catalog access stop.',
+    q: 'Is this a real subscription or one-time?',
+    a: 'Real monthly subscription handled by Stripe. EU pricing includes Stripe Tax / VAT MOSS. Receipts come from Stripe — we never custody your money.',
   },
-];
-
-const creatorEcon = [
-  { label: 'Cook tier creators', share: '50%', desc: 'Usage-attributed. We reward quality, not referrals.' },
-  { label: 'Operator tier creators', share: '60%', desc: 'Higher share for skills that go through Operator-only paths.' },
-  { label: 'Studio private skills', share: '70%', desc: 'Orgs keeping IP local get the highest share.' },
-  { label: 'First 50 publishers', share: '75%', desc: 'Locked-in for life. Recruitment incentive.' },
+  {
+    q: 'Why €20 / €100 and not less?',
+    a: '€20 covers operating one engineer\'s ongoing work on the catalog. €100 covers the white-glove install + bespoke onboarding for orgs that need their fleet bootstrapped today rather than next quarter. The price funds the work; lower numbers fund nothing.',
+  },
+  {
+    q: 'Can I bring my own agent?',
+    a: 'Yes. That\'s the whole point. Recipes is cross-vendor: the skill catalog runs on Codex, Claude Code, OpenClaw, and AgentPact-compatible hosts. You pay for the catalog, not the model.',
+  },
 ];
 ---
 
-<Base title="Pricing — Recipes" description="Simple plans for agents, agencies, and fleets. Cook $5/mo. Operator $25/mo. Studio $99/mo. Usage-attributed creator economy.">
+<Base title="Pricing — Recipes" description="Free $0, Pro €20/mo, All-in €100/mo. Cross-vendor catalog of agent skills. Cancel anytime, your installed skills keep working.">
   <section class="max-w-6xl mx-auto px-6 pt-16 pb-12">
     <div class="text-center max-w-2xl mx-auto flex flex-col gap-3 mb-14">
       <p class="eyebrow">Pricing</p>
-      <h1 class="text-4xl md:text-5xl font-semibold tracking-tight">One subscription. Unlimited skills.</h1>
-      <p class="text-muted">All plans include the daily carousel, the meta-skill, and the API library. Pick the tier that matches your fleet size.</p>
+      <h1 class="text-4xl md:text-5xl font-semibold tracking-tight">Bring your agent. We bring the skills.</h1>
+      <p class="text-muted">One subscription, every model. The catalog runs on Codex, Claude Code, OpenClaw — wherever your agent lives. Cancel anytime; your installed skills keep working locally.</p>
     </div>
 
     <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
@@ -113,8 +118,8 @@ const creatorEcon = [
             <span class={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold tracking-wider ${t.badgeClass}`}>{t.name.toUpperCase()}</span>
           </div>
           <div class="flex items-baseline gap-1.5">
-            <span class="text-4xl md:text-5xl font-semibold text-text">${t.price}</span>
-            <span class="text-sm text-muted">/{t.cadence.replace('per ', '')}</span>
+            <span class="text-4xl md:text-5xl font-semibold text-text">{t.currency}{t.price}</span>
+            <span class="text-sm text-muted">{t.cadence === 'forever' ? '· forever' : `/${t.cadence.replace('per ', '')}`}</span>
           </div>
           {t.headline && <p class="text-sm text-muted leading-relaxed">{t.headline}</p>}
           {t.moneyBack && (
@@ -141,32 +146,7 @@ const creatorEcon = [
       ))}
     </div>
 
-    <p class="text-center text-xs text-muted-soft mt-8">Cancel anytime. EU pricing includes VAT MOSS handling.</p>
-  </section>
-
-  <!-- Creator economy -->
-  <section class="border-t border-border">
-    <div class="max-w-6xl mx-auto px-6 py-20">
-      <div class="flex flex-col items-center text-center gap-3 mb-12">
-        <p class="eyebrow">Creator economy</p>
-        <h2 class="text-3xl md:text-4xl font-semibold tracking-tight max-w-2xl">Build skills. Earn forever.</h2>
-        <p class="text-muted max-w-2xl">Usage-attributed payouts. Real money for real impact. The more your skill gets installed and run, the more you earn — every month.</p>
-      </div>
-      <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-        {creatorEcon.map(e => (
-          <div class="bg-bg-card border border-border rounded-2xl p-5">
-            <div class="text-3xl font-semibold text-accent">{e.share}</div>
-            <div class="text-sm text-text font-medium mt-1">{e.label}</div>
-            <p class="text-xs text-muted mt-2 leading-relaxed">{e.desc}</p>
-          </div>
-        ))}
-      </div>
-      <div class="text-center mt-8">
-        <a href="/publish" class="inline-flex items-center gap-1.5 text-sm text-accent hover:opacity-80">
-          Start publishing →
-        </a>
-      </div>
-    </div>
+    <p class="text-center text-xs text-muted-soft mt-8">Cancel anytime. EU pricing includes VAT MOSS. Receipts via Stripe.</p>
   </section>
 
   <section class="border-t border-border">
@@ -195,14 +175,10 @@ const creatorEcon = [
 </Base>
 
 <script>
-  // Smart pricing CTAs (WIS-645): if authed, hit checkout directly;
-  // if not, send to /signin?next=/api/checkout/{tier} so the OAuth callback resumes.
-  // Auth-aware label swap (WIS-684 follow-up): "Start with Cook" → "Switch to Cook" when logged in.
   (async () => {
     const buttons = document.querySelectorAll<HTMLAnchorElement>('a.tier-cta[data-tier]');
     if (buttons.length === 0) return;
 
-    // Probe auth once on mount and swap labels + highlight current tier.
     let me: any = null;
     try {
       const r = await fetch('/api/auth/me', { credentials: 'include' });
@@ -211,11 +187,13 @@ const creatorEcon = [
 
     if (me) {
       const currentTier = (me.subscription_tier || '').toLowerCase();
+      const isFree = !currentTier || me.subscription_status !== 'active';
       buttons.forEach(btn => {
         const tier = (btn.getAttribute('data-tier') || '').toLowerCase();
         const authedLabel = btn.getAttribute('data-cta-authed');
         if (authedLabel) btn.textContent = authedLabel;
-        if (currentTier && tier === currentTier) {
+        const isCurrent = (tier === 'free' && isFree) || (tier === currentTier && !isFree);
+        if (isCurrent) {
           btn.textContent = 'Current plan ✓';
           btn.classList.add('opacity-60', 'pointer-events-none');
           btn.setAttribute('aria-disabled', 'true');
@@ -227,12 +205,11 @@ const creatorEcon = [
       btn.addEventListener('click', async (e) => {
         if (btn.getAttribute('aria-disabled') === 'true') { e.preventDefault(); return; }
         const tier = btn.getAttribute('data-tier');
-        if (!tier) return;  // Studio "Talk to us" lacks data-tier — falls through to default href
+        if (!tier || tier === 'free') return;
         e.preventDefault();
         const originalText = btn.textContent;
         btn.textContent = 'Loading…';
         if (me) {
-          // POST checkout, redirect to Stripe Checkout URL
           try {
             const res = await fetch(`/api/checkout/${tier}`, {
               method: 'POST', credentials: 'include',
@@ -244,12 +221,10 @@ const creatorEcon = [
               window.location.href = data.url;
               return;
             }
-            // Fall through on error
           } catch { /* fall through */ }
           btn.textContent = originalText;
           window.location.href = btn.getAttribute('href') || '/signin';
         } else {
-          // Send to signin with next= so OAuth callback resumes checkout
           window.location.href = btn.getAttribute('href') || '/signin';
         }
       });

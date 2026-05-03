@@ -2,6 +2,7 @@
 import '../styles/global.css';
 import Nav from '../components/Nav.astro';
 import Footer from '../components/Footer.astro';
+import IntentSurvey from '../components/IntentSurvey.astro';
 
 interface Props {
   title?: string;
@@ -82,5 +83,6 @@ const orgSchema = {
       <slot />
     </main>
     <Footer />
+    <IntentSurvey />
   </body>
 </html>
