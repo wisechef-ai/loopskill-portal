@@ -1,0 +1,58 @@
+---
+import Base from '../layouts/Base.astro';
+const lastUpdated = '2026-05-03';
+---
+
+<Base title="Privacy — Recipes by WiseChef" description="What we collect, what we do not collect, and why our heartbeat is mathematically anonymous.">
+  <main class="prose">
+    <h1>Privacy</h1>
+    <p><em>Last updated: {lastUpdated}</em></p>
+
+    <h2>The 30-second version</h2>
+    <ul>
+      <li>We collect <strong>only a randomly-generated salt + day-of-last-seen</strong> from installed Recipes clients.</li>
+      <li>We <strong>cannot identify individual users</strong> from heartbeat data — this is a <em>mathematical guarantee</em> built into the schema, not a policy promise.</li>
+      <li>You can disable telemetry entirely with <code>RECIPES_TELEMETRY=off</code> — there is no fallback channel.</li>
+      <li>Account data (email, GitHub/Google ID, Stripe customer ID) is collected only when you explicitly create an account or subscribe.</li>
+    </ul>
+
+    <h2>What the heartbeat actually contains</h2>
+    <p>Every Recipes client (CLI, installer, skill runtime) sends one HTTP request per day to <code>POST /api/v1/heartbeat</code>. The body has <strong>exactly two fields</strong>:</p>
+    <pre><code>{`{
+  "salt": "<32-character random hex string, generated on first run>",
+  "last_seen_day": "YYYY-MM-DD"
+}`}</code></pre>
+    <p>Anything else in the request body is rejected with HTTP 400. The server enforces this with a strict Pydantic schema (<code>extra=&quot;forbid&quot;</code>).</p>
+
+    <h2>What gets stored on our servers</h2>
+    <p>Our database table <code>fleet_pings</code> has <strong>only four columns</strong>:</p>
+    <ul>
+      <li><code>id</code> — synthetic primary key</li>
+      <li><code>salt_hash</code> — <code>blake2b(salt, key=server_pepper)</code> — keyed hash, not the salt itself</li>
+      <li><code>last_seen_day</code> — the day you sent the ping</li>
+      <li><code>created_at</code> — server-side timestamp (used only for the 90-day TTL job)</li>
+    </ul>
+    <p>There is <strong>no</strong> column for IP address, user-agent, OS, region, account ID, email, install path, or anything else. The schema cannot be queried for &quot;who installed what&quot; — it can only answer &quot;how many distinct devices were active in week N&quot;.</p>
+
+    <h2>Why we call this &quot;mathematically anonymous&quot;</h2>
+    <p>Two layers:</p>
+    <ol>
+      <li><strong>Schema</strong>: with no PII columns, there's no per-customer query path to expose.</li>
+      <li><strong>Hashing</strong>: <code>blake2b</code> is keyed by a server-side pepper. Even if our database were fully exfiltrated, an attacker still couldn't map a hash back to a salt or to a customer without also stealing the pepper from a separate secrets store.</li>
+    </ol>
+
+    <h2>Retention</h2>
+    <p>Heartbeat rows are deleted after 90 days by a weekly cron job. Aggregate weekly counts (e.g. &quot;week of 2026-W18 had N active devices&quot;) are kept indefinitely.</p>
+
+    <h2>Opting out</h2>
+    <p>Set the environment variable on your machine before running any Recipes command:</p>
+    <pre><code>export RECIPES_TELEMETRY=off</code></pre>
+    <p>Accepted disable values (case-insensitive): <code>off</code>, <code>0</code>, <code>false</code>, <code>no</code>, <code>disable</code>, <code>disabled</code>. With this set, the heartbeat client short-circuits before any network call. We test this with mocked HTTP transports to assert <em>zero</em> outbound traffic.</p>
+
+    <h2>Account data</h2>
+    <p>If you create an account or subscribe via Stripe Checkout, we additionally store: your email, OAuth provider ID (GitHub or Google), Stripe customer ID, subscription tier, and (optionally) a Discord user ID if you link Discord for role-gated channels. None of this is shared with third parties beyond the providers themselves (Stripe for billing, Resend for transactional email, GitHub/Google for OAuth).</p>
+
+    <h2>Questions</h2>
+    <p>Email <a href="mailto:privacy@wisechef.ai">privacy@wisechef.ai</a>.</p>
+  </main>
+</Base>

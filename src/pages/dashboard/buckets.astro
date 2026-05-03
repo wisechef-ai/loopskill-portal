@@ -23,7 +23,7 @@ const apiBase = import.meta.env.PUBLIC_API_BASE_URL || "https://api.recipes.wise
 
 // Server-side pre-fetch of buckets list for first paint. Token comes from
 // the wr_jwt cookie which the portal forwards via `request.headers`.
-let buckets = [];
+let buckets: any[] = [];
 let tier = null;
 try {
   const res = await fetch(`${apiBase}/api/buckets/list`, {
