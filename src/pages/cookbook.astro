@@ -1,0 +1,145 @@
+---
+import Base from '../layouts/Base.astro';
+import CrossSell from '../components/CrossSell.astro';
+import Icon from '../components/Icon.astro';
+---
+
+<Base
+  title="Your Cookbook — Recipes"
+  description="Your personal Cookbook syncs skills across all your agents. Auto-created when you install your first skill on Cook+ tier."
+>
+  <section class="max-w-4xl mx-auto px-6 pt-16 pb-12">
+    <div class="flex flex-col gap-3 mb-10">
+      <p class="eyebrow">Cook+ tier</p>
+      <h1 class="text-4xl md:text-5xl font-semibold tracking-tight">Your Cookbook</h1>
+      <p class="text-lg text-muted leading-relaxed max-w-2xl">
+        Your Cookbook is automatically created when you install your first skill on Cook+ tier.
+        We track which skills you've added, customized, or hidden — and sync those across all your agents.
+      </p>
+    </div>
+
+    <!-- How it works -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-5 mb-12">
+      <div class="bg-bg-card border border-border rounded-2xl p-6 flex flex-col gap-3">
+        <div class="w-10 h-10 rounded-xl bg-accent/10 border border-accent/20 flex items-center justify-center text-accent">
+          <Icon name="box" size={18} />
+        </div>
+        <h3 class="text-base font-semibold">Auto-created</h3>
+        <p class="text-sm text-muted leading-relaxed">
+          Install your first skill and your personal Cookbook is created automatically.
+          No setup required — it's ready when you are.
+        </p>
+      </div>
+
+      <div class="bg-bg-card border border-border rounded-2xl p-6 flex flex-col gap-3">
+        <div class="w-10 h-10 rounded-xl bg-accent/10 border border-accent/20 flex items-center justify-center text-accent">
+          <Icon name="check" size={18} />
+        </div>
+        <h3 class="text-base font-semibold">Tracks your changes</h3>
+        <p class="text-sm text-muted leading-relaxed">
+          We track which skills you've added, customized, or hidden.
+          Your Cookbook reflects exactly what's running on your agents.
+        </p>
+      </div>
+
+      <div class="bg-bg-card border border-border rounded-2xl p-6 flex flex-col gap-3">
+        <div class="w-10 h-10 rounded-xl bg-accent/10 border border-accent/20 flex items-center justify-center text-accent">
+          <Icon name="lightning" size={18} />
+        </div>
+        <h3 class="text-base font-semibold">Synced across agents</h3>
+        <p class="text-sm text-muted leading-relaxed">
+          Your skill configuration syncs automatically across all your agents.
+          One change propagates everywhere.
+        </p>
+      </div>
+    </div>
+
+    <!-- Wireframe mock — visual representation of a Cookbook -->
+    <div class="bg-bg-card border border-border rounded-2xl p-6 mb-10">
+      <div class="flex items-center justify-between gap-3 mb-5">
+        <div>
+          <p class="eyebrow">Preview</p>
+          <h2 class="text-xl font-semibold mt-1">Your Cookbook · Cook+ tier</h2>
+        </div>
+        <span class="text-[10px] uppercase tracking-wider px-2.5 py-1 rounded-full border border-border text-muted-soft">Cook+</span>
+      </div>
+
+      <!-- Mock skill list -->
+      <div class="flex flex-col gap-2">
+        {[
+          { name: 'Client Reporter', status: 'installed', category: 'marketing' },
+          { name: 'Web Scraper Pro', status: 'installed', category: 'web-scraping' },
+          { name: 'SEO Audit Engine', status: 'customized', category: 'marketing' },
+          { name: 'Standup Bot', status: 'hidden', category: 'ops' },
+        ].map(item => (
+          <div class="flex items-center justify-between gap-3 px-4 py-3 rounded-xl bg-bg-elev border border-border-soft">
+            <div class="flex items-center gap-3">
+              <div class={`w-2 h-2 rounded-full ${item.status === 'installed' ? 'bg-success' : item.status === 'customized' ? 'bg-accent' : 'bg-border'}`}></div>
+              <span class="text-sm font-medium text-text">{item.name}</span>
+              <span class="text-[10px] text-muted-soft uppercase tracking-wider">{item.category}</span>
+            </div>
+            <span class={`text-[10px] uppercase tracking-wider px-2 py-0.5 rounded-full ${
+              item.status === 'installed' ? 'text-success bg-success/10 border border-success/30' :
+              item.status === 'customized' ? 'text-accent bg-accent/10 border border-accent/30' :
+              'text-muted-soft bg-bg-card border border-border'
+            }`}>{item.status}</span>
+          </div>
+        ))}
+      </div>
+
+      <div class="mt-4 pt-4 border-t border-border-soft flex items-center justify-between text-xs text-muted-soft">
+        <span>4 skills · 3 agents synced</span>
+        <span>Last synced: just now</span>
+      </div>
+    </div>
+
+    <!-- CTA -->
+    <div class="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+      <a
+        href="/pricing"
+        class="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg bg-accent text-bg font-semibold text-sm hover:bg-accent-soft transition glow-amber"
+      >
+        Start Cook+ — €20/mo
+      </a>
+      <a href="/skills" class="text-sm text-muted hover:text-accent transition inline-flex items-center gap-1.5">
+        Browse the catalog <Icon name="arrow-right" size={12} />
+      </a>
+    </div>
+
+    <!-- FAQ -->
+    <div class="mt-14 border-t border-border pt-10">
+      <h2 class="text-2xl font-semibold tracking-tight mb-6">Questions</h2>
+      <div class="flex flex-col gap-3">
+        {[
+          {
+            q: 'When is my Cookbook created?',
+            a: 'Automatically when you install your first skill on Cook+ tier. You never need to set it up manually.',
+          },
+          {
+            q: 'What does "customized" mean?',
+            a: 'If you have modified a skill\'s configuration or parameters, it\'s marked as customized. Your version is preserved even when the base catalog updates.',
+          },
+          {
+            q: 'What does "hidden" mean?',
+            a: 'Skills you\'ve chosen not to run. They stay in your Cookbook but won\'t be installed on your agents during sync.',
+          },
+          {
+            q: 'How does syncing work across agents?',
+            a: 'Each agent in your fleet syncs from your personal Cookbook. Install a skill once and it propagates everywhere. Remove or hide it and it\'s gone from all agents on the next sync.',
+          },
+        ].map(faq => (
+          <details class="group bg-bg-card border border-border rounded-xl px-5 py-4 open:border-accent/40 transition">
+            <summary class="cursor-pointer list-none flex items-center justify-between gap-4 text-sm font-semibold text-text">
+              <span>{faq.q}</span>
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" class="shrink-0 text-muted-soft transition-transform group-open:rotate-180" aria-hidden="true">
+                <path d="M3 5L7 9L11 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </summary>
+            <p class="text-sm text-muted leading-relaxed mt-3">{faq.a}</p>
+          </details>
+        ))}
+      </div>
+    </div>
+  </section>
+  <CrossSell />
+</Base>

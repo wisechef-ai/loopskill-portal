@@ -147,6 +147,13 @@ if (display.readme && typeof display.readme === 'string') {
 
 const tierBadgeClass = display.tier === 'free' ? 'badge-free' : display.tier === 'studio' ? 'badge-studio' : 'badge-pro';
 const isFree = display.tier === 'free';
+
+// Phase A: skill_variant + external_resources
+const skillVariant: string = skill?.skill_variant || '';
+const isOriginalVariant = skillVariant === 'original';
+const originalSourceUrl: string | null = skill?.original_source_url || null;
+const externalResources: Array<{ slug?: string; url: string; relation?: string; description?: string }> =
+  Array.isArray(skill?.external_resources) ? skill.external_resources : [];
 ---
 
 <Base title={`${display.title} — Recipes`} description={display.description}>
@@ -164,6 +171,14 @@ const isFree = display.tier === 'free';
             <span class={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold tracking-wider ${tierBadgeClass}`}>
               {display.tier.toUpperCase()}
             </span>
+            {isOriginalVariant && (
+              <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold tracking-wider border border-border-soft text-muted-soft bg-bg-card">
+                Original
+                {originalSourceUrl && (
+                  <a href={originalSourceUrl} target="_blank" rel="noopener" class="hover:text-accent transition">↗</a>
+                )}
+              </span>
+            )}
             <span class="text-[10px] text-muted-soft uppercase tracking-wider">{display.category}</span>
             <span class="text-[10px] text-muted-soft font-mono">v{display.version}</span>
             {display.license && <span class="text-[10px] text-muted-soft uppercase tracking-wider">· {display.license}</span>}
@@ -339,6 +354,33 @@ const isFree = display.tier === 'free';
             See WiseChef <Icon name="arrow-right" size={11} />
           </a>
         </div>
+
+        {externalResources.length > 0 && (
+          <div class="bg-bg-card border border-border rounded-2xl p-5">
+            <p class="eyebrow mb-3">You might also want</p>
+            <ul class="flex flex-col gap-3">
+              {externalResources.map(r => (
+                <li class="flex flex-col gap-1">
+                  <a
+                    href={r.url}
+                    target="_blank"
+                    rel="noopener"
+                    class="text-sm font-medium text-accent hover:underline inline-flex items-center gap-1"
+                  >
+                    {r.slug || r.url}
+                    <svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true"><path d="M2 8L8 2M8 2H4M8 2V6" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                  </a>
+                  {r.relation && (
+                    <span class="text-[10px] uppercase tracking-wider text-muted-soft">{r.relation}</span>
+                  )}
+                  {r.description && (
+                    <p class="text-xs text-muted leading-relaxed">{r.description}</p>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
       </aside>
     </div>
 
