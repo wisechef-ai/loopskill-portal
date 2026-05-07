@@ -48,9 +48,9 @@ const stats = [
 ];
 
 const heroPillars = [
-  { title: 'Self-healing', body: 'Skills that report failures, propose fixes, and ship them through canary rollouts.', icon: 'check' },
-  { title: 'Fleet-deployable', body: 'One install command bootstraps an entire agent stack on a fresh box.', icon: 'box' },
-  { title: 'Cross-host', body: 'Architecture-aware install. Refuses to install on incompatible hardware. Suggests alternatives.', icon: 'terminal' },
+  { title: 'Cloud-synced cookbook', body: 'Your private skill library, encrypted, versioned, accessible from every agent in your fleet.', icon: 'box' },
+  { title: 'Cross-agent install', body: 'Same skill, every agent. Hermes, Claude Code, Codex, OpenClaw — one cookbook, all of them.', icon: 'lightning' },
+  { title: 'Battle-tested catalog', body: '80+ production skills we run ourselves. Marketing, code, scraping, ops, sales.', icon: 'check' },
 ];
 
 const verticals = [
@@ -79,11 +79,11 @@ const verticals = [
           <Icon name="arrow-right" size={11} class="opacity-50 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all" />
         </a>
         <h1 class="text-5xl md:text-7xl font-bold tracking-tighter leading-[1.02]" style="letter-spacing: -0.04em;">
-          Skills that follow your<br/><span class="text-gradient hero-glow">agent everywhere.</span>
+          Ship skills to your<br/><span class="text-gradient hero-glow">agent fleet.</span>
         </h1>
         <p class="text-lg md:text-xl text-muted leading-relaxed max-w-2xl">
-          Install once. Works in <strong class="text-text font-semibold">Hermes, Claude Code, Codex, OpenClaw</strong>.
-          Switch tools without losing your library.
+          Your private cloud cookbook for AI agents. Battle-tested skills, cross-agent sync, framework-grade memory + persona stack from day one.
+          Built for builders running <strong class="text-text font-semibold">more than one agent</strong> — and builders about to.
         </p>
 
         <div class="w-full max-w-2xl mt-4">
@@ -121,9 +121,12 @@ const verticals = [
 
       <div class="mt-12 max-w-4xl mx-auto rounded-2xl overflow-hidden border border-border bg-bg-card/40 backdrop-blur-sm">
         <video
-          src="/assets/demo-self-heal.mp4"
-          controls
-          preload="none"
+          src="/assets/fleet-hero.mp4"
+          autoplay
+          muted
+          loop
+          playsinline
+          preload="metadata"
           poster="/assets/demo-poster.svg"
           class="w-full h-auto block aspect-video bg-bg-elev"
         ></video>
