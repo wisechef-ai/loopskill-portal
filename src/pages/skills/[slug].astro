@@ -24,7 +24,7 @@ export async function getStaticPaths() {
   }
 
   // Always include a base set so pages exist even if API is briefly down at build
-  const seedSlugs = ['client-reporter', 'web-scraper-pro', 'email-composer', 'invoice-automator', 'standup-bot', 'gohighlevel-cli', 'onboarding-wizard', 'seo-audit-engine', 'content-calendar', 'proposal-builder', 'cold-outreach', 'whitelabel-dashboard'];
+  const seedSlugs = ['client-reporter', 'web-scraper-pro', 'email-composer', 'invoice-automator', 'standup-bot', 'gohighlevel-cli', 'onboarding-wizard', 'seo-audit-engine', 'content-calendar', 'proposal-builder', 'cold-outreach', 'whitelabel-dashboard', 'larry'];
   const seedSkills = seedSlugs.map(s => ({ slug: s, title: s.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) }));
   const all = [...skills];
   for (const s of seedSkills) {
@@ -107,6 +107,15 @@ const fallbackBySlug: Record<string, any> = {
     license: 'MIT',
     requires_env: ['GA4_PROPERTY_ID', 'GSC_SITE', 'META_ADS_ACCOUNT_ID', 'TIKTOK_ADS_ACCOUNT_ID', 'OPENAI_API_KEY'],
     icon: 'chart',
+  },
+  'larry': {
+    title: 'Larry',
+    tagline: 'Autonomous TikTok slideshow marketing — generate, post, learn, iterate.',
+    tier: 'cook',
+    description: 'Onboarding, browser-based competitor research, AI image generation (gpt-image-1.5 / Stability / Replicate / local), text overlays, Postiz multi-platform posting, and a daily analytics feedback loop that flags winning hooks and drops dead ones. Optional RevenueCat conversion attribution.',
+    license: 'MIT',
+    requires_env: ['POSTIZ_BASE_URL', 'POSTIZ_API_KEY', 'OPENAI_API_KEY'],
+    icon: 'lightning',
   },
 };
 

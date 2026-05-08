@@ -23,6 +23,33 @@ try {
   }
 } catch {}
 
+// Cook-tier strip — gated public skills, surfaces what a $20/mo subscription unlocks.
+// Live filter on tier=cook AND is_public=true. Fallback list keeps the strip non-empty
+// even if the API is rate-limited at build time. larry is pinned so RCP-5's flagship
+// install always appears.
+type CookSkill = { slug: string; title: string; description?: string | null; tagline?: string | null; install_count_total?: number; install_count?: number; category?: string | null };
+let cookSkills: CookSkill[] = [];
+try {
+  const result = await fetchApi<{ results: CookSkill[] }>('/api/skills/search?tier=cook&is_public=true&page_size=24');
+  if (result.ok && result.data?.results) {
+    cookSkills = result.data.results;
+  }
+} catch {}
+const cookFallback: CookSkill[] = [
+  { slug: 'larry', title: 'Larry', tagline: 'Autonomous TikTok slideshow marketing', description: 'Onboarding, AI image gen, Postiz posting, daily analytics feedback loop.', category: 'marketing', install_count_total: 0 },
+  { slug: 'summarize-cli', title: 'Summarize CLI', tagline: 'Summarize URLs, PDFs, transcripts', description: 'Summarize any content from your terminal.', category: 'general', install_count_total: 0 },
+  { slug: 'frontend-design', title: 'Frontend Design', tagline: 'React/Next.js/Tailwind frontend conventions', description: 'Production-grade frontend design guidelines.', category: 'code', install_count_total: 0 },
+  { slug: 'pr-draft', title: 'PR Draft', tagline: 'Structured PRs from git diffs', description: 'Generate PR descriptions from git diffs using LLM.', category: 'code', install_count_total: 0 },
+  { slug: 'nano-banana-pro', title: 'Nano Banana Pro', tagline: 'Generate or edit images via Gemini 3', description: 'Image generation and editing via Google Gemini 3 Pro.', category: 'creative', install_count_total: 0 },
+  { slug: 'grok-search', title: 'Grok Search', tagline: 'Search the web + X/Twitter via xAI', description: 'Real-time search via xAI with citations.', category: 'research', install_count_total: 0 },
+];
+if (cookSkills.length === 0) cookSkills = cookFallback;
+// Pin larry first; sort the rest by install_count desc so the most-used cook skills surface.
+const installCount = (s: CookSkill) => s.install_count_total ?? s.install_count ?? 0;
+const larryRow = cookSkills.find(s => s.slug === 'larry');
+const restCook = cookSkills.filter(s => s.slug !== 'larry').sort((a, b) => installCount(b) - installCount(a));
+const cookStrip: CookSkill[] = (larryRow ? [larryRow, ...restCook] : restCook).slice(0, 8);
+
 const spotlight = [
   { slug: 'client-reporter', name: 'Client Reporter', tier: 'free', tagline: 'Replaces 4h/week of manual reporting',
     description: 'Pull GA4, GSC, Meta Ads, TikTok Ads → branded PDF for any client. White-label-ready.', badge: 'Free forever', icon: 'chart' },
@@ -260,6 +287,50 @@ const verticals = [
       <div class="text-center mt-10">
         <a href="/skills" class="text-sm text-muted hover:text-accent inline-flex items-center gap-1.5 transition">
           See all {liveSkillCount}+ skills <Icon name="arrow-right" size={11} />
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- Cook tier strip — what $20/mo unlocks. Live filter on tier=cook AND is_public=true. -->
+  <section class="border-t border-border" data-section="cook-strip">
+    <div class="max-w-6xl mx-auto px-6 py-20">
+      <div class="flex flex-col md:flex-row md:items-end justify-between gap-3 mb-10">
+        <div class="max-w-xl flex flex-col gap-3">
+          <p class="eyebrow text-accent">Cook tier · $20/mo</p>
+          <h2 class="text-3xl md:text-5xl font-bold tracking-tight" style="letter-spacing: -0.03em;">Gated skills,<br/>one subscription away.</h2>
+          <p class="text-muted text-lg">Production-grade work skills your fleet can install on the Cook plan. New: <a href="/skills/larry" class="text-accent hover:opacity-80 underline-offset-2 hover:underline">Larry</a> — autonomous TikTok slideshow marketing, ported from the LarryBrain reference and audited for our discipline-lint and leak-audit gates.</p>
+        </div>
+        <a href="/pricing" class="text-sm text-accent hover:opacity-80 inline-flex items-center gap-1.5 shrink-0">
+          See Cook plan <Icon name="arrow-right" size={11} />
+        </a>
+      </div>
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3" id="cook-strip">
+        {cookStrip.map((s, i) => (
+          <a href={`/skills/${s.slug}`}
+             class={`group bg-bg-card border ${s.slug === 'larry' ? 'border-accent/40 glow-amber' : 'border-border'} rounded-2xl p-5 card-lift flex flex-col gap-2 relative overflow-hidden`}>
+            {s.slug === 'larry' && (
+              <span class="absolute top-3 right-3 text-[9px] font-semibold uppercase tracking-wider text-accent border border-accent/40 rounded-full px-2 py-0.5 bg-bg/60">New</span>
+            )}
+            <div class="flex items-center gap-2">
+              <span class="badge-pro inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] font-semibold tracking-wider">COOK</span>
+              {s.category && (
+                <span class="text-[10px] text-muted-soft uppercase tracking-wider">{s.category}</span>
+              )}
+            </div>
+            <h3 class="text-base font-semibold text-text group-hover:text-accent transition leading-tight tracking-tight">{s.title}</h3>
+            {(s.tagline || s.description) && (
+              <p class="text-xs text-muted leading-relaxed line-clamp-3">{s.tagline || s.description}</p>
+            )}
+            <span class="text-xs text-accent inline-flex items-center gap-1 mt-auto group-hover:gap-2 transition-all">
+              View skill <Icon name="arrow-right" size={11} />
+            </span>
+          </a>
+        ))}
+      </div>
+      <div class="text-center mt-8">
+        <a href="/skills?tier=cook" class="text-sm text-muted hover:text-accent inline-flex items-center gap-1.5 transition">
+          Browse the full Cook catalog <Icon name="arrow-right" size={11} />
         </a>
       </div>
     </div>
