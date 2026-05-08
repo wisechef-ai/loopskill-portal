@@ -54,9 +54,9 @@ const categories = Array.from(new Set(skills.map(s => s.category || 'general')))
 const tiers = ['free', 'cook', 'operator', 'studio'];
 const tierLabel: Record<string, string> = {
   free: 'Free',
-  cook: 'Pro · €20/mo',
-  operator: 'Operator · retired',
-  studio: 'All-in · €100/mo',
+  cook: 'Cook · $20/mo',
+  operator: 'Operator · $100/mo',
+  studio: 'Operator · $100/mo',
 };
 const tierCount: Record<string, number> = {};
 for (const s of skills) {
@@ -95,7 +95,7 @@ for (const s of skills) {
       <div class="flex flex-col gap-2">
         <p class="eyebrow">Catalog</p>
         <h1 class="text-4xl md:text-5xl font-semibold tracking-tight" id="skills-heading">{total} skills, ready to install.</h1>
-        <p class="text-muted">Production-grade skills for marketing agencies, dev teams, and AI fleets. Free skills to start. Pro tier €20/mo unlocks the full library; All-in €100/mo adds the framework installer + 30-day onboarding.</p>
+        <p class="text-muted">Production-grade skills for marketing agencies, dev teams, and AI fleets. Free skills to start. Cook tier $20/mo (1 seat) unlocks the full library; Operator $100/mo gives you 20 endpoints, fleet-wide cookbook sync, and the framework installer.</p>
         {fetchError && <p class="text-xs text-muted-soft">(showing seed data — API: {fetchError})</p>}
       </div>
     </div>

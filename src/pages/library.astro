@@ -108,7 +108,7 @@ import Base from '../layouts/Base.astro';
           <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div class="flex-1">
               <h2 class="text-lg font-semibold tracking-tight">Want an AI agent that <em>does</em> the work, not just provides recipes?</h2>
-              <p class="text-sm text-muted mt-2">WiseChef's managed AI employee plan starts at €199/mo. Pro & All-in customers save 40% on the first 3 months.</p>
+              <p class="text-sm text-muted mt-2">WiseChef's managed AI employee plan starts at $199/mo. Cook & Operator customers save 40% on the first 3 months.</p>
             </div>
             <div class="shrink-0">
               <button id="demo-cta-btn" class="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg bg-accent text-bg text-sm font-semibold hover:bg-accent-soft transition">
@@ -188,16 +188,16 @@ import Base from '../layouts/Base.astro';
                   created_at: string | null; last_used_at: string | null };
 
   const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
-  // Tier slugs in DB stay `cook` (=Pro) and `studio` (=All-in) per stabilization_2605.
+  // Tier slugs in DB stay `cook` (=Cook) and `studio` (=Operator) per RCP-1.
   // `operator` is retired but kept here in case legacy rows surface.
   const TIER_BADGE_COPY: Record<string, string> = {
-    cook: 'PRO', operator: 'OPERATOR', studio: 'ALL-IN',
+    cook: 'COOK', operator: 'OPERATOR', studio: 'OPERATOR',
   };
   const TIER_PRICE: Record<string, string> = {
-    cook: '€20/mo', operator: 'retired', studio: '€100/mo',
+    cook: '$20/mo', operator: 'retired', studio: '$100/mo',
   };
   const TIER_NAME: Record<string, string> = {
-    cook: 'Pro', operator: 'Operator', studio: 'All-in',
+    cook: 'Cook', operator: 'Operator', studio: 'Operator',
   };
 
   function fmtRenewsIn(iso: string | null): string {

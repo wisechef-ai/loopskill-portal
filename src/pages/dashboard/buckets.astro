@@ -1,7 +1,7 @@
 ---
 // frontend-patches/dashboard-buckets.astro
 //
-// Phase E.5 (v5.4) — Studio dashboard for buckets.
+// Phase E.5 (v5.4) — Operator dashboard for buckets.
 //
 // Drop this file at `src/pages/dashboard/buckets.astro` in the
 // recipes-portal Astro repo (the portal-worker integration applies this
@@ -49,16 +49,16 @@ try {
 }
 ---
 
-<Base title="Buckets — Recipes Studio">
+<Base title="Buckets — Recipes Operator">
   {tier === "insufficient" ? (
     <section class="upsell">
-      <h1>Buckets are a Studio feature</h1>
+      <h1>Buckets are an Operator feature</h1>
       <p>
         Bundle your skills, forks, services, and crons into a single
         atomic install. Apply to any agent in seconds.
       </p>
       <a class="btn-primary" href="/billing/upgrade?to=studio">
-        Upgrade to Studio
+        Upgrade to Operator
       </a>
     </section>
   ) : (

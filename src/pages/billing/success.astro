@@ -20,7 +20,7 @@ import Base from '../../layouts/Base.astro';
         <ol class="space-y-3 text-sm text-muted list-decimal list-inside marker:text-accent">
           <li><a href="/library" class="text-accent hover:opacity-80 underline">Generate your API key</a> on the Library page</li>
           <li><a href="/skills/client-reporter" class="text-accent hover:opacity-80 underline">Try the Client Reporter</a> — free, agency-vertical viral skill</li>
-          <li>Want a managed AI agent doing the work for you? <a id="demo-link" href="https://calendar.app.google/P9J9oaiemtHdsvG99" target="_blank" rel="noopener" class="text-accent hover:opacity-80 underline">Book a WiseChef demo</a> — 40% off first 3 months for Pro & All-in customers</li>
+          <li>Want a managed AI agent doing the work for you? <a id="demo-link" href="https://calendar.app.google/P9J9oaiemtHdsvG99" target="_blank" rel="noopener" class="text-accent hover:opacity-80 underline">Book a WiseChef demo</a> — 40% off first 3 months for Cook & Operator customers</li>
         </ol>
       </div>
 
@@ -67,7 +67,7 @@ import Base from '../../layouts/Base.astro';
     const meRes = await fetch('/api/auth/me', { credentials: 'include' });
     if (!meRes.ok) { window.location.href = '/signin?next=/library'; return; }
 
-    const TIER_LABELS: Record<string, string> = { cook: 'Pro', operator: 'Operator', studio: 'All-in' };
+    const TIER_LABELS: Record<string, string> = { cook: 'Cook', operator: 'Operator', studio: 'Operator' };
 
     const start = Date.now();
     const TIMEOUT = 30_000;

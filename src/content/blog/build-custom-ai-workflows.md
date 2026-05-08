@@ -91,7 +91,7 @@ pipx install wiserecipes
 wiserecipes install proposal-builder
 ```
 
-Proposal Builder is available on the All-in tier (€100/month).
+Proposal Builder is available on the Operator tier ($100/month).
 
 ---
 
