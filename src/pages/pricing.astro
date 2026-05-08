@@ -181,6 +181,25 @@ const faqs = [
     const buttons = document.querySelectorAll<HTMLAnchorElement>('a.tier-cta[data-tier]');
     if (buttons.length === 0) return;
 
+    // Pick up an optional promo code from ?promo=CODE in the URL.
+    // Stored on window so the click handler can pass it to /api/checkout.
+    const urlParams = new URLSearchParams(window.location.search);
+    let promoCode = urlParams.get('promo') || urlParams.get('coupon');
+    if (promoCode) {
+      promoCode = promoCode.trim().toUpperCase();
+      // Surface a small banner so the user knows a code is being applied.
+      const banner = document.createElement('div');
+      banner.className = 'max-w-3xl mx-auto mt-4 px-6';
+      banner.innerHTML = `
+        <div class="bg-accent/10 border border-accent/40 rounded-xl px-4 py-3 text-sm flex items-center gap-3">
+          <span class="text-accent font-semibold">🎟️ Promo code applied:</span>
+          <code class="font-mono text-xs bg-bg-elev border border-border rounded px-2 py-0.5">${promoCode}</code>
+          <span class="text-muted text-xs">Discount will appear at checkout.</span>
+        </div>`;
+      const heroSection = document.querySelector('section');
+      heroSection?.parentNode?.insertBefore(banner, heroSection.nextSibling);
+    }
+
     let me: any = null;
     try {
       const r = await fetch('/api/auth/me', { credentials: 'include' });
@@ -213,10 +232,12 @@ const faqs = [
         btn.textContent = 'Loading…';
         if (me) {
           try {
+            const body: Record<string, string> = {};
+            if (promoCode) body.promo_code = promoCode;
             const res = await fetch(`/api/checkout/${tier}`, {
               method: 'POST', credentials: 'include',
               headers: { 'Content-Type': 'application/json' },
-              body: '{}',
+              body: JSON.stringify(body),
             });
             if (res.ok) {
               const data = await res.json();
@@ -225,9 +246,23 @@ const faqs = [
             }
           } catch { /* fall through */ }
           btn.textContent = originalText;
-          window.location.href = btn.getAttribute('href') || '/signin';
+          // Preserve the promo code through the signin redirect so the
+          // user lands back on /pricing?promo=… after auth.
+          const next = btn.getAttribute('href') || '/signin';
+          if (promoCode && next.includes('/signin')) {
+            const sep = next.includes('?') ? '&' : '?';
+            window.location.href = `${next}${sep}promo=${encodeURIComponent(promoCode)}`;
+          } else {
+            window.location.href = next;
+          }
         } else {
-          window.location.href = btn.getAttribute('href') || '/signin';
+          const next = btn.getAttribute('href') || '/signin';
+          if (promoCode && next.includes('/signin')) {
+            const sep = next.includes('?') ? '&' : '?';
+            window.location.href = `${next}${sep}promo=${encodeURIComponent(promoCode)}`;
+          } else {
+            window.location.href = next;
+          }
         }
       });
     });
