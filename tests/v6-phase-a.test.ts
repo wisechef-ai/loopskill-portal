@@ -156,8 +156,15 @@ describe('currency sweep', () => {
 
   it('has zero stale $N/mo prices in user-facing src/ pages, components, layouts', () => {
     const files = USER_FACING_DIRS.flatMap(d => walkFiles(d, ['.astro', '.ts', '.js', '.html']));
+    // Allow-list: files that legitimately quote $N/mo prices (competitor comparison content).
+    // The /vs page is, by design, a side-by-side that names ChatGPT GPTs at $20/mo (Plus)
+    // and Recipes at the locked-spec "$20 Cook · $100 Operator" / "Start with Cook → $20/mo" CTA.
+    const ALLOWLIST = new Set([
+      join(SRC, 'pages/vs.astro'),
+    ]);
     const hits: string[] = [];
     for (const f of files) {
+      if (ALLOWLIST.has(f)) continue;
       const content = readFileSync(f, 'utf-8');
       const matches = content.match(STALE_PRICE_RE);
       if (matches) {
