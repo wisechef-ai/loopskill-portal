@@ -11,7 +11,13 @@ const layers = [
     title: 'Allowlist linter',
     icon: 'shield',
     body: `Every published skill ships with a positive-allowlist manifest. The linter blocks merge if a skill reads, writes, or sends anything not on the list — credentials, environment variables, network destinations, file paths. We don't try to enumerate "bad" patterns; we explicitly enumerate the "good" ones.`,
-    proof: 'github.com/wisechef-ai/recipes-skill/blob/main/MANIFEST.allowlist.yaml',
+    bullets: [
+      'ed25519 signed at publish, verified cryptographically at install',
+      'Layered scan before catalog entry: security + discipline + quality gates must all pass',
+      'Two-stage trust: anonymous PRs land as drafts, require human reviewer approval before promotion',
+      'Failed installs are filed as feedback issues and fed back through the pipeline → patches shipped within the same release cycle',
+      'Versioned forever, content-addressed (sha256), one-CLI rollback — recipes install <slug>@<version>',
+    ],
   },
   {
     num: '02',
@@ -65,9 +71,20 @@ const guarantees = [
           <div class="flex-1 flex flex-col gap-3">
             <h2 class="text-2xl font-semibold tracking-tight text-text">{l.title}</h2>
             <p class="text-muted leading-relaxed">{l.body}</p>
-            <p class="text-xs text-muted-soft font-mono break-all" data-proof>
-              proof: <span class="text-accent">{l.proof}</span>
-            </p>
+            {'bullets' in l && l.bullets ? (
+              <ul class="text-xs text-muted-soft font-mono flex flex-col gap-1.5 list-none">
+                {l.bullets.map((b: string) => (
+                  <li class="flex items-start gap-2">
+                    <span class="text-accent shrink-0">→</span>
+                    <span class="text-muted">{b}</span>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p class="text-xs text-muted-soft font-mono break-all" data-proof>
+                proof: <span class="text-accent">{(l as any).proof}</span>
+              </p>
+            )}
           </div>
         </article>
       ))}

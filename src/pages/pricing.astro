@@ -25,15 +25,15 @@ const tiers = [
     ],
   },
   {
-    name: 'Cook',
+    name: 'Pro',
     price: '20',
     cadence: 'per month',
     currency: '$',
     tagline: '1 seat. Every skill. Auto-improvement updates.',
     headline: 'Single seat. Unlimited installs. Auto-improvement updates. Architecture-aware install that refuses to break your machine. Same engine on every host you own.',
     badgeClass: 'badge-pro',
-    cta: 'Start Cook — $20/mo',
-    ctaAuthed: 'Switch to Cook',
+    cta: 'Start Pro — $20/mo',
+    ctaAuthed: 'Switch to Pro',
     ctaHref: '/signin?next=/api/checkout/cook',
     ctaTier: 'cook',
     accent: true,
@@ -49,28 +49,28 @@ const tiers = [
     ],
   },
   {
-    name: 'Operator',
+    name: 'Pro+',
     price: '100',
     cadence: 'per month',
     currency: '$',
     tagline: '20 endpoints. Fleet sync. Cookbooks for agents.',
-    headline: 'Cook, plus 20 agent endpoints, fleet-wide cookbook sync, the framework installer (one command spins up your full agent stack on a fresh host), and a 60-min white-glove onboarding. Cancel back to Cook any time — proration kicks in.',
+    headline: 'Pro, plus 20 agent endpoints, fleet-wide cookbook sync, the framework installer (one command spins up your full agent stack on a fresh host), and a 60-min white-glove onboarding. Cancel back to Pro any time — proration kicks in.',
     badgeClass: 'badge-studio',
-    cta: 'Start Operator — $100/mo',
-    ctaAuthed: 'Upgrade to Operator',
+    cta: 'Start Pro+ — $100/mo',
+    ctaAuthed: 'Upgrade to Pro+',
     ctaHref: '/signin?next=/api/checkout/studio',
     ctaTier: 'studio',
     accent: false,
     moneyBack: '14-day money-back',
     features: [
-      'Everything in Cook',
+      'Everything in Pro',
       '20 agent endpoints',
       'Fleet sync — push cookbooks to client agents',
       'Framework installer — one command',
       '60-minute onboarding call',
       'Private catalog (org-only skills)',
       'Priority review (24h SLA)',
-      'Proration if you switch back to Cook',
+      'Proration if you switch back to Pro',
       '14-day money-back guarantee',
     ],
   },
@@ -78,12 +78,12 @@ const tiers = [
 
 const faqs = [
   {
-    q: 'Does my install stop working if I cancel Operator?',
+    q: 'Does my install stop working if I cancel Pro+?',
     a: 'No. The skills you have already installed keep running on your machine — they live locally, not in our cloud. Cancellation only stops auto-improvement updates and access to new catalog content. You can re-subscribe later and pick up exactly where you left off.',
   },
   {
-    q: 'What if I switch from Operator to Cook?',
-    a: 'Use the in-app downgrade button (or hit POST /api/subscriptions/downgrade). Stripe applies prorated credit for the unused portion of Operator to your next Cook invoice — no money lost, no surprise charge. Your private catalog and onboarding artefacts stay accessible until the end of the billing period.',
+    q: 'What if I switch from Pro+ to Pro?',
+    a: 'Use the in-app downgrade button (or hit POST /api/subscriptions/downgrade). Stripe applies prorated credit for the unused portion of Pro+ to your next Pro invoice — no money lost, no surprise charge. Your private catalog and onboarding artefacts stay accessible until the end of the billing period.',
   },
   {
     q: 'Is this a real subscription or one-time?',
@@ -100,12 +100,12 @@ const faqs = [
 ];
 ---
 
-<Base title="Pricing — Recipes" description="Free, Cook $20/mo (1 seat), Operator $100/mo (20 endpoints). Cross-vendor catalog of agent skills. Cancel anytime, your installed skills keep working.">
+<Base title="Pricing — Recipes" description="Free, Pro $20/mo (1 seat), Pro+ $100/mo (20 endpoints). Cross-vendor catalog of agent skills. Cancel anytime, your installed skills keep working.">
   <section class="max-w-6xl mx-auto px-6 pt-16 pb-12">
     <div class="text-center max-w-2xl mx-auto flex flex-col gap-3 mb-14">
       <p class="eyebrow">Pricing</p>
       <h1 class="text-4xl md:text-5xl font-semibold tracking-tight">Bring your agent. We bring the skills.</h1>
-      <p class="text-muted">One subscription, every model. The catalog runs on Codex, Claude Code, OpenClaw — wherever your agent lives. Cancel anytime; your installed skills keep working locally.</p>
+      <p class="text-muted">Start with Pro when you start deploying to your clients or running multi-agent fleets, pick Pro+. In 95% of cases Pro is what you need.</p>
     </div>
 
     <div class="grid grid-cols-1 md:grid-cols-3 gap-5">

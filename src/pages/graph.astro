@@ -479,13 +479,37 @@ const inlineJson = JSON.stringify(graph);
         tip.style.top = `${Math.max(8, top)}px`;
       }
 
+      // A2 (rev 7.2): grace period on mouseleave so users can move the cursor
+      // from a node onto the tooltip (e.g. to click the skill link) without it
+      // disappearing first. Cancelled when the cursor enters the tooltip.
+      let hideTipTimer: number | null = null;
+      const HIDE_GRACE_MS = 300;
+      const cancelHide = () => {
+        if (hideTipTimer !== null) {
+          window.clearTimeout(hideTipTimer);
+          hideTipTimer = null;
+        }
+      };
+      const scheduleHide = () => {
+        cancelHide();
+        hideTipTimer = window.setTimeout(() => {
+          tip.classList.add('hidden');
+          highlight(null);
+          hideTipTimer = null;
+        }, HIDE_GRACE_MS);
+      };
+      // Make tooltip itself catch the cursor — without pointer-events: auto
+      // it's transparent to mouse and the cursor "exits" the node area on entry.
+      tip.style.pointerEvents = 'auto';
+      tip.addEventListener('mouseenter', cancelHide);
+      tip.addEventListener('mouseleave', scheduleHide);
+
       nodeEls.forEach((el, i) => {
-        el.addEventListener('mouseenter', (e: any) => { highlight(i); showTip(i, e); });
+        el.addEventListener('mouseenter', (e: any) => { cancelHide(); highlight(i); showTip(i, e); });
         el.addEventListener('mousemove', (e: any) => { if (highlighted === i) showTip(i, e); });
         el.addEventListener('mouseleave', () => {
           if (touchTooltipShown) return; // don't auto-hide a touch-shown tooltip on synthesized mouseleave
-          tip.classList.add('hidden');
-          highlight(null);
+          scheduleHide();
         });
         // Desktop: click navigates immediately. Touch nav is handled in endPointer at the SVG
         // level because setPointerCapture redirects all per-pointer events to the SVG.
