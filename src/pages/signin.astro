@@ -4,14 +4,14 @@ import Base from '../layouts/Base.astro';
 const mode = Astro.url.searchParams.get('mode') ?? 'signin';
 const isSignup = mode === 'signup';
 
-// rev 7.2.5: pass through ?ref=CODE to the OAuth login URLs so the
-// referral cookie gets stamped on the API side. Without this, sharing
-// recipes.wisechef.ai/?ref=ABC sent visitors to /signin which then hit
-// /api/auth/google/login WITHOUT the ref — so attribution never landed.
-const refCode = Astro.url.searchParams.get('ref');
-const refSuffix = refCode ? `?ref=${encodeURIComponent(refCode)}` : '';
-const googleLoginUrl = `/api/auth/google/login${refSuffix}`;
-const githubLoginUrl = `/api/auth/github/login${refSuffix}`;
+// rev 7.2.6: this page is statically pre-rendered at build time, so
+// Astro.url.searchParams cannot read ?ref= at request time.
+// Client-side script below rewrites the OAuth login URLs to carry ?ref=
+// AND shows a "🎟️ Referral code applied" badge when present.
+//
+// Belt + braces: Base.astro already stamps the recipes_ref cookie on any
+// page load with ?ref=. The OAuth login endpoint reads the cookie too,
+// so attribution survives even if the user lands on a different page first.
 ---
 
 <Base title={isSignup ? 'Get access — Recipes' : 'Sign in — Recipes'} description="Sign in with Google or GitHub to unlock premium skills and earn from publishing.">
@@ -21,15 +21,13 @@ const githubLoginUrl = `/api/auth/github/login${refSuffix}`;
         <a href="/" class="text-base font-semibold text-text hover:text-accent transition">Recipes</a>
         <h1 class="text-2xl font-semibold tracking-tight mt-3">{isSignup ? 'Get access' : 'Welcome back'}</h1>
         <p class="text-sm text-muted">{isSignup ? 'Sign up to unlock premium skills and earn from publishing.' : 'Sign in to your Recipes account.'}</p>
-        {refCode && (
-          <p class="text-xs text-accent border border-accent/40 bg-accent/10 rounded-full px-2.5 py-0.5 mt-2">
-            🎟️ Referral code <code class="font-mono">{refCode}</code> applied
-          </p>
-        )}
+        <p id="ref-badge" class="hidden text-xs text-accent border border-accent/40 bg-accent/10 rounded-full px-2.5 py-0.5 mt-2">
+          🎟️ Referral code <code class="font-mono" id="ref-badge-code"></code> applied
+        </p>
       </div>
 
       <div class="flex flex-col gap-3">
-        <a href={googleLoginUrl}
+        <a href="/api/auth/google/login" id="google-login"
            class="auth-btn flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg border border-border bg-bg-elev hover:border-accent text-text text-sm font-medium transition">
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
             <path d="M15.84 8.18c0-.59-.05-1.16-.15-1.71H8.16v3.24h4.31c-.19 1-.75 1.85-1.6 2.42v2.01h2.59c1.51-1.39 2.38-3.44 2.38-5.96z" fill="#4285F4"/>
@@ -39,7 +37,7 @@ const githubLoginUrl = `/api/auth/github/login${refSuffix}`;
           </svg>
           Continue with Google
         </a>
-        <a href={githubLoginUrl}
+        <a href="/api/auth/github/login" id="github-login"
            class="auth-btn flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg border border-border bg-bg-elev hover:border-accent text-text text-sm font-medium transition">
           <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
             <path d="M8 0a8 8 0 0 0-2.53 15.59c.4.07.55-.17.55-.38v-1.4c-2.23.48-2.7-.94-2.7-.94-.36-.93-.89-1.18-.89-1.18-.73-.5.05-.49.05-.49.81.06 1.23.83 1.23.83.72 1.23 1.88.88 2.34.67.07-.52.28-.88.51-1.08-1.78-.2-3.65-.89-3.65-3.96 0-.87.31-1.59.83-2.15-.08-.2-.36-1.02.08-2.13 0 0 .67-.21 2.2.82a7.65 7.65 0 0 1 4 0c1.53-1.04 2.2-.82 2.2-.82.44 1.11.16 1.93.08 2.13.51.56.83 1.28.83 2.15 0 3.08-1.87 3.76-3.66 3.96.29.25.55.74.55 1.49v2.21c0 .21.15.46.55.38A8 8 0 0 0 8 0z"/>
@@ -53,10 +51,41 @@ const githubLoginUrl = `/api/auth/github/login${refSuffix}`;
           {isSignup ? (
             <>By signing up you agree to our <a href="/docs/terms" class="text-muted hover:text-accent underline">terms</a> and <a href="/docs/privacy" class="text-muted hover:text-accent underline">privacy policy</a>. EU VAT handled via MOSS.</>
           ) : (
-            <>Don't have an account? <a href={`/signin?mode=signup${refCode ? `&ref=${encodeURIComponent(refCode)}` : ''}`} class="text-accent hover:opacity-80 underline">Get access →</a></>
+            <>Don't have an account? <a id="signup-link" href="/signin?mode=signup" class="text-accent hover:opacity-80 underline">Get access →</a></>
           )}
         </p>
       </div>
     </div>
   </section>
 </Base>
+
+<script is:inline>
+  // rev 7.2.6: client-side ?ref= passthrough.
+  // Static page can't read query params at build time → do it here.
+  // Validates ref against the same regex as Base.astro stamper to avoid
+  // DOM injection from a malformed URL.
+  (function () {
+    var p = new URLSearchParams(window.location.search);
+    var ref = p.get('ref');
+    if (!ref) return;
+    if (!/^[A-Za-z0-9]{4,16}$/.test(ref)) return;
+
+    var enc = encodeURIComponent(ref);
+
+    var google = document.getElementById('google-login');
+    if (google) google.href = '/api/auth/google/login?ref=' + enc;
+
+    var github = document.getElementById('github-login');
+    if (github) github.href = '/api/auth/github/login?ref=' + enc;
+
+    var signupLink = document.getElementById('signup-link');
+    if (signupLink) signupLink.href = '/signin?mode=signup&ref=' + enc;
+
+    var badge = document.getElementById('ref-badge');
+    var badgeCode = document.getElementById('ref-badge-code');
+    if (badge && badgeCode) {
+      badgeCode.textContent = ref;
+      badge.classList.remove('hidden');
+    }
+  })();
+</script>
