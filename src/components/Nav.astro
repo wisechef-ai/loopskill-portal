@@ -30,9 +30,8 @@ const isActive = (p: string) => path === p || (p !== '/' && path.startsWith(p));
     <div class="flex items-center gap-5">
       <div class="hidden md:flex items-center gap-5 text-sm text-muted">
         <a href="/skills" class={`hover:text-text transition ${isActive('/skills') ? 'text-text' : ''}`}>Skills</a>
-        <a href="/carousel" class={`hover:text-text transition ${isActive('/carousel') ? 'text-text' : ''}`}>Today's 7</a>
+        <a href="/creators" class={`hover:text-text transition ${isActive('/creators') ? 'text-text' : ''}`}>Creators</a>
         <a href="/integrations" class={`hover:text-text transition ${isActive('/integrations') ? 'text-text' : ''}`}>Integrations</a>
-        <a href="/vs" class={`hover:text-text transition ${isActive('/vs') ? 'text-text' : ''}`}>vs.</a>
         <a href="/stats" class={`hover:text-text transition ${isActive('/stats') ? 'text-text' : ''}`}>Stats</a>
         <a href="/graph" class={`hover:text-text transition ${isActive('/graph') ? 'text-text' : ''}`}>Graph</a>
         <a href="/pricing" class={`hover:text-text transition ${isActive('/pricing') ? 'text-text' : ''}`}>Pricing</a>
@@ -91,8 +90,7 @@ const isActive = (p: string) => path === p || (p !== '/' && path.startsWith(p));
         <div class="absolute right-0 top-full mt-2 w-56 bg-bg-elev border border-border rounded-xl shadow-xl overflow-hidden">
           <nav class="flex flex-col text-sm">
             <a href="/skills" class="px-4 py-3 text-muted hover:text-text hover:bg-bg-card transition">Skills</a>
-            <a href="/carousel" class="px-4 py-3 text-muted hover:text-text hover:bg-bg-card transition">Today's 7</a>
-            <a href="/vs" class="px-4 py-3 text-muted hover:text-text hover:bg-bg-card transition">vs. the rest</a>
+            <a href="/creators" class="px-4 py-3 text-muted hover:text-text hover:bg-bg-card transition">Creators</a>
             <a href="/stats" class="px-4 py-3 text-muted hover:text-text hover:bg-bg-card transition">Stats</a>
             <a href="/graph" class="px-4 py-3 text-muted hover:text-text hover:bg-bg-card transition">Graph</a>
             <a href="/pricing" class="px-4 py-3 text-muted hover:text-text hover:bg-bg-card transition">Pricing</a>

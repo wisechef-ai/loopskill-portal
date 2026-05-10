@@ -256,7 +256,7 @@ const verticals = [
       <div class="flex flex-col gap-3 mb-12 max-w-2xl">
         <p class="eyebrow text-accent">Skill spotlight</p>
         <h2 class="text-3xl md:text-5xl font-bold tracking-tight" style="letter-spacing: -0.03em;">These are not prompts.<br/>They are <span class="text-accent">products</span>.</h2>
-        <p class="text-muted text-lg">Every skill replaces a SaaS subscription or a freelancer hour. Real working software, run locally by your agent.</p>
+        <p class="text-muted text-lg">Every skill replaces a SaaS subscription or a freelancer hour. Real working software, run locally by your agent. New: <a href="/skills/larry" class="text-accent hover:opacity-80 underline-offset-2 hover:underline">Larry</a> — autonomous TikTok slideshow marketing, ported from the LarryBrain reference and audited through our discipline-lint and leak-audit gates.</p>
       </div>
       <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
         {spotlight.map(s => {
@@ -292,49 +292,10 @@ const verticals = [
     </div>
   </section>
 
-  <!-- Cook tier strip — what $20/mo unlocks. Live filter on tier=cook AND is_public=true. -->
-  <section class="border-t border-border" data-section="cook-strip">
-    <div class="max-w-6xl mx-auto px-6 py-20">
-      <div class="flex flex-col md:flex-row md:items-end justify-between gap-3 mb-10">
-        <div class="max-w-xl flex flex-col gap-3">
-          <p class="eyebrow text-accent">Cook tier · $20/mo</p>
-          <h2 class="text-3xl md:text-5xl font-bold tracking-tight" style="letter-spacing: -0.03em;">Gated skills,<br/>one subscription away.</h2>
-          <p class="text-muted text-lg">Production-grade work skills your fleet can install on the Cook plan. New: <a href="/skills/larry" class="text-accent hover:opacity-80 underline-offset-2 hover:underline">Larry</a> — autonomous TikTok slideshow marketing, ported from the LarryBrain reference and audited for our discipline-lint and leak-audit gates.</p>
-        </div>
-        <a href="/pricing" class="text-sm text-accent hover:opacity-80 inline-flex items-center gap-1.5 shrink-0">
-          See Cook plan <Icon name="arrow-right" size={11} />
-        </a>
-      </div>
-      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3" id="cook-strip">
-        {cookStrip.map((s, i) => (
-          <a href={`/skills/${s.slug}`}
-             class={`group bg-bg-card border ${s.slug === 'larry' ? 'border-accent/40 glow-amber' : 'border-border'} rounded-2xl p-5 card-lift flex flex-col gap-2 relative overflow-hidden`}>
-            {s.slug === 'larry' && (
-              <span class="absolute top-3 right-3 text-[9px] font-semibold uppercase tracking-wider text-accent border border-accent/40 rounded-full px-2 py-0.5 bg-bg/60">New</span>
-            )}
-            <div class="flex items-center gap-2">
-              <span class="badge-pro inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] font-semibold tracking-wider">COOK</span>
-              {s.category && (
-                <span class="text-[10px] text-muted-soft uppercase tracking-wider">{s.category}</span>
-              )}
-            </div>
-            <h3 class="text-base font-semibold text-text group-hover:text-accent transition leading-tight tracking-tight">{s.title}</h3>
-            {(s.tagline || s.description) && (
-              <p class="text-xs text-muted leading-relaxed line-clamp-3">{s.tagline || s.description}</p>
-            )}
-            <span class="text-xs text-accent inline-flex items-center gap-1 mt-auto group-hover:gap-2 transition-all">
-              View skill <Icon name="arrow-right" size={11} />
-            </span>
-          </a>
-        ))}
-      </div>
-      <div class="text-center mt-8">
-        <a href="/skills?tier=cook" class="text-sm text-muted hover:text-accent inline-flex items-center gap-1.5 transition">
-          Browse the full Cook catalog <Icon name="arrow-right" size={11} />
-        </a>
-      </div>
-    </div>
-  </section>
+  {/* rev 7.2.5: Cook-tier strip section removed — overlapped with the
+      "Skill spotlight" section above. Larry's "new" mention lives in
+      the spotlight intro now; cookStrip data is unused on the homepage
+      but still computed in case we want to surface it elsewhere. */}
 
   {carouselToday.length > 0 && (
     <section class="border-t border-border">

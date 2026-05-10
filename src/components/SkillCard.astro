@@ -3,6 +3,7 @@
 // install_count_total comes straight from /api/skills/search — no
 // hardcoded "0 installs" fallback. If the field is missing (older
 // API response) we omit the install line entirely rather than lying.
+import { tierBadge, tierBadgeClass } from '../lib/tiers';
 interface Props {
   skill: {
     slug: string;
@@ -16,9 +17,8 @@ interface Props {
 }
 const { skill } = Astro.props;
 const tier = skill.tier || 'cook';
-const tierClass =
-  tier === 'free' ? 'badge-free' :
-  tier === 'studio' ? 'badge-studio' : 'badge-pro';
+const tierClass = tierBadgeClass(tier);
+const tierDisplay = tierBadge(tier);
 const cat = skill.category || 'general';
 const total = typeof skill.install_count_total === 'number' ? skill.install_count_total : null;
 const last7 = typeof skill.install_count_7d === 'number' ? skill.install_count_7d : null;
@@ -32,7 +32,7 @@ const last7 = typeof skill.install_count_7d === 'number' ? skill.install_count_7
 >
   <div class="flex items-start justify-between gap-2">
     <h3 class="text-base font-semibold text-text group-hover:text-accent transition leading-tight">{skill.title}</h3>
-    <span class={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold tracking-wider shrink-0 ${tierClass}`}>{tier.toUpperCase()}</span>
+    <span class={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold tracking-wider shrink-0 ${tierClass}`}>{tierDisplay}</span>
   </div>
   {skill.description && <p class="text-sm text-muted leading-relaxed line-clamp-3">{skill.description}</p>}
   <div class="flex items-center justify-between pt-3 border-t border-border-soft text-xs">

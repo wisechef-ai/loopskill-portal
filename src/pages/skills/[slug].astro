@@ -5,6 +5,7 @@ import Icon from '../../components/Icon.astro';
 import AuditRow from '../../components/AuditRow.astro';
 import { marked } from 'marked';
 import { fetchApi } from '../../lib/api';
+import { tierBadge as tierBadgeText, tierBadgeClass } from '../../lib/tiers';
 
 export async function getStaticPaths() {
   const result = await fetchApi<{ results: any[]; total: number }>(
@@ -154,7 +155,8 @@ if (display.readme && typeof display.readme === 'string') {
   readmeHtml = marked.parse(stripped) as string;
 }
 
-const tierBadgeClass = display.tier === 'free' ? 'badge-free' : display.tier === 'studio' ? 'badge-studio' : 'badge-pro';
+const tierBadgeClassName = tierBadgeClass(display.tier);
+const tierDisplayText = tierBadgeText(display.tier);
 const isFree = display.tier === 'free';
 
 // Phase A: skill_variant + external_resources
@@ -177,8 +179,8 @@ const externalResources: Array<{ slug?: string; url: string; relation?: string; 
       <div class="lg:col-span-2 flex flex-col gap-8">
         <header class="flex flex-col gap-3">
           <div class="flex items-center gap-2 flex-wrap">
-            <span class={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold tracking-wider ${tierBadgeClass}`}>
-              {display.tier.toUpperCase()}
+            <span class={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold tracking-wider ${tierBadgeClassName}`}>
+              {tierDisplayText}
             </span>
             {isOriginalVariant && (
               <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold tracking-wider border border-border-soft text-muted-soft bg-bg-card">
@@ -408,7 +410,8 @@ const externalResources: Array<{ slug?: string; url: string; relation?: string; 
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
           {related.map((r) => {
             const tier = r.tier || 'cook';
-            const tierClass = tier === 'free' ? 'badge-free' : tier === 'studio' ? 'badge-studio' : 'badge-pro';
+            const tierClass = tierBadgeClass(tier);
+            const tierDisplay = tierBadgeText(tier);
             const isDeclared = declaredSlugs.has(r.slug);
             return (
               <a
@@ -421,7 +424,7 @@ const externalResources: Array<{ slug?: string; url: string; relation?: string; 
                     {isDeclared && (
                       <span class="text-[9px] uppercase tracking-wider text-muted-soft" title="Hand-picked by the author">handpicked</span>
                     )}
-                    <span class={`inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] font-semibold tracking-wider ${tierClass}`}>{tier.toUpperCase()}</span>
+                    <span class={`inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] font-semibold tracking-wider ${tierClass}`}>{tierDisplay}</span>
                   </div>
                 </div>
                 {r.category && (

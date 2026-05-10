@@ -4,6 +4,7 @@ import CrossSell from '../../components/CrossSell.astro';
 import Icon from '../../components/Icon.astro';
 import { fetchApi } from '../../lib/api';
 import { VERTICALS, skillVertical } from '../../lib/verticals';
+import { tierBadge as tierBadgeText, tierBadgeClass } from '../../lib/tiers';
 
 const result = await fetchApi<{ results: any[]; total: number }>(
   '/api/skills/search?page_size=100',
@@ -201,7 +202,8 @@ for (const s of skills) {
     <div id="skill-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
       {skills.map(s => {
         const tier = s.tier || 'cook';
-        const tierClass = tier === 'free' ? 'badge-free' : tier === 'studio' ? 'badge-studio' : 'badge-pro';
+        const tierClass = tierBadgeClass(tier);
+        const tierDisplay = tierBadgeText(tier);
         const cat = s.category || 'general';
         const isOriginal = s.skill_variant === 'original';
         const extRes: any[] = Array.isArray(s.external_resources) ? s.external_resources : [];
@@ -231,7 +233,7 @@ for (const s of skills) {
                 ) : isOriginal ? (
                   <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold tracking-wider border border-border-soft text-muted-soft">Original</span>
                 ) : null}
-                <span class={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold tracking-wider ${tierClass}`}>{tier.toUpperCase()}</span>
+                <span class={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold tracking-wider ${tierClass}`}>{tierDisplay}</span>
               </div>
             </div>
             <p class="text-sm text-muted leading-relaxed line-clamp-3">{s.description}</p>
