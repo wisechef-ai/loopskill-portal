@@ -1,0 +1,326 @@
+---
+import Base from '../layouts/Base.astro';
+import EarningsCalculator from '../components/EarningsCalculator.astro';
+import Icon from '../components/Icon.astro';
+---
+
+<Base
+  title="Build skills. Sell them. Keep 100% — Recipes for Creators"
+  description="Publish AI agent skills to the Recipes marketplace. Keep 100% of direct sales. Earn 50% recurring rev share on every Pro and Pro+ referral. 20-cookbook fleet deployments with Pro+."
+>
+  <!-- ── Hero ── -->
+  <section class="relative overflow-hidden min-h-[60vh] flex items-center">
+    <!-- Background glow -->
+    <div class="absolute inset-0 -z-10 pointer-events-none"
+         style="background: radial-gradient(ellipse at 50% 0%, rgba(212,160,23,0.12) 0%, transparent 60%), radial-gradient(ellipse at 80% 60%, rgba(59,130,246,0.07) 0%, transparent 55%);"></div>
+    <div class="absolute inset-0 -z-20 opacity-[0.02] pointer-events-none"
+         style="background-image: linear-gradient(to right, #fafafa 1px, transparent 1px), linear-gradient(to bottom, #fafafa 1px, transparent 1px); background-size: 64px 64px;"></div>
+
+    <div class="max-w-6xl mx-auto px-6 py-20 md:py-28 w-full">
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
+
+        <!-- Left: copy -->
+        <div class="flex flex-col gap-6">
+          <!-- First-100 badge -->
+          <div>
+            <span class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border text-xs font-semibold"
+                  style="background:rgba(212,160,23,0.12);border-color:rgba(212,160,23,0.4);color:#D4A017;">
+              <svg width="10" height="10" viewBox="0 0 10 10" fill="currentColor" aria-hidden="true"><circle cx="5" cy="5" r="5"/></svg>
+              First 100 creators — permanent featured placement
+            </span>
+          </div>
+
+          <div class="flex flex-col gap-3">
+            <p class="eyebrow text-accent">For creators &amp; operators</p>
+            <h1 class="text-4xl md:text-6xl font-bold tracking-tight" style="letter-spacing: -0.03em; line-height: 1.05;">
+              Build skills.<br/>Sell them.<br/>
+              <span class="text-gradient">Keep 100%.</span>
+            </h1>
+          </div>
+
+          <p class="text-lg text-muted leading-relaxed max-w-xl">
+            Publish AI agent skills to the Recipes marketplace. Zero upfront cost.
+            Earn <strong class="text-text">50% recurring rev share</strong> on every referral —
+            or deploy full cookbook fleets to clients with Pro+.
+          </p>
+
+          <div class="flex flex-col sm:flex-row gap-3 mt-2">
+            <a href="/publish"
+               class="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-lg font-semibold text-sm bg-accent text-bg hover:bg-accent-soft transition">
+              Publish your first skill <Icon name="arrow-right" size={14} />
+            </a>
+            <a href="#earnings"
+               class="inline-flex items-center justify-center px-5 py-3 rounded-lg font-semibold text-sm border border-border hover:border-accent text-text transition">
+              See the math
+            </a>
+          </div>
+
+          <!-- Three stats -->
+          <div class="flex items-center gap-6 pt-4 border-t border-border">
+            <div class="flex flex-col gap-0.5">
+              <span class="text-2xl font-bold text-text tabular-nums">100%</span>
+              <span class="text-[10px] text-muted-soft uppercase tracking-wider">Direct sale revenue</span>
+            </div>
+            <div class="w-px h-10 bg-border"></div>
+            <div class="flex flex-col gap-0.5">
+              <span class="text-2xl font-bold text-text tabular-nums">50%</span>
+              <span class="text-[10px] text-muted-soft uppercase tracking-wider">Recurring rev share</span>
+            </div>
+            <div class="w-px h-10 bg-border"></div>
+            <div class="flex flex-col gap-0.5">
+              <span class="text-2xl font-bold text-text tabular-nums">$0</span>
+              <span class="text-[10px] text-muted-soft uppercase tracking-wider">To publish</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right: widget preview / teaser -->
+        <div class="hidden md:flex items-center justify-center">
+          <div class="relative w-full max-w-sm">
+            <div class="absolute -inset-4 rounded-3xl opacity-30 blur-2xl -z-10"
+                 style="background: radial-gradient(ellipse at center, rgba(212,160,23,0.5) 0%, rgba(59,130,246,0.3) 100%);"></div>
+            <div class="bg-bg-card border border-[#D4A017]/30 rounded-2xl p-6 flex flex-col gap-3 shadow-2xl">
+              <p class="text-[10px] uppercase tracking-widest font-semibold text-muted-soft">Default scenario</p>
+              <div class="text-5xl font-bold tabular-nums" style="color:#D4A017;">$6,250</div>
+              <p class="text-xs text-muted">/mo estimated earnings</p>
+              <div class="flex flex-col gap-1.5 mt-2">
+                <div class="flex justify-between text-xs">
+                  <span class="text-muted">10 Pro refs × $20 × 50%</span>
+                  <span class="font-semibold" style="color:#3B82F6;">$100</span>
+                </div>
+                <div class="flex justify-between text-xs">
+                  <span class="text-muted">5 Pro+ refs × $100 × 50%</span>
+                  <span class="font-semibold" style="color:#818CF8;">$250</span>
+                </div>
+                <div class="flex justify-between text-xs">
+                  <span class="text-muted">20 clients × $300 − $100</span>
+                  <span class="font-semibold" style="color:#D4A017;">$5,900</span>
+                </div>
+                <div class="border-t border-border mt-1 pt-1 flex justify-between text-xs font-semibold text-text">
+                  <span>Total</span><span>$6,250/mo</span>
+                </div>
+              </div>
+              <a href="#earnings" class="mt-2 text-center text-xs font-semibold text-accent hover:opacity-80 transition">
+                Adjust the sliders →
+              </a>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Section A: For Skill Creators ── -->
+  <section class="border-t border-border" id="skill-creators">
+    <div class="max-w-5xl mx-auto px-6 py-20">
+      <div class="flex flex-col gap-3 mb-12">
+        <p class="eyebrow text-accent">Skill creators</p>
+        <h2 class="text-3xl md:text-4xl font-bold tracking-tight" style="letter-spacing:-0.03em;">
+          Publish once. Earn forever.
+        </h2>
+        <p class="text-muted text-lg max-w-2xl leading-relaxed">
+          Every skill you publish earns a revenue share on every subscriber who installs it via your referral link.
+          No exclusivity. No platform lock-in. Your skill, your audience.
+        </p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-5 mb-12">
+        <div class="bg-bg-card border border-border rounded-2xl p-6 flex flex-col gap-3">
+          <div class="w-10 h-10 rounded-xl flex items-center justify-center" style="background:rgba(59,130,246,0.12);border:1px solid rgba(59,130,246,0.25);">
+            <Icon name="box" size={18} class="text-[#3B82F6]" />
+          </div>
+          <h3 class="text-base font-semibold text-text">Publish the skill</h3>
+          <p class="text-sm text-muted leading-relaxed">
+            Submit a Markdown skill spec. We review for security and quality (24h SLA on Pro+).
+            Once live, it appears in the catalog and your referral link is active.
+          </p>
+        </div>
+
+        <div class="bg-bg-card border border-border rounded-2xl p-6 flex flex-col gap-3">
+          <div class="w-10 h-10 rounded-xl flex items-center justify-center" style="background:rgba(59,130,246,0.12);border:1px solid rgba(59,130,246,0.25);">
+            <Icon name="lightning" size={18} class="text-[#3B82F6]" />
+          </div>
+          <h3 class="text-base font-semibold text-text">Share your ref link</h3>
+          <p class="text-sm text-muted leading-relaxed">
+            Anyone who upgrades to Pro or Pro+ via your link generates recurring rev share — 
+            50% of their subscription, every month, for as long as they stay subscribed.
+          </p>
+        </div>
+
+        <div class="bg-bg-card border border-border rounded-2xl p-6 flex flex-col gap-3">
+          <div class="w-10 h-10 rounded-xl flex items-center justify-center" style="background:rgba(59,130,246,0.12);border:1px solid rgba(59,130,246,0.25);">
+            <Icon name="chart" size={18} class="text-[#3B82F6]" />
+          </div>
+          <h3 class="text-base font-semibold text-text">Track &amp; withdraw</h3>
+          <p class="text-sm text-muted leading-relaxed">
+            Dashboard shows referrals, installs, and earnings in real time.
+            Monthly payout via Stripe — no minimum, no delays.
+          </p>
+        </div>
+      </div>
+
+      <!-- Referral math breakdown -->
+      <div class="bg-bg-card border border-[#3B82F6]/20 rounded-2xl p-6 md:p-8">
+        <p class="eyebrow text-xs mb-4" style="color:#3B82F6;">Rev share math</p>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div class="flex flex-col gap-3">
+            <h4 class="text-sm font-semibold text-text">Pro referrals — $20/mo each</h4>
+            <code class="font-mono text-xs bg-[#0d0d0d] border border-border rounded-lg px-4 py-3 block text-muted leading-relaxed">
+              referrals × $20 × 50% = earnings/mo<br/>
+              10 refs × $20 × 0.5 = <span class="font-bold" style="color:#3B82F6;">$100/mo</span>
+            </code>
+          </div>
+          <div class="flex flex-col gap-3">
+            <h4 class="text-sm font-semibold text-text">Pro+ referrals — $100/mo each</h4>
+            <code class="font-mono text-xs bg-[#0d0d0d] border border-border rounded-lg px-4 py-3 block text-muted leading-relaxed">
+              referrals × $100 × 50% = earnings/mo<br/>
+              5 refs × $100 × 0.5 = <span class="font-bold" style="color:#818CF8;">$250/mo</span>
+            </code>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Section B: For Agency Operators ── -->
+  <section class="border-t border-border bg-bg-card/20" id="agency-operators">
+    <div class="max-w-5xl mx-auto px-6 py-20">
+      <div class="flex flex-col gap-3 mb-12">
+        <p class="eyebrow text-accent">Agency operators</p>
+        <h2 class="text-3xl md:text-4xl font-bold tracking-tight" style="letter-spacing:-0.03em;">
+          Deploy cookbooks to clients.<br/>Bill your way.
+        </h2>
+        <p class="text-muted text-lg max-w-2xl leading-relaxed">
+          Pro+ gives you a fleet of 20 cookbook endpoints. Deploy to clients, bill at your own rate, 
+          keep the margin. One $100/mo subscription covers your entire agency fleet.
+        </p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-5 mb-10">
+        <!-- Cookbook deployment card -->
+        <div class="relative bg-bg-card border rounded-2xl p-6 flex flex-col gap-4" style="border-color:rgba(212,160,23,0.35);">
+          <div class="absolute -top-3 right-5">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-semibold tracking-wider"
+                  style="background:#D4A017;color:#0a0a0a;">Pro+ unlock</span>
+          </div>
+          <div class="w-10 h-10 rounded-xl flex items-center justify-center" style="background:rgba(212,160,23,0.12);border:1px solid rgba(212,160,23,0.3);">
+            <span style="color:#D4A017;display:contents;"><Icon name="box" size={18} /></span>
+          </div>
+          <h3 class="text-base font-semibold text-text">20-cookbook fleet</h3>
+          <p class="text-sm text-muted leading-relaxed">
+            Each client gets their own isolated cookbook environment — skills, credentials, 
+            outputs. Fleet-wide updates push from your dashboard. One billing line. 20 endpoints.
+          </p>
+          <div class="mt-auto">
+            <div class="flex flex-col gap-1.5">
+              <div class="flex justify-between text-xs">
+                <span class="text-muted">Your Pro+ subscription</span>
+                <span class="font-semibold text-text">$100/mo</span>
+              </div>
+              <div class="flex justify-between text-xs">
+                <span class="text-muted">You bill each client</span>
+                <span class="font-semibold" style="color:#D4A017;">$300+/mo</span>
+              </div>
+              <div class="flex justify-between text-xs">
+                <span class="text-muted">Your margin (20 clients)</span>
+                <span class="font-semibold" style="color:#D4A017;">$5,900/mo</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- What Pro+ includes -->
+        <div class="bg-bg-card border border-border rounded-2xl p-6 flex flex-col gap-4">
+          <h3 class="text-base font-semibold text-text">What Pro+ includes</h3>
+          <ul class="flex flex-col gap-2.5 text-sm text-muted">
+            {[
+              '20 agent endpoints — one per client',
+              'Fleet-wide cookbook sync from your dashboard',
+              'Framework installer — one command spins up client stack',
+              '60-minute white-glove onboarding call',
+              'Private catalog (org-only skills)',
+              'Priority review, 24h SLA',
+              '14-day money-back guarantee',
+              'Cancel or downgrade to Pro anytime — proration kicks in',
+            ].map(f => (
+              <li class="flex items-start gap-2">
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" class="text-success mt-0.5 shrink-0" aria-hidden="true">
+                  <path d="M3 8.5L6 11.5L13 4.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+                <span>{f}</span>
+              </li>
+            ))}
+          </ul>
+          <a href="/signin?next=/api/checkout/studio"
+             class="mt-auto inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg font-semibold text-sm border transition text-text hover:border-accent"
+             style="border-color:rgba(212,160,23,0.4);">
+            Start Pro+ — $100/mo <Icon name="arrow-right" size={13} />
+          </a>
+        </div>
+      </div>
+
+      <!-- Agency math code block -->
+      <div class="bg-[#0d0d0d] border border-border rounded-2xl p-6">
+        <p class="text-[10px] uppercase tracking-widest font-semibold text-muted-soft mb-4">Agency math</p>
+        <code class="font-mono text-xs text-muted leading-loose block">
+          <span class="text-muted-soft">// Cookbook deployment earnings model</span><br/>
+          clients      = 20           <span class="text-muted-soft">// max cookbook endpoints on Pro+</span><br/>
+          bill_rate    = $300/mo      <span class="text-muted-soft">// what you charge each client</span><br/>
+          subscription = $100/mo      <span class="text-muted-soft">// your Pro+ cost (one line)</span><br/>
+          <br/>
+          gross        = 20 × $300    = <span class="font-bold text-text">$6,000/mo</span><br/>
+          net          = $6,000 − $100 = <span class="font-bold" style="color:#D4A017;">$5,900/mo</span><br/>
+          <br/>
+          <span class="text-muted-soft">// Add referral earnings on top:</span><br/>
+          total        = $5,900 + Pro_refs + Pro+_refs = <span class="font-bold" style="color:#D4A017;">$6,250+/mo</span>
+        </code>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Section C: Interactive Earnings Widget ── -->
+  <section class="border-t border-border" id="earnings">
+    <div class="max-w-5xl mx-auto px-6 py-20">
+      <div class="flex flex-col gap-3 mb-10 text-center items-center">
+        <p class="eyebrow text-accent">Run the numbers</p>
+        <h2 class="text-3xl md:text-4xl font-bold tracking-tight" style="letter-spacing:-0.03em;">
+          What will you earn?
+        </h2>
+        <p class="text-muted max-w-xl">
+          Adjust the sliders to model your own scenario. Every formula is visible in the widget.
+          No magic numbers.
+        </p>
+      </div>
+      <EarningsCalculator />
+    </div>
+  </section>
+
+  <!-- ── CTA / First 100 badge section ── -->
+  <section class="border-t border-border">
+    <div class="max-w-4xl mx-auto px-6 py-20 text-center flex flex-col gap-6 items-center">
+      <span class="inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold"
+            style="background:rgba(212,160,23,0.12);border:1px solid rgba(212,160,23,0.4);color:#D4A017;">
+        ⭐ First 100 creators get permanent featured placement
+      </span>
+      <h2 class="text-3xl md:text-5xl font-bold tracking-tight" style="letter-spacing:-0.03em;">
+        Your skills deserve an audience.
+      </h2>
+      <p class="text-muted text-lg max-w-xl leading-relaxed">
+        We're onboarding the first wave of skill creators now. Submit your skill,
+        get reviewed within 24h on Pro+, and start earning the day it goes live.
+      </p>
+      <div class="flex flex-col sm:flex-row gap-3">
+        <a href="/publish"
+           class="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-lg font-semibold bg-accent text-bg hover:bg-accent-soft transition">
+          Publish your first skill <Icon name="arrow-right" size={14} />
+        </a>
+        <a href="/docs/publishing"
+           class="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-lg font-semibold border border-border hover:border-accent text-text transition">
+          Read the publishing guide
+        </a>
+      </div>
+      <p class="text-xs text-muted-soft">No upfront cost. Free to publish. 50% rev share, recurring.</p>
+    </div>
+  </section>
+</Base>

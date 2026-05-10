@@ -1,0 +1,695 @@
+---
+// EarningsCalculator.astro
+// Spectacular Earnings Widget — Vanilla JS + Canvas API, zero external deps.
+// RCP-7-B: /creators flagship widget, embedded on /pricing and / too.
+//
+// MATH (honest, every formula visible below in JS):
+//   Pro referral earnings    = proRefs × $20/mo × 0.50
+//   Pro+ referral earnings   = proPlus × $100/mo × 0.50
+//   Cookbook earnings        = clients × $300/mo (Pro+ unlock)
+//   Pro+ deduction           = $100/mo (only when clients > 0)
+//   Total                    = proEarnings + proPlusEarnings + cookbookEarnings - deduction
+//
+// Default scenario: 10 × $20 × 0.5 + 5 × $100 × 0.5 + 20 × $300 - $100
+//                 = 100 + 250 + 6000 - 100 = $6,250 ✓
+//
+// data-cta-target for Cloudflare Analytics tracking.
+---
+
+<div
+  id="earnings-calculator"
+  data-cta-target="earnings-calculator"
+  class="bg-bg-card border border-border rounded-2xl overflow-hidden"
+  aria-label="Earnings calculator"
+>
+  <!-- Header -->
+  <div class="border-b border-border px-6 py-4 flex items-center justify-between flex-wrap gap-3">
+    <div>
+      <p class="text-[10px] uppercase tracking-widest font-semibold text-muted mb-0.5">Revenue calculator</p>
+      <h3 class="text-base font-semibold text-text">What will you earn?</h3>
+    </div>
+    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-success/10 border border-success/30 text-success text-[10px] font-semibold uppercase tracking-wider">
+      <svg width="8" height="8" viewBox="0 0 8 8" fill="currentColor" aria-hidden="true"><circle cx="4" cy="4" r="4"/></svg>
+      Live calculation
+    </span>
+  </div>
+
+  <div class="p-5 md:p-6 flex flex-col gap-6">
+
+    <!-- Big animated number -->
+    <div class="text-center py-4 md:py-6 relative">
+      <div id="ec-cycle-badge"
+           class="absolute top-0 left-1/2 -translate-x-1/2 text-[9px] uppercase tracking-widest font-semibold text-muted-soft opacity-60 select-none">
+        monthly earnings
+      </div>
+      <div
+        id="ec-big-number"
+        class="font-semibold tabular-nums leading-none select-none"
+        style="font-size: clamp(3rem, 8vw, 6rem); color: #FFD166; transition: color 0.5s ease;"
+        aria-live="polite"
+        aria-atomic="true"
+      >$6,250</div>
+      <div id="ec-big-label" class="text-xs text-muted-soft mt-2 select-none">/mo estimated</div>
+    </div>
+
+    <!-- Controls grid -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+
+      <!-- Section A: Pro referrals (blue) -->
+      <div class="ec-section bg-bg-elev border border-[#3B82F6]/30 rounded-xl p-4 flex flex-col gap-3" data-section="pro">
+        <div class="flex items-center justify-between gap-2">
+          <span class="text-xs font-semibold text-text">Pro referrals</span>
+          <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-semibold tracking-wider"
+                style="background:rgba(59,130,246,0.15);color:#3B82F6;border:1px solid rgba(59,130,246,0.3);">PRO · $20/mo</span>
+        </div>
+        <div class="flex items-center gap-2">
+          <label for="ec-pro-refs" class="text-[10px] text-muted-soft whitespace-nowrap">Referrals</label>
+          <input
+            id="ec-pro-refs"
+            type="range"
+            min="0" max="100" step="1" value="10"
+            class="ec-slider ec-slider-blue flex-1"
+            aria-label="Number of Pro referrals"
+          />
+          <input
+            id="ec-pro-refs-num"
+            type="number"
+            min="0" max="1000" value="10"
+            class="ec-num-input"
+            aria-label="Pro referrals count"
+          />
+        </div>
+        <div class="text-[10px] text-muted-soft">
+          <code class="font-mono">referrals × $20 × 50% = <span id="ec-pro-result" class="font-semibold" style="color:#3B82F6">$100</span>/mo</code>
+        </div>
+      </div>
+
+      <!-- Section B: Pro+ referrals (blue, slightly different shade) -->
+      <div class="ec-section bg-bg-elev border border-[#3B82F6]/30 rounded-xl p-4 flex flex-col gap-3" data-section="proplus-ref">
+        <div class="flex items-center justify-between gap-2">
+          <span class="text-xs font-semibold text-text">Pro+ referrals</span>
+          <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-semibold tracking-wider"
+                style="background:rgba(99,102,241,0.15);color:#818CF8;border:1px solid rgba(99,102,241,0.3);">PRO+ · $100/mo</span>
+        </div>
+        <div class="flex items-center gap-2">
+          <label for="ec-proplus-refs" class="text-[10px] text-muted-soft whitespace-nowrap">Referrals</label>
+          <input
+            id="ec-proplus-refs"
+            type="range"
+            min="0" max="50" step="1" value="5"
+            class="ec-slider ec-slider-blue flex-1"
+            aria-label="Number of Pro+ referrals"
+          />
+          <input
+            id="ec-proplus-refs-num"
+            type="number"
+            min="0" max="500" value="5"
+            class="ec-num-input"
+            aria-label="Pro+ referrals count"
+          />
+        </div>
+        <div class="text-[10px] text-muted-soft">
+          <code class="font-mono">referrals × $100 × 50% = <span id="ec-proplus-ref-result" class="font-semibold" style="color:#818CF8">$250</span>/mo</code>
+        </div>
+      </div>
+
+      <!-- Section C: Cookbooks (gold, Pro+ unlock) -->
+      <div class="ec-section bg-bg-elev border border-[#D4A017]/40 rounded-xl p-4 flex flex-col gap-3 relative" data-section="cookbooks">
+        <div class="absolute -top-3 right-4">
+          <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-semibold tracking-wider"
+                style="background:#D4A017;color:#0a0a0a;">Pro+ unlock</span>
+        </div>
+        <div class="flex items-center justify-between gap-2">
+          <span class="text-xs font-semibold text-text">Cookbooks deployed</span>
+          <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-semibold tracking-wider"
+                style="background:rgba(212,160,23,0.15);color:#D4A017;border:1px solid rgba(212,160,23,0.3);">$300/client/mo</span>
+        </div>
+        <div class="flex items-center gap-2">
+          <label for="ec-clients" class="text-[10px] text-muted-soft whitespace-nowrap">Clients</label>
+          <input
+            id="ec-clients"
+            type="range"
+            min="0" max="20" step="1" value="20"
+            class="ec-slider ec-slider-gold flex-1"
+            aria-label="Number of client cookbooks deployed"
+          />
+          <input
+            id="ec-clients-num"
+            type="number"
+            min="0" max="20" value="20"
+            class="ec-num-input"
+            aria-label="Client cookbooks count"
+          />
+        </div>
+        <div class="text-[10px] text-muted-soft">
+          <code class="font-mono">clients × $300 − $100 sub = <span id="ec-cookbook-result" class="font-semibold" style="color:#D4A017">$5,900</span>/mo</code>
+        </div>
+        <div id="ec-proplus-gate" class="hidden text-[10px] rounded-lg p-2"
+             style="background:rgba(212,160,23,0.08);border:1px solid rgba(212,160,23,0.25);color:#D4A017;">
+          ⚡ Cookbooks require Pro+ ($100/mo). Upgrade to unlock client fleet deployment.
+        </div>
+      </div>
+
+    </div><!-- end controls grid -->
+
+    <!-- Canvas chart -->
+    <div class="flex flex-col gap-2">
+      <p class="text-[10px] uppercase tracking-widest font-semibold text-muted-soft">Earnings vs scale</p>
+      <div class="relative rounded-xl overflow-hidden border border-border" style="background:#0d0d0d;">
+        <canvas
+          id="ec-chart"
+          aria-label="Earnings curve graph showing monthly earnings vs total scale"
+          role="img"
+          style="display:block;width:100%;height:240px;"
+        ></canvas>
+        <!-- Legend -->
+        <div class="absolute bottom-3 right-4 flex items-center gap-3">
+          <span class="flex items-center gap-1.5 text-[9px] font-semibold" style="color:#3B82F6;">
+            <span style="display:inline-block;width:20px;height:2px;background:#3B82F6;border-radius:1px;"></span>
+            Referrals only
+          </span>
+          <span class="flex items-center gap-1.5 text-[9px] font-semibold" style="color:#D4A017;">
+            <span style="display:inline-block;width:20px;height:2px;background:#D4A017;border-radius:1px;"></span>
+            Referrals + cookbooks
+          </span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Footer note -->
+    <p class="text-[10px] text-muted-soft text-center">
+      Estimates based on 50% recurring rev share on referrals. Cookbook deployments require Pro+ ($100/mo, deducted above).
+      Numbers are projections — actual results vary.
+    </p>
+
+  </div>
+</div>
+
+<style>
+  /* Slider base reset */
+  .ec-slider {
+    -webkit-appearance: none;
+    appearance: none;
+    height: 4px;
+    border-radius: 2px;
+    outline: none;
+    cursor: pointer;
+    background: #262626;
+  }
+
+  /* Blue slider track fill — done via JS gradient background */
+  .ec-slider-blue::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: #3B82F6;
+    border: 2px solid #0a0a0a;
+    box-shadow: 0 0 0 2px rgba(59,130,246,0.4);
+    cursor: pointer;
+    transition: box-shadow 0.15s ease;
+  }
+  .ec-slider-blue::-moz-range-thumb {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: #3B82F6;
+    border: 2px solid #0a0a0a;
+    box-shadow: 0 0 0 2px rgba(59,130,246,0.4);
+    cursor: pointer;
+  }
+  .ec-slider-blue:focus::-webkit-slider-thumb { box-shadow: 0 0 0 3px rgba(59,130,246,0.6); }
+
+  .ec-slider-gold::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: #D4A017;
+    border: 2px solid #0a0a0a;
+    box-shadow: 0 0 0 2px rgba(212,160,23,0.4);
+    cursor: pointer;
+    transition: box-shadow 0.15s ease;
+  }
+  .ec-slider-gold::-moz-range-thumb {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: #D4A017;
+    border: 2px solid #0a0a0a;
+    box-shadow: 0 0 0 2px rgba(212,160,23,0.4);
+    cursor: pointer;
+  }
+  .ec-slider-gold:focus::-webkit-slider-thumb { box-shadow: 0 0 0 3px rgba(212,160,23,0.6); }
+
+  /* Numeric input */
+  .ec-num-input {
+    width: 52px;
+    background: #0d0d0d;
+    border: 1px solid #262626;
+    border-radius: 6px;
+    color: #fafafa;
+    font-size: 12px;
+    font-weight: 600;
+    text-align: center;
+    padding: 3px 4px;
+    outline: none;
+    -moz-appearance: textfield;
+  }
+  .ec-num-input::-webkit-inner-spin-button,
+  .ec-num-input::-webkit-outer-spin-button { -webkit-appearance: none; }
+  .ec-num-input:focus { border-color: #FFD166; }
+
+  /* Canvas responsive height */
+  @media (min-width: 768px) {
+    #ec-chart { height: 360px !important; }
+  }
+</style>
+
+<script is:inline>
+(function() {
+  'use strict';
+
+  // ── Constants ───────────────────────────────────────────────────────────────
+  var PRO_PRICE      = 20;    // $/mo per Pro subscriber
+  var PROPLUS_PRICE  = 100;   // $/mo per Pro+ subscriber
+  var COOKBOOK_RATE  = 300;   // $/mo per client cookbook deployment
+  var REVSHARE       = 0.5;   // 50% recurring rev share
+  var PROPLUS_COST   = 100;   // Pro+ subscription cost (deducted when cookbooks > 0)
+
+  // ── Math (documented as code comments) ─────────────────────────────────────
+  // proEarnings    = proRefs    × PRO_PRICE     × REVSHARE
+  // proPlusEarnings= proPlusRef × PROPLUS_PRICE × REVSHARE
+  // cookbookEarnings = clients  × COOKBOOK_RATE  (Pro+ required)
+  // deduction      = clients > 0 ? PROPLUS_COST : 0
+  // total          = proEarnings + proPlusEarnings + cookbookEarnings - deduction
+  //
+  // Default: 10 × 20 × 0.5 + 5 × 100 × 0.5 + 20 × 300 − 100
+  //        = 100            + 250             + 6000         − 100 = $6,250 ✓
+  // No-cookbook: 10 × 20 × 0.5 + 5 × 100 × 0.5 + 0 − 0 = $350 ✓
+
+  function calcEarnings(proRefs, proPlusRef, clients) {
+    var proE    = proRefs    * PRO_PRICE     * REVSHARE;
+    var ppE     = proPlusRef * PROPLUS_PRICE * REVSHARE;
+    var cbE     = clients    * COOKBOOK_RATE;
+    var ded     = clients > 0 ? PROPLUS_COST : 0;
+    return {
+      pro:      proE,
+      proPlus:  ppE,
+      cookbook: cbE,
+      deduction: ded,
+      total:    proE + ppE + cbE - ded
+    };
+  }
+
+  // ── State ───────────────────────────────────────────────────────────────────
+  var state = { proRefs: 10, proPlusRef: 5, clients: 20 };
+  var frozen = false;          // true when user is interacting
+  var freezeTimer = null;
+  var cycleTimer  = null;
+  var animFrame   = null;
+
+  // Cycle scenarios for the big-number animation
+  var scenarios = [
+    { proRefs: 10,  proPlusRef: 5,  clients: 20, label: 'Default scenario (10 Pro + 5 Pro+ + 20 clients)' },
+    { proRefs: 25,  proPlusRef: 10, clients: 20, label: 'Growth scenario (25 Pro + 10 Pro+ + 20 clients)' },
+    { proRefs: 50,  proPlusRef: 20, clients: 20, label: 'Scale scenario (50 Pro + 20 Pro+ + 20 clients)' },
+    { proRefs: 5,   proPlusRef: 0,  clients: 0,  label: 'Referrals only (5 Pro)' },
+  ];
+  var scenIdx = 0;
+
+  // ── DOM refs ────────────────────────────────────────────────────────────────
+  var elBig      = document.getElementById('ec-big-number');
+  var elLabel    = document.getElementById('ec-big-label');
+  var elBadge    = document.getElementById('ec-cycle-badge');
+  var elProRes   = document.getElementById('ec-pro-result');
+  var elPpRes    = document.getElementById('ec-proplus-ref-result');
+  var elCbRes    = document.getElementById('ec-cookbook-result');
+  var elGate     = document.getElementById('ec-proplus-gate');
+  var canvas     = document.getElementById('ec-chart');
+  var ctx        = canvas ? canvas.getContext('2d') : null;
+
+  var inProRefs     = document.getElementById('ec-pro-refs');
+  var inProRefsNum  = document.getElementById('ec-pro-refs-num');
+  var inPpRefs      = document.getElementById('ec-proplus-refs');
+  var inPpRefsNum   = document.getElementById('ec-proplus-refs-num');
+  var inClients     = document.getElementById('ec-clients');
+  var inClientsNum  = document.getElementById('ec-clients-num');
+
+  // ── Number formatting ────────────────────────────────────────────────────────
+  function fmtUSD(n) {
+    if (n >= 1000) return '$' + (n / 1000).toFixed(n % 1000 === 0 ? 0 : 1) + 'k';
+    return '$' + Math.round(n).toLocaleString('en-US');
+  }
+
+  // ── Big number animated count-up ─────────────────────────────────────────────
+  var currentDisplay = 6250;
+  var targetDisplay  = 6250;
+  var animStart      = null;
+  var animDuration   = 600; // ms
+
+  function animateTo(target) {
+    targetDisplay = target;
+    var from = currentDisplay;
+    animStart = null;
+    if (animFrame) cancelAnimationFrame(animFrame);
+    function step(ts) {
+      if (!animStart) animStart = ts;
+      var p = Math.min((ts - animStart) / animDuration, 1);
+      // Ease out cubic
+      var e = 1 - Math.pow(1 - p, 3);
+      currentDisplay = from + (targetDisplay - from) * e;
+      if (elBig) elBig.textContent = fmtUSD(currentDisplay);
+      if (p < 1) {
+        animFrame = requestAnimationFrame(step);
+      } else {
+        currentDisplay = targetDisplay;
+        if (elBig) elBig.textContent = fmtUSD(currentDisplay);
+      }
+    }
+    animFrame = requestAnimationFrame(step);
+  }
+
+  // ── Color transition on big number ──────────────────────────────────────────
+  // Cycles between blue (referrals) and gold (cookbooks) based on which dominates
+  function updateBigNumberColor(earnings) {
+    var color = earnings.cookbook > (earnings.pro + earnings.proPlus)
+      ? '#D4A017' : '#3B82F6';
+    if (elBig) elBig.style.color = color;
+  }
+
+  // ── Slider fill gradient ─────────────────────────────────────────────────────
+  function updateSliderFill(input, color) {
+    var min = parseFloat(input.min) || 0;
+    var max = parseFloat(input.max) || 100;
+    var val = parseFloat(input.value) || 0;
+    var pct = ((val - min) / (max - min)) * 100;
+    input.style.background =
+      'linear-gradient(to right, ' + color + ' 0%, ' + color + ' ' + pct + '%, #262626 ' + pct + '%, #262626 100%)';
+  }
+
+  // ── UI update ────────────────────────────────────────────────────────────────
+  function updateUI() {
+    var s   = state;
+    var ear = calcEarnings(s.proRefs, s.proPlusRef, s.clients);
+
+    // Inline formula results
+    if (elProRes) elProRes.textContent = fmtUSD(ear.pro);
+    if (elPpRes)  elPpRes.textContent  = fmtUSD(ear.proPlus);
+
+    // Cookbook: show net (minus deduction) when clients > 0
+    var cbNet = ear.cookbook - ear.deduction;
+    if (elCbRes) elCbRes.textContent = fmtUSD(Math.max(0, cbNet));
+
+    // Pro+ gate message
+    if (elGate) {
+      if (s.clients > 0) {
+        elGate.classList.remove('hidden');
+      } else {
+        elGate.classList.add('hidden');
+      }
+    }
+
+    // Big number
+    animateTo(ear.total);
+    updateBigNumberColor(ear);
+
+    // Slider fills
+    if (inProRefs)   updateSliderFill(inProRefs,   '#3B82F6');
+    if (inPpRefs)    updateSliderFill(inPpRefs,    '#818CF8');
+    if (inClients)   updateSliderFill(inClients,   '#D4A017');
+
+    // Chart
+    renderChart();
+  }
+
+  // ── Canvas chart ─────────────────────────────────────────────────────────────
+  // x-axis: total fleet (referrals + clients), 0..120
+  // y-axis: monthly earnings USD
+  // Line 1 (blue): referrals only, scaling referrals from 0 to max proportionally
+  // Line 2 (gold): referrals + cookbooks combined
+  function renderChart() {
+    if (!ctx || !canvas) return;
+
+    // Resolve CSS size → pixel size (devicePixelRatio-aware)
+    var rect = canvas.getBoundingClientRect();
+    var dpr  = window.devicePixelRatio || 1;
+    var W    = Math.round(rect.width  * dpr);
+    var H    = Math.round(rect.height * dpr);
+    if (canvas.width !== W || canvas.height !== H) {
+      canvas.width  = W;
+      canvas.height = H;
+    }
+
+    ctx.clearRect(0, 0, W, H);
+
+    // Padding
+    var pad = { top: 24 * dpr, right: 24 * dpr, bottom: 36 * dpr, left: 60 * dpr };
+    var cW  = W - pad.left - pad.right;
+    var cH  = H - pad.top  - pad.bottom;
+
+    // X range: 0..120 (total fleet count)
+    var xMax = 120;
+    // Y range: auto-fit to max value across both lines, with a ceiling floor
+    var s = state;
+
+    // Build data points for x=0..xMax
+    // Scale factor: at x=xMax, we want the current slider values
+    // We scale all three inputs proportionally to x.
+    var totalFleet = s.proRefs + s.proPlusRef + s.clients;
+    var pts1 = []; // referrals only
+    var pts2 = []; // referrals + cookbooks
+
+    for (var xi = 0; xi <= xMax; xi++) {
+      var scale = totalFleet > 0 ? xi / totalFleet : 0;
+      var pr  = s.proRefs    * scale;
+      var pp  = s.proPlusRef * scale;
+      var cl  = Math.min(s.clients * scale, 20); // max 20 cookbooks
+
+      var refOnly = calcEarnings(pr, pp, 0);
+      var full    = calcEarnings(pr, pp, cl);
+      pts1.push(refOnly.total);
+      pts2.push(full.total);
+    }
+
+    var yMax = Math.max(...pts2, ...pts1, 500);
+    // Round yMax up to a nice number
+    var niceStep = Math.pow(10, Math.floor(Math.log10(yMax / 4)));
+    yMax = Math.ceil(yMax / niceStep) * niceStep;
+
+    // Helper: data → pixel coords
+    function px(xi, y) {
+      return {
+        x: pad.left + (xi / xMax) * cW,
+        y: pad.top  + (1 - y / yMax) * cH
+      };
+    }
+
+    // Grid lines
+    ctx.strokeStyle = 'rgba(255,255,255,0.05)';
+    ctx.lineWidth = 1;
+    var gridSteps = 4;
+    for (var gi = 0; gi <= gridSteps; gi++) {
+      var gy = pad.top + (gi / gridSteps) * cH;
+      ctx.beginPath();
+      ctx.moveTo(pad.left, gy);
+      ctx.lineTo(W - pad.right, gy);
+      ctx.stroke();
+
+      // Y axis labels
+      var yVal = yMax * (1 - gi / gridSteps);
+      ctx.fillStyle = 'rgba(163,163,163,0.7)';
+      ctx.font = (10 * dpr) + 'px "Inter",system-ui,sans-serif';
+      ctx.textAlign = 'right';
+      ctx.fillText(fmtUSD(yVal), pad.left - 6 * dpr, gy + 3 * dpr);
+    }
+
+    // X axis labels
+    ctx.fillStyle = 'rgba(163,163,163,0.7)';
+    ctx.textAlign = 'center';
+    var xLabelSteps = [0, 30, 60, 90, 120];
+    xLabelSteps.forEach(function(xv) {
+      var p = px(xv, 0);
+      ctx.fillText(xv.toString(), p.x, H - pad.bottom + 16 * dpr);
+    });
+    ctx.fillStyle = 'rgba(115,115,115,0.8)';
+    ctx.fillText('total fleet / referrals', pad.left + cW / 2, H - 4 * dpr);
+
+    // Draw line helper
+    function drawLine(pts, color, glowColor) {
+      // Glow pass
+      ctx.save();
+      ctx.strokeStyle = glowColor;
+      ctx.lineWidth = 6 * dpr;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      ctx.globalAlpha = 0.15;
+      ctx.beginPath();
+      pts.forEach(function(y, i) {
+        var p = px(i, y);
+        if (i === 0) ctx.moveTo(p.x, p.y);
+        else ctx.lineTo(p.x, p.y);
+      });
+      ctx.stroke();
+      ctx.restore();
+
+      // Main line
+      ctx.save();
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 2 * dpr;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      ctx.globalAlpha = 0.9;
+      ctx.beginPath();
+      pts.forEach(function(y, i) {
+        var p = px(i, y);
+        if (i === 0) ctx.moveTo(p.x, p.y);
+        else ctx.lineTo(p.x, p.y);
+      });
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    // Area fill under gold line
+    ctx.save();
+    var grad = ctx.createLinearGradient(0, pad.top, 0, H - pad.bottom);
+    grad.addColorStop(0, 'rgba(212,160,23,0.18)');
+    grad.addColorStop(1, 'rgba(212,160,23,0.02)');
+    ctx.fillStyle = grad;
+    ctx.globalAlpha = 0.7;
+    ctx.beginPath();
+    pts2.forEach(function(y, i) {
+      var p = px(i, y);
+      if (i === 0) ctx.moveTo(p.x, p.y);
+      else ctx.lineTo(p.x, p.y);
+    });
+    var pLast = px(xMax, 0);
+    var pFirst = px(0, 0);
+    ctx.lineTo(pLast.x, pLast.y);
+    ctx.lineTo(pFirst.x, pFirst.y);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+
+    // Area fill under blue line
+    ctx.save();
+    var grad2 = ctx.createLinearGradient(0, pad.top, 0, H - pad.bottom);
+    grad2.addColorStop(0, 'rgba(59,130,246,0.12)');
+    grad2.addColorStop(1, 'rgba(59,130,246,0.01)');
+    ctx.fillStyle = grad2;
+    ctx.globalAlpha = 0.7;
+    ctx.beginPath();
+    pts1.forEach(function(y, i) {
+      var p = px(i, y);
+      if (i === 0) ctx.moveTo(p.x, p.y);
+      else ctx.lineTo(p.x, p.y);
+    });
+    var pLastB = px(xMax, 0);
+    var pFirstB = px(0, 0);
+    ctx.lineTo(pLastB.x, pLastB.y);
+    ctx.lineTo(pFirstB.x, pFirstB.y);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+
+    drawLine(pts1, '#3B82F6', '#3B82F6');
+    drawLine(pts2, '#D4A017', '#FFD166');
+
+    // Current-position dot on gold line
+    var curPt = px(Math.min(totalFleet, xMax), pts2[Math.min(totalFleet, xMax)] || 0);
+    ctx.save();
+    ctx.fillStyle = '#D4A017';
+    ctx.strokeStyle = '#0d0d0d';
+    ctx.lineWidth = 2 * dpr;
+    ctx.beginPath();
+    ctx.arc(curPt.x, curPt.y, 5 * dpr, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  // ── Sync slider↔number ───────────────────────────────────────────────────────
+  function sync(sliderEl, numEl, stateKey, min, max) {
+    function fromSlider() {
+      var v = Math.max(min, Math.min(max, parseInt(sliderEl.value, 10) || 0));
+      state[stateKey] = v;
+      if (numEl) numEl.value = v;
+      freeze();
+      updateUI();
+    }
+    function fromNum() {
+      var v = Math.max(min, Math.min(max, parseInt(numEl.value, 10) || 0));
+      state[stateKey] = v;
+      if (sliderEl) sliderEl.value = Math.min(v, parseFloat(sliderEl.max) || max);
+      freeze();
+      updateUI();
+    }
+    if (sliderEl) {
+      sliderEl.addEventListener('input', fromSlider);
+      sliderEl.addEventListener('touchstart', function() { freeze(); }, { passive: true });
+    }
+    if (numEl) numEl.addEventListener('input', fromNum);
+  }
+
+  // ── Freeze / unfreeze auto-cycle ─────────────────────────────────────────────
+  function freeze() {
+    frozen = true;
+    if (freezeTimer) clearTimeout(freezeTimer);
+    // Unfreeze after 12s of inactivity
+    freezeTimer = setTimeout(function() { frozen = false; }, 12000);
+  }
+
+  // ── Auto-cycle scenarios ─────────────────────────────────────────────────────
+  function nextScenario() {
+    if (frozen) return;
+    scenIdx = (scenIdx + 1) % scenarios.length;
+    var sc = scenarios[scenIdx];
+    state.proRefs    = sc.proRefs;
+    state.proPlusRef = sc.proPlusRef;
+    state.clients    = sc.clients;
+
+    // Sync sliders
+    if (inProRefs)    { inProRefs.value    = sc.proRefs;    if (inProRefsNum)  inProRefsNum.value  = sc.proRefs; }
+    if (inPpRefs)     { inPpRefs.value     = sc.proPlusRef; if (inPpRefsNum)   inPpRefsNum.value   = sc.proPlusRef; }
+    if (inClients)    { inClients.value    = Math.min(sc.clients, parseFloat(inClients.max) || 20);
+                        if (inClientsNum)  inClientsNum.value = sc.clients; }
+
+    updateUI();
+
+    if (elBadge) {
+      elBadge.style.opacity = '1';
+      elBadge.textContent = sc.label;
+      setTimeout(function() {
+        if (!frozen) elBadge.style.opacity = '0.6';
+        if (!frozen) elBadge.textContent = 'monthly earnings';
+      }, 3000);
+    }
+  }
+
+  // ── Init ─────────────────────────────────────────────────────────────────────
+  sync(inProRefs,  inProRefsNum,  'proRefs',    0, 1000);
+  sync(inPpRefs,   inPpRefsNum,   'proPlusRef', 0, 500);
+  sync(inClients,  inClientsNum,  'clients',    0, 20);
+
+  // Initial render
+  updateUI();
+
+  // Start cycle (8s interval)
+  cycleTimer = setInterval(nextScenario, 8000);
+
+  // Redraw chart on resize
+  var resizeObs = window.ResizeObserver
+    ? new ResizeObserver(function() { renderChart(); })
+    : null;
+  if (resizeObs && canvas) resizeObs.observe(canvas);
+
+  // Cleanup if needed (SPA navigation)
+  window.addEventListener('beforeunload', function() {
+    if (cycleTimer)  clearInterval(cycleTimer);
+    if (freezeTimer) clearTimeout(freezeTimer);
+    if (resizeObs)   resizeObs.disconnect();
+  });
+})();
+</script>

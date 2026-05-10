@@ -1,6 +1,7 @@
 ---
 import Base from '../layouts/Base.astro';
 import CrossSell from '../components/CrossSell.astro';
+import EarningsCalculator from '../components/EarningsCalculator.astro';
 
 const tiers = [
   {
@@ -170,6 +171,18 @@ const faqs = [
           </details>
         ))}
       </div>
+    </div>
+  </section>
+
+  <!-- ── Earnings widget: below FAQ ── -->
+  <section class="border-t border-border">
+    <div class="max-w-5xl mx-auto px-6 py-20">
+      <div class="flex flex-col gap-3 mb-10 text-center items-center">
+        <p class="eyebrow">For creators &amp; operators</p>
+        <h2 class="text-3xl md:text-4xl font-semibold tracking-tight">See what you'll earn referring Recipes →</h2>
+        <p class="text-muted max-w-lg">50% recurring rev share on every Pro and Pro+ subscriber you refer. Cookbook deployments add up fast.</p>
+      </div>
+      <EarningsCalculator />
     </div>
   </section>
 

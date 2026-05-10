@@ -5,6 +5,7 @@ import Icon from '../components/Icon.astro';
 import AgentLogos from '../components/AgentLogos.astro';
 import NeuronAnimation from '../components/NeuronAnimation.astro';
 import InstallWidget from '../components/InstallWidget.astro';
+import EarningsCalculator from '../components/EarningsCalculator.astro';
 import { fetchApi } from '../lib/api';
 
 // Fetch carousel with retry+jitter (prevents silent 429 fallback that caused WIS-737).
@@ -392,34 +393,21 @@ const verticals = [
 
   <section class="border-t border-border">
     <div class="max-w-5xl mx-auto px-6 py-20">
-      <div class="bg-gradient-to-br from-bg-card via-bg-card to-bg-elev border border-accent/30 rounded-3xl p-8 md:p-14 glow-amber relative overflow-hidden">
-        <div class="absolute top-0 right-0 w-96 h-96 -z-0 opacity-30 pointer-events-none"
-             style="background: radial-gradient(ellipse at center, rgba(255,209,102,0.5) 0%, transparent 70%);"></div>
-        <div class="absolute -bottom-20 -left-20 w-80 h-80 -z-0 opacity-20 pointer-events-none"
-             style="background: radial-gradient(ellipse at center, rgba(125,211,192,0.3) 0%, transparent 70%);"></div>
-        <div class="relative grid grid-cols-1 md:grid-cols-3 gap-8 items-center">
-          <div class="md:col-span-2 flex flex-col gap-4">
-            <div class="flex items-center gap-2">
-              <span class="badge-free inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold tracking-wider">FREE FOREVER</span>
-              <span class="text-[10px] uppercase tracking-wider text-accent">Founding skill</span>
-            </div>
-            <h2 class="text-3xl md:text-5xl font-bold tracking-tight" style="letter-spacing: -0.03em;">Start with<br/>Client Reporter.</h2>
-            <p class="text-muted leading-relaxed">
-              The skill every agency wishes they had. Connects GA4, GSC, Meta Ads, TikTok Ads. Generates branded PDFs. White-label-ready. Saves four hours per week per client. <strong class="text-text">Free, forever, no subscription required.</strong>
-            </p>
-            <div class="flex flex-col sm:flex-row gap-3 mt-2">
-              <a href="/skills/client-reporter" class="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg font-semibold text-sm bg-accent text-bg hover:bg-accent-soft transition">
-                View skill <Icon name="arrow-right" size={14} />
-              </a>
-              <a href="/docs/install" class="inline-flex items-center justify-center px-5 py-2.5 rounded-lg font-semibold text-sm border border-border hover:border-accent text-text transition">
-                Install free
-              </a>
-            </div>
-          </div>
-          <div class="hidden md:flex items-center justify-center">
-            <img src="/brand/mark-256.png" alt="" width="180" height="180" class="opacity-95 drop-shadow-[0_0_40px_rgba(255,209,102,0.35)]" />
-          </div>
-        </div>
+      <div class="flex flex-col gap-3 mb-10">
+        <p class="eyebrow text-accent">For creators &amp; operators</p>
+        <h2 class="text-3xl md:text-4xl font-bold tracking-tight" style="letter-spacing:-0.03em;">
+          Build skills. Sell them. Keep 100%.
+        </h2>
+        <p class="text-muted text-lg max-w-xl leading-relaxed">
+          Publish skills to the marketplace, earn 50% recurring rev share on every referral,
+          or deploy cookbook fleets to clients with Pro+.
+        </p>
+      </div>
+      <EarningsCalculator />
+      <div class="mt-6 text-center">
+        <a href="/creators" class="text-sm text-accent hover:opacity-80 inline-flex items-center gap-1.5 transition font-semibold">
+          Learn about the creator program <Icon name="arrow-right" size={13} />
+        </a>
       </div>
     </div>
   </section>
