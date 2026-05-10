@@ -2,36 +2,37 @@
 // /signup → /signin?mode=signup redirect.
 //
 // Background: external sites (X posts, blog comments, docs CTAs) sometimes
-// link to /signup directly. Before this page that 404'd. Astro lets us
-// declare a server-side redirect via the `Astro.redirect` API at build time;
-// the static rendering emits an HTML document with both a meta-refresh and
-// an inline JS fallback so it works across crawlers, JS-disabled browsers,
-// and HEAD requests.
+// link to /signup directly. Before this page that 404'd. This page is
+// statically pre-rendered so the redirect target is set client-side; the
+// inline script preserves any ?ref=CODE for referral attribution and
+// redirects via window.location.replace.
 //
-// Preserves any query params (especially ?ref=CODE for referral attribution).
-const url = new URL(Astro.url.toString());
-url.pathname = '/signin';
-const refCode = url.searchParams.get('ref');
-// Set mode=signup so /signin renders the "Get access" copy variant.
-url.searchParams.set('mode', 'signup');
-const target = url.pathname + url.search;
+// The bare meta-refresh is a fallback for crawlers / no-JS browsers.
 ---
 <!doctype html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta http-equiv="refresh" content={`0; url=${target}`} />
-    <link rel="canonical" href={`https://recipes.wisechef.ai${target}`} />
+    <meta http-equiv="refresh" content="0; url=/signin?mode=signup" />
+    <link rel="canonical" href="https://recipes.wisechef.ai/signin?mode=signup" />
     <title>Get access — Recipes</title>
     <meta name="robots" content="noindex" />
   </head>
   <body>
-    <p>Redirecting to <a href={target}>Get access</a>…</p>
-    <script is:inline define:vars={{ target }}>
-      // Client-side fallback if meta refresh doesn't fire (rare).
-      // Preserves ?ref= attribution; the recipes_ref cookie is also stamped
-      // by Base.astro on the destination /signin load.
-      window.location.replace(target);
+    <p>Redirecting to <a href="/signin?mode=signup">Get access</a>…</p>
+    <script is:inline>
+      // Client-side: preserve ?ref= attribution if present.
+      // Validates against the same regex as Base.astro stamper to avoid
+      // forwarding a malformed code.
+      (function () {
+        var p = new URLSearchParams(window.location.search);
+        var ref = p.get('ref');
+        var target = '/signin?mode=signup';
+        if (ref && /^[A-Za-z0-9]{4,16}$/.test(ref)) {
+          target += '&ref=' + encodeURIComponent(ref);
+        }
+        window.location.replace(target);
+      })();
     </script>
   </body>
 </html>
