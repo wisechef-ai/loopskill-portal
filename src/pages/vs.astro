@@ -26,7 +26,15 @@ const rows: Row[] = [
     diy:        { status: 'no' },
     larrybrain: { status: 'yes',     label: '102, single curator' },
     gpts:       { status: 'partial', label: 'no curation' },
-    recipes:    { status: 'yes',     label: '80+, vertical, scanned' },
+    recipes:    { status: 'yes',     label: '54 today, vertical, scanned' },
+  },
+  {
+    capability: 'Open-source gateway skill (no signup)',
+    diy:        { status: 'na' },
+    larrybrain: { status: 'no',  label: 'paywalled' },
+    gpts:       { status: 'no' },
+    recipes:    { status: 'yes', label: 'super-memory · MIT' },
+    highlight: true,
   },
   {
     capability: 'Personal cookbooks',
@@ -41,7 +49,7 @@ const rows: Row[] = [
     diy:        { status: 'no' },
     larrybrain: { status: 'no' },
     gpts:       { status: 'no' },
-    recipes:    { status: 'yes' },
+    recipes:    { status: 'yes', label: 'Claude Code · Cursor · Hermes · OpenClaw' },
     highlight: true,
   },
   {
@@ -49,31 +57,39 @@ const rows: Row[] = [
     diy:        { status: 'no' },
     larrybrain: { status: 'no' },
     gpts:       { status: 'no' },
-    recipes:    { status: 'yes', label: '20 endpoints (Operator)' },
+    recipes:    { status: 'yes', label: '20 endpoints (Pro+)' },
     highlight: true,
   },
   {
-    capability: 'Custom local function in a cookbook',
-    diy:        { status: 'yes',     label: 'DIY' },
+    capability: 'Resell skills to clients at YOUR rate',
+    diy:        { status: 'na' },
     larrybrain: { status: 'no' },
-    gpts:       { status: 'partial', label: 'via Actions' },
-    recipes:    { status: 'yes' },
+    gpts:       { status: 'no' },
+    recipes:    { status: 'yes', label: 'Pro+ · we keep zero' },
     highlight: true,
   },
   {
-    capability: 'Sell your cookbook to other integrators',
+    capability: '50% recurring rev share on referrals',
+    diy:        { status: 'na' },
+    larrybrain: { status: 'no' },
+    gpts:       { status: 'no' },
+    recipes:    { status: 'yes', label: 'live now · /creators' },
+    highlight: true,
+  },
+  {
+    capability: 'Cryptographic skill signing (ed25519)',
     diy:        { status: 'no' },
     larrybrain: { status: 'no' },
     gpts:       { status: 'no' },
-    recipes:    { status: 'yes', label: 'rev share — coming Q3' },
+    recipes:    { status: 'yes', label: 'verified at install' },
     highlight: true,
   },
   {
-    capability: "Observability into client agent's installed skills",
+    capability: 'Public install-count drift probe',
     diy:        { status: 'no' },
-    larrybrain: { status: 'no' },
+    larrybrain: { status: 'no',  label: 'opaque metrics' },
     gpts:       { status: 'no' },
-    recipes:    { status: 'yes' },
+    recipes:    { status: 'yes', label: 'hourly · /stats' },
     highlight: true,
   },
   {
@@ -96,14 +112,14 @@ const rows: Row[] = [
     diy:        { status: 'na' },
     larrybrain: { status: 'partial', label: 'mixed' },
     gpts:       { status: 'no' },
-    recipes:    { status: 'yes', label: 'free tier' },
+    recipes:    { status: 'yes', label: 'free OSS skills' },
   },
   {
     capability: 'Price',
     diy:        { status: 'na', label: 'dev time' },
     larrybrain: { status: 'na', label: '$29.99/mo flat' },
     gpts:       { status: 'na', label: '$20/mo (Plus)' },
-    recipes:    { status: 'na', label: '$20 Cook · $100 Operator' },
+    recipes:    { status: 'na', label: '$20 Pro · $100 Pro+' },
   },
 ];
 
@@ -253,34 +269,37 @@ type ColumnKey = typeof COLUMN_KEYS[number];
         <p>
           Recipes is that product. Personal cookbooks let you curate a slice of the catalog
           (your slice — different from the next builder's). Cross-agent sync means the same cookbook
-          installs cleanly into Hermes, Claude Code, Codex, OpenClaw — anywhere you run agents.
-          Operator-tier deploy endpoints let you ship those cookbooks straight into your clients' agents,
-          with installed-skill observability so you actually know what's running where.
-          And the rev-share publisher tier (coming Q3) means the cookbooks you build for one client
-          can become a recurring revenue stream once they generalise.
+          installs cleanly into Claude Code, Cursor, Hermes, OpenClaw — anywhere you run agents.
+          Pro+ deploy endpoints let you ship those cookbooks straight into your clients' agents,
+          and resell at YOUR rate (we keep zero of the markup).
+          The 50% recurring rev share on referrals is live now at <a href="/creators">/creators</a> —
+          the cookbooks you build for one client can become recurring revenue once they generalise.
         </p>
         <p>
-          The pitch isn't "more skills than LarryBrain." The pitch is: skill marketplaces sell ingredients.
-          Recipes ships the kitchen. Pick a Cook subscription if you're running your own fleet,
-          step up to Operator the day you ship a cookbook to a paying client.
+          Try it before you pay: <a href="/skills/super-memory">super-memory</a> (MIT) is the open-source
+          gateway skill — install it free, see how we ship, then upgrade to Pro for the rest of the catalog.
+          Skill marketplaces sell ingredients. Recipes ships the kitchen. Pick Pro if you're running
+          your own fleet, step up to Pro+ the day you ship a cookbook to a paying client.
         </p>
       </div>
 
       <div class="flex flex-col sm:flex-row items-center gap-3 mt-10">
         <a href="/signin?next=/api/checkout/cook"
            class="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-lg font-semibold text-sm bg-accent text-bg hover:bg-accent-soft transition">
-          Start with Cook → $20/mo
+          Start with Pro → $20/mo
         </a>
         <a href="/pricing"
            class="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-lg text-sm border border-border hover:border-accent text-text transition">
-          See Operator → 20 endpoints
+          See Pro+ → 20 endpoints
         </a>
       </div>
 
       <p class="text-xs text-muted-soft mt-10 leading-relaxed">
         <span class="font-semibold text-muted">Footnote.</span>
         LarryBrain figures (102 skills, $29.99/mo flat, single curator OllieWazza)
-        retrieved 2026-05-08. Pricing and skill counts for third-party platforms refresh quarterly;
+        retrieved 2026-05-08. Recipes catalog count refreshed live from <a href="/api/stats" class="text-accent hover:underline">/api/stats</a>;
+        as of 2026-05-10 we ship 54 production skills (38 Pro tier, 14 Pro+, 2 free).
+        Pricing and skill counts for third-party platforms refresh quarterly;
         if any number on this page is stale, please <a href="mailto:hi@wisechef.ai" class="text-accent hover:underline">tell us</a>
         and we'll correct it.
       </p>

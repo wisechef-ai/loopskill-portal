@@ -52,8 +52,8 @@ const restCook = cookSkills.filter(s => s.slug !== 'larry').sort((a, b) => insta
 const cookStrip: CookSkill[] = (larryRow ? [larryRow, ...restCook] : restCook).slice(0, 8);
 
 const spotlight = [
-  { slug: 'client-reporter', name: 'Client Reporter', tier: 'free', tagline: 'Replaces 4h/week of manual reporting',
-    description: 'Pull GA4, GSC, Meta Ads, TikTok Ads → branded PDF for any client. White-label-ready.', badge: 'Free forever', icon: 'chart' },
+  { slug: 'super-memory', name: 'super-memory', tier: 'free', tagline: 'Open-source agent memory in 60 seconds',
+    description: 'Cognee + Postgres + pgvector wired together. MIT-licensed. The pro_open gateway — install free, then upgrade for the rest of the catalog.', badge: 'MIT · Free forever', icon: 'box' },
   { slug: 'web-scraper-pro', name: 'Web Scraper Pro', tier: 'pro', tagline: 'Stealth scraping with proxy rotation',
     description: 'Extract data from any site — JS-rendered SPAs, Cloudflare-protected pages, paginated tables. Built-in rate limiting and headless browser sandbox.', badge: null, icon: 'search' },
   { slug: 'seo-audit-engine', name: 'SEO Audit Engine', tier: 'pro', tagline: 'Replaces SEMrush spot audits',
@@ -234,16 +234,15 @@ const verticals = [
             <div class="text-muted mb-1">→ Fetching SKILL.md (188 lines)</div>
             <div class="text-muted mb-3">✓ Recipes installed. <span class="text-text">{liveSkillCount}+ skills</span> across reporting · code · scraping · ops · sales.</div>
             <div class="text-success">$ you</div>
-            <div class="text-text mb-3">pull last 30 days for client X across GA4 + Meta Ads</div>
+            <div class="text-text mb-3">give my agent durable cross-session memory</div>
             <div class="text-accent">$ agent</div>
-            <div class="text-muted mb-1">→ Searching marketplace... <span class="text-text">match: client-reporter (free, 4.8★)</span></div>
-            <div class="text-muted mb-1">→ Installing skills/client-reporter/...</div>
-            <div class="text-muted mb-1">→ Pulling GA4 — <span class="text-success">5,213 sessions, +18% MoM</span></div>
-            <div class="text-muted mb-1">→ Pulling Meta Ads — <span class="text-success">€2,140 spend, 3.2x ROAS</span></div>
-            <div class="text-muted mb-1">→ Generating PDF...</div>
-            <div class="text-success font-semibold">✓ Report ready: <span class="text-accent">~/clients/X/2026-04-25.pdf</span></div>
+            <div class="text-muted mb-1">→ Searching marketplace... <span class="text-text">match: super-memory (MIT, open-source)</span></div>
+            <div class="text-muted mb-1">→ Installing skills/super-memory/...</div>
+            <div class="text-muted mb-1">→ Bootstrapping cognee + Postgres + pgvector — <span class="text-success">graph store ready in 47s</span></div>
+            <div class="text-muted mb-1">→ Wiring agent memory hooks — <span class="text-success">3 files patched</span></div>
+            <div class="text-success font-semibold">✓ Memory online. <span class="text-accent">Ask anything from previous sessions.</span></div>
             <div class="mt-3 inline-flex items-center text-xs">
-              <span class="text-muted">elapsed:</span> <span class="text-success ml-1.5 font-semibold">42s</span>
+              <span class="text-muted">elapsed:</span> <span class="text-success ml-1.5 font-semibold">62s</span>
               <span class="ml-1.5 inline-block w-1.5 h-3 bg-accent animate-pulse"></span>
             </div>
           </div>
@@ -435,14 +434,16 @@ const verticals = [
           </a>
         </li>
         <li class="bg-bg-card border border-border rounded-2xl p-6 flex flex-col gap-3 relative" data-step="2">
-          <span class="absolute top-4 right-4 text-[10px] font-semibold uppercase tracking-wider text-success border border-success/40 rounded-full px-2 py-0.5">FREE FOREVER</span>
-          <span class="font-mono text-xs text-muted-soft">step 02 — first skill (default-installed)</span>
-          <h3 class="text-xl font-semibold text-text tracking-tight">Add <code class="font-mono">client-reporter</code></h3>
+          <span class="absolute top-4 right-4 text-[10px] font-semibold uppercase tracking-wider text-success border border-success/40 rounded-full px-2 py-0.5">FREE · MIT</span>
+          <span class="font-mono text-xs text-muted-soft">step 02 — first skill (open-source gateway)</span>
+          <h3 class="text-xl font-semibold text-text tracking-tight">Add <code class="font-mono">super-memory</code></h3>
           <p class="text-sm text-muted leading-relaxed">
-            Connects GA4, GSC, Meta Ads, TikTok Ads. Generates branded PDFs. Saves four hours per week per client.
+            Cognee + Postgres + pgvector wired together. Your agent gets durable cross-session memory
+            in 60 seconds. MIT-licensed — yours forever, no subscription. The pro_open gateway: install
+            free, see how we ship, then upgrade for the rest of the catalog.
           </p>
-          <code class="font-mono text-xs bg-[#0d0d0d] border border-border rounded px-3 py-2 mt-1">recipes install client-reporter</code>
-          <a href="/skills/client-reporter" class="text-xs text-accent hover:opacity-80 inline-flex items-center gap-1.5 mt-auto">
+          <code class="font-mono text-xs bg-[#0d0d0d] border border-border rounded px-3 py-2 mt-1">recipes install super-memory</code>
+          <a href="/skills/super-memory" class="text-xs text-accent hover:opacity-80 inline-flex items-center gap-1.5 mt-auto">
             View skill <Icon name="arrow-right" size={11} />
           </a>
         </li>

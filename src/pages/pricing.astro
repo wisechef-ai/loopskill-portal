@@ -5,33 +5,12 @@ import EarningsCalculator from '../components/EarningsCalculator.astro';
 
 const tiers = [
   {
-    name: 'Free',
-    price: '0',
-    cadence: 'forever',
-    currency: '$',
-    tagline: 'Try it. Keep it.',
-    headline: 'Browse the catalog, install one skill, run it locally. No card. No clawback if you cancel later — your installed skills keep working on your machine.',
-    badgeClass: 'badge-free',
-    cta: 'Start free',
-    ctaAuthed: 'You\'re on Free',
-    ctaHref: '/signin?next=/library',
-    ctaTier: 'free',
-    accent: false,
-    features: [
-      'Daily 7-card carousel',
-      'Browse the full catalog',
-      'Install one community skill',
-      'Local-first — runs on your hardware',
-      'Cross-vendor: works on Codex, Claude, OpenClaw',
-    ],
-  },
-  {
     name: 'Pro',
     price: '20',
     cadence: 'per month',
     currency: '$',
-    tagline: '1 seat. Every skill. Auto-improvement updates.',
-    headline: 'Single seat. Unlimited installs. Auto-improvement updates. Architecture-aware install that refuses to break your machine. Same engine on every host you own.',
+    tagline: '1 seat. Every paid skill. Local-first.',
+    headline: 'Single seat. Browse and install every paid skill in the catalog. Cookbooks (private skill bundles) for your own use. Cross-vendor: same skill works on Claude Code, Cursor, Windsurf, Cline, OpenClaw, Hermes. Cancel anytime — installed skills keep working.',
     badgeClass: 'badge-pro',
     cta: 'Start Pro — $20/mo',
     ctaAuthed: 'Switch to Pro',
@@ -39,23 +18,26 @@ const tiers = [
     ctaTier: 'cook',
     accent: true,
     features: [
-      '1 seat',
-      'Unlimited skills, every catalog',
-      'Auto-improvement updates',
-      'Architecture-aware install',
-      'API library (30+ specs)',
-      'Personal forks of any skill',
-      'Cross-vendor portability — bring your agent, we bring the skills',
+      'Single seat, your machine',
+      'Every paid skill in the catalog (38 today, growing weekly)',
+      'Personal cookbooks — bundle your favourite skills',
+      'Skill forks — customise any skill for your workflow',
+      'Auto-update channel — get patched skills the day they ship',
+      'Quality pipeline: ed25519-signed, security + discipline + leak-audit gates',
+      'Hourly install-count drift probe (transparent, public)',
+      'Cross-vendor portability — Claude Code, Cursor, OpenClaw, Hermes',
       'Community + email support',
+      '50% recurring rev share on every Pro/Pro+ user you refer',
     ],
+    notFor: 'Not for: deploying skills to client agents you operate (use Pro+).',
   },
   {
     name: 'Pro+',
     price: '100',
     cadence: 'per month',
     currency: '$',
-    tagline: '20 endpoints. Fleet sync. Cookbooks for agents.',
-    headline: 'Pro, plus 20 agent endpoints, fleet-wide cookbook sync, the framework installer (one command spins up your full agent stack on a fresh host), and a 60-min white-glove onboarding. Cancel back to Pro any time — proration kicks in.',
+    tagline: '20 client endpoints. Resell at any rate.',
+    headline: 'Pro, plus 20 client endpoints — push your private cookbooks straight into agents you operate for clients. Resell skills at YOUR price (we keep zero). Private org-only catalog for skills you don\'t want public. 60-min onboarding for the first deployment.',
     badgeClass: 'badge-studio',
     cta: 'Start Pro+ — $100/mo',
     ctaAuthed: 'Upgrade to Pro+',
@@ -65,17 +47,24 @@ const tiers = [
     moneyBack: '14-day money-back',
     features: [
       'Everything in Pro',
-      '20 agent endpoints',
-      'Fleet sync — push cookbooks to client agents',
-      'Framework installer — one command',
-      '60-minute onboarding call',
-      'Private catalog (org-only skills)',
-      'Priority review (24h SLA)',
-      'Proration if you switch back to Pro',
+      '20 client endpoints — deploy cookbooks into agents you operate',
+      'Resell at YOUR rate — bill clients $300/mo, we still charge you $100',
+      'Private org catalog — internal-only skills, never public',
+      '60-min onboarding call (first deployment, white-glove)',
+      'Priority skill review — 24h SLA on submissions',
+      'Cookbook propagation — push updates to all client endpoints in one push',
+      'Proration when you switch back to Pro — no money lost',
       '14-day money-back guarantee',
+      '50% recurring rev share on referrals (same as Pro)',
     ],
+    notFor: null,
   },
 ];
+
+// Free tier removed from /pricing rev 7.2.4 (Adam directive 2026-05-10).
+// Free skills (super-memory, MIT) remain available — see /skills and the
+// homepage catch-skill flow. They are simply not sold as a "tier" here.
+// Removing Free clarifies the value prop: Pro vs Pro+ is the real decision.
 
 const faqs = [
   {
@@ -109,7 +98,7 @@ const faqs = [
       <p class="text-muted">Start with Pro when you start deploying to your clients or running multi-agent fleets, pick Pro+. In 95% of cases Pro is what you need.</p>
     </div>
 
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto">
       {tiers.map(t => (
         <div class={`relative bg-bg-card border ${t.accent ? 'border-accent glow-amber' : 'border-border'} rounded-2xl p-6 md:p-7 flex flex-col gap-5`}>
           {t.accent && <div class="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-0.5 rounded-full bg-accent text-bg text-[11px] font-semibold uppercase tracking-wider">Most popular</div>}
@@ -138,15 +127,27 @@ const faqs = [
               </li>
             ))}
           </ul>
+          {t.notFor && (
+            <p class="text-xs text-muted-soft italic border-t border-border-soft pt-3 mt-1">{t.notFor}</p>
+          )}
           <a href={t.ctaHref}
              data-tier={t.ctaTier}
              data-cta-anon={t.cta}
              data-cta-authed={t.ctaAuthed}
-             class={`tier-cta block text-center px-4 py-2.5 rounded-lg font-semibold text-sm transition ${t.accent ? 'bg-accent text-bg hover:bg-accent-soft' : 'border border-border hover:border-accent text-text'}`}>
+             class={`tier-cta block text-center px-4 py-2.5 rounded-lg font-semibold text-sm transition mt-auto ${t.accent ? 'bg-accent text-bg hover:bg-accent-soft' : 'border border-border hover:border-accent text-text'}`}>
             {t.cta}
           </a>
         </div>
       ))}
+    </div>
+
+    {/* Free skills callout — discoverability for super-memory now that Free tier is gone */}
+    <div class="max-w-4xl mx-auto mt-6 px-6 py-4 rounded-xl border border-border-soft bg-bg-card/30 flex flex-col md:flex-row items-center justify-between gap-3 text-sm">
+      <div class="flex items-center gap-3 text-muted">
+        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold tracking-wider badge-free">FREE</span>
+        <span>Open-source skills like <a href="/skills/super-memory" class="text-accent hover:underline">super-memory</a> (MIT) install free. No subscription, no card. <span class="text-muted-soft">Try the engine before you pay.</span></span>
+      </div>
+      <a href="/skills?tier=free" class="text-xs text-accent hover:underline whitespace-nowrap">Browse free skills →</a>
     </div>
 
     <p class="text-center text-xs text-muted-soft mt-8">Cancel anytime. EU pricing includes VAT MOSS. Receipts via Stripe.</p>
