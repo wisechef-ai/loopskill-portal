@@ -68,6 +68,10 @@ const tiers = [
 
 const faqs = [
   {
+    q: 'Can I white-label Pro+ for my clients? Will they see Recipes branding?',
+    a: 'No Recipes branding appears in your client\'s agent runtime. Pro+ pushes your cookbooks (private skill bundles) into the agents you operate for clients — the skills run locally on the client\'s machine or yours, no cloud round-trip. Your client sees your agent doing your work; they don\'t see us. You bill them at YOUR rate ($300/mo, $500/mo, whatever your contract says) — we still charge YOU $100/mo flat. Whatever margin you set is yours.',
+  },
+  {
     q: 'Does my install stop working if I cancel Pro+?',
     a: 'No. The skills you have already installed keep running on your machine — they live locally, not in our cloud. Cancellation only stops auto-improvement updates and access to new catalog content. You can re-subscribe later and pick up exactly where you left off.',
   },
@@ -81,11 +85,11 @@ const faqs = [
   },
   {
     q: 'Why $20 / $100 and not less?',
-    a: '$20 covers operating one engineer\'s ongoing work on the catalog. $100 covers the white-glove install + bespoke onboarding for orgs that need their fleet bootstrapped today rather than next quarter. The price funds the work; lower numbers fund nothing.',
+    a: '$20 covers operating one engineer\'s ongoing work on the catalog. $100 covers the 20-endpoint client deployment surface, the white-glove onboarding, and the priority skill review. The price funds the work; lower numbers fund nothing.',
   },
   {
     q: 'Can I bring my own agent?',
-    a: 'Yes. That\'s the whole point. Recipes is cross-vendor: the skill catalog runs on Codex, Claude Code, OpenClaw, and AgentPact-compatible hosts. You pay for the catalog, not the model.',
+    a: 'Yes. That\'s the whole point. Recipes is cross-vendor: the skill catalog runs on Claude Code, Cursor, Windsurf, Cline, OpenClaw, Hermes, and any AgentPact / Anthropic Skills-compatible host. You pay for the catalog, not the model.',
   },
 ];
 ---
