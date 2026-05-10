@@ -1,7 +1,12 @@
+// rev 7.2 hotfix: Astro v6 requires the new `loader` API for content collections.
+// The legacy `type: 'content'` is parsed as empty unless the file resolver is wired explicitly.
+// Switching to `loader: glob(...)` fixes the "collection does not exist or is empty" build warning
+// and unlocks /blog/<slug>/ pages.
 import { defineCollection, z } from 'astro:content';
+import { glob } from 'astro/loaders';
 
 const blog = defineCollection({
-  type: 'content',
+  loader: glob({ pattern: '**/*.md', base: './src/content/blog' }),
   schema: z.object({
     title: z.string(),
     description: z.string(),
