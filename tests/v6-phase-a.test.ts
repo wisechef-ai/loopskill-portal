@@ -150,27 +150,32 @@ describe('currency sweep', () => {
     return results;
   }
 
-  const STALE_PRICE_RE = /\$\d+\/(mo|month|year)/gi;
+  const PRICE_RE = /\$\d+\/(mo|month|year)/gi;
   // Allow internal docs mentions of Anthropic $ spend — only block user-facing pages
   const USER_FACING_DIRS = [join(SRC, 'pages'), join(SRC, 'components'), join(SRC, 'layouts')];
+  // Locked canonical pricing per RCP-1 (PR #17): Cook $20/mo (1 seat),
+  // Operator $100/mo (20 endpoints). Anything else in user-facing copy is stale.
+  const CANONICAL_PRICES = new Set(['$20/mo', '$100/mo']);
 
-  it('has zero stale $N/mo prices in user-facing src/ pages, components, layouts', () => {
+  it('has zero stale prices outside canonical Cook ($20/mo) / Operator ($100/mo) pricing', () => {
     const files = USER_FACING_DIRS.flatMap(d => walkFiles(d, ['.astro', '.ts', '.js', '.html']));
-    // Allow-list: files that legitimately quote $N/mo prices (competitor comparison content).
-    // The /vs page is, by design, a side-by-side that names ChatGPT GPTs at $20/mo (Plus)
-    // and Recipes at the locked-spec "$20 Cook · $100 Operator" / "Start with Cook → $20/mo" CTA.
-    const ALLOWLIST = new Set([
+    // File allow-list: pages whose price strings are intentionally non-canonical
+    // (competitor comparison content). The /vs page names ChatGPT GPTs at $20/mo (Plus)
+    // alongside our pricing — keep the file allow-listed so future competitor lines
+    // (e.g. Zapier at $50/mo) don't break the gate.
+    const ALLOWLIST_FILES = new Set([
       join(SRC, 'pages/vs.astro'),
     ]);
     const hits: string[] = [];
     for (const f of files) {
-      if (ALLOWLIST.has(f)) continue;
+      if (ALLOWLIST_FILES.has(f)) continue;
       const content = readFileSync(f, 'utf-8');
-      const matches = content.match(STALE_PRICE_RE);
-      if (matches) {
-        hits.push(`${f}: ${matches.join(', ')}`);
+      const matches = content.match(PRICE_RE) || [];
+      const stale = matches.filter(m => !CANONICAL_PRICES.has(m.toLowerCase()));
+      if (stale.length) {
+        hits.push(`${f}: ${stale.join(', ')}`);
       }
     }
-    expect(hits, `Stale prices found:\n${hits.join('\n')}`).toHaveLength(0);
+    expect(hits, `Stale (non-canonical) prices found:\n${hits.join('\n')}`).toHaveLength(0);
   });
 });
