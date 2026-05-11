@@ -1,0 +1,52 @@
+---
+/**
+ * Live skill count from /api/marketing/counts — drift-proof.
+ *
+ * Reads at BUILD TIME (Astro SSG). Every public surface that displays a
+ * catalog number must consume this component instead of hardcoding.
+ *
+ * Phase A of top1pct_1105.
+ *
+ * Props:
+ *   type — which number to render: total | free | pro | pro_plus | pro_plus_exclusive
+ *   fallback — number to show if the API errors at build time (defaults to a
+ *     conservative under-count so we never over-promise)
+ *   prefix / suffix — optional decoration
+ */
+import { fetchApi } from '../lib/api';
+
+interface Props {
+  type: 'total' | 'free' | 'pro' | 'pro_plus' | 'pro_plus_exclusive';
+  fallback?: number;
+  prefix?: string;
+  suffix?: string;
+  className?: string;
+}
+
+const { type, fallback, prefix = '', suffix = '', className = '' } = Astro.props as Props;
+
+interface MarketingCounts {
+  total: number;
+  free: number;
+  pro: number;
+  pro_plus: number;
+  pro_plus_exclusive: number;
+  last_added_at: string | null;
+}
+
+// Conservative defaults — only ever shown if /api/marketing/counts is down
+// during the build. Match current live numbers, rounded DOWN.
+const DEFAULTS: Record<Props['type'], number> = {
+  total: 47,
+  free: 3,
+  pro: 38,
+  pro_plus: 14,
+  pro_plus_exclusive: 14,
+};
+
+const res = await fetchApi<MarketingCounts>('/api/marketing/counts', { authed: false });
+const value = res.ok && res.data
+  ? res.data[type]
+  : (fallback ?? DEFAULTS[type]);
+---
+<span class={className} data-skill-count={type}>{prefix}{value}{suffix}</span>

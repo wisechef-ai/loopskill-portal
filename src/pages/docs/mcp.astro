@@ -7,8 +7,10 @@ import Base from '../../layouts/Base.astro';
     <p class="eyebrow mb-3">Docs · MCP</p>
     <h1 class="text-4xl md:text-5xl font-semibold tracking-tight mb-6">MCP server setup</h1>
     <p class="text-muted text-lg leading-relaxed mb-12">
-      The Recipes MCP server gives any MCP-aware agent five tools — search, detail, trending,
-      install, stats. Same script, different client config.
+      The Recipes MCP server gives any MCP-aware agent six dedicated tools — search,
+      detail, trending, install, install_meta_skill, and stats. Same script, different
+      client config. Cross-vendor: works in Claude Desktop, Cursor, Cline, Continue.dev,
+      Zed, OpenClaw, Hermes, and Windsurf with the same JSON shape.
     </p>
 
     <h2 class="text-xl font-semibold text-text mb-3">1. Install the server</h2>
@@ -19,7 +21,7 @@ git clone https://github.com/wisechef-ai/recipes-mcp.git ~/recipes-mcp</code></p
     <p class="text-muted mb-6">
       Sign in at <a href="/library" class="text-accent hover:opacity-80 underline">recipes.wisechef.ai/library</a>
       and generate one. Every install needs a key — including free-tier skills (free signup gives a free key).
-      Premium skills need Cook ($20/mo) or above. Operator ($100/mo) adds 20 endpoints, fleet sync, and the framework installer.
+      Premium skills need <strong>Pro ($20/mo)</strong> or above. <strong>Pro+ ($100/mo)</strong> adds up to 20 cookbooks, the ability to deploy pre-built cookbooks directly to your clients' agents, and per-cookbook scoped API keys.
     </p>
 
     <h2 class="text-xl font-semibold text-text mb-3">3. Configure your client</h2>
