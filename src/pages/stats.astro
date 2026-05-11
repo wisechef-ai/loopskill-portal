@@ -26,9 +26,8 @@ const lastUpdated = stats?.generated_at
   : '—';
 
 // Sort tier order for consistent display.
-// rev 7.2.4: SSOT for tier labels lives in wiserecipes-api/config/tiers.yaml.
-// Phase 3 (RCP-INCIDENT-2026-05-11): 'operator' is now canonical; 'studio' kept for legacy rows.
-const tierOrder = ['free', 'cook', 'operator', 'studio', 'uncategorized'];
+// Phase 5 (RCP-INCIDENT-2026-05-11): 'pro' and 'pro_plus' are canonical; legacy slugs kept for historic rows.
+const tierOrder = ['free', 'pro', 'pro_plus', 'cook', 'operator', 'studio', 'uncategorized'];
 const tierEntries = stats
   ? tierOrder
       .filter((t) => stats!.by_tier[t] !== undefined)
@@ -36,10 +35,12 @@ const tierEntries = stats
   : [];
 
 const tierLabel: Record<string, string> = {
-  free: 'Free · open source',
-  cook: 'Pro · $20/mo',
-  operator: 'Pro+ · $100/mo',
-  studio: 'Pro+ · $100/mo',  // legacy alias shim
+  free: 'Free',
+  pro: 'Pro · $20/mo',
+  pro_plus: 'Pro+ · $100/mo',
+  cook: 'Pro · $20/mo',        // legacy alias shim
+  operator: 'Pro+ · $100/mo',  // legacy alias shim
+  studio: 'Pro+ · $100/mo',    // legacy alias shim
   uncategorized: 'Uncategorized',
 };
 ---

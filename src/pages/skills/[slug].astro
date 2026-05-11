@@ -112,7 +112,7 @@ const fallbackBySlug: Record<string, any> = {
   'larry': {
     title: 'Larry',
     tagline: 'Autonomous TikTok slideshow marketing — generate, post, learn, iterate.',
-    tier: 'cook',
+    tier: 'pro',
     description: 'Onboarding, browser-based competitor research, AI image generation (gpt-image-1.5 / Stability / Replicate / local), text overlays, Postiz multi-platform posting, and a daily analytics feedback loop that flags winning hooks and drops dead ones. Optional RevenueCat conversion attribution.',
     license: 'MIT',
     requires_env: ['POSTIZ_BASE_URL', 'POSTIZ_API_KEY', 'OPENAI_API_KEY'],
@@ -409,7 +409,7 @@ const externalResources: Array<{ slug?: string; url: string; relation?: string; 
         </div>
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
           {related.map((r) => {
-            const tier = r.tier || 'cook';
+            const tier = r.tier || 'pro';
             const tierClass = tierBadgeClass(tier);
             const tierDisplay = tierBadgeText(tier);
             const isDeclared = declaredSlugs.has(r.slug);
@@ -441,9 +441,13 @@ const externalResources: Array<{ slug?: string; url: string; relation?: string; 
 
 <script>
   // Auth-aware install gate (WIS-647)
-  // Tier hierarchy: free < cook < operator (studio = operator alias, 30-day shim)
-  // RCP-INCIDENT-2026-05-11: 'studio' is now an alias for 'operator'.
-  const TIER_RANK: Record<string, number> = { free: 0, cook: 1, operator: 2, studio: 2 };
+  // Tier hierarchy: free < pro < pro_plus (with legacy slug shims)
+  // RCP-INCIDENT-2026-05-11: 'cook', 'operator', 'studio' are legacy aliases.
+  const TIER_RANK: Record<string, number> = {
+    free: 0,
+    pro: 1, cook: 1,       // cook is legacy alias for pro
+    pro_plus: 2, operator: 2, studio: 2,  // operator/studio are legacy aliases for pro_plus
+  };
 
   (async () => {
     const gate = document.getElementById('install-auth-gate');

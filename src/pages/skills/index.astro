@@ -49,19 +49,23 @@ for (const s of skills) {
 }
 
 const categories = Array.from(new Set(skills.map(s => s.category || 'general'))).filter(Boolean).sort();
-// Phase 3 (RCP-INCIDENT-2026-05-11): 'operator' is now the canonical slug.
-// 'studio' kept in the filter as a shim for any legacy skill rows still in DB.
-// SSOT for these labels lives in wiserecipes-api/config/tiers.yaml — keep in sync.
-const tiers = ['free', 'cook', 'operator', 'studio'];
-const tierLabel: Record<string, string> = {
+
+// Phase 5 (RCP-INCIDENT-2026-05-11): 'pro' and 'pro_plus' are the canonical slugs.
+// Legacy slugs 'cook', 'operator', 'studio' kept as shims for any legacy skill rows in DB.
+const tiers = ['free', 'pro', 'pro_plus', 'cook', 'operator', 'studio'];
+
+const TIER_LABEL: Record<string, string> = {
   free: 'Free',
+  pro: 'Pro · $20/mo',
+  pro_plus: 'Pro+ · $100/mo',
+  // Legacy alias shims:
   cook: 'Pro · $20/mo',
   operator: 'Pro+ · $100/mo',
-  studio: 'Pro+ · $100/mo',  // legacy alias shim
+  studio: 'Pro+ · $100/mo',
 };
 const tierCount: Record<string, number> = {};
 for (const s of skills) {
-  const t = s.tier || 'cook';
+  const t = s.tier || 'pro';  // default to 'pro' (canonical)
   tierCount[t] = (tierCount[t] || 0) + 1;
 }
 
@@ -184,7 +188,7 @@ for (const s of skills) {
         <button data-tier-filter="all" class="tier-pill text-xs px-3 py-1.5 rounded-full border border-accent text-accent bg-accent/10 transition">All · {total}</button>
         {tiers.filter(t => tierCount[t]).map(t => (
           <button data-tier-filter={t} class="tier-pill text-xs px-3 py-1.5 rounded-full border border-border text-muted hover:border-muted hover:text-text transition">
-            {tierLabel[t] ?? t} · {tierCount[t]}
+            {TIER_LABEL[t] ?? t} · {tierCount[t]}
           </button>
         ))}
       </div>
@@ -199,7 +203,7 @@ for (const s of skills) {
 
     <div id="skill-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
       {skills.map(s => {
-        const tier = s.tier || 'cook';
+        const tier = s.tier || 'pro';
         const tierClass = tierBadgeClass(tier);
         const tierDisplay = tierBadgeText(tier);
         const cat = s.category || 'general';
@@ -384,7 +388,7 @@ for (const s of skills) {
         grid?.parentElement?.insertBefore(hint, grid);
       }
     }
-    if (tierParam && ['free', 'cook', 'operator', 'studio'].includes(tierParam)) {
+    if (tierParam && ['free', 'pro', 'pro_plus', 'cook', 'operator', 'studio'].includes(tierParam)) {
       activeTier = tierParam;
       setActivePill('tier', activeTier);
     }

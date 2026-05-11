@@ -67,7 +67,12 @@ import Base from '../../layouts/Base.astro';
     const meRes = await fetch('/api/auth/me', { credentials: 'include' });
     if (!meRes.ok) { window.location.href = '/signin?next=/library'; return; }
 
-    const TIER_LABELS: Record<string, string> = { cook: 'Pro', operator: 'Pro+', studio: 'Pro+' };
+    const TIER_LABELS: Record<string, string> = {
+      // Canonical slugs (Phase 5)
+      pro: 'Pro', pro_plus: 'Pro+',
+      // Legacy slugs — RCP-INCIDENT-2026-05-11 shim, remove after 2026-06-10
+      cook: 'Pro', operator: 'Pro+', studio: 'Pro+',
+    };
 
     const start = Date.now();
     const TIMEOUT = 30_000;

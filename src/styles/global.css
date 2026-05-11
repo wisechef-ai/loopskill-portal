@@ -86,11 +86,13 @@ body {
   color: var(--color-accent);
   border: 1px solid rgba(255, 209, 102, 0.3);
 }
-.badge-studio {
+.badge-pro-plus {
   background: rgba(168, 85, 247, 0.12);
   color: #c084fc;
   border: 1px solid rgba(168, 85, 247, 0.3);
 }
+/* Legacy alias — remove after 2026-06-10 (RCP-INCIDENT-2026-05-11) */
+.badge-studio { background: rgba(168, 85, 247, 0.12); color: #c084fc; border: 1px solid rgba(168, 85, 247, 0.3); }
 
 .prose { color: var(--color-text); max-width: 72ch; }
 .prose h2 { font-size: 1.5rem; font-weight: 600; margin-top: 2rem; margin-bottom: 0.75rem; }

@@ -188,16 +188,19 @@ import Base from '../layouts/Base.astro';
                   created_at: string | null; last_used_at: string | null };
 
   const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
-  // Tier slugs: 'operator' is canonical (post-Phase 3 RCP-INCIDENT-2026-05-11).
-  // 'studio' kept as client-side shim for the 30-day backwards-compat window.
-  const TIER_BADGE_COPY: Record<string, string> = {
-    cook: 'PRO', operator: 'PRO+', studio: 'PRO+',
+  // Tier slugs: 'pro' and 'pro_plus' are canonical (Phase 5 RCP-INCIDENT-2026-05-11).
+  // Legacy slugs kept as shims for 30-day compat window (remove after 2026-06-10).
+  const TIER_LABEL: Record<string, string> = {
+    pro: 'PRO', pro_plus: 'PRO+',
+    cook: 'PRO', operator: 'PRO+', studio: 'PRO+',  // legacy aliases
   };
   const TIER_PRICE: Record<string, string> = {
-    cook: '$20/mo', operator: '$100/mo', studio: '$100/mo',
+    pro: '$20/mo', pro_plus: '$100/mo',
+    cook: '$20/mo', operator: '$100/mo', studio: '$100/mo',  // legacy aliases
   };
   const TIER_NAME: Record<string, string> = {
-    cook: 'Pro', operator: 'Pro+', studio: 'Pro+',
+    pro: 'Pro', pro_plus: 'Pro+',
+    cook: 'Pro', operator: 'Pro+', studio: 'Pro+',  // legacy aliases
   };
 
   function fmtRenewsIn(iso: string | null): string {
@@ -236,7 +239,7 @@ import Base from '../layouts/Base.astro';
     const isPaidActive = !!tier && (status === 'active' || status === 'trialing' || status === 'past_due');
 
     $('sub-status-badge').textContent = status === 'none' ? 'FREE' : status.toUpperCase();
-    $('sub-tier').textContent = tier ? (TIER_BADGE_COPY[tier] || tier) : 'Free';
+    $('sub-tier').textContent = tier ? (TIER_LABEL[tier] || tier) : 'Free';
     $('sub-renews').textContent = isPaidActive ? fmtRenewsIn(billing.subscription_current_period_end) : '—';
 
     if (isPaidActive) {
@@ -253,7 +256,7 @@ import Base from '../layouts/Base.astro';
       $('sub-status-badge').classList.add('text-accent', 'border-accent/40');
 
       // Show "See other plans" only if not on the highest tier
-      if (tier !== 'operator' && tier !== 'studio') {
+      if (tier !== 'pro_plus' && tier !== 'operator' && tier !== 'studio') {
         $('upgrade-plan-link').classList.remove('hidden');
       }
 
@@ -264,8 +267,8 @@ import Base from '../layouts/Base.astro';
       $('choose-plan-link').classList.remove('hidden');
     }
 
-    // Cross-sell card visibility (cook+ only)
-    if (tier && ['cook', 'operator', 'studio'].includes(tier)) {
+    // Cross-sell card visibility (pro+ only)
+    if (tier && ['pro', 'pro_plus', 'cook', 'operator', 'studio'].includes(tier)) {
       $('wisechef-cta-card').classList.remove('hidden');
     }
   }
