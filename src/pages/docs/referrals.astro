@@ -1,0 +1,156 @@
+---
+import Base from '../../layouts/Base.astro';
+---
+
+<Base
+  title="Referral program — Recipes Docs"
+  description="Earn 50% recurring revenue share on every Pro and Pro+ subscriber you bring to Recipes. Monthly payouts via Stripe Connect."
+>
+  <section class="max-w-3xl mx-auto px-6 pt-16 pb-24">
+    <p class="eyebrow mb-3">Docs · Referrals</p>
+    <h1 class="text-4xl md:text-5xl font-semibold tracking-tight mb-6">
+      Refer once. Earn forever.
+    </h1>
+    <p class="text-muted text-lg leading-relaxed mb-12">
+      Bring a paying customer to Recipes and earn <strong class="text-text">50% of every monthly payment</strong>
+      they make — for as long as they stay subscribed. No cap, no cliff, no expiry.
+    </p>
+
+    <!-- How it works -->
+    <h2 class="text-xl font-semibold text-text mb-4">How the rev-share works</h2>
+    <p class="text-muted mb-4">
+      When someone subscribes to Pro ($20/mo) or Pro+ ($100/mo) using your referral link, you earn
+      50% of every invoice they pay — month after month. If they upgrade from Pro to Pro+, your
+      earnings scale up automatically. If they downgrade, earnings scale down to match their
+      actual paid amount.
+    </p>
+    <div class="bg-bg-card border border-border rounded-2xl p-6 mb-10 grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+      <div>
+        <p class="text-muted-soft uppercase text-[10px] tracking-widest font-semibold mb-1">Pro referral</p>
+        <p class="text-2xl font-semibold text-text">$10<span class="text-base font-normal text-muted">/mo</span></p>
+        <p class="text-muted mt-1">50% of $20/mo, every month they stay</p>
+      </div>
+      <div>
+        <p class="text-muted-soft uppercase text-[10px] tracking-widest font-semibold mb-1">Pro+ referral</p>
+        <p class="text-2xl font-semibold text-text">$50<span class="text-base font-normal text-muted">/mo</span></p>
+        <p class="text-muted mt-1">50% of $100/mo, every month they stay</p>
+      </div>
+    </div>
+
+    <!-- Finding your code -->
+    <h2 class="text-xl font-semibold text-text mb-4">Where to find your referral code</h2>
+    <p class="text-muted mb-4">
+      Sign in, then go to your <a href="/dashboard" class="text-accent hover:opacity-80 underline">dashboard</a>.
+      Your referral code appears at the top of the dashboard — it looks like
+      <code class="text-xs bg-bg-elev rounded px-1">ref_abc123</code>.
+      Click "Copy link" to get your shareable URL:
+    </p>
+    <pre class="bg-[#0d0d0d] border border-border rounded-xl p-4 text-sm text-text overflow-x-auto mb-10"><code>https://recipes.wisechef.ai/pricing?ref=abc123</code></pre>
+
+    <!-- How earnings are tracked -->
+    <h2 class="text-xl font-semibold text-text mb-4">How earnings are tracked</h2>
+    <p class="text-muted mb-4">
+      When a user signs up via your referral link, a 30-day cookie stores your code. If they
+      subscribe before the cookie expires, every Stripe invoice they generate is tagged with your
+      <code class="text-xs bg-bg-elev rounded px-1">referrer_id</code>. You can see the tagged
+      invoices and running balance in your dashboard under <strong class="text-text">Earnings</strong>.
+    </p>
+    <p class="text-muted mb-10">
+      Attribution is last-click: if a user clicks two referral links, the most recent one wins.
+      Attribution resets if the cookie expires (30 days) before they subscribe.
+    </p>
+
+    <!-- Payouts -->
+    <h2 class="text-xl font-semibold text-text mb-4">Payout schedule</h2>
+    <ul class="flex flex-col gap-3 text-sm text-muted mb-10">
+      <li class="flex items-start gap-2">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" class="text-success mt-0.5 shrink-0"><path d="M3 8.5L6 11.5L13 4.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <span><strong class="text-text">Monthly on the 15th</strong> — earnings from the prior calendar month are paid out on the 15th of the following month.</span>
+      </li>
+      <li class="flex items-start gap-2">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" class="text-success mt-0.5 shrink-0"><path d="M3 8.5L6 11.5L13 4.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <span><strong class="text-text">$25 minimum</strong> — if your balance is below $25, earnings roll over to the next payout cycle.</span>
+      </li>
+      <li class="flex items-start gap-2">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" class="text-success mt-0.5 shrink-0"><path d="M3 8.5L6 11.5L13 4.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <span><strong class="text-text">Stripe Connect Express</strong> — connect your bank once from the dashboard; payouts land directly in your account. Stripe handles currency conversion and tax forms (1099 in the US, where applicable).</span>
+      </li>
+    </ul>
+
+    <!-- FAQ -->
+    <h2 class="text-xl font-semibold text-text mb-6">FAQ</h2>
+    <div class="flex flex-col gap-3 mb-12">
+
+      <details class="group bg-bg-card border border-border rounded-xl px-5 py-4 open:border-accent/40 transition">
+        <summary class="cursor-pointer list-none flex items-center justify-between gap-4 text-sm font-semibold text-text">
+          <span>Can I refer myself?</span>
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" class="shrink-0 text-muted-soft transition-transform group-open:rotate-180" aria-hidden="true">
+            <path d="M3 5L7 9L11 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </summary>
+        <p class="text-sm text-muted leading-relaxed mt-3">
+          No. Self-referral is detected and disqualified automatically. The referrer and subscriber accounts must be different people with different payment methods.
+        </p>
+      </details>
+
+      <details class="group bg-bg-card border border-border rounded-xl px-5 py-4 open:border-accent/40 transition">
+        <summary class="cursor-pointer list-none flex items-center justify-between gap-4 text-sm font-semibold text-text">
+          <span>What happens if the customer downgrades?</span>
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" class="shrink-0 text-muted-soft transition-transform group-open:rotate-180" aria-hidden="true">
+            <path d="M3 5L7 9L11 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </summary>
+        <p class="text-sm text-muted leading-relaxed mt-3">
+          Earnings scale with their actual paid amount. If a Pro+ referral downgrades to Pro, your monthly earning on that referral drops from $50 to $10 starting the next billing cycle. Upgrades work in reverse — earnings go up immediately.
+        </p>
+      </details>
+
+      <details class="group bg-bg-card border border-border rounded-xl px-5 py-4 open:border-accent/40 transition">
+        <summary class="cursor-pointer list-none flex items-center justify-between gap-4 text-sm font-semibold text-text">
+          <span>What about refunds?</span>
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" class="shrink-0 text-muted-soft transition-transform group-open:rotate-180" aria-hidden="true">
+            <path d="M3 5L7 9L11 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </summary>
+        <p class="text-sm text-muted leading-relaxed mt-3">
+          If a referred customer receives a refund, the corresponding commission is clawed back from your next payout. If your balance goes negative, it carries forward and offsets future earnings — you are never charged out-of-pocket.
+        </p>
+      </details>
+
+      <details class="group bg-bg-card border border-border rounded-xl px-5 py-4 open:border-accent/40 transition">
+        <summary class="cursor-pointer list-none flex items-center justify-between gap-4 text-sm font-semibold text-text">
+          <span>Can I share via affiliate networks?</span>
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" class="shrink-0 text-muted-soft transition-transform group-open:rotate-180" aria-hidden="true">
+            <path d="M3 5L7 9L11 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </summary>
+        <p class="text-sm text-muted leading-relaxed mt-3">
+          Yes. You can paste your referral link anywhere — affiliate networks, newsletters, Twitter/X, Discord, YouTube descriptions. As long as the user clicks your link and subscribes within 30 days, attribution is yours.
+        </p>
+      </details>
+
+      <details class="group bg-bg-card border border-border rounded-xl px-5 py-4 open:border-accent/40 transition">
+        <summary class="cursor-pointer list-none flex items-center justify-between gap-4 text-sm font-semibold text-text">
+          <span>When do I get paid?</span>
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" class="shrink-0 text-muted-soft transition-transform group-open:rotate-180" aria-hidden="true">
+            <path d="M3 5L7 9L11 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </summary>
+        <p class="text-sm text-muted leading-relaxed mt-3">
+          Monthly on the 15th, with a $25 minimum balance. Connect Stripe Express from your dashboard and the first payout lands within 1–3 business days of the 15th. If you haven't connected Stripe, earnings accumulate until you do.
+        </p>
+      </details>
+
+    </div>
+
+    <div class="mt-4 p-6 bg-bg-card border border-border rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+      <div>
+        <p class="text-sm font-semibold text-text">Ready to start earning?</p>
+        <p class="text-sm text-muted mt-1">Sign in to find your referral code on the dashboard.</p>
+      </div>
+      <a href="/dashboard" class="shrink-0 inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold bg-accent text-bg hover:bg-accent-soft transition">
+        Go to dashboard →
+      </a>
+    </div>
+  </section>
+</Base>

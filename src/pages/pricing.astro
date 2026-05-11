@@ -18,15 +18,10 @@ const tiers = [
     ctaTier: 'pro',
     accent: true,
     features: [
-      'Single seat, your machine',
-      'Every paid skill in the catalog (38 today, growing weekly)',
-      'Personal cookbooks — bundle your favourite skills',
-      'Skill forks — customise any skill for your workflow',
-      'Auto-update channel — get patched skills the day they ship',
-      'Quality pipeline: ed25519-signed, security + discipline + leak-audit gates',
-      'Hourly install-count drift probe (transparent, public)',
-      'Cross-vendor portability — Claude Code, Cursor, OpenClaw, Hermes',
-      'Community + email support',
+      'Every paid skill in the catalog — cross-vendor (Claude Code, Cursor, Cline, OpenClaw, Hermes)',
+      'Personal cookbook — bundle your favourite skills, synced across your machines',
+      'Auto-update channel — patched skills delivered the day they ship, ed25519-signed',
+      'Zero-to-productive transfer — new agent? recipes init → full library in 60 seconds',
       '50% recurring rev share on every Pro/Pro+ user you refer',
     ],
     notFor: 'Not for: deploying skills to client agents you operate (use Pro+).',
@@ -47,15 +42,10 @@ const tiers = [
     moneyBack: '14-day money-back',
     features: [
       'Everything in Pro',
-      '20 client endpoints — deploy cookbooks into agents you operate',
+      '20 client endpoints — deploy cookbooks into agents you operate for clients',
       'Resell at YOUR rate — bill clients $300/mo, we still charge you $100',
       'Private org catalog — internal-only skills, never public',
-      '60-min onboarding call (first deployment, white-glove)',
-      'Priority skill review — 24h SLA on submissions',
-      'Cookbook propagation — push updates to all client endpoints in one push',
-      'Proration when you switch back to Pro — no money lost',
-      '14-day money-back guarantee',
-      '50% recurring rev share on referrals (same as Pro)',
+      '60-min onboarding call + priority 24h skill review',
     ],
     notFor: null,
   },
@@ -86,10 +76,6 @@ const faqs = [
   {
     q: 'Why $20 / $100 and not less?',
     a: '$20 covers operating one engineer\'s ongoing work on the catalog. $100 covers the 20-endpoint client deployment surface, the white-glove onboarding, and the priority skill review. The price funds the work; lower numbers fund nothing.',
-  },
-  {
-    q: 'Can I bring my own agent?',
-    a: 'Yes. That\'s the whole point. Recipes is cross-vendor: the skill catalog runs on Claude Code, Cursor, Windsurf, Cline, OpenClaw, Hermes, and any AgentPact / Anthropic Skills-compatible host. You pay for the catalog, not the model.',
   },
 ];
 ---

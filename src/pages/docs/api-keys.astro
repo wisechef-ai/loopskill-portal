@@ -1,0 +1,111 @@
+---
+import Base from '../../layouts/Base.astro';
+---
+
+<Base
+  title="API keys — Recipes Docs"
+  description="How Recipes API keys work: the rec_live_ prefix, x-api-key header, per-cookbook scoping (Pro+), rotation, and install-count visibility."
+>
+  <section class="max-w-3xl mx-auto px-6 pt-16 pb-24">
+    <p class="eyebrow mb-3">Docs · API Keys</p>
+    <h1 class="text-4xl md:text-5xl font-semibold tracking-tight mb-6">
+      API keys
+    </h1>
+    <p class="text-muted text-lg leading-relaxed mb-12">
+      Every request to the Recipes API — installs, manifest fetches, cookbook syncs — is
+      authenticated with an API key. Here's how keys work, how to use them, and how to rotate
+      them safely.
+    </p>
+
+    <!-- How keys work -->
+    <h2 class="text-xl font-semibold text-text mb-4">How keys work</h2>
+    <p class="text-muted mb-4">
+      Recipes API keys use the prefix <code class="text-xs bg-bg-elev rounded px-1">rec_live_</code>
+      followed by a random 32-character string. Pass them in the
+      <code class="text-xs bg-bg-elev rounded px-1">x-api-key</code> request header:
+    </p>
+    <pre class="bg-[#0d0d0d] border border-border rounded-xl p-4 text-sm text-text overflow-x-auto mb-6"><code>curl https://recipes.wisechef.ai/api/skills/search \
+  -H "x-api-key: rec_live_your_key_here"</code></pre>
+    <p class="text-muted mb-10">
+      The key encodes your subscription tier. Free keys can browse and install free skills.
+      Pro keys unlock the full paid catalog. Pro+ keys additionally enable cookbook sync and
+      client deployment endpoints.
+    </p>
+
+    <!-- Per-cookbook scoping -->
+    <h2 class="text-xl font-semibold text-text mb-4">Per-cookbook scoping <span class="text-xs text-muted-soft font-normal">(Pro+)</span></h2>
+    <div class="bg-yellow-500/10 border border-yellow-500/40 rounded p-4 mb-6">
+      <p class="text-sm text-yellow-200">
+        <strong>Coming with cookbook deployment, Q2 2026.</strong> Per-cookbook scoped keys are part of the Phase C release. The description below documents the intended behavior so you can plan integrations.
+      </p>
+    </div>
+    <p class="text-muted mb-4">
+      Pro+ accounts get up to 20 API keys. Each key can be <strong class="text-text">scoped to a single cookbook</strong> —
+      meaning it will only serve the skills in that cookbook and reject requests for anything else.
+      This is how you safely hand a key to a client's agent without giving it access to your
+      entire private catalog.
+    </p>
+    <ul class="flex flex-col gap-2 text-sm text-muted mb-10">
+      <li class="flex items-start gap-2">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" class="text-success mt-0.5 shrink-0"><path d="M3 8.5L6 11.5L13 4.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <span>Create a labeled key from <a href="/library" class="text-accent hover:opacity-80 underline">/library</a> and assign it to a cookbook</span>
+      </li>
+      <li class="flex items-start gap-2">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" class="text-success mt-0.5 shrink-0"><path d="M3 8.5L6 11.5L13 4.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <span>Share that key with the client — they can only access the skills you explicitly included in the cookbook</span>
+      </li>
+      <li class="flex items-start gap-2">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" class="text-success mt-0.5 shrink-0"><path d="M3 8.5L6 11.5L13 4.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <span>Pro accounts: 1 key total (not cookbook-scoped). Upgrade to Pro+ for multi-key scoping.</span>
+      </li>
+    </ul>
+
+    <!-- Rotation -->
+    <h2 class="text-xl font-semibold text-text mb-4">Rotating a key</h2>
+    <p class="text-muted mb-4">
+      Go to <a href="/library" class="text-accent hover:opacity-80 underline">/library</a>, find the key you want to rotate,
+      and click <strong class="text-text">Regenerate</strong>. The old key is invalidated
+      <em>immediately</em> — any agent or process using the old key will start receiving
+      <code class="text-xs bg-bg-elev rounded px-1">401 Unauthorized</code> responses.
+    </p>
+    <p class="text-muted mb-10">
+      The new key is shown once. Copy it immediately and update your
+      <code class="text-xs bg-bg-elev rounded px-1">RECIPES_API_KEY</code> environment variable
+      on every agent that uses that key. There is no grace period — the old key stops working as
+      soon as you confirm regeneration.
+    </p>
+
+    <!-- Install count visibility -->
+    <h2 class="text-xl font-semibold text-text mb-4">Per-key install count</h2>
+    <p class="text-muted mb-4">
+      Each key tracks a running install count — the number of times a skill has been installed
+      using that key. This count is visible in the library dashboard next to each key.
+    </p>
+    <p class="text-muted mb-10">
+      If you label keys by agent or machine (e.g. <code class="text-xs bg-bg-elev rounded px-1">laptop-alice</code>,
+      <code class="text-xs bg-bg-elev rounded px-1">server-prod</code>), the install count tells
+      you exactly which agent installed what and how many times — without any telemetry beyond
+      the install event.
+    </p>
+
+    <!-- Environment variable -->
+    <h2 class="text-xl font-semibold text-text mb-4">Setting your key</h2>
+    <p class="text-muted mb-4">Export it as an environment variable before running your agent:</p>
+    <pre class="bg-[#0d0d0d] border border-border rounded-xl p-4 text-sm text-text overflow-x-auto mb-4"><code>export RECIPES_API_KEY=rec_live_your_key_here</code></pre>
+    <p class="text-muted mb-10">
+      For MCP server setups (Claude Desktop, Cursor, Cline, Continue), pass the key in the
+      <code class="text-xs bg-bg-elev rounded px-1">env</code> block of your MCP config — see
+      <a href="/docs/mcp" class="text-accent hover:opacity-80 underline">MCP setup</a> for the exact JSON shape.
+    </p>
+
+    <div class="mt-4 p-6 bg-bg-card border border-border rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+      <div>
+        <p class="text-sm font-semibold text-text">Manage your keys</p>
+        <p class="text-sm text-muted mt-1">Generate, label, rotate, and view install counts in the library.</p>
+      </div>
+      <a href="/library" class="shrink-0 inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold bg-accent text-bg hover:bg-accent-soft transition">
+        Open library →
+      </a>
+    </div>
+  </section>
+</Base>

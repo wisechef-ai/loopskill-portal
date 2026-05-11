@@ -1,0 +1,115 @@
+---
+import Base from '../../layouts/Base.astro';
+---
+
+<Base
+  title="Skill sync — Recipes Docs"
+  description="Understand what gets synced across your agent fleet — skill source files, manifests, install state — and what never leaves your machine."
+>
+  <section class="max-w-3xl mx-auto px-6 pt-16 pb-24">
+    <p class="eyebrow mb-3">Docs · Sync</p>
+    <h1 class="text-4xl md:text-5xl font-semibold tracking-tight mb-6">
+      How skill sync works
+    </h1>
+    <p class="text-muted text-lg leading-relaxed mb-12">
+      Sync keeps every agent in your fleet running the same skills at the same versions —
+      automatically, without touching your data or your clients' data.
+    </p>
+
+    <!-- What gets synced -->
+    <h2 class="text-xl font-semibold text-text mb-4">What gets synced</h2>
+    <div class="flex flex-col gap-3 mb-10">
+      <div class="bg-bg-card border border-border rounded-xl p-4">
+        <p class="text-sm font-semibold text-text mb-1">Skill source files</p>
+        <p class="text-sm text-muted">The <code class="text-xs bg-bg-elev rounded px-1">SKILL.md</code> file and any companion assets bundled in the tarball. These are the instructions your agent reads and executes.</p>
+      </div>
+      <div class="bg-bg-card border border-border rounded-xl p-4">
+        <p class="text-sm font-semibold text-text mb-1">Manifest (versions + signatures)</p>
+        <p class="text-sm text-muted">A signed JSON manifest listing every skill you have access to, its current version, and its SHA256 hash. The manifest is what lets the sync engine know when a skill has been updated.</p>
+      </div>
+      <div class="bg-bg-card border border-border rounded-xl p-4">
+        <p class="text-sm font-semibold text-text mb-1">Install state</p>
+        <p class="text-sm text-muted">Per-agent metadata: which skills are installed, which version, and the install timestamp. Stored locally — the server never writes to your machine; it only serves what you request.</p>
+      </div>
+    </div>
+
+    <!-- What does NOT get synced -->
+    <h2 class="text-xl font-semibold text-text mb-4">What does <em>not</em> get synced</h2>
+    <div class="bg-yellow-500/5 border border-yellow-500/30 rounded-xl p-5 mb-10">
+      <ul class="flex flex-col gap-2 text-sm text-muted">
+        <li class="flex items-start gap-2">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" class="text-yellow-400 mt-0.5 shrink-0"><path d="M8 3V8.5M8 11.5V12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+          <span><strong class="text-text">Your data</strong> — files, credentials, environment variables, outputs, and any artifacts a skill generates at run time. None of that leaves your machine.</span>
+        </li>
+        <li class="flex items-start gap-2">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" class="text-yellow-400 mt-0.5 shrink-0"><path d="M8 3V8.5M8 11.5V12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+          <span><strong class="text-text">Your client data</strong> — if you're on Pro+ and have deployed a cookbook to a client's agent, the client's data stays entirely on the client's machine.</span>
+        </li>
+        <li class="flex items-start gap-2">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" class="text-yellow-400 mt-0.5 shrink-0"><path d="M8 3V8.5M8 11.5V12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+          <span><strong class="text-text">Run-time outputs</strong> — anything generated when a skill executes (reports, code, API responses) is ephemeral and local. We never see it.</span>
+        </li>
+        <li class="flex items-start gap-2">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" class="text-yellow-400 mt-0.5 shrink-0"><path d="M8 3V8.5M8 11.5V12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+          <span><strong class="text-text">Agent conversation history</strong> — your chat logs, context windows, and agent state are entirely outside Recipes' scope.</span>
+        </li>
+      </ul>
+    </div>
+
+    <!-- Mechanics -->
+    <h2 class="text-xl font-semibold text-text mb-4">How sync works mechanically</h2>
+    <ol class="flex flex-col gap-5 mb-10 text-sm text-muted">
+      <li class="flex gap-4">
+        <span class="flex-none w-7 h-7 rounded-full bg-accent/10 text-accent text-xs font-bold flex items-center justify-center mt-0.5">1</span>
+        <div>
+          <p class="font-semibold text-text mb-0.5">Manifest fetch</p>
+          <p>At the configured poll interval (default: every 15 minutes), the Recipes meta-skill calls <code class="text-xs bg-bg-elev rounded px-1">GET /api/skills/manifest</code> with your API key. The server returns a signed manifest listing current versions and SHA256 hashes for every skill you have access to.</p>
+        </div>
+      </li>
+      <li class="flex gap-4">
+        <span class="flex-none w-7 h-7 rounded-full bg-accent/10 text-accent text-xs font-bold flex items-center justify-center mt-0.5">2</span>
+        <div>
+          <p class="font-semibold text-text mb-0.5">Diff against local state</p>
+          <p>The meta-skill compares the manifest against the locally stored install state. If a skill's version or hash has changed — or if a newly installed skill is missing — it queues a download.</p>
+        </div>
+      </li>
+      <li class="flex gap-4">
+        <span class="flex-none w-7 h-7 rounded-full bg-accent/10 text-accent text-xs font-bold flex items-center justify-center mt-0.5">3</span>
+        <div>
+          <p class="font-semibold text-text mb-0.5">Tarball download from CDN</p>
+          <p>Updated skill tarballs are fetched directly from the CDN — not routed through the API server. Each tarball is SHA256-verified against the manifest before extraction. Tarballs that don't match are discarded and retried.</p>
+        </div>
+      </li>
+      <li class="flex gap-4">
+        <span class="flex-none w-7 h-7 rounded-full bg-accent/10 text-accent text-xs font-bold flex items-center justify-center mt-0.5">4</span>
+        <div>
+          <p class="font-semibold text-text mb-0.5">Atomic install</p>
+          <p>The new version is extracted to a staging directory, then atomically renamed into place. The old version is kept as a rollback snapshot for 24 hours. No partial writes reach your skills directory.</p>
+        </div>
+      </li>
+    </ol>
+
+    <!-- Offline behavior -->
+    <h2 class="text-xl font-semibold text-text mb-4">Offline behavior</h2>
+    <p class="text-muted mb-4">
+      Skills are local files. If your machine loses internet access, every already-installed skill
+      keeps working exactly as before — execution never calls home. The sync engine simply can't
+      check for updates until the connection is restored.
+    </p>
+    <p class="text-muted mb-10">
+      When reconnected, the next poll fetches a fresh manifest and queues any updates that
+      accumulated while offline. There's no "catch-up" penalty — you just receive the latest
+      versions on the next cycle.
+    </p>
+
+    <div class="mt-4 p-6 bg-bg-card border border-border rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+      <div>
+        <p class="text-sm font-semibold text-text">See what's installed on your agents</p>
+        <p class="text-sm text-muted mt-1">The library dashboard shows install state per key, including version and timestamp.</p>
+      </div>
+      <a href="/library" class="shrink-0 inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold bg-accent text-bg hover:bg-accent-soft transition">
+        Open library →
+      </a>
+    </div>
+  </section>
+</Base>

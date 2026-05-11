@@ -1,0 +1,117 @@
+---
+import Base from '../../layouts/Base.astro';
+---
+
+<Base
+  title="Cookbooks — Recipes Docs"
+  description="What a cookbook is, public vs private, personal vs Pro+ org-scoped, and pre-built skill bundles for client agents."
+>
+  <section class="max-w-3xl mx-auto px-6 pt-16 pb-24">
+    <p class="eyebrow mb-3">Docs · Cookbooks</p>
+
+    <!-- Phase C gating banner -->
+    <div class="bg-yellow-500/10 border border-yellow-500/40 rounded p-4 mb-8">
+      <p class="text-sm text-yellow-200">
+        <strong>Coming Q2 2026 with per-cookbook API keys and client deployment.</strong>
+        The cookbook creation UI and client deployment flow are shipping as part of Phase C.
+        This page documents the intended feature so you can plan your setup.
+        Everything described here is forward-looking and will be updated when Phase C ships.
+      </p>
+    </div>
+
+    <h1 class="text-4xl md:text-5xl font-semibold tracking-tight mb-6">
+      Cookbooks
+    </h1>
+    <p class="text-muted text-lg leading-relaxed mb-12">
+      A cookbook is a named, versioned bundle of skills — like a playlist, but for your agent.
+      Bundle the skills your team uses every day, share them across machines, and (on Pro+)
+      push them straight into clients' agents.
+    </p>
+
+    <!-- What a cookbook is -->
+    <h2 class="text-xl font-semibold text-text mb-4">What a cookbook is</h2>
+    <p class="text-muted mb-4">
+      A cookbook is a manifest — a list of skill slugs at pinned versions — plus optional
+      metadata (name, description, visibility). When an agent syncs against a cookbook, it
+      installs exactly the skills listed, at exactly the versions pinned, and nothing else.
+    </p>
+    <p class="text-muted mb-10">
+      You create and manage cookbooks from the <a href="/library" class="text-accent hover:opacity-80 underline">/library</a>
+      dashboard. Pro accounts get 1 personal cookbook. Pro+ accounts get up to 20.
+    </p>
+
+    <!-- Public vs Private -->
+    <h2 class="text-xl font-semibold text-text mb-4">Public vs private cookbooks</h2>
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-10">
+      <div class="bg-bg-card border border-border rounded-xl p-5">
+        <p class="text-sm font-semibold text-text mb-2">Public</p>
+        <p class="text-sm text-muted">Anyone with the cookbook URL can install it. Useful for sharing a curated skill set with the community or documenting your team's standard toolkit publicly.</p>
+      </div>
+      <div class="bg-bg-card border border-border rounded-xl p-5">
+        <p class="text-sm font-semibold text-text mb-2">Private</p>
+        <p class="text-sm text-muted">Accessible only via an API key you explicitly share. Clients or teammates install with your key — the cookbook content is never publicly discoverable.</p>
+      </div>
+    </div>
+
+    <!-- Personal vs org-scoped -->
+    <h2 class="text-xl font-semibold text-text mb-4">Personal vs org-scoped (Pro+)</h2>
+    <p class="text-muted mb-4">
+      <strong class="text-text">Personal cookbooks</strong> belong to your account and sync to
+      the machines where you run agents with your API key.
+    </p>
+    <p class="text-muted mb-10">
+      <strong class="text-text">Org-scoped cookbooks</strong> (Pro+) belong to your Pro+ account
+      and can be deployed to agents you operate for clients. Each deployment gets its own
+      cookbook-scoped API key so the client's agent can only access the skills you chose —
+      nothing else in your private catalog.
+    </p>
+
+    <!-- Pre-built catalogs for clients -->
+    <h2 class="text-xl font-semibold text-text mb-4">Pre-built catalogs for clients (Pro+)</h2>
+    <p class="text-muted mb-4">
+      The canonical use case for Pro+ cookbooks: you operate AI agents for clients. Instead of
+      manually installing skills on each client's machine, you:
+    </p>
+    <ol class="flex flex-col gap-3 mb-10 text-sm text-muted list-none">
+      <li class="flex gap-3">
+        <span class="flex-none w-6 h-6 rounded-full bg-accent/10 text-accent text-xs font-bold flex items-center justify-center">1</span>
+        <span>Build a cookbook in your library — pick the skills, pin the versions.</span>
+      </li>
+      <li class="flex gap-3">
+        <span class="flex-none w-6 h-6 rounded-full bg-accent/10 text-accent text-xs font-bold flex items-center justify-center">2</span>
+        <span>Assign a dedicated API key scoped to that cookbook.</span>
+      </li>
+      <li class="flex gap-3">
+        <span class="flex-none w-6 h-6 rounded-full bg-accent/10 text-accent text-xs font-bold flex items-center justify-center">3</span>
+        <span>Give your client the one-line meta-skill install command that includes that key.</span>
+      </li>
+      <li class="flex gap-3">
+        <span class="flex-none w-6 h-6 rounded-full bg-accent/10 text-accent text-xs font-bold flex items-center justify-center">4</span>
+        <span>The client's agent installs the meta-skill, the cookbook auto-syncs, and stays up to date on every poll cycle.</span>
+      </li>
+    </ol>
+    <p class="text-muted mb-10">
+      When you push an update to the cookbook — adding a skill, bumping a version — all agents
+      that installed via that key receive the update on their next sync. One push, every client.
+    </p>
+
+    <!-- Whitelabel -->
+    <h2 class="text-xl font-semibold text-text mb-4">White-label guidance</h2>
+    <p class="text-muted mb-10">
+      The client-side experience never mentions Recipes branding unless you choose to include it.
+      The install command, the skills, the skill output — all run locally on the client's machine.
+      No Recipes UI, no Recipes domain in their agent's context. You bill them under your own
+      brand at your own rate.
+    </p>
+
+    <div class="p-6 bg-bg-card border border-border rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+      <div>
+        <p class="text-sm font-semibold text-text">Ready to deploy cookbooks to clients?</p>
+        <p class="text-sm text-muted mt-1">See the deployment walkthrough for a full step-by-step guide.</p>
+      </div>
+      <a href="/docs/deployment" class="shrink-0 inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold border border-border hover:border-accent text-text transition">
+        Deployment guide →
+      </a>
+    </div>
+  </section>
+</Base>

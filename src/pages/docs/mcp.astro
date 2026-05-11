@@ -13,6 +13,71 @@ import Base from '../../layouts/Base.astro';
       Zed, OpenClaw, Hermes, and Windsurf with the same JSON shape.
     </p>
 
+    <!-- ─── WHAT MCP UNLOCKS ──────────────────────────────────────────────── -->
+    <div class="bg-bg-card border border-accent/30 rounded-2xl p-6 md:p-8 mb-14">
+      <p class="eyebrow mb-4">What MCP unlocks</p>
+
+      <h2 class="text-lg font-semibold text-text mb-3">What you can do with this</h2>
+      <p class="text-muted text-sm leading-relaxed mb-6">
+        Once Recipes is wired in as an MCP server, your agent can search the skill catalog, fetch
+        full skill documentation, browse trending installs, and install a skill — all from inside
+        a conversation, without you touching a terminal. Ask your agent "find me an SEO audit
+        skill" and it calls <code class="text-xs bg-bg-elev rounded px-1">recipes_search</code>,
+        reads the results, installs the winner with
+        <code class="text-xs bg-bg-elev rounded px-1">recipes_install</code>, and reports back
+        — one turn of conversation, zero copy-paste. The same works for cookbook syncs: a
+        Pro+ agent can call
+        <code class="text-xs bg-bg-elev rounded px-1">recipes_install_meta_skill</code> to
+        bootstrap a full cookbook on a new machine in under 60 seconds.
+      </p>
+
+      <h2 class="text-lg font-semibold text-text mb-3">Why ours</h2>
+      <ul class="flex flex-col gap-3 text-sm text-muted">
+        <li class="flex items-start gap-2.5">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" class="text-accent mt-0.5 shrink-0"><path d="M3 8.5L6 11.5L13 4.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <span>
+            <strong class="text-text">Cross-vendor, one config.</strong> The same
+            <code class="text-xs bg-bg-elev rounded px-1">recipes_mcp_server.py</code> works in
+            Claude Code, Cursor, Cline, Continue, Zed, OpenClaw, Hermes, and Windsurf.
+            Single-vendor MCP marketplaces can't give you this — vendor lock-in is their
+            business model. Ours is the opposite.
+          </span>
+        </li>
+        <li class="flex items-start gap-2.5">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" class="text-accent mt-0.5 shrink-0"><path d="M3 8.5L6 11.5L13 4.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <span>
+            <strong class="text-text">Six dedicated tools, not a REST wrapper.</strong>
+            <code class="text-xs bg-bg-elev rounded px-1">recipes_search</code>,
+            <code class="text-xs bg-bg-elev rounded px-1">recipes_detail</code>,
+            <code class="text-xs bg-bg-elev rounded px-1">recipes_trending</code>,
+            <code class="text-xs bg-bg-elev rounded px-1">recipes_install</code>,
+            <code class="text-xs bg-bg-elev rounded px-1">recipes_install_meta_skill</code>,
+            <code class="text-xs bg-bg-elev rounded px-1">recipes_stats</code>.
+            The agent gets verbs it can reason about — not raw HTTP calls it has to construct
+            and error-handle itself.
+          </span>
+        </li>
+        <li class="flex items-start gap-2.5">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" class="text-accent mt-0.5 shrink-0"><path d="M3 8.5L6 11.5L13 4.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <span>
+            <strong class="text-text">Signed tarballs with SHA256 verification.</strong> Every
+            skill tarball is signed at publish time and verified on install. A tampered tarball
+            is detected before it touches your skills directory — the agent rejects it and retries.
+          </span>
+        </li>
+        <li class="flex items-start gap-2.5">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" class="text-accent mt-0.5 shrink-0"><path d="M3 8.5L6 11.5L13 4.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <span>
+            <strong class="text-text">Cookbook-scoped keys (Pro+).</strong> Give a client's
+            agent a key scoped to a specific cookbook — it installs exactly your chosen skills,
+            nothing else in your private catalog. Coming Q2 2026 with the full cookbook
+            deployment flow.
+          </span>
+        </li>
+      </ul>
+    </div>
+    <!-- ─────────────────────────────────────────────────────────────────── -->
+
     <h2 class="text-xl font-semibold text-text mb-3">1. Install the server</h2>
     <pre class="bg-[#0d0d0d] border border-border rounded-xl p-4 text-sm text-text overflow-x-auto mb-6"><code>pip install fastmcp httpx
 git clone https://github.com/wisechef-ai/recipes-mcp.git ~/recipes-mcp</code></pre>
