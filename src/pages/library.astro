@@ -188,16 +188,16 @@ import Base from '../layouts/Base.astro';
                   created_at: string | null; last_used_at: string | null };
 
   const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
-  // Tier slugs in DB stay `cook` (=Cook) and `studio` (=Operator) per RCP-1.
-  // `operator` is retired but kept here in case legacy rows surface.
+  // Tier slugs: 'operator' is canonical (post-Phase 3 RCP-INCIDENT-2026-05-11).
+  // 'studio' kept as client-side shim for the 30-day backwards-compat window.
   const TIER_BADGE_COPY: Record<string, string> = {
-    cook: 'COOK', operator: 'OPERATOR', studio: 'OPERATOR',
+    cook: 'PRO', operator: 'PRO+', studio: 'PRO+',
   };
   const TIER_PRICE: Record<string, string> = {
-    cook: '$20/mo', operator: 'retired', studio: '$100/mo',
+    cook: '$20/mo', operator: '$100/mo', studio: '$100/mo',
   };
   const TIER_NAME: Record<string, string> = {
-    cook: 'Cook', operator: 'Operator', studio: 'Operator',
+    cook: 'Pro', operator: 'Pro+', studio: 'Pro+',
   };
 
   function fmtRenewsIn(iso: string | null): string {
@@ -253,7 +253,7 @@ import Base from '../layouts/Base.astro';
       $('sub-status-badge').classList.add('text-accent', 'border-accent/40');
 
       // Show "See other plans" only if not on the highest tier
-      if (tier !== 'studio') {
+      if (tier !== 'operator' && tier !== 'studio') {
         $('upgrade-plan-link').classList.remove('hidden');
       }
 

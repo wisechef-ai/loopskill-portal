@@ -67,7 +67,7 @@ import Base from '../../layouts/Base.astro';
     const meRes = await fetch('/api/auth/me', { credentials: 'include' });
     if (!meRes.ok) { window.location.href = '/signin?next=/library'; return; }
 
-    const TIER_LABELS: Record<string, string> = { cook: 'Cook', operator: 'Operator', studio: 'Operator' };
+    const TIER_LABELS: Record<string, string> = { cook: 'Pro', operator: 'Pro+', studio: 'Pro+' };
 
     const start = Date.now();
     const TIMEOUT = 30_000;

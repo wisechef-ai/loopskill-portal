@@ -27,9 +27,7 @@ const lastUpdated = stats?.generated_at
 
 // Sort tier order for consistent display.
 // rev 7.2.4: SSOT for tier labels lives in wiserecipes-api/config/tiers.yaml.
-// DB slugs are unchanged (cook/operator/free); only display labels differ.
-// 'uncategorized' surfaces skills the API couldn't classify — usually means
-// the skill row has tier=NULL. Surface them so they don't silently disappear.
+// Phase 3 (RCP-INCIDENT-2026-05-11): 'operator' is now canonical; 'studio' kept for legacy rows.
 const tierOrder = ['free', 'cook', 'operator', 'studio', 'uncategorized'];
 const tierEntries = stats
   ? tierOrder
@@ -41,7 +39,7 @@ const tierLabel: Record<string, string> = {
   free: 'Free · open source',
   cook: 'Pro · $20/mo',
   operator: 'Pro+ · $100/mo',
-  studio: 'Pro+ · $100/mo',
+  studio: 'Pro+ · $100/mo',  // legacy alias shim
   uncategorized: 'Uncategorized',
 };
 ---

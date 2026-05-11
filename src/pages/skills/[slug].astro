@@ -441,8 +441,9 @@ const externalResources: Array<{ slug?: string; url: string; relation?: string; 
 
 <script>
   // Auth-aware install gate (WIS-647)
-  // Tier hierarchy: free < cook < operator < studio
-  const TIER_RANK: Record<string, number> = { free: 0, cook: 1, operator: 2, studio: 3 };
+  // Tier hierarchy: free < cook < operator (studio = operator alias, 30-day shim)
+  // RCP-INCIDENT-2026-05-11: 'studio' is now an alias for 'operator'.
+  const TIER_RANK: Record<string, number> = { free: 0, cook: 1, operator: 2, studio: 2 };
 
   (async () => {
     const gate = document.getElementById('install-auth-gate');

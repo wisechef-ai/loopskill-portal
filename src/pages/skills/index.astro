@@ -49,17 +49,15 @@ for (const s of skills) {
 }
 
 const categories = Array.from(new Set(skills.map(s => s.category || 'general'))).filter(Boolean).sort();
-// Tier slugs in DB stay `cook` and `studio` (Adam-locked, stabilization_2605);
-// `operator` is retired but legacy rows may still carry it — keep it visible
-// in the filter so existing skill rows aren't hidden.
-// rev 7.2 (A4): display labels renamed Cook→Pro, Operator→Pro+. DB slugs unchanged.
+// Phase 3 (RCP-INCIDENT-2026-05-11): 'operator' is now the canonical slug.
+// 'studio' kept in the filter as a shim for any legacy skill rows still in DB.
 // SSOT for these labels lives in wiserecipes-api/config/tiers.yaml — keep in sync.
 const tiers = ['free', 'cook', 'operator', 'studio'];
 const tierLabel: Record<string, string> = {
   free: 'Free',
   cook: 'Pro · $20/mo',
   operator: 'Pro+ · $100/mo',
-  studio: 'Pro+ · $100/mo',
+  studio: 'Pro+ · $100/mo',  // legacy alias shim
 };
 const tierCount: Record<string, number> = {};
 for (const s of skills) {
