@@ -1,0 +1,135 @@
+/**
+ * pick_1605 — Today's Pick + carousel-strip regression tests.
+ *
+ * Failure mode caught 2026-05-16 PM (Adam's screenshot):
+ *   - The 7-card carousel-strip below "See today's lineup" rendered "SLOT NaN"
+ *     and an empty title because index.astro's strip mapper read `e.position`
+ *     and `e.skill_title` directly — legacy shape — while the typed-v0.4+ API
+ *     returns `{slot, skill: {title, ...}}`. Result: undefined+1 = NaN, and
+ *     `e.skill_title === undefined`.
+ *
+ * These tests are static-string assertions on the source so they catch the
+ * regression at CI time without needing a build + browser snapshot. They
+ * encode the contract:
+ *   - The strip block MUST not read `e.skill_title` / `e.position` / `e.skill_slug`
+ *     bare (those are post-normalization names that ONLY exist after we
+ *     normalize the API response).
+ *   - Either the source uses the canonical normalizer (preferred) or it
+ *     reads `e.skill?.title` etc. with the typed-v0.4+ fallback chain.
+ *
+ * Companion: see also tests/test_carousel_cron.py in recipes-api for the
+ * server-side tagline != title invariant (pick_1605 Phase C).
+ */
+
+import { readFileSync } from 'fs';
+import { join } from 'path';
+
+const ROOT = join(new URL(import.meta.url).pathname, '../../');
+const INDEX = join(ROOT, 'src/pages/index.astro');
+const CAROUSEL = join(ROOT, 'src/pages/carousel.astro');
+
+describe("Today's Pick widget (pick_1605/A+B)", () => {
+  const src = readFileSync(INDEX, 'utf-8');
+
+  it('exposes a normalizeCarouselEntry helper (single source of truth for entry shape)', () => {
+    expect(src).toContain('function normalizeCarouselEntry');
+  });
+
+  it('computes todaysPick from carouselToday', () => {
+    expect(src).toContain('const todaysPick');
+    expect(src).toContain('carouselToday');
+  });
+
+  it('renders a TodaysPickCard block with data-testid="todays-pick"', () => {
+    expect(src).toContain('data-testid="todays-pick"');
+  });
+
+  it('renders the tagline fallback ladder copy when carousel is empty', () => {
+    // Default fallback string from the ladder
+    expect(src).toContain("Today's spotlight from the Recipes carousel");
+  });
+
+  it('links Picks rotate small-text to /carousel ("See all 7")', () => {
+    expect(src).toContain('See all 7');
+    expect(src).toMatch(/href="\/carousel"/);
+  });
+
+  it('falls back to the hardcoded spotlight array when todaysPick is null', () => {
+    // The spotlight grid must still render as the safety net.
+    expect(src).toContain('spotlight.map');
+  });
+});
+
+describe('carousel-strip in index.astro (the second grid below "See today\'s lineup")', () => {
+  const src = readFileSync(INDEX, 'utf-8');
+
+  // The strip block — bounded precisely between the "Today's 7" eyebrow
+  // (unique anchor in index.astro) and the closing </section> of that block.
+  // Bounding too wide accidentally pulled in `e.skill_title` / `e.skill_slug`
+  // references from neighbouring sections (cookSkills, spotlight); narrow
+  // window keeps the regex honest. Using "Today's 7" instead of "See today's
+  // lineup" because comments may legitimately reference the latter.
+  function stripBlock(): string {
+    const startMarker = "Today's 7</p>";
+    const start = src.indexOf(startMarker);
+    expect(start, "Expected anchor \"Today's 7</p>\" in index.astro").toBeGreaterThan(-1);
+    const stripCloseIdx = src.indexOf('</section>', start);
+    const end = stripCloseIdx > 0 ? stripCloseIdx : start + 2500;
+    return src.slice(start, end);
+  }
+
+  it('does NOT use bare e.position (typed v0.4+ API returns e.slot) — would render SLOT NaN', () => {
+    const block = stripBlock();
+    // Allow `e.slot ? e.slot - 1 : ...` fallback (carousel.astro pattern) but NOT bare `e.position`.
+    expect(block).not.toMatch(/\be\.position\b/);
+  });
+
+  it('does NOT use bare e.skill_title (typed v0.4+ API returns e.skill.title) — would render empty', () => {
+    const block = stripBlock();
+    expect(block).not.toMatch(/\be\.skill_title\b/);
+  });
+
+  it('does NOT use bare e.skill_slug (typed v0.4+ API returns e.skill.slug) — would link to /skills/undefined', () => {
+    const block = stripBlock();
+    expect(block).not.toMatch(/\be\.skill_slug\b/);
+  });
+
+  it('renders a real slot number — slot value comes from e.slot or the normalized entry, never undefined', () => {
+    const block = stripBlock();
+    // Either uses the normalizer-derived shape (post-normalization fields)
+    // or guards against undefined slot.
+    expect(
+      block.includes('normalizedCarouselToday') ||
+      block.includes('e.skill?.slug') ||
+      /e\.slot\s*\?\?\s*e\.position/.test(block) ||
+      /String\(e\.slot\)/.test(block)
+    ).toBe(true);
+  });
+
+  it('renders the actual skill title from typed-v0.4+ shape (e.skill.title) or a normalized field', () => {
+    const block = stripBlock();
+    expect(
+      block.includes('normalizedCarouselToday') ||
+      block.includes('e.skill?.title') ||
+      block.includes('entry.title') ||
+      block.includes('n.title') // any normalized alias
+    ).toBe(true);
+  });
+});
+
+describe('carousel.astro (the /carousel page) — same shape contract', () => {
+  // /carousel was already correct (it has the normalizer inline), but we lock
+  // the invariant so it doesn't regress.
+  const src = readFileSync(CAROUSEL, 'utf-8');
+
+  it('normalizes entries to a uniform shape with skill_slug / skill_title / position', () => {
+    expect(src).toContain('skill_slug:');
+    expect(src).toContain('skill_title:');
+    expect(src).toMatch(/position:\s*typeof\s+e\.position/);
+  });
+
+  it('reads from typed-v0.4+ fallback (e.skill?.slug) in the normalizer', () => {
+    expect(src).toContain('e.skill?.slug');
+    expect(src).toContain('e.skill?.title');
+  });
+});

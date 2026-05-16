@@ -19,14 +19,19 @@ try {
   }
 } catch {}
 
-// pick_1605: Normalize one carousel entry into a uniform shape for the Today's Pick widget.
-// Mirrors carousel.astro:15-26 — both legacy ({position, skill_slug, ...}) and typed-v0.4+
-// ({slot, skill: {slug, title, ...}, role, tagline}) inputs supported. Keep these two in
-// sync; if the carousel API shape changes, update both files.
+// pick_1605: Normalize one carousel entry into a uniform shape for the Today's Pick widget
+// AND the 7-card strip below. Mirrors carousel.astro:15-26 — both legacy
+// ({position, skill_slug, ...}) and typed-v0.4+ ({slot, skill: {slug, title, ...}}, role, tagline)
+// inputs supported. Keep these two in sync; if the carousel API shape changes,
+// update both files.
 function normalizeCarouselEntry(e: any) {
   const slug: string = e?.skill_slug ?? e?.skill?.slug ?? '';
   const title: string = e?.skill_title ?? e?.skill?.title ?? '';
   const description: string = e?.skill_description ?? e?.skill?.description ?? '';
+  // slot is 1-indexed (typed-v0.4+); fall back from legacy position (0-indexed).
+  const slotRaw = typeof e?.slot === 'number' ? e.slot
+    : (typeof e?.position === 'number' ? e.position + 1 : null);
+  const slot: number | null = (typeof slotRaw === 'number' && Number.isFinite(slotRaw)) ? slotRaw : null;
   const rawTagline: string = (e?.tagline ?? '').toString().trim();
   // Tagline ladder (pick_1605 Phase B): explicit ≠ title → description[:80] → default.
   let tagline: string;
@@ -43,21 +48,26 @@ function normalizeCarouselEntry(e: any) {
   const role: string = rawRole || "todays-pick";
   const isFree: boolean = !!(e?.skill?.is_free);
   const tier: string = e?.skill?.tier ?? '';
-  return { slug, title, description, tagline, role, isFree, tier };
+  const archivesAt: string | null = e?.archives_at ?? null;
+  return { slug, title, description, tagline, role, isFree, tier, slot, archivesAt };
 }
+
+// pick_1605 hotfix (2026-05-16 PM): normalize ALL carousel entries up-front so
+// downstream components (TodaysPickCard at top of hero AND the 7-card strip
+// below "See today's lineup") share one shape. Without this, the strip block
+// rendered "SLOT NaN" + empty titles because the typed-v0.4+ API returns
+// `{slot, skill: {title, ...}}` while the strip read `e.position` / `e.skill_title`.
+const normalizedCarouselToday = carouselToday.map(normalizeCarouselEntry);
 
 // pick_1605: pick slot 1, then fall through to subsequent slots if slot 1 is gated/empty.
 // Premortem #2 mitigation: a gated/private slot 0 entry would lead the hero CTA to a 404.
 // We accept free or cook-tier entries (the public/Pro $20 surface). If none qualify,
 // todaysPick is null and the hero falls back to the hardcoded spotlight grid.
 const todaysPick = (() => {
-  for (const e of carouselToday) {
-    const slug: string = e?.skill_slug ?? e?.skill?.slug ?? '';
-    if (!slug) continue;
-    const isFree: boolean = !!(e?.skill?.is_free);
-    const tier: string = e?.skill?.tier ?? '';
+  for (const n of normalizedCarouselToday) {
+    if (!n.slug) continue;
     // Allow free skills and cook-tier (= Pro $20 included). Reject operator-only.
-    if (isFree || tier === 'cook' || tier === '') return normalizeCarouselEntry(e);
+    if (n.isFree || n.tier === 'cook' || n.tier === '') return n;
   }
   return null;
 })();
@@ -409,16 +419,16 @@ const verticals = [
           </a>
         </div>
         <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-2.5" id="carousel-strip">
-          {carouselToday.slice(0, 7).map((e: any) => (
-            <a href={`/skills/${e.skill_slug}`}
-               data-archives-at={e.archives_at || ''}
+          {normalizedCarouselToday.slice(0, 7).map((n, i) => (
+            <a href={`/skills/${n.slug}`}
+               data-archives-at={n.archivesAt || ''}
                class="carousel-strip-card bg-bg-card border border-border rounded-xl p-3 card-lift block">
               <div class="flex items-center justify-between gap-1 mb-1.5">
-                <span class="text-[9px] font-mono text-muted-soft">SLOT {String(e.position + 1).padStart(2, '0')}</span>
+                <span class="text-[9px] font-mono text-muted-soft">SLOT {String(n.slot ?? i + 1).padStart(2, '0')}</span>
                 <span class="strip-countdown text-[9px] font-mono text-muted-soft">—</span>
               </div>
-              <div class="text-sm font-semibold text-text leading-tight line-clamp-2">{e.skill_title}</div>
-              {e.tagline && <div class="text-[10px] text-muted-soft mt-1 line-clamp-2">{e.tagline}</div>}
+              <div class="text-sm font-semibold text-text leading-tight line-clamp-2">{n.title}</div>
+              {n.tagline && <div class="text-[10px] text-muted-soft mt-1 line-clamp-2">{n.tagline}</div>}
             </a>
           ))}
         </div>
