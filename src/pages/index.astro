@@ -12,11 +12,69 @@ import { fetchApi } from '../lib/api';
 let carouselToday: any[] = [];
 try {
   const result = await fetchApi<any[]>('/api/carousel/today');
-  if (result.ok && result.data) carouselToday = result.data;
+  if (result.ok && result.data) {
+    // API may return either a bare array (legacy) or {date, entries: [...]} (typed v0.4+).
+    const raw: any = result.data;
+    carouselToday = Array.isArray(raw) ? raw : (raw?.entries ?? []);
+  }
 } catch {}
 
-// Pull live skill count for the stats strip (retry+jitter; fallback to 80 if API unreachable).
-let liveSkillCount = 80;
+// pick_1605: Normalize one carousel entry into a uniform shape for the Today's Pick widget.
+// Mirrors carousel.astro:15-26 — both legacy ({position, skill_slug, ...}) and typed-v0.4+
+// ({slot, skill: {slug, title, ...}, role, tagline}) inputs supported. Keep these two in
+// sync; if the carousel API shape changes, update both files.
+function normalizeCarouselEntry(e: any) {
+  const slug: string = e?.skill_slug ?? e?.skill?.slug ?? '';
+  const title: string = e?.skill_title ?? e?.skill?.title ?? '';
+  const description: string = e?.skill_description ?? e?.skill?.description ?? '';
+  const rawTagline: string = (e?.tagline ?? '').toString().trim();
+  // Tagline ladder (pick_1605 Phase B): explicit ≠ title → description[:80] → default.
+  let tagline: string;
+  if (rawTagline && rawTagline !== title) {
+    tagline = rawTagline;
+  } else if (description) {
+    const trimmed = description.slice(0, 80).trimEnd();
+    tagline = description.length > 80 ? `${trimmed}…` : trimmed;
+  } else {
+    tagline = "Today's spotlight from the Recipes carousel";
+  }
+  // Role ladder (pick_1605 Phase B): explicit non-empty role → "Today's Pick".
+  const rawRole: string = (e?.role ?? '').toString().trim();
+  const role: string = rawRole || "todays-pick";
+  const isFree: boolean = !!(e?.skill?.is_free);
+  const tier: string = e?.skill?.tier ?? '';
+  return { slug, title, description, tagline, role, isFree, tier };
+}
+
+// pick_1605: pick slot 1, then fall through to subsequent slots if slot 1 is gated/empty.
+// Premortem #2 mitigation: a gated/private slot 0 entry would lead the hero CTA to a 404.
+// We accept free or cook-tier entries (the public/Pro $20 surface). If none qualify,
+// todaysPick is null and the hero falls back to the hardcoded spotlight grid.
+const todaysPick = (() => {
+  for (const e of carouselToday) {
+    const slug: string = e?.skill_slug ?? e?.skill?.slug ?? '';
+    if (!slug) continue;
+    const isFree: boolean = !!(e?.skill?.is_free);
+    const tier: string = e?.skill?.tier ?? '';
+    // Allow free skills and cook-tier (= Pro $20 included). Reject operator-only.
+    if (isFree || tier === 'cook' || tier === '') return normalizeCarouselEntry(e);
+  }
+  return null;
+})();
+const todayISO = new Date().toISOString().slice(0, 10);
+const roleLabel = (role: string): string => {
+  if (role === 'todays-pick') return "Today's Pick";
+  if (role && role.startsWith('replaces:')) return `Replaces ${role.split(':')[1]}`;
+  const labels: Record<string, string> = {
+    'new-capability': 'New capability',
+    'experimental': 'Experimental',
+  };
+  return labels[role] || "Today's Pick";
+};
+
+// Pull live skill count for the stats strip (retry+jitter; fallback to 59 if API unreachable).
+// pick_1605: bumped fallback 80 → 59 to match current production reality.
+let liveSkillCount = 59;
 try {
   const result = await fetchApi<{ total: number }>('/api/skills/search?page_size=1');
   if (result.ok && result.data && typeof result.data.total === 'number' && result.data.total > 0) {
@@ -123,6 +181,40 @@ const verticals = [
         <div class="w-full max-w-2xl mt-4">
           <InstallWidget />
         </div>
+
+        {todaysPick && (
+          <div class="w-full max-w-2xl mt-2" data-testid="todays-pick">
+            <a
+              href={`/skills/${todaysPick.slug}`}
+              class="group block rounded-2xl border border-accent/30 bg-bg-card/60 backdrop-blur-sm p-5 text-left hover:border-accent/60 hover:bg-bg-card/80 transition shadow-lg shadow-accent/5"
+            >
+              <div class="flex items-center justify-between gap-2 mb-2">
+                <span class="text-[10px] font-mono uppercase tracking-wider text-accent inline-flex items-center gap-1.5">
+                  <span class="inline-block w-1.5 h-1.5 rounded-full bg-accent animate-pulse"></span>
+                  Today's Pick · {todayISO}
+                </span>
+                <span class="text-[9px] uppercase tracking-wider text-muted border border-border-soft rounded-full px-2 py-0.5">
+                  {roleLabel(todaysPick.role)}
+                </span>
+              </div>
+              <h3 class="text-xl md:text-2xl font-semibold text-text group-hover:text-accent transition leading-tight">
+                {todaysPick.title}
+              </h3>
+              <p class="text-sm text-muted mt-1.5 leading-relaxed">
+                {todaysPick.tagline}
+              </p>
+              <div class="flex items-center justify-between mt-3 pt-3 border-t border-border-soft">
+                <span class="text-xs text-accent font-semibold inline-flex items-center gap-1.5">
+                  Install this today
+                  <Icon name="arrow-right" size={12} class="group-hover:translate-x-0.5 transition" />
+                </span>
+                <span class="text-[10px] text-muted-soft">
+                  Picks rotate at 05:00 London · <a href="/carousel" class="underline hover:text-accent transition">See all 7</a>
+                </span>
+              </div>
+            </a>
+          </div>
+        )}
 
         <div class="flex flex-col sm:flex-row items-center gap-3 mt-4">
           <a href="/catalog"
