@@ -1,5 +1,6 @@
 ---
 import Base from '../layouts/Base.astro';
+import Icon from '../components/Icon.astro';
 ---
 
 <Base title="Library — Recipes" description="Your subscription, API key, and installed skills.">
@@ -69,6 +70,14 @@ import Base from '../layouts/Base.astro';
 
         <!-- API Keys card — Phase C per-cookbook key table -->
         <div class="md:col-span-2 bg-bg-card border border-border rounded-2xl p-6">
+          <!-- quality_1705 Phase E — tier-aware cookbook subtitle (per plan §3 step 2) -->
+          <div id="cookbook-tier-subtitle" class="hidden mb-4 pb-4 border-b border-border-soft">
+            <div class="flex items-center gap-2 mb-1">
+              <Icon name="box" size={14} class="text-accent" />
+              <h3 class="text-sm font-semibold tracking-tight">Your cookbooks</h3>
+            </div>
+            <p id="cookbook-tier-subtitle-text" class="text-xs text-muted leading-relaxed"></p>
+          </div>
           <div class="flex items-center justify-between gap-3 mb-4">
             <div>
               <h2 class="text-lg font-semibold tracking-tight">API keys</h2>
@@ -132,6 +141,10 @@ import Base from '../layouts/Base.astro';
                 placeholder="e.g. ACME client, data-pipeline, personal"
                 class="w-full px-3 py-2 text-sm bg-bg-elev border border-border rounded-lg text-text placeholder:text-muted focus:outline-none focus:border-accent"
               />
+              <!-- quality_1705 Phase E — Pro+ hint for client-named cookbooks -->
+              <p id="modal-label-pro-plus-hint" class="hidden text-[10px] text-muted-soft">
+                Pro+ tip: name this after the client whose fleet you'll deploy to (e.g. <code class="text-accent">acme-corp-cookbook</code>) so install metrics stay scoped per-client.
+              </p>
             </div>
 
             <div class="flex flex-col gap-1.5">
@@ -335,6 +348,26 @@ import Base from '../layouts/Base.astro';
     // Show key tier note
     const note = $('key-tier-note');
     if (note) note.classList.remove('hidden');
+
+    // quality_1705 Phase E — show tier-appropriate cookbook subtitle
+    const cookbookSubtitle = document.getElementById('cookbook-tier-subtitle');
+    const cookbookSubtitleText = document.getElementById('cookbook-tier-subtitle-text');
+    if (cookbookSubtitle && cookbookSubtitleText && tier) {
+      const isProPlus = ['pro_plus', 'operator', 'studio'].includes(tier);
+      const isPro = ['pro', 'cook'].includes(tier);
+      if (isProPlus) {
+        cookbookSubtitleText.textContent =
+          'You have up to 20 cookbooks available. Each can be named after a client (e.g. acme-corp-cookbook) and deployed to their agent fleet. Use cookbook scoping below to map each API key to a client.';
+        cookbookSubtitle.classList.remove('hidden');
+        // Show the Pro+ client-naming hint in the create-key modal
+        const proPlusHint = document.getElementById('modal-label-pro-plus-hint');
+        if (proPlusHint) proPlusHint.classList.remove('hidden');
+      } else if (isPro) {
+        cookbookSubtitleText.textContent =
+          'You have 1 personal cookbook. Use it to bundle your private skills and sync them across your agent fleet. Upgrade to Pro+ for up to 20 client-named cookbooks.';
+        cookbookSubtitle.classList.remove('hidden');
+      }
+    }
   }
 
   // ── API Keys table — Phase C ───────────────────────────────────────────

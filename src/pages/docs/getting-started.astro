@@ -8,6 +8,16 @@ import CrossSell from '../../components/CrossSell.astro';
     <h1 class="text-4xl font-semibold tracking-tight mb-6">From zero to skill-aware in 60 seconds.</h1>
 
     <div class="prose">
+      <div class="not-prose mb-6 rounded-2xl border border-accent/40 bg-accent/5 p-5">
+        <p class="text-xs uppercase tracking-wider text-accent font-semibold mb-2">The agent-first workflow</p>
+        <p class="text-base text-text leading-relaxed font-medium">
+          Tell your agent: <em>"install the relevant Recipes skills from recipes.wisechef.ai"</em>.
+        </p>
+        <p class="text-sm text-muted mt-2 leading-relaxed">
+          The agent handles the rest via MCP — it searches the catalog, picks the best-scored skill for your task, installs it, and reports back. You don't browse the website by hand. The catalog quality and the agent-callable metadata are the funnel.
+        </p>
+      </div>
+
       <h2>1. Install the meta-skill</h2>
       <p>One file teaches your agent the entire marketplace. Drop it into your agent's skills directory.</p>
       <pre><code>curl -sL https://recipes.wisechef.ai/skill -o ~/.claude/skills/recipes/SKILL.md</code></pre>
@@ -17,17 +27,17 @@ import CrossSell from '../../components/CrossSell.astro';
       <p>Every skill install — including free skills — requires an API key. The key is free for the catalog browse + free-tier skills; premium skills require a <strong>Pro subscription ($20/mo)</strong> for the full library, or <strong>Pro+ ($100/mo)</strong> for up to 20 cookbooks plus the ability to push pre-built cookbooks directly to client agents. <a href="/signin?mode=signup">Create an account</a> and copy your key from the dashboard:</p>
       <pre><code>export RECIPES_API_KEY=rec_xx...</code></pre>
 
-      <h2>3. Ask your agent</h2>
+      <h2>3. Tell your agent what you need</h2>
       <p>That's it. Try one of these:</p>
       <ul>
         <li>"Pull last 30 days of GA4 + Meta Ads for client X and generate a PDF"</li>
         <li>"Audit example.com's SEO and write a fix list"</li>
         <li>"Build me a 30-day content calendar for an interior-design agency client"</li>
       </ul>
-      <p>Your agent will search the catalog, install the right skill, and execute it locally — using your credentials, on your machine.</p>
+      <p>Your agent will search the catalog (via the <code>recipes_search</code> MCP tool), install the highest-quality skill that matches, and execute it locally — using your credentials, on your machine. You never have to browse the catalog yourself; the agent uses <code>quality_score</code>, <code>last_verified</code>, and install counts to pick.</p>
 
       <h2>What's already on the catalog</h2>
-      <p>80+ production-grade skills, plus the daily 7-card carousel. Browse the <a href="/skills">full catalog</a> or check <a href="/carousel">today's 7</a>.</p>
+      <p>53+ skills, all carrying real attribution + a <code>quality_score</code>, plus the daily 7-card carousel. Browse the <a href="/skills">full catalog</a> or check <a href="/carousel">today's 7</a> — but really, just tell your agent.</p>
     </div>
     <CrossSell />
   </section>
