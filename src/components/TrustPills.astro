@@ -26,16 +26,27 @@ const { quality_score, readme, tarball_size_bytes, last_verified, install_count 
 // Count unhappy_paths entries in the YAML frontmatter (real signal,
 // computed at build, no LLM cost). This is the same field Phase C-content
 // (#101) backfilled and the quality scorer (#102) weights.
+//
+// YAML formatter style varies — some skills indent list items under the
+// parent key (`  - condition:`), others dump them flush-left
+// (`- condition:`). We accept both and count any `^- condition:` or
+// `^[ \t]+- condition:` line after `^unhappy_paths:`.
 let unhappyCount = 0;
 if (readme && typeof readme === 'string') {
   const frontMatch = readme.match(/^---\s*\n([\s\S]*?)\n---\s*\n/);
   if (frontMatch) {
     const yaml = frontMatch[1];
-    const block = yaml.match(/^unhappy_paths:\s*\n((?:[ \t]+-[^\n]*\n?)+)/m);
-    if (block) {
-      // Count top-level list items (lines starting with "- " at the same indent)
-      const lines = block[1].split('\n').filter(l => /^\s+-\s+/.test(l));
-      unhappyCount = lines.length;
+    const upIdx = yaml.search(/^unhappy_paths:\s*$/m);
+    if (upIdx >= 0) {
+      // Take everything from `unhappy_paths:` to the next top-level key.
+      const tail = yaml.slice(upIdx);
+      const stopMatch = tail.slice('unhappy_paths:'.length).match(/^[a-z_][a-z0-9_]*:\s*$/m);
+      const block = stopMatch && typeof stopMatch.index === 'number'
+        ? tail.slice(0, 'unhappy_paths:'.length + stopMatch.index)
+        : tail;
+      // Count entry starts: `- condition:` at any indent level.
+      const matches = block.match(/^\s*-\s+condition:/gm);
+      unhappyCount = matches ? matches.length : 0;
     }
   }
 }
