@@ -58,6 +58,13 @@ describe("Today's Pick widget (pick_1605/A+B)", () => {
     // The spotlight grid must still render as the safety net.
     expect(src).toContain('spotlight.map');
   });
+
+  it('stamps Today\'s Pick CTA href with UTM ?ref=pick-today-YYYYMMDD (atomic-habits 2026-05-17 rank-8)', () => {
+    // Click attribution: every Today's Pick click is tagged so the funnel is measurable.
+    // Without this, /api/marketing/snapshot + Stripe MRR cannot be tied to a specific seed.
+    expect(src).toContain('todayUtmDate');
+    expect(src).toMatch(/href=\{`\/skills\/\$\{todaysPick\.slug\}\?ref=pick-today-\$\{todayUtmDate\}`\}/);
+  });
 });
 
 describe('carousel-strip in index.astro (the second grid below "See today\'s lineup")', () => {
