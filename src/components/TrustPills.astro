@@ -1,0 +1,128 @@
+---
+// TrustPills — polish_1805 item 9.
+// Three reassurance pills shown above the install CTA. Every pill must be
+// sourced from a REAL signal — no static decorative tags. If a signal is
+// missing/zero the pill is dropped so we never lie.
+//
+// Signals used:
+//  • quality_score (0-10 float) — rendered ONLY when >= 7.0
+//  • unhappy_paths_count (derived from readme YAML) — rendered when >= 1
+//  • tarball_size_bytes (latest version) — rendered as KB when present
+//  • last_verified (ISO timestamp) — rendered as "Verified Nd ago" when ≤ 30d
+//  • install_count — rendered when >= 1 (the install-count badge below header
+//    is the canonical surface; this pill only appears when ≥ 10 to add
+//    social proof above the install CTA on popular skills).
+
+interface Props {
+  quality_score?: number | null;
+  readme?: string | null;
+  tarball_size_bytes?: number | null;
+  last_verified?: string | null;
+  install_count?: number | null;
+}
+
+const { quality_score, readme, tarball_size_bytes, last_verified, install_count } = Astro.props;
+
+// Count unhappy_paths entries in the YAML frontmatter (real signal,
+// computed at build, no LLM cost). This is the same field Phase C-content
+// (#101) backfilled and the quality scorer (#102) weights.
+let unhappyCount = 0;
+if (readme && typeof readme === 'string') {
+  const frontMatch = readme.match(/^---\s*\n([\s\S]*?)\n---\s*\n/);
+  if (frontMatch) {
+    const yaml = frontMatch[1];
+    const block = yaml.match(/^unhappy_paths:\s*\n((?:[ \t]+-[^\n]*\n?)+)/m);
+    if (block) {
+      // Count top-level list items (lines starting with "- " at the same indent)
+      const lines = block[1].split('\n').filter(l => /^\s+-\s+/.test(l));
+      unhappyCount = lines.length;
+    }
+  }
+}
+
+// Freshness pill — only if last_verified within 30 days
+let freshnessLabel: string | null = null;
+if (last_verified) {
+  try {
+    const d = new Date(last_verified);
+    const ageDays = Math.floor((Date.now() - d.getTime()) / 86400000);
+    if (!Number.isNaN(ageDays) && ageDays >= 0 && ageDays <= 30) {
+      freshnessLabel = ageDays === 0 ? 'Verified today' : `Verified ${ageDays}d ago`;
+    }
+  } catch {}
+}
+
+// Size pill — only if tarball known
+let sizeLabel: string | null = null;
+if (typeof tarball_size_bytes === 'number' && tarball_size_bytes > 0) {
+  if (tarball_size_bytes < 1024) sizeLabel = `${tarball_size_bytes} B`;
+  else if (tarball_size_bytes < 1024 * 1024) sizeLabel = `${Math.round(tarball_size_bytes / 1024)} KB`;
+  else sizeLabel = `${(tarball_size_bytes / 1024 / 1024).toFixed(1)} MB`;
+}
+
+const qualityLabel = (typeof quality_score === 'number' && quality_score >= 7.0)
+  ? `${quality_score.toFixed(1)}/10 quality`
+  : null;
+
+const unhappyLabel = unhappyCount >= 1
+  ? `${unhappyCount} known pitfall${unhappyCount === 1 ? '' : 's'} documented`
+  : null;
+
+const installLabel = (typeof install_count === 'number' && install_count >= 10)
+  ? `${install_count.toLocaleString()} installs`
+  : null;
+
+const pills = [
+  qualityLabel && { label: qualityLabel, kind: 'quality', icon: 'shield' },
+  unhappyLabel && { label: unhappyLabel, kind: 'pitfalls', icon: 'alert' },
+  freshnessLabel && { label: freshnessLabel, kind: 'freshness', icon: 'clock' },
+  sizeLabel && { label: sizeLabel, kind: 'size', icon: 'package' },
+  installLabel && { label: installLabel, kind: 'installs', icon: 'arrow-down' },
+].filter(Boolean) as { label: string; kind: string; icon: string }[];
+
+const hasAny = pills.length > 0;
+---
+
+{hasAny && (
+  <div class="flex flex-wrap gap-2" data-component="trust-pills" data-pill-count={pills.length}>
+    {pills.map(p => (
+      <span
+        class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium bg-bg-card border border-border-soft text-text"
+        data-pill-kind={p.kind}
+        title={`Source: ${p.kind} signal`}
+      >
+        {p.kind === 'quality' && (
+          <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" class="text-success">
+            <path d="M8 1l6 3v4c0 4-3 6.5-6 7-3-.5-6-3-6-7V4l6-3z" />
+            <path d="M5.5 8.5l1.5 1.5 3.5-3.5" />
+          </svg>
+        )}
+        {p.kind === 'pitfalls' && (
+          <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" class="text-accent">
+            <path d="M8 1v9M8 13.5v.5" stroke-linecap="round" />
+            <circle cx="8" cy="8" r="7" />
+          </svg>
+        )}
+        {p.kind === 'freshness' && (
+          <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" class="text-muted">
+            <circle cx="8" cy="8" r="6.5" />
+            <path d="M8 4.5V8l2.5 1.5" stroke-linecap="round" />
+          </svg>
+        )}
+        {p.kind === 'size' && (
+          <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true" class="text-muted">
+            <rect x="2" y="3" width="12" height="10" rx="1" />
+            <path d="M2 6h12" />
+          </svg>
+        )}
+        {p.kind === 'installs' && (
+          <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" class="text-muted">
+            <path d="M8 2v9M8 11l3-3M8 11L5 8" stroke-linecap="round" stroke-linejoin="round" />
+            <path d="M2 13h12" stroke-linecap="round" />
+          </svg>
+        )}
+        {p.label}
+      </span>
+    ))}
+  </div>
+)}

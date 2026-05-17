@@ -1,43 +1,112 @@
 ---
 import Base from '../../layouts/Base.astro';
 import CrossSell from '../../components/CrossSell.astro';
+import Icon from '../../components/Icon.astro';
 ---
-<Base title="Install guide — Recipes Docs">
+<Base title="Install guide — Recipes Docs" description="Install Recipes in any AI coding agent. MCP-first, zero-friction for free skills, one-line setup for the full catalog.">
   <section class="max-w-3xl mx-auto px-6 pt-16 pb-12">
     <p class="eyebrow mb-2">Documentation · Install guide</p>
-    <h1 class="text-4xl font-semibold tracking-tight mb-6">Install on any AI coding agent.</h1>
-    <div class="prose">
-      <p>The Recipes meta-skill is a plain Markdown file. Any agent that can read files and follow instructions can use it.</p>
+    <h1 class="text-4xl font-semibold tracking-tight mb-4">Install in seconds.</h1>
+    <p class="text-muted mb-10 leading-relaxed">
+      Recipes works two ways: as an <strong class="text-text">MCP server</strong> your agent connects to,
+      or as a plain Markdown <strong class="text-text">meta-skill</strong> any agent can read.
+      <strong class="text-text">Free skills install with no API key.</strong>
+      Pro and Pro+ skills require a key from your <a href="/library" class="text-accent hover:underline">library</a>.
+    </p>
 
-      <h2>Claude Code</h2>
-      <pre><code>mkdir -p ~/.claude/skills/recipes
+    <!-- MCP path — recommended -->
+    <div class="bg-bg-card border border-accent/30 rounded-2xl p-6 mb-10">
+      <div class="flex items-center justify-between gap-3 mb-3 flex-wrap">
+        <p class="eyebrow text-accent">Recommended · MCP server</p>
+        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold tracking-wider bg-success/15 text-success border border-success/30">
+          No auth for free skills
+        </span>
+      </div>
+      <h2 class="text-xl font-semibold tracking-tight mb-3">Connect your agent in one config block</h2>
+      <p class="text-sm text-muted mb-4 leading-relaxed">
+        Cursor, Claude Desktop, Cline, Continue.dev, Zed — every MCP-aware client wires up the same way.
+        Your agent gets <code class="text-[11px] bg-bg-elev border border-border-soft rounded px-1 py-0.5">recipes_search</code>,
+        <code class="text-[11px] bg-bg-elev border border-border-soft rounded px-1 py-0.5">recipes_install</code>,
+        and <code class="text-[11px] bg-bg-elev border border-border-soft rounded px-1 py-0.5">recipes_recall</code>
+        as tools it can call mid-conversation.
+      </p>
+
+      <p class="text-xs text-muted-soft uppercase tracking-wider font-semibold mb-2">Claude Desktop / Cursor / Cline</p>
+      <pre class="text-xs bg-[#0d0d0d] border border-border rounded-lg p-4 overflow-x-auto mb-4"><code>{`{
+  "mcpServers": {
+    "recipes": {
+      "url": "https://recipes.wisechef.ai/api/mcp/sse"
+    }
+  }
+}`}</code></pre>
+
+      <p class="text-xs text-muted-soft uppercase tracking-wider font-semibold mb-2 mt-5">Unlock Pro & Pro+ skills (optional)</p>
+      <pre class="text-xs bg-[#0d0d0d] border border-border rounded-lg p-4 overflow-x-auto mb-3"><code>{`{
+  "mcpServers": {
+    "recipes": {
+      "url": "https://recipes.wisechef.ai/api/mcp/sse",
+      "headers": { "x-api-key": "rec_live_…" }
+    }
+  }
+}`}</code></pre>
+      <p class="text-xs text-muted-soft leading-relaxed">
+        Get your key from <a href="/library" class="text-accent hover:underline">your library</a> after subscribing.
+        Free skills install whether the header is present or not — the key only gates Pro/Pro+ catalog access.
+      </p>
+      <div class="mt-4 pt-4 border-t border-border-soft">
+        <a href="/docs/mcp" class="text-xs text-accent hover:underline inline-flex items-center gap-1">
+          Full MCP setup (Continue.dev, Zed, custom clients) →
+        </a>
+      </div>
+    </div>
+
+    <!-- Meta-skill path — for non-MCP agents -->
+    <div class="bg-bg-card border border-border rounded-2xl p-6 mb-10">
+      <p class="eyebrow mb-3">Alternative · Meta-skill (Markdown file)</p>
+      <h2 class="text-xl font-semibold tracking-tight mb-3">For Claude Code, Codex, Hermes, OpenClaw</h2>
+      <p class="text-sm text-muted mb-4 leading-relaxed">
+        Any agent that can read files and call HTTP can use Recipes. Drop the meta-skill into your skills directory and tell your agent to follow it.
+      </p>
+
+      <p class="text-xs text-muted-soft uppercase tracking-wider font-semibold mb-2">Claude Code</p>
+      <pre class="text-xs bg-[#0d0d0d] border border-border rounded-lg p-4 overflow-x-auto mb-4"><code>mkdir -p ~/.claude/skills/recipes
 curl -sL https://recipes.wisechef.ai/skill -o ~/.claude/skills/recipes/SKILL.md</code></pre>
-      <p>Then in any session: <em>"read ~/.claude/skills/recipes/SKILL.md and follow it"</em>. Or paste it into your CLAUDE.md.</p>
 
-      <h2>OpenClaw</h2>
-      <pre><code>mkdir -p ~/.openclaw/skills/recipes
-curl -sL https://recipes.wisechef.ai/skill -o ~/.openclaw/skills/recipes/SKILL.md</code></pre>
-      <p>Or just ask your agent: <em>"install the recipes skill"</em>.</p>
-
-      <h2>Hermes Agent</h2>
-      <pre><code>mkdir -p ~/.hermes/skills/recipes
+      <p class="text-xs text-muted-soft uppercase tracking-wider font-semibold mb-2">Hermes / Codex / OpenClaw</p>
+      <pre class="text-xs bg-[#0d0d0d] border border-border rounded-lg p-4 overflow-x-auto mb-4"><code>mkdir -p ~/.hermes/skills/recipes  # or ~/.codex/skills, ~/.openclaw/skills
 curl -sL https://recipes.wisechef.ai/skill -o ~/.hermes/skills/recipes/SKILL.md</code></pre>
 
-      <h2>Codex CLI</h2>
-      <pre><code>mkdir -p ~/.codex/skills/recipes
-curl -sL https://recipes.wisechef.ai/skill -o ~/.codex/skills/recipes/SKILL.md</code></pre>
-
-      <h2>Cursor / Cline / Continue.dev / Zed</h2>
-      <p>These speak MCP. See <a href="/docs/mcp">/docs/mcp</a> for per-client config snippets pointing at <code>recipes-mcp</code>.</p>
-
-      <h2>Set your API key</h2>
-      <pre><code>export RECIPES_API_KEY=rec_xx...</code></pre>
-      <p>Required for every install — including free skills (free signup gives you a free key). Get it from <a href="/signin?mode=signup">your dashboard</a>.</p>
-
-      <h2>Verify the install</h2>
-      <pre><code>curl https://recipes.wisechef.ai/api/healthz</code></pre>
-      <p>Should return <code>{`{"status":"ok"}`}</code>.</p>
+      <p class="text-sm text-muted leading-relaxed">
+        Then in any session ask: <em class="text-text">"read the recipes skill and follow it. List free skills."</em>
+        Your agent will hit the public catalog endpoints — no key needed.
+      </p>
     </div>
+
+    <!-- Pure HTTP path — for scripts/automation -->
+    <div class="bg-bg-card border border-border rounded-2xl p-6 mb-10">
+      <p class="eyebrow mb-3">For scripts · Raw HTTP</p>
+      <h2 class="text-xl font-semibold tracking-tight mb-3">curl works too</h2>
+
+      <p class="text-xs text-muted-soft uppercase tracking-wider font-semibold mb-2">Browse free skills (no auth)</p>
+      <pre class="text-xs bg-[#0d0d0d] border border-border rounded-lg p-4 overflow-x-auto mb-4"><code>curl -sS "https://recipes.wisechef.ai/api/skills/search?tier=free&page_size=50"</code></pre>
+
+      <p class="text-xs text-muted-soft uppercase tracking-wider font-semibold mb-2">Install a free skill (no auth)</p>
+      <pre class="text-xs bg-[#0d0d0d] border border-border rounded-lg p-4 overflow-x-auto mb-4"><code>curl -sS "https://recipes.wisechef.ai/api/skills/install?slug=client-reporter"</code></pre>
+
+      <p class="text-xs text-muted-soft uppercase tracking-wider font-semibold mb-2">Install a Pro skill (requires key)</p>
+      <pre class="text-xs bg-[#0d0d0d] border border-border rounded-lg p-4 overflow-x-auto"><code>curl -sS -H "x-api-key: rec_live_…" \
+  "https://recipes.wisechef.ai/api/skills/install?slug=super-memory"</code></pre>
+    </div>
+
+    <!-- Verify -->
+    <div class="bg-bg-card border border-border rounded-2xl p-6">
+      <p class="eyebrow mb-3">Verify the install</p>
+      <pre class="text-xs bg-[#0d0d0d] border border-border rounded-lg p-4 overflow-x-auto mb-3"><code>curl https://recipes.wisechef.ai/api/healthz</code></pre>
+      <p class="text-xs text-muted-soft leading-relaxed">
+        Should return <code class="text-text">{`{"status":"ok"}`}</code>. If your agent connected via MCP, ask it: <em class="text-text">"call recipes_search with query=test and show me the top 3 results."</em>
+      </p>
+    </div>
+
     <CrossSell />
   </section>
 </Base>

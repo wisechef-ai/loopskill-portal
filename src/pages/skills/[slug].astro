@@ -3,6 +3,7 @@ import Base from '../../layouts/Base.astro';
 import CrossSell from '../../components/CrossSell.astro';
 import Icon from '../../components/Icon.astro';
 import AuditRow from '../../components/AuditRow.astro';
+import TrustPills from '../../components/TrustPills.astro';
 import { marked } from 'marked';
 import { fetchApi } from '../../lib/api';
 import { tierBadge as tierBadgeText, tierBadgeClass } from '../../lib/tiers';
@@ -133,16 +134,29 @@ const display = {
   tagline,
   tier: skill?.tier || f.tier || 'pro',
   description: skill?.description || f.description || 'A Recipes skill.',
-  install_count: skill?.install_count ?? 0,
+  install_count: skill?.install_count_total ?? skill?.install_count ?? 0,
+  install_count_7d: skill?.install_count_7d ?? 0,
   rating: skill?.rating ?? null,
   version: skill?.latest_version || skill?.version || '0.1.0',
-  author: skill?.creator_name || skill?.author || 'Recipes',
+  // polish_1805 item 4 — author identity. Falls back to a brand name when
+  // creator_name is null. creator_handle + creator_url are populated by the
+  // recipes-api Phase B migration (alembic abc123…); when present they
+  // render as a clickable "by <name> @<handle>" block.
+  author: skill?.creator_name || skill?.author || 'WiseChef',
+  author_handle: skill?.creator_handle || null,
+  author_url: skill?.creator_url || null,
   repo_url: repoUrl,
   requires_env: skill?.requires_env || f.requires_env || [],
   category: skill?.category || 'general',
   license: skill?.license || f.license || null,
   readme: skill?.readme || null,
   versions: skill?.versions || [],
+  // Trust pills sources (polish_1805 item 9 — all real signals, no static decoration)
+  quality_score: typeof skill?.quality_score === 'number' ? skill.quality_score : null,
+  last_verified: skill?.last_verified || null,
+  tarball_size_bytes: (skill?.versions && skill.versions.length > 0)
+    ? (skill.versions[0]?.tarball_size_bytes ?? null)
+    : null,
   // Audit metadata (Phase B): these may be absent until the audit-backfill script
   // (scripts/backfill_audit_metadata.py) populates them via PATCH /api/skills/{slug}/audit.
   source_url: skill?.source_url || skill?.audit?.source_url || repoUrl || null,
@@ -197,10 +211,64 @@ const externalResources: Array<{ slug?: string; url: string; relation?: string; 
             <span class="text-[10px] text-muted-soft uppercase tracking-wider">{display.category}</span>
             <span class="text-[10px] text-muted-soft font-mono">v{display.version}</span>
             {display.license && <span class="text-[10px] text-muted-soft uppercase tracking-wider">· {display.license}</span>}
+            {/* polish_1805 item 7 — install count badge. Real signal from
+                Skill.install_count (backfilled from telemetry_events by
+                scripts/backfill_install_count.py). Renders only when >= 1
+                so we never show a "0 installs" badge of shame. For brand-new
+                skills (< 7 days old AND zero installs) the badge becomes "New" instead. */}
+            {display.install_count >= 1 ? (
+              <span class="inline-flex items-center gap-1 text-[10px] text-muted font-medium" data-install-badge title="Total installs since publish (telemetry-backed)">
+                <svg width="9" height="9" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                  <path d="M8 2v9M8 11l3-3M8 11L5 8" stroke-linecap="round" stroke-linejoin="round" />
+                  <path d="M2 13h12" stroke-linecap="round" />
+                </svg>
+                {display.install_count.toLocaleString()} install{display.install_count === 1 ? '' : 's'}
+                {display.install_count_7d > 0 && (
+                  <span class="text-success ml-1" title="Installs in the last 7 days">· +{display.install_count_7d}/wk</span>
+                )}
+              </span>
+            ) : (
+              <span class="inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] font-semibold tracking-wider bg-accent/10 text-accent border border-accent/20" data-install-badge="new" title="Published recently, no install telemetry yet">
+                NEW
+              </span>
+            )}
           </div>
           <h1 class="text-3xl md:text-5xl font-bold tracking-tight" style="letter-spacing: -0.03em;">{display.title}</h1>
+          {/* polish_1805 item 4 — author identity. Renders as "by <Author>"
+              with an optional X/GitHub link when creator_handle / creator_url
+              are populated. Falls back to plain "by WiseChef" for skills the
+              backfill cron hasn't reached yet (no broken state). */}
+          <p class="text-xs text-muted-soft inline-flex items-center gap-1.5" data-author-block>
+            <span>by</span>
+            {display.author_url ? (
+              <a href={display.author_url} target="_blank" rel="noopener" class="text-muted hover:text-accent transition font-medium">{display.author}</a>
+            ) : (
+              <span class="text-muted font-medium">{display.author}</span>
+            )}
+            {display.author_handle && (
+              <a href={display.author_url || `https://x.com/${display.author_handle.replace(/^@/, '')}`}
+                 target="_blank" rel="noopener"
+                 class="text-muted-soft hover:text-accent transition">
+                @{display.author_handle.replace(/^@/, '')}
+              </a>
+            )}
+          </p>
           {display.tagline && <p class="text-lg md:text-xl text-muted">{display.tagline}</p>}
           <p class="text-text leading-relaxed mt-2">{display.description}</p>
+
+          {/* polish_1805 item 9 — trust pills sourced from REAL signals only.
+              quality_score, unhappy_paths count (read from readme YAML at build),
+              last_verified freshness, tarball size, install count. Each pill is
+              dropped if its signal is missing/zero — no placeholder decoration. */}
+          <div class="mt-2">
+            <TrustPills
+              quality_score={display.quality_score}
+              readme={display.readme}
+              tarball_size_bytes={display.tarball_size_bytes}
+              last_verified={display.last_verified}
+              install_count={display.install_count}
+            />
+          </div>
         </header>
 
         <!-- Audit row (Phase B trust) — provenance + integrity above install -->
