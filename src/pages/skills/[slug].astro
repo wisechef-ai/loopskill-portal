@@ -625,3 +625,61 @@ unlock the full skill source + scripts.`}</code></pre>
     }
   })();
 </script>
+
+<!-- RCP-PUB-2026-05-18 Phase B body-hydration: the static build fetches
+     /api/skills/<slug> WITHOUT auth, so paid skills come back with
+     readme=null and the page renders the upsell card. For authed Pro/Pro+
+     callers, hydrate the body in-place by re-fetching /api/skills/<slug>
+     with credentials:'include' (the wr_jwt cookie). The API's
+     _resolve_caller_tier() reads the cookie, returns the full readme. -->
+<script>
+  import { marked } from 'marked';
+
+  (async () => {
+    const section = document.querySelector<HTMLElement>('[data-skill-body-section]');
+    if (!section) return;
+    const isFree = section.getAttribute('data-is-free') === '1';
+    if (isFree) return; // free skills already render inline
+
+    const slug = section.getAttribute('data-slug');
+    if (!slug) return;
+
+    // Only hydrate when the user is actually authed — skip the fetch for anonymous
+    // visitors so the upsell card stays visible (and we don't burn API calls).
+    let authed = false;
+    try {
+      const meRes = await fetch('/api/auth/me', { credentials: 'include' });
+      authed = meRes.ok;
+    } catch {
+      authed = false;
+    }
+    if (!authed) return;
+
+    let readme: string | null = null;
+    try {
+      const res = await fetch(`/api/skills/${slug}`, { credentials: 'include' });
+      if (!res.ok) return;
+      const detail = await res.json();
+      readme = detail?.readme ?? null;
+    } catch {
+      return;
+    }
+    if (!readme) return; // API returned null → user is authed but not paid
+
+    // Strip YAML frontmatter (matches server-side render path on line 171)
+    const stripped = readme.replace(/^---\s*\n[\s\S]*?\n---\s*\n/, '');
+    marked.setOptions({ gfm: true, breaks: false });
+    const html = marked.parse(stripped) as string;
+
+    // Replace the paywalled placeholder with the rendered body. We swap the
+    // outermost data-skill-body element for an <article class="prose"> so
+    // the typography matches the server-rendered branch above.
+    const oldBody = section.querySelector<HTMLElement>('[data-skill-body]');
+    if (!oldBody) return;
+    const article = document.createElement('article');
+    article.className = 'prose';
+    article.setAttribute('data-skill-body', '');
+    article.innerHTML = html;
+    oldBody.replaceWith(article);
+  })();
+</script>
