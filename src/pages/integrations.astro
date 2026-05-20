@@ -6,70 +6,70 @@ const clients = [
   {
     name: 'Hermes',
     status: 'Native',
-    icon: '🜲',
+    icon_path: '/icons/integrations/hermes.svg',
     note: 'Hermes auto-discovers SKILL.md in ~/.hermes/skills/. The recipes meta-skill becomes a tool the agent uses to search and install skills on demand.',
     setup: 'mkdir -p ~/.hermes/skills/recipes && curl -sL https://recipes.wisechef.ai/skill -o ~/.hermes/skills/recipes/SKILL.md',
   },
   {
     name: 'OpenClaw',
     status: 'Native',
-    icon: '⚙️',
+    icon_path: '/icons/integrations/openclaw.svg',
     note: 'OpenClaw mounts the same skill directory layout as Claude Code/Codex. Drop the meta-skill in once; every spawned agent inherits it.',
     setup: 'mkdir -p ~/.openclaw/skills/recipes && curl -sL https://recipes.wisechef.ai/skill -o ~/.openclaw/skills/recipes/SKILL.md',
   },
   {
     name: 'Claude Code',
     status: 'Native',
-    icon: '🟠',
+    icon_path: '/icons/integrations/claude-code.svg',
     note: 'Drop SKILL.md into ~/.claude/skills/recipes/. Auto-discovered.',
     setup: 'curl -sL https://recipes.wisechef.ai/skill -o ~/.claude/skills/recipes/SKILL.md',
   },
   {
     name: 'Codex CLI',
     status: 'Native',
-    icon: '⚡',
+    icon_path: '/icons/integrations/codex.svg',
     note: 'Drop SKILL.md into ~/.codex/skills/recipes/. Same format as Claude Code.',
     setup: 'curl -sL https://recipes.wisechef.ai/skill -o ~/.codex/skills/recipes/SKILL.md',
   },
   {
     name: 'Claude Desktop',
     status: 'MCP',
-    icon: '🪟',
+    icon_path: '/icons/integrations/claude-desktop.svg',
     note: 'Configure recipes-mcp server. Search/install skills via tool calls.',
     setup: 'See /docs/mcp for claude_desktop_config.json snippet',
   },
   {
     name: 'Cursor',
     status: 'MCP',
-    icon: '⌨️',
+    icon_path: '/icons/integrations/cursor.svg',
     note: 'MCP server. Same Python script, different config location.',
     setup: 'See /docs/mcp for Cursor MCP config',
   },
   {
     name: 'Cline (VS Code)',
     status: 'MCP',
-    icon: '🧩',
+    icon_path: '/icons/integrations/cline.svg',
     note: 'MCP server. The recipes_install tool drops skills into the project.',
     setup: 'See /docs/mcp for Cline setup',
   },
   {
     name: 'Continue.dev',
     status: 'MCP',
-    icon: '↻',
+    icon_path: '/icons/integrations/continue.svg',
     note: 'MCP server registered in continue/config.json.',
     setup: 'See /docs/mcp for Continue.dev config',
   },
   {
     name: 'Zed',
     status: 'MCP',
-    icon: '⚙️',
+    icon_path: '/icons/integrations/zed.svg',
     note: 'MCP server via context_servers in ~/.config/zed/settings.json.',
     setup: 'See /docs/mcp for Zed setup',
   },
   {
     name: 'Any agent',
     status: 'REST',
-    icon: '🌐',
+    icon_path: '/icons/integrations/rest.svg',
     note: 'Hit /api/skills/search and /api/skills/install directly with x-api-key.',
     setup: 'See /docs/api-reference',
   },
@@ -102,7 +102,7 @@ const statusBadge: Record<string, string> = {
         <div class="bg-bg-card border border-border rounded-2xl p-5 flex flex-col gap-3">
           <div class="flex items-start justify-between gap-3">
             <div class="flex items-center gap-3">
-              <span class="text-2xl">{c.icon}</span>
+              <img src={c.icon_path} alt={c.name} class="w-8 h-8 text-muted" aria-hidden="true" />
               <h3 class="text-base font-semibold text-text">{c.name}</h3>
             </div>
             <span class={`text-[10px] font-semibold tracking-wider px-2 py-0.5 rounded-full border ${statusBadge[c.status] ?? 'bg-bg-elev text-muted border-border'}`}>{c.status.toUpperCase()}</span>

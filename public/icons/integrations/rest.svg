@@ -1,0 +1,9 @@
+<!-- source: REST / any-agent logomark — stylised network/API grid, geometric, single-color -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+  <circle cx="12" cy="12" r="3" fill="currentColor"/>
+  <circle cx="4" cy="6" r="2" fill="currentColor"/>
+  <circle cx="20" cy="6" r="2" fill="currentColor"/>
+  <circle cx="4" cy="18" r="2" fill="currentColor"/>
+  <circle cx="20" cy="18" r="2" fill="currentColor"/>
+  <path d="M6 7l4 4M14 13l4 4M18 7l-4 4M6 17l4-4" stroke="currentColor" stroke-width="1.5"/>
+</svg>

@@ -1,0 +1,126 @@
+---
+/**
+ * ReferralDashboard.astro — Shown to authenticated users on /referrals.
+ * Displays the user's referral code, share link, stats, and payout status.
+ * Phase H (recipes_2005 sprint).
+ */
+import Icon from './Icon.astro';
+
+interface Props {
+  user: {
+    id: string;
+    display_name?: string;
+    referral_code?: string;
+    click_count?: number;
+    conversion_count?: number;
+    mrr_earned?: number;
+    payout_status?: string;
+  };
+}
+
+const { user } = Astro.props;
+const referralCode = user.referral_code ?? '';
+const referralLink = referralCode
+  ? `https://recipes.wisechef.ai/?ref=${referralCode}`
+  : '';
+const clickCount      = user.click_count      ?? 0;
+const conversionCount = user.conversion_count ?? 0;
+const mrrEarned       = user.mrr_earned       ?? 0;
+const payoutStatus    = user.payout_status     ?? 'pending';
+---
+
+<section class="relative overflow-hidden min-h-[40vh] flex items-center">
+  <!-- Background glow -->
+  <div class="absolute inset-0 -z-10 pointer-events-none"
+       style="background: radial-gradient(ellipse at 50% 0%, rgba(212,160,23,0.10) 0%, transparent 60%), radial-gradient(ellipse at 80% 60%, rgba(59,130,246,0.06) 0%, transparent 55%);"></div>
+
+  <div class="max-w-4xl mx-auto px-6 py-16 md:py-24 w-full">
+    <div class="flex flex-col gap-4 mb-10">
+      <p class="eyebrow text-accent">Your referral program</p>
+      <h1 class="text-3xl md:text-5xl font-bold tracking-tight" style="letter-spacing:-0.03em;">
+        Welcome back{user.display_name ? `, ${user.display_name}` : ''}.
+      </h1>
+      <p class="text-muted text-lg max-w-2xl">
+        Share your link. Every subscriber you bring in earns you 50% recurring, forever.
+      </p>
+    </div>
+
+    <!-- Referral link block -->
+    {referralCode ? (
+      <div class="bg-bg-card border border-border rounded-2xl p-6 flex flex-col gap-4 mb-8">
+        <div class="flex flex-col gap-1">
+          <p class="text-xs uppercase tracking-widest font-semibold text-muted-soft">Your referral code</p>
+          <p class="text-2xl font-mono font-bold text-accent tracking-wider" id="referral-code-display">{referralCode}</p>
+        </div>
+        <div class="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
+          <code class="flex-1 font-mono text-sm bg-bg-elev border border-border-soft rounded-lg px-4 py-2.5 text-muted truncate" id="referral-link-display">{referralLink}</code>
+          <button
+            type="button"
+            id="copy-referral-link"
+            data-link={referralLink}
+            class="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg font-semibold text-sm bg-accent text-bg hover:bg-accent-soft transition shrink-0">
+            <Icon name="clipboard" size={14} />
+            Copy link
+          </button>
+        </div>
+      </div>
+    ) : (
+      <div class="bg-bg-card border border-border rounded-2xl p-6 mb-8">
+        <p class="text-muted text-sm">Your referral code is being generated. Refresh in a moment.</p>
+      </div>
+    )}
+
+    <!-- Stats grid -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+      <div class="bg-bg-card border border-border rounded-xl p-5 flex flex-col gap-1">
+        <span class="text-[10px] uppercase tracking-widest font-semibold text-muted-soft">Link clicks</span>
+        <span class="text-2xl font-bold text-text tabular-nums" id="stat-click-count">{clickCount.toLocaleString()}</span>
+      </div>
+      <div class="bg-bg-card border border-border rounded-xl p-5 flex flex-col gap-1">
+        <span class="text-[10px] uppercase tracking-widest font-semibold text-muted-soft">Conversions</span>
+        <span class="text-2xl font-bold text-text tabular-nums" id="stat-conversion-count">{conversionCount.toLocaleString()}</span>
+      </div>
+      <div class="bg-bg-card border border-border rounded-xl p-5 flex flex-col gap-1">
+        <span class="text-[10px] uppercase tracking-widest font-semibold text-muted-soft">MRR earned</span>
+        <span class="text-2xl font-bold text-accent tabular-nums" id="stat-mrr-earned">${mrrEarned.toFixed(2)}</span>
+      </div>
+      <div class="bg-bg-card border border-border rounded-xl p-5 flex flex-col gap-1">
+        <span class="text-[10px] uppercase tracking-widest font-semibold text-muted-soft">Payout status</span>
+        <span class="text-sm font-semibold capitalize" id="stat-payout-status"
+              style={payoutStatus === 'paid' ? 'color: var(--color-success)' : 'color: var(--color-muted)'}>
+          {payoutStatus}
+        </span>
+      </div>
+    </div>
+
+    <!-- Quick actions -->
+    <div class="flex flex-wrap gap-3">
+      <a href="/dashboard"
+         class="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg font-semibold text-sm border border-border hover:border-accent text-text transition">
+        Full dashboard <Icon name="arrow-right" size={13} />
+      </a>
+      <a href="/docs/referrals"
+         class="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm text-muted hover:text-text border border-transparent hover:border-border transition">
+        Referral guide
+      </a>
+    </div>
+  </div>
+</section>
+
+<script>
+  // Copy-to-clipboard for referral link
+  const copyBtn = document.getElementById('copy-referral-link') as HTMLButtonElement | null;
+  if (copyBtn) {
+    copyBtn.addEventListener('click', async () => {
+      const link = copyBtn.dataset.link ?? '';
+      if (!link) return;
+      try {
+        await navigator.clipboard.writeText(link);
+        copyBtn.textContent = '✓ Copied!';
+        setTimeout(() => { copyBtn.innerHTML = 'Copy link'; }, 2000);
+      } catch {
+        // Rationale: clipboard API may be unavailable in non-secure context; silent fail is fine
+      }
+    });
+  }
+</script>

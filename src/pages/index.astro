@@ -123,16 +123,26 @@ const larryRow = cookSkills.find(s => s.slug === 'larry');
 const restCook = cookSkills.filter(s => s.slug !== 'larry').sort((a, b) => installCount(b) - installCount(a));
 const cookStrip: CookSkill[] = (larryRow ? [larryRow, ...restCook] : restCook).slice(0, 8);
 
-const spotlight = [
-  { slug: 'super-memory', name: 'super-memory', tier: 'free', tagline: 'Open-source agent memory in 60 seconds',
+// Spotlight — Pro skill highlights in the hero grid.
+// Phase H (recipes_2005): replaced hardcoded array with live API fetch to eliminate
+// the web-scraper-pro 404. spotlightFallback is used when the API is unreachable at build time.
+type SpotlightSkill = { slug: string; title?: string; name?: string; tier?: string; tagline?: string; description?: string; badge?: string | null; icon?: string };
+const spotlightFallback: SpotlightSkill[] = [
+  { slug: 'super-memory', name: 'Super Memory', tier: 'free', tagline: 'Open-source agent memory in 60 seconds',
     description: 'Cognee + Postgres + pgvector wired together. MIT-licensed. The pro_open gateway — install free, then upgrade for the rest of the catalog.', badge: 'MIT · Free forever', icon: 'box' },
-  { slug: 'web-scraper-pro', name: 'Web Scraper Pro', tier: 'pro', tagline: 'Stealth scraping with proxy rotation',
-    description: 'Extract data from any site — JS-rendered SPAs, Cloudflare-protected pages, paginated tables. Built-in rate limiting and headless browser sandbox.', badge: null, icon: 'search' },
   { slug: 'seo-audit-engine', name: 'SEO Audit Engine', tier: 'pro', tagline: 'Replaces SEMrush spot audits',
     description: 'Full technical + content SEO audit. Lighthouse + Screaming Frog + competitor gap analysis. Client-ready PDF in 3 minutes.', badge: null, icon: 'document' },
   { slug: 'proposal-builder', name: 'Proposal Builder', tier: 'pro', tagline: 'Replaces Bonsai · PandaDoc',
     description: 'Discovery call transcript → branded SOW with scope, pricing tiers, case-study inserts. Converts at 40% above average.', badge: null, icon: 'calendar' },
+  { slug: 'mcp-builder', name: 'MCP Builder', tier: 'pro', tagline: 'Build and publish MCP servers fast',
+    description: 'Scaffold, test, and publish Model Context Protocol servers. Full test harness included.', badge: null, icon: 'lightning' },
 ];
+let spotlight: SpotlightSkill[] = [];
+try {
+  const result = await fetchApi<{ results: SpotlightSkill[] }>('/api/skills/search?tier=pro&is_public=true&page_size=4&sort=install_count_desc');
+  if (result.ok && result.data?.results) spotlight = result.data.results;
+} catch {} // Rationale: offline build or API down — spotlightFallback keeps the hero non-empty
+if (spotlight.length === 0) spotlight = spotlightFallback;
 
 const howItWorks = [
   { num: '01', title: 'You describe the goal', body: 'Plain language, in your existing AI agent. No searches, no docs, no copy-paste.', icon: 'lightning' },
