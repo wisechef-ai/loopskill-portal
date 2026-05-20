@@ -2,55 +2,215 @@
 import Base from '../../layouts/Base.astro';
 import CrossSell from '../../components/CrossSell.astro';
 ---
-<Base title="Requesting a skill — Recipes Docs">
+<Base title="Publishing a skill — Recipes Docs"
+     description="How to publish a skill to the Recipes marketplace using the MCP-first path via recipes_publish_request.">
   <section class="max-w-3xl mx-auto px-6 pt-16 pb-12">
-    <p class="eyebrow mb-2">Documentation · Skill requests</p>
-    <h1 class="text-4xl font-semibold tracking-tight mb-6">Don't publish. Request.</h1>
+    <p class="eyebrow mb-2">Documentation · Publishing</p>
+    <h1 class="text-4xl font-semibold tracking-tight mb-6">Publishing a skill.</h1>
     <div class="prose">
       <p>
-        Recipes is a <strong>single-publisher catalog</strong>. Every skill is curated and
-        maintained by the WiseChef team. We don't take submissions — we take requests.
+        Recipes is an open marketplace. Any developer can submit a skill for review.
+        The canonical publish path is MCP-first — your agent calls <code>recipes_publish_request</code>
+        from within a conversation. A CLI fallback is also available.
       </p>
 
-      <p>
-        Tell us what's broken in your fleet, what your team is doing manually that should
-        be automated, or what your agent fails at and we'll ship a skill that fixes it.
-      </p>
+      <div class="not-prose mb-6 rounded-2xl border border-accent/40 bg-accent/5 p-5">
+        <p class="text-xs uppercase tracking-wider text-accent font-semibold mb-2">New in Phase C / recipes_2005</p>
+        <p class="text-sm text-muted leading-relaxed">
+          The <code>recipes_publish_request</code> MCP tool is live. It submits your SKILL.md
+          directly from the agent conversation, runs the quality gate in-memory, opens a GitHub
+          review issue, and returns a <code>request_id</code> and <code>issue_url</code> in one
+          tool call. No dashboard, no upload form.
+        </p>
+      </div>
 
-      <h2>Why single-publisher?</h2>
-      <p>
-        Building a publisher trust ladder before publishers exist is wasted work. We want
-        the catalog to be excellent, not large. Every skill on Recipes was authored against
-        a real production failure mode. That's the bar.
-      </p>
+      <h2>What gets published vs. what you keep</h2>
       <ul>
-        <li>Fewer skills, deeper coverage.</li>
-        <li>One quality bar — ours.</li>
-        <li>Auto-improve telemetry feeds back into the next version.</li>
-        <li>Architecture-aware install means the skill won't crash on your hardware.</li>
+        <li>
+          <strong>Published:</strong> your <code>SKILL.md</code>, optional <code>references/</code>
+          and <code>templates/</code> directories, a <code>skill.toml</code> manifest.
+        </li>
+        <li>
+          <strong>Private:</strong> your env vars, your credentials, your agent config. None of
+          those travel with the skill.
+        </li>
+        <li>
+          <strong>Revenue share:</strong> accepted skills earn a percentage of subscription
+          revenue attributed to your skill's install and use events. See
+          <a href="/creators">Creator program</a> for current rates.
+        </li>
       </ul>
 
-      <h2>How to request a skill</h2>
+      <h2>MCP-first path (recommended)</h2>
+
+      <h3>Step 1: Develop locally</h3>
+      <p>Scaffold your skill directory using <code>recipes_recipify</code> or by hand:</p>
+      <pre><code>{`SKILL.md          ← required: YAML frontmatter + instructions body
+skill.toml        ← required: metadata (slug, version, tier, license)
+references/       ← optional: reference docs, loaded on demand
+templates/        ← optional: config snippets, scaffolds`}</code></pre>
+      <p>
+        The <code>SKILL.md</code> frontmatter must include at minimum:
+        <code>name</code>, <code>description</code>, <code>version</code> (semver),
+        <code>tier</code> (free | cook | operator), and <code>license</code> (SPDX).
+      </p>
+
+      <h3>Step 2: Call recipes_publish_request</h3>
+      <p>From inside your agent conversation (e.g. Claude Code, Hermes):</p>
+      <pre><code>{`// Tell your agent:
+"Submit my skill at ./skills/my-skill/ to the Recipes marketplace"
+
+// The agent calls:
+recipes_publish_request({
+  slug: "my-skill",
+  content: "<SKILL.md contents>",
+  version: "1.0.0",
+  description: "What this skill does",
+  tier: "cook",
+  license: "MIT"
+})`}</code></pre>
+
+      <p>The tool runs synchronously and returns:</p>
+      <pre><code>{`{
+  "request_id": "uuid...",
+  "slug": "my-skill",
+  "status": "pending_review",
+  "issue_url": "https://github.com/wisechef-ai/recipes-api/issues/NNN",
+  "sha256": "abc123...",
+  "warnings": []   // or [{severity: "low", message: "..."}]
+}`}</code></pre>
+
+      <p>
+        If the quality gate finds a <code>HIGH</code> severity issue (e.g. <code>curl | bash</code>
+        pattern, hardcoded <code>$HOME</code> path, credential leak), the tool returns
+        <code>{"{"}"error": "quality_gate_failed"{"}"}</code> and <strong>no issue is opened</strong>
+        — fix the finding and resubmit.
+      </p>
+
+      <h3>Step 3: GitHub review</h3>
+      <p>
+        The <code>issue_url</code> in the response links to a GitHub issue in the
+        <code>wisechef-ai/recipes-api</code> repo. A WiseChef team member reviews:
+      </p>
       <ol>
-        <li>Go to <a href="https://recipes.wisechef.ai/request-skill">/request-skill</a> and submit the form (or DM <a href="https://wisechef.ai">WiseChef</a> directly).</li>
-        <li>We triage requests by signal: how many fleets would use this, how broken is the alternative, how recurring is the pain.</li>
-        <li>Time-to-skill for matched requests: 7 days for a working install, 14 days for full polish.</li>
-        <li>Operator subscribers get priority + a dedicated review SLA.</li>
+        <li>Does the skill do what it says?</li>
+        <li>Is the install reproducible on a clean machine?</li>
+        <li>Does telemetry surface the expected success/failure events?</li>
+        <li>Is the quality gate fully green?</li>
+      </ol>
+      <p>
+        You can track the issue directly. The reviewer may leave comments asking for changes.
+        Respond by updating your SKILL.md and calling <code>recipes_publish_request</code> again
+        with the same slug — the system deduplicates and links the new submission to the existing issue.
+      </p>
+
+      <h3>Step 4: Signed and published</h3>
+      <p>
+        Once approved, a WiseChef team member closes the issue with the
+        <code>approved-publish</code> label. An automation job:
+      </p>
+      <ol>
+        <li>Builds the final tarball from the approved submission</li>
+        <li>Signs with the WiseChef ed25519 publish key</li>
+        <li>Uploads to the CDN</li>
+        <li>Creates the skill row in the catalog database</li>
+        <li>Sends you a confirmation email with the published URL</li>
       </ol>
 
-      <h2>What makes a good request</h2>
+      <h2>CLI fallback</h2>
+      <p>
+        If you prefer a terminal workflow, the <code>recipes</code> CLI (Phase F) supports the
+        same flow:
+      </p>
+      <pre><code>recipes publish --slug my-skill --dir ./skills/my-skill/</code></pre>
+      <p>
+        This packs the directory into a tarball, runs the local quality gate, and posts to
+        <code>POST /api/publish/request</code>. The response is the same as the MCP tool.
+      </p>
+
+      <h2>Quality gate</h2>
+      <p>The quality gate runs on every submission and checks for:</p>
       <ul>
-        <li>A real workflow your team runs (or wants to run) repeatedly.</li>
-        <li>The hours/week that go into it manually today.</li>
-        <li>The failure mode you'd want telemetry on.</li>
-        <li>Whether the result needs a UI, a report, an API call, or just a side-effect.</li>
+        <li><strong>HIGH (blocks submission):</strong>
+          <code>curl | bash</code> pipelines, hardcoded <code>$HOME</code> or username paths,
+          binary executables in the tarball, path traversal in filenames, credential patterns
+          (AWS keys, GitHub tokens, etc.), internal WiseChef infra references.
+        </li>
+        <li><strong>MEDIUM (warns, allows submission):</strong>
+          External links not on the allowlist, use of <code>sudo</code>,
+          large scripts (>500 lines), missing <code>CHANGELOG</code> section.
+        </li>
+        <li><strong>LOW (informational):</strong>
+          Missing screenshots, short description (&lt;100 chars), no template files.
+        </li>
       </ul>
 
-      <h2>The future of publishing</h2>
+      <h2>Tier semantics</h2>
+      <p>Set the <code>tier</code> field in your submission:</p>
+      <ul>
+        <li>
+          <strong>free</strong> — available to all API key holders, no subscription required.
+          Good for open-source skills you want maximum adoption on. MIT or Apache-2.0 license preferred.
+        </li>
+        <li>
+          <strong>cook</strong> — available to Cook subscribers ($20/mo). This is the sweet spot
+          for polished, maintained skills. Most catalog skills are cook-tier.
+        </li>
+        <li>
+          <strong>operator</strong> — available to Operator subscribers ($100/mo). For enterprise
+          skills: fleet-specific tooling, high-compute workflows, bespoke integrations.
+        </li>
+      </ul>
       <p>
-        We may open invitation-only publishing later, with explicit per-publisher
-        agreements and 1:1 onboarding. We will <em>never</em> automate it. If you think
-        you're an exception, <a href="https://recipes.wisechef.ai/request-skill">tell us</a>.
+        The reviewer may suggest a different tier if the skill's complexity or maintenance
+        burden warrants it. Final tier is set at publish time.
+      </p>
+
+      <h2>Rate limits</h2>
+      <p>
+        <code>recipes_publish_request</code> is rate-limited to 1 submission per 24h per
+        (user, slug) pair. This prevents flooding the review queue. If you need to resubmit
+        quickly after a rejection, contact the reviewer on the GitHub issue.
+      </p>
+
+      <h2>Creator earnings</h2>
+      <p>
+        Once your skill is published, you earn a share of the subscription revenue attributed
+        to its install and use events. Payouts are calculated monthly. See
+        <a href="/creators">the Creator program</a> for current revenue share percentages and
+        payout minimums.
+      </p>
+
+      <h2>Related</h2>
+      <ul>
+        <li><a href="/docs/creator-workflow">Creator workflow — end-to-end guide</a></li>
+        <li><a href="/docs/api-reference">API reference</a></li>
+        <li><a href="/docs/security">Security model — review pipeline details</a></li>
+        <li><a href="/docs/fleet">Fleet guide — distribute skills to multiple agents</a></li>
+      </ul>
+
+      <h2>FAQ</h2>
+      <h3>Can I update a published skill?</h3>
+      <p>
+        Yes — increment the version in your SKILL.md frontmatter and call
+        <code>recipes_publish_request</code> again with the updated content.
+        Patch versions (e.g. 1.0.0 → 1.0.1) go through expedited review.
+        Major versions (e.g. 1.x → 2.0.0) get a full review cycle.
+      </p>
+
+      <h3>What if the quality gate flags my skill?</h3>
+      <p>
+        <code>HIGH</code> severity findings block the submission — no issue is opened.
+        Fix the finding and resubmit. <code>MEDIUM</code> and <code>LOW</code> findings
+        are warnings: the issue is opened with the findings listed, and the reviewer
+        may ask you to address them before approval.
+      </p>
+
+      <h3>How long does review take?</h3>
+      <p>
+        Standard review: we aim to respond within a few business days.
+        Operator subscribers receive priority review.
+        If your issue hasn't received a response, comment on it with a ping.
       </p>
     </div>
     <CrossSell />

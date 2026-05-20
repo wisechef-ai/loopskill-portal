@@ -1,0 +1,235 @@
+---
+import Base from '../../layouts/Base.astro';
+import CrossSell from '../../components/CrossSell.astro';
+---
+<Base title="Creator workflow — Recipes Docs"
+     description="End-to-end guide for skill creators: signup, develop SKILL.md locally, submit via recipes_publish_request, pass review, get published, earn revenue.">
+  <section class="max-w-3xl mx-auto px-6 pt-16 pb-12">
+    <p class="eyebrow mb-2">Documentation · Creator workflow</p>
+    <h1 class="text-4xl font-semibold tracking-tight mb-6">Creator workflow — ship a skill and earn.</h1>
+    <div class="prose">
+      <p>
+        The Recipes creator program lets any developer publish skills to the marketplace
+        and earn a share of subscription revenue. This guide walks through the full journey —
+        from signup to first payout — in the order you'll actually do it.
+      </p>
+
+      <div class="not-prose mb-6 rounded-2xl border border-accent/40 bg-accent/5 p-5">
+        <p class="text-xs uppercase tracking-wider text-accent font-semibold mb-2">Prerequisites</p>
+        <ul class="text-sm text-muted space-y-1 mt-2">
+          <li>A Recipes account (free to create, no subscription required to submit)</li>
+          <li>A skill idea that solves a real, recurring workflow problem</li>
+          <li>A machine to test on (Linux or macOS; Windows WSL2 works)</li>
+        </ul>
+      </div>
+
+      <!-- ──── STEP 1 ──── -->
+      <h2>Step 1 — Signup and get your API key</h2>
+      <p>
+        <a href="/signin?mode=signup">Create an account</a> at recipes.wisechef.ai.
+        Then, from the dashboard → API Keys → New key, create a <code>rec_</code> key.
+      </p>
+      <pre><code>export RECIPES_API_KEY=rec_xx...   # add to your ~/.bashrc or .zshrc</code></pre>
+      <p>
+        You don't need a paid subscription to submit a skill — submissions are open to all
+        API key holders. A subscription is only required to <em>install</em> cook-tier skills.
+      </p>
+
+      <!-- ──── STEP 2 ──── -->
+      <h2>Step 2 — Design your skill</h2>
+      <p>A good skill has these properties:</p>
+      <ul>
+        <li>
+          <strong>Solves a real recurring problem.</strong> "I do this manually every week"
+          is the gold standard. One-off tasks don't make great skills.
+        </li>
+        <li>
+          <strong>Uses env vars for credentials.</strong> Never hardcode API keys, paths, or
+          usernames. The skill must work out-of-the-box on any machine.
+        </li>
+        <li>
+          <strong>Has a clear, testable output.</strong> A report file, a Git commit, a
+          formatted JSON response — something the agent can verify succeeded.
+        </li>
+        <li>
+          <strong>Is architecture-aware.</strong> If your skill needs CUDA, declare it in the
+          frontmatter's <code>hardware_requirements</code> block. The install runtime will
+          check compatibility before downloading.
+        </li>
+      </ul>
+
+      <!-- ──── STEP 3 ──── -->
+      <h2>Step 3 — Scaffold the skill locally</h2>
+      <p>Use the <code>recipes_recipify</code> MCP tool to turn a description into a SKILL.md draft:</p>
+      <pre><code>{`// Ask your agent:
+"Recipify a skill that audits a website's Core Web Vitals and outputs a PDF report"
+
+// Or scaffold manually:
+mkdir -p ~/skills/my-skill/{references,templates}
+touch ~/skills/my-skill/SKILL.md
+touch ~/skills/my-skill/skill.toml`}</code></pre>
+
+      <p>The minimal <code>SKILL.md</code> frontmatter:</p>
+      <pre><code>{`---
+name: My Skill
+description: >
+  One-sentence description of what this skill does and who it's for.
+  Under 200 chars. This is what users see in search results.
+version: 1.0.0
+tier: cook        # free | cook | operator
+license: MIT      # SPDX identifier
+category: code    # marketing | code | web-scraping | ops | sales | sim-robotics
+---
+
+# My Skill
+
+## What this does
+...
+
+## Prerequisites
+- env: MY_API_KEY
+
+## Steps
+1. ...
+2. ...
+
+## Output
+...`}</code></pre>
+
+      <!-- ──── STEP 4 ──── -->
+      <h2>Step 4 — Test locally</h2>
+      <p>
+        Install your skill locally to test it before submitting. The easiest path is to point
+        your agent directly at the local SKILL.md:
+      </p>
+      <pre><code>{`# Copy to your agent's skills dir and test
+cp -r ~/skills/my-skill ~/.claude/skills/my-skill
+
+# Then ask your agent to run it
+"Run my-skill on example.com"`}</code></pre>
+      <p>
+        Alternatively, use the CLI to do a local install from the directory:
+      </p>
+      <pre><code>recipes install my-skill --install-dir ~/.claude/skills</code></pre>
+      <p>
+        Iterate until the skill produces the expected output on a clean run. Check that it
+        fails gracefully when env vars are missing (your skill should print a helpful error,
+        not crash silently).
+      </p>
+
+      <!-- ──── STEP 5 ──── -->
+      <h2>Step 5 — Submit via recipes_publish_request</h2>
+      <p>
+        Once your skill works locally, submit it from your agent conversation:
+      </p>
+      <pre><code>{`// Ask your agent:
+"Submit my skill at ~/skills/my-skill/ to the Recipes marketplace"
+
+// The agent reads the directory and calls:
+recipes_publish_request({
+  slug: "my-skill",
+  content: "<SKILL.md contents>",
+  version: "1.0.0",
+  description: "One-sentence description",
+  tier: "cook",
+  license: "MIT"
+})`}</code></pre>
+
+      <p>The tool runs the quality gate synchronously. If it passes, you get back:</p>
+      <pre><code>{`{
+  "request_id": "uuid...",
+  "slug": "my-skill",
+  "status": "pending_review",
+  "issue_url": "https://github.com/wisechef-ai/recipes-api/issues/NNN",
+  "sha256": "abc123...",
+  "warnings": []
+}`}</code></pre>
+      <p>
+        The <code>issue_url</code> is your tracking link. Bookmark it — this is where the
+        review happens.
+      </p>
+
+      <!-- ──── STEP 6 ──── -->
+      <h2>Step 6 — Respond to review feedback</h2>
+      <p>
+        A WiseChef team member will review your skill on GitHub. Common feedback:
+      </p>
+      <ul>
+        <li>
+          <strong>Quality gate warnings</strong> — fix the flagged patterns and resubmit.
+          Use the same slug; the system links the new submission to the open issue.
+        </li>
+        <li>
+          <strong>"Needs a clearer output contract"</strong> — add an <code>## Output</code>
+          section to your SKILL.md describing exactly what the skill produces.
+        </li>
+        <li>
+          <strong>"Tier mismatch"</strong> — the reviewer may suggest a different tier.
+          Update your <code>skill.toml</code> and resubmit.
+        </li>
+        <li>
+          <strong>"Please add telemetry hooks"</strong> — add the standard telemetry block
+          to your skill's final step. See the telemetry docs.
+        </li>
+      </ul>
+      <p>
+        To resubmit after changes, call <code>recipes_publish_request</code> again with the same slug.
+        Rate limit is 1 submission per 24h per (user, slug) — if you need to resubmit faster,
+        comment on the GitHub issue.
+      </p>
+
+      <!-- ──── STEP 7 ──── -->
+      <h2>Step 7 — Approved and published</h2>
+      <p>
+        When approved, the reviewer closes the issue with <code>approved-publish</code>. Within
+        minutes:
+      </p>
+      <ol>
+        <li>The tarball is built from your approved submission</li>
+        <li>Signed with the WiseChef ed25519 key</li>
+        <li>Uploaded to the CDN</li>
+        <li>Your skill appears in search results</li>
+        <li>You receive a confirmation email with the catalog URL</li>
+      </ol>
+
+      <!-- ──── STEP 8 ──── -->
+      <h2>Step 8 — Maintaining your skill</h2>
+      <p>
+        Published skills need maintenance. The auto-improve incident network clusters anonymous
+        failure telemetry across the fleet. Skills with high failure rates appear in your
+        creator dashboard with incident details.
+      </p>
+      <p>
+        To ship a patch: increment the version in your SKILL.md frontmatter and call
+        <code>recipes_publish_request</code> again. Patch versions (e.g. 1.0.1 → 1.0.2) go
+        through an expedited review. Major versions (1.x → 2.0.0) get a full review.
+      </p>
+      <p>
+        Users on a Cook subscription who have your skill in a cookbook will see the update
+        the next time they run <code>recipes_sync</code> or <code>recipes sync</code>.
+      </p>
+
+      <!-- ──── EARNINGS ──── -->
+      <h2>Creator earnings</h2>
+      <p>
+        Once published, your skill earns a share of subscription revenue attributed to its
+        install and use events. Attribution is based on the telemetry event stream — every
+        <code>skill_install</code> and <code>skill_use</code> event from your skill's slug is
+        counted.
+      </p>
+      <p>
+        See the <a href="/creators">Creator program page</a> for current revenue share
+        percentages, payout minimums, and the Stripe Connect payout setup.
+      </p>
+
+      <h2>Related docs</h2>
+      <ul>
+        <li><a href="/docs/publishing">Publishing reference</a> — quality gate details, rate limits</li>
+        <li><a href="/docs/api-reference">API reference</a> — endpoint docs</li>
+        <li><a href="/docs/security">Security model</a> — review pipeline, ed25519 signing</li>
+        <li><a href="/creators">Creator program</a> — earnings, referrals, payout</li>
+      </ul>
+    </div>
+    <CrossSell />
+  </section>
+</Base>

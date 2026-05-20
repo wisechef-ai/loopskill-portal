@@ -104,12 +104,16 @@ describe('carousel-strip in index.astro (the second grid below "See today\'s lin
   it('renders a real slot number — slot value comes from e.slot or the normalized entry, never undefined', () => {
     const block = stripBlock();
     // Either uses the normalizer-derived shape (post-normalization fields)
-    // or guards against undefined slot.
+    // or guards against undefined slot, or uses the Phase-I client-side pattern
+    // where the slot is rendered from n.slot / slotNum in the inline script.
     expect(
       block.includes('normalizedCarouselToday') ||
       block.includes('e.skill?.slug') ||
       /e\.slot\s*\?\?\s*e\.position/.test(block) ||
-      /String\(e\.slot\)/.test(block)
+      /String\(e\.slot\)/.test(block) ||
+      // Phase I client-side: slot rendered in script as String(slotNum) or via skeleton
+      /String\(slotNum\)/.test(block) ||
+      /String\(i\)\.padStart/.test(block)
     ).toBe(true);
   });
 

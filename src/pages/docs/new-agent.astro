@@ -3,58 +3,188 @@ import Base from '../../layouts/Base.astro';
 ---
 
 <Base title="Adding a new agent runtime — Recipes Docs"
-      description="10-minute guide to add a Recipes runtime profile for an agent the four built-in profiles don't yet cover.">
+      description="Install the Recipes meta-skill on Hermes, Claude Code, Claude Desktop, Codex, Cursor, Cline, Continue.dev, Zed, OpenClaw, or any custom agent.">
   <section class="max-w-3xl mx-auto px-6 pt-16 pb-12">
-    <p class="eyebrow mb-2">Documentation · New runtime</p>
-    <h1 class="text-4xl font-semibold tracking-tight mb-6">Adding a new agent runtime (10-minute guide)</h1>
+    <p class="eyebrow mb-2">Documentation · Integrations</p>
+    <h1 class="text-4xl font-semibold tracking-tight mb-6">Adding Recipes to your agent</h1>
     <div class="prose">
       <p>
-        The Recipes installer ships four runtime profiles out of the box: Hermes (default),
-        OpenClaw, Codex (BYOA), and Claude Code (BYOA). If your agent isn't on that list,
-        this guide gets it onto a fleet in roughly ten minutes — no fork required.
+        Recipes supports 10 agent runtimes out of the box. Pick your runtime below for the
+        exact install command and config snippet. All paths need your
+        <code>RECIPES_API_KEY</code> environment variable set.
+        See <a href="/docs/getting-started">Getting started</a> for key setup.
+      </p>
+      <p>
+        For a visual overview of all integrations, see the
+        <a href="/integrations">Integrations page</a>.
       </p>
 
-      <h2>1. Confirm host capabilities</h2>
-      <p>From any shell:</p>
-      <pre><code>recipes capabilities --json</code></pre>
-      <p>You want at least <code>git</code>, <code>python</code>, <code>ssh</code>, and
-      <code>tmux</code> to read <code>ok</code>. Docker is needed only if your runtime uses
-      the bundled compose stack.</p>
+      <!-- ─────────────── NATIVE (SKILL.md drop) ─────────────── -->
+      <h2>Native skill drop (no MCP server needed)</h2>
+      <p>
+        These runtimes auto-discover <code>SKILL.md</code> files. Drop the file in once;
+        the agent picks it up automatically on next start.
+      </p>
 
-      <h2>2. Choose a closest-fit profile</h2>
+      <h3>Hermes</h3>
+      <p>Hermes reads skills from <code>~/.hermes/skills/</code>. After install, the
+      <code>recipes_search</code>, <code>recipes_install</code>, and <code>recipes_sync</code>
+      MCP tools are available automatically via the Recipes MCP server bundled in the skill.</p>
+      <pre><code>mkdir -p ~/.hermes/skills/recipes
+curl -sL https://recipes.wisechef.ai/skill \
+     -o ~/.hermes/skills/recipes/SKILL.md
+export RECIPES_API_KEY=rec_xx...</code></pre>
+
+      <h3>Claude Code</h3>
+      <p>Claude Code reads skills from <code>~/.claude/skills/</code>:</p>
+      <pre><code>mkdir -p ~/.claude/skills/recipes
+curl -sL https://recipes.wisechef.ai/skill \
+     -o ~/.claude/skills/recipes/SKILL.md
+export RECIPES_API_KEY=rec_xx...</code></pre>
+
+      <h3>OpenClaw</h3>
+      <p>OpenClaw mounts the same skill directory layout as Claude Code. Drop the meta-skill in once;
+      every spawned agent inherits it:</p>
+      <pre><code>mkdir -p ~/.openclaw/skills/recipes
+curl -sL https://recipes.wisechef.ai/skill \
+     -o ~/.openclaw/skills/recipes/SKILL.md
+export RECIPES_API_KEY=rec_xx...</code></pre>
+
+      <h3>Codex CLI</h3>
+      <p>OpenAI Codex CLI uses the same format:</p>
+      <pre><code>mkdir -p ~/.codex/skills/recipes
+curl -sL https://recipes.wisechef.ai/skill \
+     -o ~/.codex/skills/recipes/SKILL.md
+export RECIPES_API_KEY=rec_xx...</code></pre>
+
+      <!-- ─────────────── MCP (config snippet) ─────────────── -->
+      <h2>MCP server integrations</h2>
+      <p>
+        These runtimes use the <a href="https://modelcontextprotocol.io">Model Context Protocol</a>.
+        Install the Recipes MCP server once; your agent gets <code>recipes_search</code>,
+        <code>recipes_install</code>, <code>recipes_sync</code>, and all other Recipes tools.
+      </p>
+      <p>Install the MCP server:</p>
+      <pre><code>pip install recipes-mcp   # or: uvx recipes-mcp (no install, runs directly)</code></pre>
+
+      <h3>Claude Desktop</h3>
+      <p>Edit <code>~/Library/Application Support/Claude/claude_desktop_config.json</code>
+      (macOS) or <code>%APPDATA%\Claude\claude_desktop_config.json</code> (Windows):</p>
+      <pre><code>{`{
+  "mcpServers": {
+    "recipes": {
+      "command": "uvx",
+      "args": ["recipes-mcp"],
+      "env": {
+        "RECIPES_API_KEY": "rec_xx..."
+      }
+    }
+  }
+}`}</code></pre>
+      <p>Restart Claude Desktop. The Recipes tools appear in the tool picker.</p>
+
+      <h3>Cursor</h3>
+      <p>Open Cursor Settings → MCP → Add Server, or edit <code>.cursor/mcp.json</code>:</p>
+      <pre><code>{`{
+  "mcpServers": {
+    "recipes": {
+      "command": "uvx",
+      "args": ["recipes-mcp"],
+      "env": { "RECIPES_API_KEY": "rec_xx..." }
+    }
+  }
+}`}</code></pre>
+
+      <h3>Cline (VS Code extension)</h3>
+      <p>In VS Code, open Cline settings → MCP Servers → Edit JSON:</p>
+      <pre><code>{`{
+  "mcpServers": {
+    "recipes": {
+      "command": "uvx",
+      "args": ["recipes-mcp"],
+      "env": { "RECIPES_API_KEY": "rec_xx..." }
+    }
+  }
+}`}</code></pre>
+      <p>Skills installed via the <code>recipes_install</code> tool are written to
+      <code>~/.claude/skills/</code> by default; Cline picks them up.</p>
+
+      <h3>Continue.dev</h3>
+      <p>Edit <code>~/.continue/config.json</code>:</p>
+      <pre><code>{`{
+  "experimental": {
+    "modelContextProtocolServers": [
+      {
+        "transport": {
+          "type": "stdio",
+          "command": "uvx",
+          "args": ["recipes-mcp"],
+          "env": { "RECIPES_API_KEY": "rec_xx..." }
+        }
+      }
+    ]
+  }
+}`}</code></pre>
+
+      <h3>Zed</h3>
+      <p>Edit <code>~/.config/zed/settings.json</code>:</p>
+      <pre><code>{`{
+  "context_servers": {
+    "recipes": {
+      "command": {
+        "path": "uvx",
+        "args": ["recipes-mcp"],
+        "env": { "RECIPES_API_KEY": "rec_xx..." }
+      }
+    }
+  }
+}`}</code></pre>
+
+      <!-- ─────────────── REST (any agent) ─────────────── -->
+      <h2>Any agent (REST API)</h2>
+      <p>
+        If your agent can make HTTP requests, you can use the Recipes REST API directly.
+        No MCP server required.
+      </p>
+      <pre><code>{`# Search
+curl -H "x-api-key: $RECIPES_API_KEY" \
+  "https://recipes.wisechef.ai/api/skills/search?q=seo"
+
+# Install (get signed tarball URL)
+curl -H "x-api-key: $RECIPES_API_KEY" \
+  "https://recipes.wisechef.ai/api/skills/install?slug=super-memory&mode=files"`}</code></pre>
+      <p>See <a href="/docs/api-reference">API reference</a> for full endpoint docs.</p>
+
+      <!-- ─────────────── TROUBLESHOOTING ─────────────── -->
+      <h2>Common troubleshooting</h2>
       <ul>
-        <li><strong>Native binary on the host?</strong> Mirror the <code>hermes</code> or
-            <code>openclaw</code> profile — those clone, set up, and Docker-compose.</li>
-        <li><strong>BYOA — agent already installed?</strong> Mirror the <code>byoa-codex</code>
-            or <code>byoa-claudecode</code> profile — those just emit a paste-ready prompt
-            for the existing agent to install MCP servers and the skill bundle.</li>
+        <li>
+          <strong>"Skills install but agent ignores them"</strong> — the agent's skills
+          directory is non-standard. Check the agent's docs and copy the installed files there
+          manually, or set <code>RECIPES_INSTALL_DIR</code> to the correct path.
+        </li>
+        <li>
+          <strong>"recipes_install tool not found"</strong> — the MCP server isn't configured
+          or started. Re-check your config file and restart the agent.
+        </li>
+        <li>
+          <strong>"401 Unauthorized"</strong> — your <code>RECIPES_API_KEY</code> env var isn't
+          being passed to the MCP server process. Check the <code>env</code> block in your config.
+        </li>
+        <li>
+          <strong>"403 Subscription required"</strong> — the skill requires a Cook or Operator
+          subscription. Check <a href="/pricing">pricing</a> or install a free-tier skill first
+          (e.g. <code>super-memory</code>).
+        </li>
       </ul>
 
-      <h2>3. MCP server config</h2>
-      <p>Most modern agent runtimes accept the same MCP server config shape. The Recipes
-      MCP server publishes its config under the marketplace; load it from the bundle entry
-      point and merge into the agent's MCP config file.</p>
-
-      <h2>4. Drop the skill bundle</h2>
-      <p>Use <code>recipes onboard --goal=fleet</code> to get the 10-skill bundle list, then
-      install via <code>recipes install &lt;slug&gt;</code> for each.</p>
-
-      <h2>5. Common troubleshooting</h2>
-      <ul>
-        <li><strong>"command not found: recipes"</strong> — install the meta-skill first:
-            <code>pip install wisechef-recipes</code> or
-            <code>npm i -g @wisechef/recipes</code>.</li>
-        <li><strong>Compose stack fails</strong> — Docker is missing or rootless mode is
-            misconfigured. Re-run <code>recipes capabilities</code> to confirm.</li>
-        <li><strong>Skills install but agent ignores them</strong> — the agent's skills
-            directory is non-standard. Check with the agent's docs and copy the bundled
-            skills there manually.</li>
-      </ul>
-
-      <h2>6. Contribute the profile back</h2>
-      <p>If you got a new runtime working, send a PR to <code>recipes-installer/profiles/</code>.
-      Once two operators have validated it on different machines, we add the column to the
-      <a class="link" href="/compatibility">compatibility matrix</a>.</p>
+      <h2>Building a custom runtime profile</h2>
+      <p>
+        If your agent isn't listed here, it likely accepts one of the two patterns above:
+        a skill directory drop (if it follows the Claude Code SKILL.md standard) or an MCP
+        server config. If neither works, contact us — we add new native profiles when two
+        operators validate them on different machines.
+      </p>
     </div>
   </section>
 </Base>

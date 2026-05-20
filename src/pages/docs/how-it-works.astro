@@ -2,42 +2,150 @@
 import Base from '../../layouts/Base.astro';
 import CrossSell from '../../components/CrossSell.astro';
 ---
-<Base title="How it works — Recipes Docs">
+<Base title="How it works — Recipes Docs"
+     description="The three-level progressive skill loading model, lifecycle, telemetry opt-out, and multi-agent considerations.">
   <section class="max-w-3xl mx-auto px-6 pt-16 pb-12">
     <p class="eyebrow mb-2">Documentation · How it works</p>
     <h1 class="text-4xl font-semibold tracking-tight mb-6">The three-level skill loading model.</h1>
     <div class="prose">
-      <p>Recipes ships on top of <a href="https://docs.anthropic.com/en/docs/agents/claude-code/skills">Anthropic's Agent Skills standard</a>. We didn't invent the format — we operate the marketplace on top of it.</p>
+      <p>
+        Recipes ships on top of <a href="https://docs.anthropic.com/en/docs/agents/claude-code/skills">Anthropic's Agent Skills standard</a>.
+        We didn't invent the format — we operate the marketplace on top of it.
+      </p>
 
       <h2>Why it works at all</h2>
-      <p>Skills load progressively:</p>
+      <p>Skills load progressively. Only the frontmatter is always in context:</p>
       <ul>
-        <li><strong>Level 1 — Frontmatter:</strong> always loaded. ~100 words per skill. Tells the agent what's available.</li>
-        <li><strong>Level 2 — SKILL.md body:</strong> loaded only when the skill triggers. Usually under 2k tokens.</li>
-        <li><strong>Level 3 — Bundled resources:</strong> scripts, references, configs. Zero token cost until explicitly read.</li>
+        <li>
+          <strong>Level 1 — Frontmatter:</strong> always loaded. ~100 words per skill.
+          Tells the agent the skill's name, description, trigger patterns, and tier.
+          Costs tokens once at startup, not per-use.
+        </li>
+        <li>
+          <strong>Level 2 — SKILL.md body:</strong> loaded only when the skill triggers.
+          Usually under 2k tokens. Contains the step-by-step instructions, tool calls,
+          and output format.
+        </li>
+        <li>
+          <strong>Level 3 — Bundled resources:</strong> scripts, reference docs, config templates,
+          example outputs. Zero token cost until explicitly read by an agent tool call.
+        </li>
       </ul>
-      <p>So your agent can have hundreds of skills "installed" but only pay token cost for the ones it actually uses. <strong>That's the unlock that makes a marketplace possible.</strong></p>
+      <p>
+        So your agent can have hundreds of skills "installed" but only pay token cost for the
+        ones it actually uses. <strong>That's the unlock that makes a marketplace possible.</strong>
+      </p>
 
-      <h2>The full lifecycle</h2>
+      <h2>The full install lifecycle</h2>
       <ol>
-        <li>You install the meta-skill once. Permanent client.</li>
-        <li>You ask for something new ("audit this site's SEO").</li>
-        <li>Agent matches against the meta-skill's description. Triggers.</li>
-        <li>Agent calls <code>GET /api/skills/search?q=seo+audit</code>.</li>
-        <li>Agent picks the best match by description + rating + install count.</li>
-        <li>Agent calls <code>GET /api/skills/install?slug=seo-audit&mode=files</code>.</li>
-        <li>Files written locally. <code>_meta.json</code> records the install.</li>
-        <li>Agent reads the new SKILL.md, follows its instructions, executes locally.</li>
-        <li>Telemetry pings (anonymous: success/failure, duration, agent class). Optional — opt out at any time.</li>
+        <li><strong>You install the meta-skill once.</strong> Permanent client — one file teaches your agent everything.</li>
+        <li><strong>You ask for something new</strong> (e.g. "audit this site's SEO").</li>
+        <li><strong>Agent matches against the meta-skill's description.</strong> Triggers.</li>
+        <li><strong>Agent calls <code>GET /api/skills/search?q=seo+audit</code>.</strong>
+            Returns up to 20 results ranked by quality_score + install count.</li>
+        <li><strong>Agent picks the best match</strong> — description fit × rating × recency.</li>
+        <li><strong>Agent calls <code>GET /api/skills/install?slug=seo-audit-engine&amp;mode=files</code>.</strong>
+            Auth required (even free skills need a key — this is how we track installs).</li>
+        <li><strong>Tarball downloaded and verified.</strong> The API returns a signed URL; the
+            meta-skill verifies the ed25519 signature before writing any file to disk.</li>
+        <li><strong>Files written locally.</strong> <code>_meta.json</code> records slug, version,
+            and install timestamp. Subsequent syncs use this to detect stale versions.</li>
+        <li><strong>Agent reads the new SKILL.md</strong>, follows its instructions, executes locally
+            using your credentials and env vars.</li>
+        <li><strong>Telemetry ping (optional).</strong> Anonymous: success/failure, duration,
+            retry count, hashed agent class. No payload contents. Opt out at any time.</li>
       </ol>
+
+      <h2>Lifecycle diagram</h2>
+      <pre><code>{`User ask
+  │
+  ▼
+meta-skill frontmatter (always in context)
+  │  "matches seo audit"
+  ▼
+Level 2: SKILL.md body loaded
+  │
+  ▼
+GET /api/skills/search?q=seo+audit
+  │  ranked results
+  ▼
+GET /api/skills/install?slug=seo-audit-engine&mode=files
+  │  signed tarball URL + ed25519 manifest
+  ▼
+verify signature → write files locally
+  │
+  ▼
+agent executes skill instructions
+  │
+  ▼
+anonymous telemetry ping (optional)`}</code></pre>
 
       <h2>What you control</h2>
       <ul>
-        <li><strong>Credentials never leave your machine.</strong> Skills hit third-party APIs directly with your env vars.</li>
-        <li><strong>Optional sandbox.</strong> Skills declaring a <code>[sandbox]</code> block are isolated by bubblewrap or firejail (publisher's choice; host must have one available).</li>
-        <li><strong>Architecture-aware install.</strong> The runtime probe refuses to install on incompatible hardware before any side effect happens.</li>
-        <li><strong>You can delete any skill</strong> by removing its directory. No account-level lock-in.</li>
+        <li>
+          <strong>Credentials never leave your machine.</strong> Skills hit third-party APIs
+          directly using your env vars. Recipes only serves text files; it never proxies
+          your API calls.
+        </li>
+        <li>
+          <strong>Optional sandbox.</strong> Skills declaring a <code>[sandbox]</code> block are
+          isolated by bubblewrap or firejail (publisher's choice; host must have one available).
+          The sandbox runner enforces a network allowlist, filesystem write paths, and an
+          allowed executable list.
+        </li>
+        <li>
+          <strong>Architecture-aware install.</strong> The runtime probe refuses to install a skill
+          on incompatible hardware — wrong OS, insufficient VRAM, missing CUDA — and suggests
+          an alternative from the graph before any side effect happens.
+        </li>
+        <li>
+          <strong>You can delete any skill</strong> by removing its directory. No account-level lock-in.
+          <code>_meta.json</code> is the only file Recipes writes outside the skill directory.
+        </li>
       </ul>
+
+      <h2>Telemetry &amp; opt-out</h2>
+      <p>
+        By default, the meta-skill sends anonymous telemetry: install/use/result events with a
+        hashed agent class, hashed user ID, duration in seconds, and retry count. No payload
+        contents, no credential fingerprints, no inputs or outputs.
+      </p>
+      <p>To opt out entirely, set the environment variable before starting your agent:</p>
+      <pre><code>export RECIPES_TELEMETRY=off</code></pre>
+      <p>
+        Operator+ subscribers can opt into pseudonymous payload sampling to improve their
+        own skills — this is off by default and requires explicit consent in the dashboard.
+      </p>
+
+      <h2>Multi-agent considerations</h2>
+      <p>
+        Recipes is fleet-native. If you run multiple agents (e.g. Hermes on your laptop +
+        a headless Codex on a CI server), you have two options:
+      </p>
+      <ul>
+        <li>
+          <strong>Cookbook sync (Cook+ tier):</strong> create a cookbook in the dashboard,
+          add skills to it, then call <code>recipes_sync</code> (MCP) or <code>recipes sync</code>
+          (CLI) on each host. All agents stay on the same pinned versions.
+        </li>
+        <li>
+          <strong>Fleet keys (Operator+ tier):</strong> issue a <code>rec_fleet_*</code> key
+          scoped to a specific cookbook. Each agent presents the fleet key; the API enforces the
+          cookbook's skill allowlist. See <a href="/docs/fleet">Fleet guide</a>.
+        </li>
+      </ul>
+      <p>
+        Skills installed from a cookbook are version-pinned. The cookbook owner controls when
+        to advance the pin — agents do not auto-upgrade outside of an explicit sync call.
+      </p>
+
+      <h2>The 7-card carousel</h2>
+      <p>
+        Every day at 05:00 London time, the carousel refreshes with 7 new or promoted skills.
+        Each card competes against incumbent skills for 7 days — install counts and telemetry
+        success rates determine which cards graduate to the core catalog. The carousel is the
+        quality filter that keeps the catalog small and excellent.
+      </p>
     </div>
     <CrossSell />
   </section>
