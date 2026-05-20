@@ -2,29 +2,153 @@
 import Base from '../../layouts/Base.astro';
 import CrossSell from '../../components/CrossSell.astro';
 ---
-<Base title="Security — Recipes Docs">
+<Base title="Security model — Recipes Docs"
+     description="Auth model, tier gating, signed tarballs, ed25519 verification, sandbox/firejail, and the public-skill review pipeline.">
   <section class="max-w-3xl mx-auto px-6 pt-16 pb-12">
     <p class="eyebrow mb-2">Documentation · Security</p>
     <h1 class="text-4xl font-semibold tracking-tight mb-6">Security model.</h1>
     <div class="prose">
+
       <h2>Core principles</h2>
       <ul>
-        <li><strong>Credentials stay local.</strong> Your API keys never pass through Recipes servers. Skills hit third-party APIs directly with your env vars.</li>
-        <li><strong>Skills run locally.</strong> Recipes only serves text files. Your agent decides what to execute.</li>
-        <li><strong>Plain-text transparency.</strong> No obfuscated code, no hidden payloads. Inspect every line before running.</li>
-        <li><strong>Single-publisher catalog.</strong> Every skill is curated and maintained by the WiseChef team. No external submissions, no third-party authors to vet — the catalog's quality is our problem.</li>
-        <li><strong>Architecture-aware install.</strong> The runtime probe refuses to install a skill on incompatible hardware (wrong OS, insufficient VRAM, missing CUDA) and suggests an alternative from the graph.</li>
+        <li>
+          <strong>Credentials stay local.</strong> Your API keys never pass through Recipes
+          servers. Skills hit third-party APIs directly with your env vars.
+        </li>
+        <li>
+          <strong>Skills run locally.</strong> Recipes only serves text files. Your agent
+          decides what to execute.
+        </li>
+        <li>
+          <strong>Plain-text transparency.</strong> No obfuscated code, no hidden payloads.
+          Inspect every line before running — it's just Markdown.
+        </li>
+        <li>
+          <strong>Signed tarballs.</strong> Every skill tarball is signed with an ed25519 key
+          at publish time. The meta-skill verifies the signature before writing any file to disk.
+          A corrupted or tampered tarball is rejected before extraction.
+        </li>
+        <li>
+          <strong>Architecture-aware install.</strong> The runtime probe refuses to install on
+          incompatible hardware (wrong OS, insufficient VRAM, missing CUDA) and suggests an
+          alternative from the graph.
+        </li>
       </ul>
 
-      <h2>Publish-time review pipeline</h2>
+      <h2>Authentication model</h2>
+      <p>All API requests authenticate via the <code>x-api-key</code> header. Four key prefixes
+      map to four auth scopes:</p>
+
+      <table>
+        <thead>
+          <tr>
+            <th>Prefix</th>
+            <th>Scope</th>
+            <th>Issued by</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>rec_</code></td>
+            <td>Standard API key — catalog access + installs up to your tier limit</td>
+            <td>Dashboard → API Keys</td>
+          </tr>
+          <tr>
+            <td><code>cbt_</code></td>
+            <td>Cookbook-scoped token — read-only access to a specific cookbook's skills</td>
+            <td><code>recipes share create</code> CLI or share_token MCP tool</td>
+          </tr>
+          <tr>
+            <td><code>rec_fleet_</code></td>
+            <td>Fleet key — cookbook-scoped, multi-agent, Operator+ tier required</td>
+            <td>Dashboard → Fleet → New fleet key</td>
+          </tr>
+          <tr>
+            <td>Bearer JWT</td>
+            <td>Browser session — dashboard + OAuth flows only, not for agent use</td>
+            <td>GitHub OAuth callback</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <p>
+        The <code>APIKeyMiddleware</code> validates every request before it reaches a route
+        handler. Invalid keys return <code>401</code>. Tier-gated resources return
+        <code>403</code> with a <code>upgrade_url</code> field in the response body.
+      </p>
+
+      <h2>Tier gating</h2>
+      <p>Skills are gated by tier. The tier hierarchy (lowest to highest) is:</p>
       <ol>
-        <li><strong>Discipline linter (A.7):</strong> blocks user-name leaks, <code>curl | bash</code> patterns, hardcoded $HOME paths, internal-infra references, and unallowlisted external promo links at publish time.</li>
-        <li><strong>Manual curation:</strong> every skill is read, tested, and approved by a human reviewer before it lands in the catalog. We are the publisher.</li>
-        <li><strong>Continuous telemetry:</strong> the auto-improve incident network clusters anonymized failure reports across the fleet. Skills with high incident rates get flagged for the patch council and rolled through canary stages with auto-rollback.</li>
+        <li><strong>free</strong> — available to all API key holders, including free-tier accounts</li>
+        <li><strong>cook</strong> — requires Cook subscription ($20/mo)</li>
+        <li><strong>operator</strong> — requires Operator subscription ($100/mo)</li>
+        <li><strong>pro_plus</strong> — Pro+ features: pre-built cookbook push, fleet keys</li>
       </ol>
+      <p>
+        The <code>GET /api/skills/access</code> endpoint provides a pre-flight check: pass a
+        slug and your key and it returns <code>{"{"}"access": true{"}"}</code> or
+        <code>{"{"}"access": false, "reason": "tier_required", "required_tier": "cook"{"}"}</code>.
+        The meta-skill calls this before attempting an install.
+      </p>
+
+      <h2>Signed tarballs &amp; ed25519 verification</h2>
+      <p>
+        When you install a skill, the install endpoint returns a signed tarball URL and a
+        per-file manifest. The manifest includes:
+      </p>
+      <ul>
+        <li>A list of files with their sha256 checksums</li>
+        <li>An ed25519 signature over the manifest JSON (signed with the WiseChef publish key)</li>
+        <li>The public key fingerprint (so you can verify against the published key)</li>
+      </ul>
+      <p>
+        The meta-skill verifies the signature before extracting any file. If the signature is
+        invalid or the manifest checksum doesn't match the downloaded bytes, the install aborts
+        and no files are written.
+      </p>
+      <p>
+        The WiseChef signing public key is published at
+        <code>https://recipes.wisechef.ai/api/signing-key</code> and pinned in the meta-skill.
+      </p>
+
+      <h2>Publish-time review pipeline</h2>
+      <p>Every skill passes through the following gates before appearing in the catalog:</p>
+      <ol>
+        <li>
+          <strong>Discipline linter (A.7):</strong> blocks user-name leaks,
+          <code>curl | bash</code> patterns, hardcoded <code>$HOME</code> paths,
+          internal-infra references, and unallowlisted external promo links.
+        </li>
+        <li>
+          <strong>Tarball scan:</strong> checks for binary executables, symlink attacks, and
+          path traversal (<code>../</code> in filenames). Rejects any tarball that fails.
+        </li>
+        <li>
+          <strong>Manual review:</strong> every skill is read, tested, and approved by a human
+          reviewer before it lands in the catalog. We are the publisher.
+        </li>
+        <li>
+          <strong>ed25519 signing:</strong> approved tarballs are signed with the WiseChef
+          publish key and stored in the CDN. The signature is immutable — patching a skill
+          requires a full re-publish and re-signing.
+        </li>
+      </ol>
+      <p>
+        Community-submitted skills (via <code>recipes_publish_request</code> MCP tool) follow
+        the same pipeline plus a GitHub issue review step. See <a href="/docs/publishing">Publishing</a>.
+      </p>
 
       <h2>Optional sandbox (declared per-skill)</h2>
-      <p>Skills can declare a <code>[sandbox]</code> block in <code>skill.toml</code> with a network allowlist, filesystem write paths, and allowed executable list. When enforced, the sandbox runner uses <a href="https://github.com/containers/bubblewrap">bubblewrap</a> or <a href="https://firejail.wordpress.com/">firejail</a> (publisher's choice) to isolate the skill's setup and runtime. The host must have at least one available — runtime check at install time.</p>
+      <p>
+        Skills can declare a <code>[sandbox]</code> block in their <code>skill.toml</code>
+        with a network allowlist, filesystem write paths, and an allowed executable list.
+        When enforced, the sandbox runner uses
+        <a href="https://github.com/containers/bubblewrap">bubblewrap</a> or
+        <a href="https://firejail.wordpress.com/">firejail</a> (publisher's choice) to isolate
+        the skill's setup and runtime. The host must have at least one sandbox backend available —
+        the runtime check happens at install time, not at run time.
+      </p>
 
       <h2>What Recipes never does</h2>
       <ul>
@@ -32,13 +156,25 @@ import CrossSell from '../../components/CrossSell.astro';
         <li>Never has remote access to your machine.</li>
         <li>Never proxies your third-party API calls.</li>
         <li>Never serves obfuscated content.</li>
+        <li>Never logs your inputs, outputs, or credentials.</li>
       </ul>
 
-      <h2>Telemetry & privacy</h2>
-      <p>Anonymous aggregates only by default: install/use/result events with hashed agent class, hashed user ID, duration in seconds, retry count. No payload contents, no credential fingerprints, no inputs/outputs. Operator+ tier can opt into pseudonymous payload sampling to improve their own skills.</p>
+      <h2>Telemetry &amp; privacy</h2>
+      <p>
+        Anonymous aggregates only by default: install/use/result events with hashed agent class,
+        hashed user ID, duration in seconds, retry count. No payload contents, no credential
+        fingerprints, no inputs or outputs. Operator+ tier can opt into pseudonymous payload
+        sampling to improve their own skills — this requires explicit opt-in per cookbook.
+      </p>
+      <p>To opt out entirely:</p>
+      <pre><code>export RECIPES_TELEMETRY=off</code></pre>
 
       <h2>Reporting a vulnerability</h2>
-      <p>Email <a href="mailto:security@wisechef.ai">security@wisechef.ai</a> with the skill slug, version, and reproduction steps. We respond within 24h. Critical vulns get hotfixed and the skill is taken offline pending review.</p>
+      <p>
+        Email <a href="mailto:security@wisechef.ai">security@wisechef.ai</a> with the skill slug,
+        version, and reproduction steps. We triage all security reports. Critical vulns get a
+        hotfix and the skill is taken offline pending review.
+      </p>
     </div>
     <CrossSell />
   </section>

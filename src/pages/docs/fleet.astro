@@ -1,0 +1,189 @@
+---
+import Base from '../../layouts/Base.astro';
+import CrossSell from '../../components/CrossSell.astro';
+---
+<Base title="Fleet guide — Recipes Docs"
+     description="Create a fleet, subscribe cookbooks, distribute fleet keys, and keep multiple agents in sync. Operator+ tier required.">
+  <section class="max-w-3xl mx-auto px-6 pt-16 pb-12">
+    <p class="eyebrow mb-2">Documentation · Fleet</p>
+    <h1 class="text-4xl font-semibold tracking-tight mb-6">Fleet: multi-agent skill sync.</h1>
+    <div class="prose">
+      <p>
+        A <strong>fleet</strong> is a named group of agents that all share the same cookbook.
+        You create the fleet once, subscribe one or more cookbooks to it, distribute the fleet
+        key to each agent, and from then on all agents stay in sync with a single
+        <code>recipes_fleet_sync</code> call.
+      </p>
+      <p>
+        <strong>Tier requirement:</strong> Fleet features require an Operator subscription ($100/mo)
+        or higher. Fleet keys (<code>rec_fleet_*</code>) are separate from standard API keys and
+        are scoped to specific cookbooks.
+      </p>
+
+      <h2>Concepts</h2>
+      <ul>
+        <li>
+          <strong>Fleet</strong> — a named group with a shared fleet key.
+          Created by calling <code>recipes_fleet_create</code>.
+          Fleet key format: <code>rec_fleet_&lt;8hex&gt;_&lt;32hex&gt;</code>.
+        </li>
+        <li>
+          <strong>Subscription</strong> — links a fleet to a cookbook on a channel
+          (<code>stable</code> or <code>latest</code>). Created by calling
+          <code>recipes_fleet_subscribe</code>.
+        </li>
+        <li>
+          <strong>Sync</strong> — updates all agents in the fleet to the subscribed cookbook's
+          current pinned versions. Called per-agent via <code>recipes_fleet_sync</code>.
+        </li>
+        <li>
+          <strong>Fleet key</strong> — the plaintext key shown ONCE on creation. Store it
+          securely (e.g. in your secret manager). It is NOT re-showable — if lost, create a
+          new fleet.
+        </li>
+      </ul>
+
+      <h2>Step 1 — Create a cookbook</h2>
+      <p>
+        Fleets sync from cookbooks. Create one first if you don't have one:
+      </p>
+      <pre><code>{`// Via MCP (from your agent):
+recipes_list_cookbook({})   // list existing cookbooks
+
+// Via API:
+curl -X POST -H "x-api-key: $RECIPES_API_KEY" \\
+  -H "Content-Type: application/json" \\
+  -d '{"name": "Production Fleet Cookbook"}' \\
+  https://recipes.wisechef.ai/api/cookbooks`}</code></pre>
+      <p>
+        Add skills to the cookbook via the dashboard or the
+        <code>POST /api/cookbooks/{`{id}`}/skills</code> endpoint.
+        Each skill is pinned at the current latest version when added.
+      </p>
+
+      <h2>Step 2 — Create a fleet</h2>
+      <p>
+        From inside your agent conversation:
+      </p>
+      <pre><code>{`recipes_fleet_create({ name: "Production Fleet" })`}</code></pre>
+      <p>Response:</p>
+      <pre><code>{`{
+  "fleet_id": "uuid...",
+  "fleet_key": "rec_fleet_a1b2c3d4_e5f6...",
+  "name": "Production Fleet"
+}`}</code></pre>
+      <p>
+        <strong>Save the <code>fleet_key</code> immediately.</strong> It is shown only once.
+        The server stores only a sha256 hash of the key — there is no way to recover it.
+      </p>
+
+      <h2>Step 3 — Subscribe a cookbook to the fleet</h2>
+      <pre><code>{`recipes_fleet_subscribe({
+  fleet_id: "uuid...",
+  cookbook_id: "uuid...",
+  channel: "stable"   // "stable" (default) or "latest"
+})`}</code></pre>
+      <p>
+        The <code>channel</code> controls which cookbook skills the fleet syncs:
+      </p>
+      <ul>
+        <li><strong>stable</strong> — syncs only the pinned, reviewed versions in the cookbook.</li>
+        <li><strong>latest</strong> — syncs to the most recently published version of each skill,
+            even if the cookbook pin hasn't been updated. Use with care in production.</li>
+      </ul>
+
+      <h2>Step 4 — Distribute the fleet key</h2>
+      <p>
+        Each agent that should be part of the fleet needs the fleet key as an environment variable:
+      </p>
+      <pre><code>export RECIPES_API_KEY=rec_fleet_a1b2c3d4_e5f6...</code></pre>
+      <p>
+        Fleet keys are cookbook-scoped. An agent using a fleet key can only install skills that
+        are in the fleet's subscribed cookbooks — it cannot browse or install from the general catalog.
+        This is the security boundary that makes fleet keys safe to distribute broadly.
+      </p>
+      <p>Distribute via your preferred secret management approach:</p>
+      <ul>
+        <li>AWS Secrets Manager / Parameter Store</li>
+        <li>HashiCorp Vault</li>
+        <li>GitHub Actions secrets (for CI agents)</li>
+        <li>A shared <code>.env</code> file on a private host (acceptable for single-machine fleets)</li>
+      </ul>
+
+      <h2>Step 5 — Sync agents</h2>
+      <p>
+        On each agent machine, trigger a sync:
+      </p>
+      <pre><code>{`// Via MCP (from any agent in the fleet):
+recipes_fleet_sync({ fleet_id: "uuid...", dry_run: false })
+
+// Via CLI:
+recipes sync`}</code></pre>
+      <p>The sync response shows what changed:</p>
+      <pre><code>{`{
+  "fleet_id": "uuid...",
+  "cookbooks_synced": [
+    {
+      "cookbook_id": "uuid...",
+      "changes": [
+        {"slug": "seo-audit-engine", "from": "1.2.0", "to": "1.3.0", "action": "updated"},
+        {"slug": "super-memory", "from": null, "to": "1.4.2", "action": "installed"}
+      ],
+      "applied": true
+    }
+  ]
+}`}</code></pre>
+      <p>
+        Pass <code>dry_run: true</code> to preview changes without applying them.
+      </p>
+
+      <h2>Listing fleets</h2>
+      <pre><code>{`recipes_fleet_list({})
+// Returns:
+{
+  "fleets": [
+    {
+      "fleet_id": "uuid...",
+      "name": "Production Fleet",
+      "subscriptions": [
+        {"cookbook_id": "uuid...", "channel": "stable"}
+      ]
+    }
+  ]
+}`}</code></pre>
+
+      <h2>Automation pattern: nightly sync</h2>
+      <p>
+        For unattended agents (CI runners, always-on servers), add a sync to your cron or
+        systemd timer:
+      </p>
+      <pre><code>{`# crontab entry (runs at 05:30 UTC, 30 min after carousel refresh)
+30 5 * * * RECIPES_API_KEY=rec_fleet_... recipes sync >> /var/log/recipes-sync.log 2>&1`}</code></pre>
+
+      <h2>Security considerations</h2>
+      <ul>
+        <li>
+          <strong>Fleet keys are long-lived.</strong> Rotate them if an agent is decommissioned
+          or a key leaks. Create a new fleet (or contact support to re-key an existing one).
+        </li>
+        <li>
+          <strong>Cookbook-scoped.</strong> A fleet key cannot install skills outside its
+          subscribed cookbooks. This bounds the blast radius of a compromised key.
+        </li>
+        <li>
+          <strong>No catalog browsing.</strong> Agents with fleet keys cannot call
+          <code>/api/skills/search</code> for general browsing — only
+          <code>/api/skills/install</code> for allowed slugs.
+        </li>
+      </ul>
+
+      <h2>Related docs</h2>
+      <ul>
+        <li><a href="/docs/security">Security model</a> — rec_fleet key auth details</li>
+        <li><a href="/docs/api-reference">API reference</a> — cookbook endpoints</li>
+        <li><a href="/integrations">Integrations</a> — per-agent MCP config</li>
+      </ul>
+    </div>
+    <CrossSell />
+  </section>
+</Base>

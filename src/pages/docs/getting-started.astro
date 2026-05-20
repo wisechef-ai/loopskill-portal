@@ -2,7 +2,8 @@
 import Base from '../../layouts/Base.astro';
 import CrossSell from '../../components/CrossSell.astro';
 ---
-<Base title="Getting started — Recipes Docs">
+<Base title="Getting started — Recipes Docs"
+     description="Install Recipes on Hermes, Claude Code, Claude Desktop, Codex, or Cursor in under 5 minutes.">
   <section class="max-w-3xl mx-auto px-6 pt-16 pb-12">
     <p class="eyebrow mb-2">Documentation · Getting started</p>
     <h1 class="text-4xl font-semibold tracking-tight mb-6">From zero to skill-aware in 60 seconds.</h1>
@@ -14,30 +15,139 @@ import CrossSell from '../../components/CrossSell.astro';
           Tell your agent: <em>"install the relevant Recipes skills from recipes.wisechef.ai"</em>.
         </p>
         <p class="text-sm text-muted mt-2 leading-relaxed">
-          The agent handles the rest via MCP — it searches the catalog, picks the best-scored skill for your task, installs it, and reports back. You don't browse the website by hand. The catalog quality and the agent-callable metadata are the funnel.
+          The agent handles the rest via MCP — it searches the catalog, picks the best-scored skill
+          for your task, installs it, and reports back. You don't browse the website by hand.
         </p>
       </div>
 
-      <h2>1. Install the meta-skill</h2>
-      <p>One file teaches your agent the entire marketplace. Drop it into your agent's skills directory.</p>
-      <pre><code>curl -sL https://recipes.wisechef.ai/skill -o ~/.claude/skills/recipes/SKILL.md</code></pre>
-      <p>For OpenClaw, Cursor, or Cline — see the <a href="/docs/install">install guide</a>.</p>
-
-      <h2>2. Get an API key</h2>
-      <p>Every skill install — including free skills — requires an API key. The key is free for the catalog browse + free-tier skills; premium skills require a <strong>Pro subscription ($20/mo)</strong> for the full library, or <strong>Pro+ ($100/mo)</strong> for up to 20 cookbooks plus the ability to push pre-built cookbooks directly to client agents. <a href="/signin?mode=signup">Create an account</a> and copy your key from the dashboard:</p>
-      <pre><code>export RECIPES_API_KEY=rec_xx...</code></pre>
-
-      <h2>3. Tell your agent what you need</h2>
-      <p>That's it. Try one of these:</p>
+      <h2>Prerequisites</h2>
       <ul>
-        <li>"Pull last 30 days of GA4 + Meta Ads for client X and generate a PDF"</li>
-        <li>"Audit example.com's SEO and write a fix list"</li>
-        <li>"Build me a 30-day content calendar for an interior-design agency client"</li>
+        <li>A Recipes API key — free for free-tier skills, Pro ($20/mo) for the full library.</li>
+        <li>One of the supported agent runtimes below.</li>
+        <li>Your key exported: <code>export RECIPES_API_KEY=rec_xx...</code></li>
       </ul>
-      <p>Your agent will search the catalog (via the <code>recipes_search</code> MCP tool), install the highest-quality skill that matches, and execute it locally — using your credentials, on your machine. You never have to browse the catalog yourself; the agent uses <code>quality_score</code>, <code>last_verified</code>, and install counts to pick.</p>
+      <p>Get your key: <a href="/signin?mode=signup">Sign up</a> → Dashboard → API Keys → New key.</p>
 
-      <h2>What's already on the catalog</h2>
-      <p>53+ skills, all carrying real attribution + a <code>quality_score</code>, plus the daily 7-card carousel. Browse the <a href="/skills">full catalog</a> or check <a href="/carousel">today's 7</a> — but really, just tell your agent.</p>
+      <h2>Step 1 — Install the meta-skill</h2>
+      <p>
+        The meta-skill is a single <code>SKILL.md</code> file that teaches your agent the entire
+        marketplace. Drop it into your agent's skills directory once. Your agent will then be able
+        to search and install any skill on-demand.
+      </p>
+
+      <h3>Hermes (native)</h3>
+      <p>Hermes auto-discovers SKILL.md files under <code>~/.hermes/skills/</code>:</p>
+      <pre><code>mkdir -p ~/.hermes/skills/recipes
+curl -sL https://recipes.wisechef.ai/skill \
+     -o ~/.hermes/skills/recipes/SKILL.md</code></pre>
+
+      <h3>Claude Code (native)</h3>
+      <p>Claude Code reads skills from <code>~/.claude/skills/</code>:</p>
+      <pre><code>mkdir -p ~/.claude/skills/recipes
+curl -sL https://recipes.wisechef.ai/skill \
+     -o ~/.claude/skills/recipes/SKILL.md</code></pre>
+
+      <h3>Codex CLI (native)</h3>
+      <p>OpenAI Codex CLI uses the same skill directory layout:</p>
+      <pre><code>mkdir -p ~/.codex/skills/recipes
+curl -sL https://recipes.wisechef.ai/skill \
+     -o ~/.codex/skills/recipes/SKILL.md</code></pre>
+
+      <h3>Claude Desktop (MCP)</h3>
+      <p>
+        Claude Desktop uses the Model Context Protocol. Add the Recipes MCP server to your
+        <code>claude_desktop_config.json</code>:
+      </p>
+      <pre><code>{`{
+  "mcpServers": {
+    "recipes": {
+      "command": "uvx",
+      "args": ["recipes-mcp"],
+      "env": { "RECIPES_API_KEY": "rec_xx..." }
+    }
+  }
+}`}</code></pre>
+      <p>
+        After saving, restart Claude Desktop. You'll see the Recipes tools (search, install, sync)
+        available in the tool picker. See <a href="/docs/mcp">MCP setup</a> for full details.
+      </p>
+
+      <h3>Cursor (MCP)</h3>
+      <p>Open Cursor Settings → MCP → Add Server:</p>
+      <pre><code>{`{
+  "name": "recipes",
+  "command": "uvx recipes-mcp",
+  "env": { "RECIPES_API_KEY": "rec_xx..." }
+}`}</code></pre>
+
+      <h2>Step 2 — Search the catalog</h2>
+      <p>
+        Once the meta-skill is installed, your agent can search the catalog. Try asking:
+      </p>
+      <ul>
+        <li>"Search Recipes for an SEO audit skill"</li>
+        <li>"What Recipes skills exist for client reporting?"</li>
+        <li>"Find a Recipes skill that generates content calendars"</li>
+      </ul>
+      <p>
+        Under the hood, the agent calls <code>GET /api/skills/search?q=...</code> and ranks results
+        by <code>quality_score</code>, <code>last_verified</code>, and install count.
+      </p>
+
+      <h2>Step 3 — Install your first skill</h2>
+      <p>
+        Tell your agent to install a skill. Example:
+      </p>
+      <ul>
+        <li>"Install the <code>super-memory</code> skill from Recipes"</li>
+        <li>"Install the best SEO audit skill from Recipes"</li>
+      </ul>
+      <p>
+        The agent calls <code>GET /api/skills/install?slug=super-memory&amp;mode=files</code>,
+        downloads the signed tarball, verifies the ed25519 signature, and writes the files locally.
+        A <code>_meta.json</code> records the install for future syncs.
+      </p>
+      <p>
+        The free skill <strong>super-memory</strong> (Cognee + Postgres + pgvector, MIT-licensed)
+        is a great first install — it works immediately with no subscription.
+      </p>
+
+      <h2>Step 4 — Sync to stay current</h2>
+      <p>
+        Skills are versioned. Run sync periodically to pull patch updates:
+      </p>
+      <pre><code>recipes sync</code></pre>
+      <p>
+        Or use the MCP tool: ask your agent "sync my Recipes skills to latest".
+        The <code>recipes_sync</code> MCP tool updates all installed skills in your cookbook.
+      </p>
+
+      <h2>What's in the catalog</h2>
+      <p>
+        60+ skills across marketing, code, web scraping, ops, and sales. Every skill carries
+        a <code>quality_score</code>, install count, and last-verified date. The daily 7-card
+        carousel surfaces the most recently refreshed picks.
+      </p>
+      <p>
+        Browse the <a href="/skills">full catalog</a> or check
+        <a href="/carousel">today's 7</a> — but the fastest path is always to ask your agent.
+      </p>
+
+      <h2>Pricing</h2>
+      <ul>
+        <li><strong>Free:</strong> API key, catalog access, all free-tier skills (including super-memory).</li>
+        <li><strong>Cook ($20/mo):</strong> full library, 3 cookbooks, fleet support.</li>
+        <li><strong>Operator ($100/mo):</strong> unlimited cookbooks, pre-built client deployments,
+            priority support, operator-tier skills.</li>
+      </ul>
+
+      <h2>Next steps</h2>
+      <ul>
+        <li><a href="/docs/how-it-works">How it works</a> — the 3-level progressive loading model</li>
+        <li><a href="/docs/mcp">MCP setup</a> — full Claude Desktop / Cursor / Cline config</li>
+        <li><a href="/docs/new-agent">New agent runtime</a> — 10-minute guide for unlisted runtimes</li>
+        <li><a href="/docs/security">Security model</a> — auth, signed tarballs, sandboxing</li>
+      </ul>
     </div>
     <CrossSell />
   </section>

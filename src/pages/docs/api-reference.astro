@@ -1,55 +1,242 @@
 ---
 import Base from '../../layouts/Base.astro';
 import CrossSell from '../../components/CrossSell.astro';
+
+// Pre-built code strings to avoid JSX curly-brace escaping issues
+const searchResponseEx = `{
+  "total": 63,
+  "results": [
+    {
+      "slug": "seo-audit-engine",
+      "title": "SEO Audit Engine",
+      "tier": "cook",
+      "quality_score": 0.92,
+      "install_count_total": 847,
+      "last_verified": "2026-05-01",
+      "category": "marketing"
+    }
+  ]
+}`;
+
+const installResponseEx = `{
+  "slug": "super-memory",
+  "version": "1.4.2",
+  "tarball_url": "https://cdn.wisechef.ai/skills/super-memory-1.4.2.tar.gz?token=...",
+  "manifest": {
+    "files": [
+      {"path": "SKILL.md", "sha256": "abc123..."},
+      {"path": "scripts/setup.sh", "sha256": "def456..."}
+    ],
+    "signature": "ed25519:base64...",
+    "signed_at": "2026-05-01T00:00:00Z"
+  }
+}`;
+
+const accessGrantedEx = `{"access": true, "tier": "cook", "slug": "seo-audit-engine"}`;
+const accessDeniedEx = `{"access": false, "reason": "tier_required",
+ "required_tier": "cook", "upgrade_url": "/pricing"}`;
+
+const carouselResponseEx = `{
+  "date": "2026-05-20",
+  "entries": [
+    {
+      "slot": 1,
+      "skill": {"slug": "super-memory", "title": "Super Memory"},
+      "role": "todays-pick",
+      "tagline": "Durable cross-session memory in 60 seconds",
+      "archives_at": "2026-05-27T05:00:00Z"
+    }
+  ]
+}`;
+
+const apiKeyResponseEx = `{"key": "rec_...", "id": "uuid", "name": "CI server"}`;
+
+const telemetryBodyEx = `{
+  "event": "skill_use",
+  "slug": "super-memory",
+  "result": "success",
+  "duration_s": 47,
+  "agent_class_hash": "sha256:..."
+}`;
 ---
-<Base title="API reference — Recipes Docs">
+<Base title="API reference — Recipes Docs"
+     description="Complete API reference for the Recipes marketplace. Every endpoint with method, path, auth, request/response schema, and error codes.">
   <section class="max-w-3xl mx-auto px-6 pt-16 pb-12">
     <p class="eyebrow mb-2">Documentation · API reference</p>
     <h1 class="text-4xl font-semibold tracking-tight mb-6">API reference.</h1>
     <div class="prose">
       <p>Base URL: <code>https://recipes.wisechef.ai/api</code></p>
-      <p>Auth: <code>x-api-key</code> header (NOT <code>Authorization: Bearer</code>). Mirrors LarryBrain convention for cross-marketplace creator interop.</p>
-      <p>Rate limit: 60 req/min per key.</p>
+      <p>
+        Auth: <code>x-api-key: rec_xx...</code> header. All install and write endpoints require
+        a valid API key. Read-only endpoints (search, skill detail, carousel) are public.
+      </p>
+      <p>Rate limit: 60 req/min per key (burst 10). Exceeding returns <code>429</code> with
+      a <code>Retry-After</code> header.</p>
+      <p>
+        Machine-readable: <a href="/openapi.json">openapi.json</a> (OpenAPI 3.1, regenerated on each deploy).
+      </p>
 
-      <h2>GET /api/skills/search</h2>
-      <p>Public. No auth.</p>
-      <pre><code>curl "https://recipes.wisechef.ai/api/skills/search?q=client+report&page_size=10"</code></pre>
-      <p>Params: <code>q</code> (string, optional — full-text on title + description), <code>page_size</code> (1–100, default 20), <code>page</code> (1+), <code>category</code>, <code>vertical</code> (marketing | code | web-scraping | ops | sales | sim-robotics), <code>tier</code> (free | cook | operator | studio), <code>sort</code> (updated_at | created_at | title).</p>
+      <!-- ────────────────────────────────── SKILLS ── -->
+      <h2>Skills</h2>
 
-      <h2>GET /api/skills/install</h2>
+      <h3>GET /api/skills/search</h3>
+      <p>Public. Full-text search across the skill catalog.</p>
+      <pre><code>curl "https://recipes.wisechef.ai/api/skills/search?q=seo+audit&page_size=10"</code></pre>
+      <p><strong>Query params:</strong></p>
+      <ul>
+        <li><code>q</code> — full-text on title + description (optional)</li>
+        <li><code>page_size</code> — 1–100, default 20</li>
+        <li><code>page</code> — 1+ (default 1)</li>
+        <li><code>category</code> — marketing | code | web-scraping | ops | sales | sim-robotics</li>
+        <li><code>tier</code> — free | cook | operator</li>
+        <li><code>sort</code> — updated_at | created_at | title | quality_score (default: quality_score)</li>
+        <li><code>is_public</code> — true | false</li>
+      </ul>
+      <p><strong>Response 200:</strong></p>
+      <pre><code set:text={searchResponseEx}></code></pre>
+
+      <h3>GET /api/skills/&#123;slug&#125;</h3>
+      <p>Public. Skill detail — full description, screenshots, version, install count.</p>
+      <pre><code>curl "https://recipes.wisechef.ai/api/skills/super-memory"</code></pre>
+      <p><strong>Response:</strong> SkillDetailOut — same fields as summary plus <code>version</code>,
+      <code>screenshots</code>, <code>changelog</code>, <code>external_resources</code>.</p>
+      <p><strong>Errors:</strong> <code>404</code> if slug not found.</p>
+
+      <h3>GET /api/skills/install</h3>
       <p>Auth required (every install needs a key — including free-tier skills).</p>
       <pre><code>curl -H "x-api-key: $RECIPES_API_KEY" \
-  "https://recipes.wisechef.ai/api/skills/install?slug=client-reporter&mode=files"</code></pre>
-      <p>Always pass <code>mode=files</code>. Response includes a signed tarball URL and per-file manifest.</p>
-
-      <h2>GET /api/skills/{`{slug}`}</h2>
-      <p>Public. Skill detail page data — title, description, install count, version, screenshots.</p>
-
-      <h2>GET /api/skills/trending</h2>
-      <p>Public. Params: <code>period</code> (week | month), <code>limit</code>.</p>
-
-      <h2>GET /api/skills/access</h2>
-      <p>Auth required. Pre-flight check before install.</p>
-
-      <h2>GET /api/carousel/today</h2>
-      <p>Public. Returns the 7 active carousel entries for today.</p>
-
-      <h2>GET /api/carousel/{`{YYYY-MM-DD}`}</h2>
-      <p>Public. Carousel by historical date. Permalinkable.</p>
-
-      <h2>POST /api/telemetry</h2>
-      <p>Auth required. Anonymous-aggregate event reporting from the meta-skill.</p>
-
-      <h2>Error codes</h2>
+  "https://recipes.wisechef.ai/api/skills/install?slug=super-memory&mode=files"</code></pre>
+      <p><strong>Query params:</strong></p>
       <ul>
-        <li><code>200</code> — Success</li>
-        <li><code>400</code> — Missing/invalid params</li>
-        <li><code>401</code> — Invalid or missing API key</li>
-        <li><code>403</code> — Subscription required (skill is premium)</li>
-        <li><code>404</code> — Skill not found</li>
-        <li><code>429</code> — Rate limited</li>
-        <li><code>503</code> — Temporary service issue</li>
+        <li><code>slug</code> — skill slug (required)</li>
+        <li><code>mode</code> — always pass <code>files</code></li>
+        <li><code>version</code> — pin to a specific version (optional; defaults to latest)</li>
       </ul>
+      <p><strong>Response 200:</strong></p>
+      <pre><code set:text={installResponseEx}></code></pre>
+      <p><strong>Errors:</strong> <code>401</code> (no/invalid key), <code>403</code> (tier required),
+      <code>404</code> (slug not found).</p>
+
+      <h3>GET /api/skills/access</h3>
+      <p>Auth required. Pre-flight check before install — confirms tier without consuming an install slot.</p>
+      <pre><code>curl -H "x-api-key: $RECIPES_API_KEY" \
+  "https://recipes.wisechef.ai/api/skills/access?slug=seo-audit-engine"</code></pre>
+      <p><strong>Response — access granted:</strong></p>
+      <pre><code set:text={accessGrantedEx}></code></pre>
+      <p><strong>Response — access denied:</strong></p>
+      <pre><code set:text={accessDeniedEx}></code></pre>
+
+      <h3>GET /api/skills/trending</h3>
+      <p>Public. Returns trending skills by install velocity.</p>
+      <pre><code>curl "https://recipes.wisechef.ai/api/skills/trending?period=week&limit=10"</code></pre>
+      <p><strong>Query params:</strong> <code>period</code> (week | month), <code>limit</code> (1–50).</p>
+
+      <!-- ────────────────────────────────── CAROUSEL ── -->
+      <h2>Carousel</h2>
+
+      <h3>GET /api/carousel/today</h3>
+      <p>Public. Returns today's 7 active carousel entries (refreshed daily at 05:00 London).</p>
+      <pre><code>curl "https://recipes.wisechef.ai/api/carousel/today"</code></pre>
+      <p><strong>Response 200:</strong></p>
+      <pre><code set:text={carouselResponseEx}></code></pre>
+
+      <h3>GET /api/carousel/&#123;YYYY-MM-DD&#125;</h3>
+      <p>Public. Historical carousel for a specific date. Permalinkable.</p>
+      <pre><code>curl "https://recipes.wisechef.ai/api/carousel/2026-05-01"</code></pre>
+      <p><strong>Errors:</strong> <code>404</code> if no carousel exists for that date.</p>
+
+      <!-- ────────────────────────────────── COOKBOOKS ── -->
+      <h2>Cookbooks</h2>
+      <p>All cookbook endpoints require auth (<code>x-api-key</code> header).</p>
+
+      <h3>POST /api/cookbooks</h3>
+      <p>Create a new cookbook.</p>
+      <pre><code>curl -X POST -H "x-api-key: $RECIPES_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '&#123;"name": "My Team Cookbook"&#125;' \
+  https://recipes.wisechef.ai/api/cookbooks</code></pre>
+      <p><strong>Response:</strong> <code>201</code> with cookbook object including <code>id</code>.</p>
+
+      <h3>GET /api/cookbooks</h3>
+      <p>List all cookbooks for the authenticated account.</p>
+
+      <h3>GET /api/cookbooks/&#123;cookbook_id&#125;</h3>
+      <p>Get a single cookbook with its skill list and version pins.</p>
+
+      <h3>POST /api/cookbooks/&#123;cookbook_id&#125;/skills</h3>
+      <p>Add a skill to a cookbook (pins to current latest version).</p>
+      <pre><code>curl -X POST -H "x-api-key: $RECIPES_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '&#123;"slug": "seo-audit-engine"&#125;' \
+  "https://recipes.wisechef.ai/api/cookbooks/UUID/skills"</code></pre>
+
+      <h3>DELETE /api/cookbooks/&#123;cookbook_id&#125;/skills/&#123;slug&#125;</h3>
+      <p>Remove a skill from a cookbook.</p>
+
+      <h3>GET /api/cookbooks/&#123;cookbook_id&#125;/sync</h3>
+      <p>Get the latest-version diff for all skills in the cookbook.</p>
+
+      <h3>GET /api/cookbooks/&#123;cookbook_id&#125;/manifest</h3>
+      <p>Get the full skill manifest (slugs + pinned versions + checksums).</p>
+
+      <!-- ────────────────────────────────── API KEYS ── -->
+      <h2>API Keys</h2>
+
+      <h3>POST /api-keys</h3>
+      <p>Create a new <code>rec_</code> API key.</p>
+      <pre><code>curl -X POST -H "Authorization: Bearer $JWT" \
+  -H "Content-Type: application/json" \
+  -d '&#123;"name": "CI server"&#125;' \
+  https://recipes.wisechef.ai/api-keys</code></pre>
+      <p><strong>Response:</strong> <code>201</code> — key shown once, store securely.</p>
+      <pre><code set:text={apiKeyResponseEx}></code></pre>
+
+      <h3>GET /api-keys</h3>
+      <p>List all API keys (hashed — raw keys not re-shown).</p>
+
+      <h3>DELETE /api-keys/&#123;key_id&#125;</h3>
+      <p>Revoke an API key immediately. Inflight requests 401 within 60s.</p>
+
+      <!-- ────────────────────────────────── TELEMETRY ── -->
+      <h2>Telemetry</h2>
+
+      <h3>POST /api/telemetry</h3>
+      <p>Auth required. Anonymous-aggregate event reporting. Called automatically by the meta-skill.</p>
+      <pre><code set:text={telemetryBodyEx}></code></pre>
+
+      <!-- ────────────────────────────────── PUBLISH ── -->
+      <h2>Skill publishing</h2>
+
+      <h3>POST /api/publish/request</h3>
+      <p>Auth required. Submit a skill for review (CLI path — use the MCP tool
+      <code>recipes_publish_request</code> for the agent-first path).
+      Rate limited to 1 per 24h per (user, slug). See <a href="/docs/publishing">Publishing docs</a>.</p>
+
+      <!-- ────────────────────────────────── ERRORS ── -->
+      <h2>Error codes</h2>
+      <table>
+        <thead>
+          <tr><th>Code</th><th>Meaning</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><code>200</code></td><td>Success</td></tr>
+          <tr><td><code>201</code></td><td>Created (POST endpoints)</td></tr>
+          <tr><td><code>400</code></td><td>Missing or invalid parameters</td></tr>
+          <tr><td><code>401</code></td><td>Invalid or missing API key</td></tr>
+          <tr><td><code>403</code></td><td>Subscription required (skill is premium)</td></tr>
+          <tr><td><code>404</code></td><td>Skill / cookbook / resource not found</td></tr>
+          <tr><td><code>429</code></td><td>Rate limited — check <code>Retry-After</code> header</td></tr>
+          <tr><td><code>503</code></td><td>Temporary service issue — retry with backoff</td></tr>
+        </tbody>
+      </table>
+
+      <h2>OpenAPI spec</h2>
+      <p>
+        The full OpenAPI 3.1 spec is available at
+        <a href="/openapi.json"><code>https://recipes.wisechef.ai/openapi.json</code></a>
+        and is regenerated on each API deploy. Import it into Postman, Insomnia, or use
+        it to generate typed client SDKs.
+      </p>
     </div>
     <CrossSell />
   </section>
