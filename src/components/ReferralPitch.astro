@@ -1,0 +1,266 @@
+---
+/**
+ * ReferralPitch.astro — Shown to anonymous (unauthenticated) visitors on /referrals.
+ * Contains the full pitch: hero, how-it-works, rev-share math, FAQ, and sign-up CTA.
+ * Extracted from referrals.astro as part of the Phase H server-side auth split.
+ */
+import Icon from './Icon.astro';
+---
+
+  <!-- ── Hero ── -->
+  <section class="relative overflow-hidden min-h-[60vh] flex items-center">
+    <!-- Background glow -->
+    <div class="absolute inset-0 -z-10 pointer-events-none"
+         style="background: radial-gradient(ellipse at 50% 0%, rgba(212,160,23,0.12) 0%, transparent 60%), radial-gradient(ellipse at 80% 60%, rgba(59,130,246,0.07) 0%, transparent 55%);"></div>
+    <div class="absolute inset-0 -z-20 opacity-[0.02] pointer-events-none"
+         style="background-image: linear-gradient(to right, #fafafa 1px, transparent 1px), linear-gradient(to bottom, #fafafa 1px, transparent 1px); background-size: 64px 64px;"></div>
+
+    <div class="max-w-4xl mx-auto px-6 py-20 md:py-28 w-full text-center">
+      <div class="flex flex-col gap-6 items-center">
+        <!-- Badge -->
+        <div>
+          <span class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border text-xs font-semibold"
+                style="background:rgba(212,160,23,0.12);border-color:rgba(212,160,23,0.4);color:#D4A017;">
+            <svg width="10" height="10" viewBox="0 0 10 10" fill="currentColor" aria-hidden="true"><circle cx="5" cy="5" r="5"/></svg>
+            50% recurring · no cap · no expiry
+          </span>
+        </div>
+
+        <h1 class="text-4xl md:text-6xl font-bold tracking-tight" style="letter-spacing: -0.03em; line-height: 1.05;">
+          Share Recipes.<br/>
+          <span class="text-gradient">Keep half the revenue,<br/>forever.</span>
+        </h1>
+
+        <p class="text-lg text-muted leading-relaxed max-w-2xl">
+          For every person who subscribes to Pro or Pro+ through your referral link,
+          you earn <strong class="text-text">50% of their subscription every single month</strong>
+          — for as long as they stay subscribed. No complicated tiers. No expiry.
+        </p>
+
+        <div class="flex flex-col sm:flex-row gap-3 mt-2">
+          <!-- Primary CTA: sign up to get a referral code -->
+          <a href="/signin?mode=signup"
+             class="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-lg font-semibold bg-accent text-bg hover:bg-accent-soft transition">
+            Get your referral code <Icon name="arrow-right" size={14} />
+          </a>
+          <a href="#how-it-works"
+             class="inline-flex items-center justify-center px-6 py-3 rounded-lg font-semibold text-sm border border-border hover:border-accent text-text transition">
+            How it works
+          </a>
+        </div>
+
+        <!-- Three stats -->
+        <div class="flex items-center gap-6 pt-6 border-t border-border">
+          <div class="flex flex-col gap-0.5 items-center">
+            <span class="text-2xl font-bold text-text tabular-nums">50%</span>
+            <span class="text-[10px] text-muted-soft uppercase tracking-wider">Recurring share</span>
+          </div>
+          <div class="w-px h-10 bg-border"></div>
+          <div class="flex flex-col gap-0.5 items-center">
+            <span class="text-2xl font-bold text-text tabular-nums">Forever</span>
+            <span class="text-[10px] text-muted-soft uppercase tracking-wider">No expiry date</span>
+          </div>
+          <div class="w-px h-10 bg-border"></div>
+          <div class="flex flex-col gap-0.5 items-center">
+            <span class="text-2xl font-bold text-text tabular-nums">$0</span>
+            <span class="text-[10px] text-muted-soft uppercase tracking-wider">To start</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── How it works ── -->
+  <section class="border-t border-border" id="how-it-works">
+    <div class="max-w-5xl mx-auto px-6 py-20">
+      <div class="flex flex-col gap-3 mb-12 text-center items-center">
+        <p class="eyebrow text-accent">3 steps</p>
+        <h2 class="text-3xl md:text-4xl font-bold tracking-tight" style="letter-spacing:-0.03em;">
+          How it works
+        </h2>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <!-- Step 1 -->
+        <div class="relative bg-bg-card border border-border rounded-2xl p-6 flex flex-col gap-4">
+          <div class="w-10 h-10 rounded-xl flex items-center justify-center text-base font-bold"
+               style="background:rgba(59,130,246,0.12);border:1px solid rgba(59,130,246,0.25);color:#3B82F6;">
+            1
+          </div>
+          <h3 class="text-base font-semibold text-text">Sign up</h3>
+          <p class="text-sm text-muted leading-relaxed">
+            Create your free Recipes account. Your unique referral code is generated
+            automatically — no application, no approval.
+          </p>
+          <a href="/signin?mode=signup"
+             class="mt-auto inline-flex items-center gap-1.5 text-sm font-medium text-accent hover:opacity-80 transition">
+            Create account <Icon name="arrow-right" size={12} />
+          </a>
+        </div>
+
+        <!-- Step 2 -->
+        <div class="relative bg-bg-card border border-border rounded-2xl p-6 flex flex-col gap-4">
+          <div class="w-10 h-10 rounded-xl flex items-center justify-center text-base font-bold"
+               style="background:rgba(212,160,23,0.12);border:1px solid rgba(212,160,23,0.25);color:#D4A017;">
+            2
+          </div>
+          <h3 class="text-base font-semibold text-text">Share your code</h3>
+          <p class="text-sm text-muted leading-relaxed">
+            Share your referral link anywhere — tweet it, include it in a post,
+            or hand it to a colleague. Anyone who signs up through it is your referral.
+          </p>
+          <a href="/docs/referrals"
+             class="mt-auto inline-flex items-center gap-1.5 text-sm font-medium text-accent hover:opacity-80 transition">
+            See the FAQ <Icon name="arrow-right" size={12} />
+          </a>
+        </div>
+
+        <!-- Step 3 -->
+        <div class="relative bg-bg-card border border-border rounded-2xl p-6 flex flex-col gap-4">
+          <div class="w-10 h-10 rounded-xl flex items-center justify-center text-base font-bold"
+               style="background:rgba(129,140,248,0.12);border:1px solid rgba(129,140,248,0.25);color:#818CF8;">
+            3
+          </div>
+          <h3 class="text-base font-semibold text-text">Earn every month</h3>
+          <p class="text-sm text-muted leading-relaxed">
+            Each time your referral's subscription renews, 50% lands in your account.
+            Track referrals and lifetime earnings in your dashboard. Payouts are monthly.
+          </p>
+          <a href="/signin?mode=signup"
+             class="mt-auto inline-flex items-center gap-1.5 text-sm font-medium text-accent hover:opacity-80 transition">
+            Get started <Icon name="arrow-right" size={12} />
+          </a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Rev share math ── -->
+  <section class="border-t border-border bg-bg-card/20">
+    <div class="max-w-5xl mx-auto px-6 py-20">
+      <div class="flex flex-col gap-3 mb-10 text-center items-center">
+        <p class="eyebrow text-accent">The math</p>
+        <h2 class="text-3xl font-bold tracking-tight" style="letter-spacing:-0.03em;">
+          50% recurring. Every month.
+        </h2>
+        <p class="text-muted max-w-xl">
+          No complicated formulas. If your referral pays $20/mo, you earn $10/mo.
+          If they pay $100/mo, you earn $50/mo. For as long as they stay subscribed.
+        </p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <!-- Pro referral math -->
+        <div class="bg-bg-card border border-[#3B82F6]/20 rounded-2xl p-6 flex flex-col gap-4">
+          <div class="flex items-center gap-3">
+            <span class="text-xs font-semibold px-2 py-1 rounded-full"
+                  style="background:rgba(59,130,246,0.12);color:#3B82F6;">Pro</span>
+            <span class="text-sm font-medium text-text">$20/mo per subscriber</span>
+          </div>
+          <code class="font-mono text-xs bg-[#0d0d0d] border border-border rounded-lg px-4 py-3 block text-muted leading-relaxed">
+            subscribers × $20/mo × 50%<br/>
+            10 refs × $20 × 0.5 = <span class="font-bold" style="color:#3B82F6;">$100/mo</span>
+          </code>
+          <p class="text-xs text-muted">
+            Recurring every month as long as they stay on Pro.
+          </p>
+        </div>
+
+        <!-- Pro+ referral math -->
+        <div class="bg-bg-card border border-[#818CF8]/20 rounded-2xl p-6 flex flex-col gap-4">
+          <div class="flex items-center gap-3">
+            <span class="text-xs font-semibold px-2 py-1 rounded-full"
+                  style="background:rgba(129,140,248,0.12);color:#818CF8;">Pro+</span>
+            <span class="text-sm font-medium text-text">$100/mo per subscriber</span>
+          </div>
+          <code class="font-mono text-xs bg-[#0d0d0d] border border-border rounded-lg px-4 py-3 block text-muted leading-relaxed">
+            subscribers × $100/mo × 50%<br/>
+            5 refs × $100 × 0.5 = <span class="font-bold" style="color:#818CF8;">$250/mo</span>
+          </code>
+          <p class="text-xs text-muted">
+            Pro+ users pay more, so your share is higher. Same 50% rate.
+          </p>
+        </div>
+      </div>
+
+      <!-- Combined scenario -->
+      <div class="mt-6 bg-[#0d0d0d] border border-border rounded-2xl p-6">
+        <p class="text-[10px] uppercase tracking-widest font-semibold text-muted-soft mb-4">Example scenario</p>
+        <code class="font-mono text-xs text-muted leading-loose block">
+          <span class="text-muted-soft">// 10 Pro + 5 Pro+ referrals</span><br/>
+          pro_refs     = 10 × $20 × 0.5  = <span class="font-bold text-text">$100/mo</span><br/>
+          pro_plus_refs = 5 × $100 × 0.5 = <span class="font-bold text-text">$250/mo</span><br/>
+          <br/>
+          total = $100 + $250 = <span class="font-bold" style="color:#D4A017;">$350/mo recurring</span>
+        </code>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── FAQ ── -->
+  <section class="border-t border-border">
+    <div class="max-w-3xl mx-auto px-6 py-20">
+      <div class="flex flex-col gap-3 mb-10 text-center items-center">
+        <p class="eyebrow text-accent">FAQ</p>
+        <h2 class="text-3xl font-bold tracking-tight" style="letter-spacing:-0.03em;">
+          Common questions
+        </h2>
+      </div>
+
+      <div class="flex flex-col gap-4">
+        {[
+          {
+            q: "When do I get paid?",
+            a: "Monthly payouts. We aggregate your earnings across all active referrals and pay out at the end of each month."
+          },
+          {
+            q: "What if my referral cancels?",
+            a: "If they cancel, their subscription ends and your earnings for that subscriber stop. Simple. No clawbacks on months already paid."
+          },
+          {
+            q: "Is there a cap on how many people I can refer?",
+            a: "No cap. Refer 1 person or 1,000 people — you earn 50% on all of them, every month."
+          },
+          {
+            q: "Do I need to be a Pro subscriber to refer?",
+            a: "No. Anyone with a free Recipes account gets a referral code. You don't need a paid plan to earn from referrals."
+          },
+          {
+            q: "Where do I find my referral code?",
+            a: "In your Referrals dashboard. Your unique link is auto-generated when you create your account."
+          },
+        ].map(item => (
+          <details class="bg-bg-card border border-border rounded-xl p-5 group">
+            <summary class="cursor-pointer font-medium text-text text-sm flex items-center justify-between gap-3 list-none">
+              {item.q}
+              <svg class="w-4 h-4 text-muted shrink-0 transition-transform group-open:rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+              </svg>
+            </summary>
+            <p class="mt-3 text-sm text-muted leading-relaxed">{item.a}</p>
+          </details>
+        ))}
+      </div>
+
+      <p class="text-center mt-8 text-sm text-muted">
+        More details? <a href="/docs/referrals" class="text-accent hover:opacity-80 underline">Read the full referral guide →</a>
+      </p>
+    </div>
+  </section>
+
+  <!-- ── CTA ── -->
+  <section class="border-t border-border">
+    <div class="max-w-3xl mx-auto px-6 py-20 text-center flex flex-col gap-6 items-center">
+      <h2 class="text-3xl md:text-4xl font-bold tracking-tight" style="letter-spacing:-0.03em;">
+        Start earning today.
+      </h2>
+      <p class="text-muted text-lg max-w-xl leading-relaxed">
+        Your referral code is waiting. Free to start, no application needed.
+      </p>
+      <a href="/signin?mode=signup"
+         class="inline-flex items-center justify-center gap-2 px-7 py-3.5 rounded-lg font-semibold bg-accent text-bg hover:bg-accent-soft transition text-base">
+        Get your referral code <Icon name="arrow-right" size={14} />
+      </a>
+      <p class="text-xs text-muted-soft">Free account · no credit card · referral code generated instantly</p>
+    </div>
+  </section>

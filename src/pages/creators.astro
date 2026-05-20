@@ -1,13 +1,12 @@
 ---
 /**
- * /creators — Phase C (top1pct_1105) redirect stub.
+ * /creators — compat redirect (Phase H, recipes_2005 sprint).
  *
- * The Astro config `redirects: { '/creators': '/referrals' }` emits a
- * meta-refresh at build time. This file is kept as a belt-and-suspenders
- * SSR fallback using Astro.redirect() for any server-rendered paths.
+ * Kept as compat redirect; nav now points directly at /referrals.
+ * Any external link pointing at /creators still works via this 302.
  *
  * In production (Caddy on wisechef-hq), also add to /etc/caddy/Caddyfile:
- *   redir /creators /referrals 301
+ *   redir /creators /referrals 302
  */
-return Astro.redirect('/referrals', 301);
+return Astro.redirect('/referrals', 302);
 ---
