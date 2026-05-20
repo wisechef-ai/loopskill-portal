@@ -16,7 +16,7 @@ concurrency:
 jobs:
   build:
     name: Build (Astro)
-    runs-on: ubuntu-latest
+    runs-on: wisechef-runner
     steps:
       - uses: actions/checkout@v4
 
