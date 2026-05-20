@@ -87,6 +87,9 @@ const roleLabel = (role: string): string => {
 
 // Pull live skill count for the stats strip (retry+jitter; fallback to 59 if API unreachable).
 // pick_1605: bumped fallback 80 → 59 to match current production reality.
+// 2026-05-20: API rate limiter now exempts authenticated callers (per-IP cap
+// was busting on 116-page parallel builds even with our retry+cache); this
+// fetch reliably gets the live total now. Fallback retained as belt-and-suspenders.
 let liveSkillCount = 59;
 try {
   const result = await fetchApi<{ total: number }>('/api/skills/search?page_size=1');

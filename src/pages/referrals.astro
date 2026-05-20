@@ -1,31 +1,104 @@
 ---
 /**
- * /referrals — Phase H server-side auth split.
+ * /referrals — Client-side auth split (rev 7.3, recipes_2005 follow-up).
  *
- * Server-side: fetch /api/auth/me with cookie passthrough.
- * - Authenticated user → ReferralDashboard (shows referral_code, stats, payout_status)
- * - Anonymous visitor  → ReferralPitch (sign-up / how-it-works pitch)
+ * Previous rev (Phase H) tried server-side SSR with `Astro.request.headers.get('cookie')`,
+ * but the site is built in static (SSG) mode — frontmatter runs at build time, the
+ * "request" has no cookie, the fetch returns 401, and EVERY visitor (incl. logged-in)
+ * sees the anonymous <ReferralPitch /> baked into HTML. The "Get your referral code"
+ * CTA then dumps logged-in users back into /signin → /library, which is the bug.
  *
- * This eliminates the 8 stray /signin?mode=signup CTAs visible to logged-in users
- * and removes the client-side flash-of-wrong-content.
+ * Fix: render BOTH views in HTML and let a client-side script reveal the right one
+ * by calling /api/auth/me with the JWT cookie. Same pattern as /library uses.
+ *
+ * Anonymous users still get a fully-prerendered page (good for SEO, no JS jank);
+ * authed users see a brief flash of the pitch before JS swaps in the dashboard.
+ * That flash is acceptable — it's the price of static hosting + auth-aware UI.
  */
 import Base from '../layouts/Base.astro';
 import ReferralDashboard from '../components/ReferralDashboard.astro';
 import ReferralPitch from '../components/ReferralPitch.astro';
-
-const cookieHeader = Astro.request.headers.get('cookie') || '';
-let user: { id: string; display_name?: string; referral_code?: string; click_count?: number; conversion_count?: number; mrr_earned?: number; payout_status?: string } | null = null;
-try {
-  const res = await fetch(`${import.meta.env.PUBLIC_API_BASE}/api/auth/me`, {
-    headers: { cookie: cookieHeader },
-  });
-  if (res.ok) user = await res.json();
-} catch {} // Rationale: anon fallback is safe; API may be unavailable at build time
 ---
 
 <Base
   title="Share Recipes. Keep half the revenue, forever. — Referrals"
   description="Earn 50% recurring rev-share on every Pro and Pro+ subscriber you refer. No caps. No fine print. Share your code, earn every month they're subscribed."
 >
-  {user ? <ReferralDashboard user={user} /> : <ReferralPitch />}
+  <!-- Both views rendered; client JS hides one. -->
+  <div id="referrals-pitch">
+    <ReferralPitch />
+  </div>
+  <div id="referrals-dashboard" class="hidden">
+    <ReferralDashboard user={{ id: '', display_name: '', referral_code: '' }} />
+  </div>
 </Base>
+
+<script>
+  // rev 7.3: client-side auth gate. Calls /api/auth/me; on success, hide the
+  // pitch and populate the dashboard with the live user. On failure, leave the
+  // pitch visible — anonymous fallback is the safe default.
+  interface MeUser {
+    id: string;
+    display_name?: string;
+    avatar_url?: string;
+  }
+  interface ReferralStats {
+    referral_code?: string;
+    referred_count?: number;
+    lifetime_earnings_cents?: number;
+    payout_status?: string;
+  }
+
+  const $ = (id: string) => document.getElementById(id);
+
+  (async () => {
+    let user: MeUser | null = null;
+    try {
+      const res = await fetch('/api/auth/me', { credentials: 'include' });
+      if (res.ok) user = await res.json();
+    } catch {
+      // Rationale: network error → treat as anonymous, keep pitch view
+    }
+    if (!user) return; // anonymous → keep pitch
+
+    // Authed — swap views.
+    $('referrals-pitch')?.classList.add('hidden');
+    const dash = $('referrals-dashboard');
+    dash?.classList.remove('hidden');
+
+    // Populate user-specific fields on the dashboard.
+    const welcome = document.querySelector<HTMLElement>('#referrals-dashboard h1');
+    if (welcome && user.display_name) {
+      welcome.textContent = `Welcome back, ${user.display_name}.`;
+    }
+
+    // Fetch live referral stats and fill in code, link, counters.
+    try {
+      const r = await fetch('/api/me/referrals', { credentials: 'include' });
+      if (!r.ok) return;
+      const stats: ReferralStats = await r.json();
+      const code = stats.referral_code ?? '';
+      const link = code ? `https://recipes.wisechef.ai/?ref=${code}` : '';
+
+      const codeEl = $('referral-code-display');
+      const linkEl = $('referral-link-display');
+      const copyBtn = $('copy-referral-link') as HTMLButtonElement | null;
+      if (codeEl) codeEl.textContent = code || '…';
+      if (linkEl) linkEl.textContent = link || '…';
+      if (copyBtn && link) copyBtn.dataset.link = link;
+
+      const clickEl = $('stat-click-count');
+      const convEl = $('stat-conversion-count');
+      const mrrEl = $('stat-mrr-earned');
+      const payoutEl = $('stat-payout-status');
+      // /api/me/referrals returns referred_count and lifetime_earnings_cents;
+      // map to the dashboard's existing labels.
+      if (clickEl) clickEl.textContent = '0'; // click tracking is per-link, not in this endpoint
+      if (convEl)  convEl.textContent  = String(stats.referred_count ?? 0);
+      if (mrrEl)   mrrEl.textContent   = `$${((stats.lifetime_earnings_cents ?? 0) / 100).toFixed(2)}`;
+      if (payoutEl) payoutEl.textContent = stats.payout_status ?? 'pending';
+    } catch {
+      // Rationale: stats endpoint failed → dashboard still renders with empty values
+    }
+  })();
+</script>

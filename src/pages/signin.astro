@@ -60,32 +60,70 @@ const isSignup = mode === 'signup';
 </Base>
 
 <script is:inline>
-  // rev 7.2.6: client-side ?ref= passthrough.
-  // Static page can't read query params at build time → do it here.
-  // Validates ref against the same regex as Base.astro stamper to avoid
-  // DOM injection from a malformed URL.
+  // rev 7.3: client-side ?ref= passthrough + already-authed short-circuit
+  // + ?next= propagation to OAuth URLs.
+  //
+  // (a) ?ref= passthrough: static page can't read query params at build time → do it here.
+  //     Validates ref against the same regex as Base.astro stamper to avoid DOM injection.
+  //
+  // (b) Already-authed short-circuit: if a logged-in user lands on /signin (e.g. by
+  //     clicking 'Get your referral code' on /referrals while authed), call /api/auth/me
+  //     and bounce them straight to ?next= (or /library) instead of re-prompting OAuth.
+  //     This fixes the "logged in user → /referrals → /signin → /library" bug.
+  //
+  // (c) ?next= propagation: read ?next= from the URL and append to OAuth login URLs
+  //     so the backend's _make_success_redirect honors it. The backend allow-lists
+  //     /referrals, /library, /skills/, /billing/, /publish, /dashboard, /api/.
   (function () {
     var p = new URLSearchParams(window.location.search);
+
+    // (a) Referral code propagation
     var ref = p.get('ref');
-    if (!ref) return;
-    if (!/^[A-Za-z0-9]{4,16}$/.test(ref)) return;
-
-    var enc = encodeURIComponent(ref);
-
-    var google = document.getElementById('google-login');
-    if (google) google.href = '/api/auth/google/login?ref=' + enc;
-
-    var github = document.getElementById('github-login');
-    if (github) github.href = '/api/auth/github/login?ref=' + enc;
-
-    var signupLink = document.getElementById('signup-link');
-    if (signupLink) signupLink.href = '/signin?mode=signup&ref=' + enc;
-
-    var badge = document.getElementById('ref-badge');
-    var badgeCode = document.getElementById('ref-badge-code');
-    if (badge && badgeCode) {
-      badgeCode.textContent = ref;
-      badge.classList.remove('hidden');
+    if (ref && /^[A-Za-z0-9]{4,16}$/.test(ref)) {
+      var enc = encodeURIComponent(ref);
+      var google = document.getElementById('google-login');
+      if (google) google.href = '/api/auth/google/login?ref=' + enc;
+      var github = document.getElementById('github-login');
+      if (github) github.href = '/api/auth/github/login?ref=' + enc;
+      var signupLink = document.getElementById('signup-link');
+      if (signupLink) signupLink.href = '/signin?mode=signup&ref=' + enc;
+      var badge = document.getElementById('ref-badge');
+      var badgeCode = document.getElementById('ref-badge-code');
+      if (badge && badgeCode) {
+        badgeCode.textContent = ref;
+        badge.classList.remove('hidden');
+      }
     }
+
+    // (c) ?next= propagation — append to OAuth URLs (path-only, server allow-lists)
+    var next = p.get('next');
+    if (next && next.charAt(0) === '/' && next.indexOf('//') !== 0) {
+      var encNext = encodeURIComponent(next);
+      var googleBtn = document.getElementById('google-login');
+      if (googleBtn) {
+        googleBtn.href += (googleBtn.href.indexOf('?') === -1 ? '?' : '&') + 'next=' + encNext;
+      }
+      var githubBtn = document.getElementById('github-login');
+      if (githubBtn) {
+        githubBtn.href += (githubBtn.href.indexOf('?') === -1 ? '?' : '&') + 'next=' + encNext;
+      }
+    }
+
+    // (b) Already-authed short-circuit. Use credentials so the JWT cookie travels.
+    fetch('/api/auth/me', { credentials: 'include' })
+      .then(function (r) {
+        if (!r.ok) return null;
+        return r.json();
+      })
+      .then(function (user) {
+        if (!user || !user.id) return;
+        // Already signed in — go to ?next= (if path-safe) or /library.
+        var target = '/library';
+        if (next && next.charAt(0) === '/' && next.indexOf('//') !== 0) {
+          target = next;
+        }
+        window.location.replace(target);
+      })
+      .catch(function () { /* Rationale: anonymous fallback is correct, just show signin UI */ });
   })();
 </script>

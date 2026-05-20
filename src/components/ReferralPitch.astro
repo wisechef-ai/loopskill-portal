@@ -39,7 +39,7 @@ import Icon from './Icon.astro';
 
         <div class="flex flex-col sm:flex-row gap-3 mt-2">
           <!-- Primary CTA: sign up to get a referral code -->
-          <a href="/signin?mode=signup"
+          <a href="/signin?mode=signup&next=/referrals"
              class="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-lg font-semibold bg-accent text-bg hover:bg-accent-soft transition">
             Get your referral code <Icon name="arrow-right" size={14} />
           </a>
@@ -92,7 +92,7 @@ import Icon from './Icon.astro';
             Create your free Recipes account. Your unique referral code is generated
             automatically — no application, no approval.
           </p>
-          <a href="/signin?mode=signup"
+          <a href="/signin?mode=signup&next=/referrals"
              class="mt-auto inline-flex items-center gap-1.5 text-sm font-medium text-accent hover:opacity-80 transition">
             Create account <Icon name="arrow-right" size={12} />
           </a>
@@ -126,7 +126,7 @@ import Icon from './Icon.astro';
             Each time your referral's subscription renews, 50% lands in your account.
             Track referrals and lifetime earnings in your dashboard. Payouts are monthly.
           </p>
-          <a href="/signin?mode=signup"
+          <a href="/signin?mode=signup&next=/referrals"
              class="mt-auto inline-flex items-center gap-1.5 text-sm font-medium text-accent hover:opacity-80 transition">
             Get started <Icon name="arrow-right" size={12} />
           </a>
@@ -257,7 +257,7 @@ import Icon from './Icon.astro';
       <p class="text-muted text-lg max-w-xl leading-relaxed">
         Your referral code is waiting. Free to start, no application needed.
       </p>
-      <a href="/signin?mode=signup"
+      <a href="/signin?mode=signup&next=/referrals"
          class="inline-flex items-center justify-center gap-2 px-7 py-3.5 rounded-lg font-semibold bg-accent text-bg hover:bg-accent-soft transition text-base">
         Get your referral code <Icon name="arrow-right" size={14} />
       </a>
