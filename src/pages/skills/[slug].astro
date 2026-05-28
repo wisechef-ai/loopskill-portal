@@ -4,9 +4,11 @@ import CrossSell from '../../components/CrossSell.astro';
 import Icon from '../../components/Icon.astro';
 import AuditRow from '../../components/AuditRow.astro';
 import TrustPills from '../../components/TrustPills.astro';
-import { marked } from 'marked';
 import { fetchApi } from '../../lib/api';
 import { tierBadge as tierBadgeText, tierBadgeClass } from '../../lib/tiers';
+import { SkillFileExplorer } from '../../components/skill/SkillFileExplorer';
+import { RuntimePanel } from '../../components/skill/RuntimePanel';
+import { AuditBars } from '../../components/skill/AuditBars';
 
 export async function getStaticPaths() {
   const result = await fetchApi<{ results: any[]; total: number }>(
@@ -164,14 +166,7 @@ const display = {
   last_reviewed_at: skill?.last_reviewed_at || skill?.audit?.last_reviewed_at || null,
 };
 
-// Render the readme markdown to HTML server-side
-let readmeHtml: string | null = null;
-if (display.readme && typeof display.readme === 'string') {
-  // Strip the YAML frontmatter from the readme — it's already rendered as structured data above
-  const stripped = display.readme.replace(/^---\s*\n[\s\S]*?\n---\s*\n/, '');
-  marked.setOptions({ gfm: true, breaks: false });
-  readmeHtml = marked.parse(stripped) as string;
-}
+// Phase Q: Server-side readme render removed — FileRenderer handles rendering client-side.
 
 const tierBadgeClassName = tierBadgeClass(display.tier);
 const tierDisplayText = tierBadgeText(display.tier);
@@ -344,23 +339,19 @@ const externalResources: Array<{ slug?: string; url: string; relation?: string; 
           </section>
         )}
 
-        <!-- Full skill markdown — the WHOLE point Adam called out -->
-        <!-- quality_1705 Phase B — paywall the body for non-Pro callers.
-             The static build fetches /api/skills/<slug> WITHOUT the master
-             API key, so for paid skills `readmeHtml` is null on the static
-             page. The client-side script below tries to hydrate the body
-             from the user's authenticated session (Pro/Pro+ users see it
-             inline; free/anon users see the upsell card). -->
+        <!-- Phase Q: File explorer (SKILL.md + scripts/ + references/ + templates/)
+             client:visible = lazy hydration — only boots when scrolled into view.
+             SkillFileExplorer owns shared selectedPath state between FileBrowser + FileRenderer. -->
         <section
-          class="bg-bg-card border border-border rounded-2xl p-6 md:p-8"
+          class="bg-bg-card border border-border rounded-2xl overflow-hidden"
           data-skill-body-section
           data-slug={display.slug}
           data-is-free={isFree ? '1' : '0'}
         >
-          <div class="flex items-center justify-between gap-3 mb-5 flex-wrap">
+          <div class="flex items-center justify-between gap-3 px-5 py-3 border-b border-border-soft flex-wrap">
             <div class="flex items-center gap-2">
               <Icon name="document" size={14} class="text-accent" />
-              <p class="eyebrow">Full skill source · SKILL.md</p>
+              <p class="eyebrow">Skill files</p>
             </div>
             {display.repo_url && (
               <a href={display.repo_url} target="_blank" rel="noopener" class="text-xs text-muted hover:text-accent inline-flex items-center gap-1.5 transition">
@@ -369,54 +360,17 @@ const externalResources: Array<{ slug?: string; url: string; relation?: string; 
               </a>
             )}
           </div>
-          {readmeHtml ? (
-            <article class="prose" set:html={readmeHtml} data-skill-body></article>
-          ) : isFree ? (
-            <article class="prose" data-skill-body>
-              <p class="text-muted text-sm">Full skill documentation coming soon.</p>
-              <p class="text-muted-soft text-xs mt-1">This skill is part of the Day-1 catalog. Detailed SKILL.md is being authored.</p>
-            </article>
-          ) : (
-            <div class="relative" data-skill-body>
-              <!-- Blur preview — first few lines of description as visual placeholder -->
-              <div class="prose opacity-40 blur-[2px] select-none pointer-events-none">
-                <p>{display.description}</p>
-                <pre><code class="block text-xs font-mono">{`# ${display.title}
-
-This is the full SKILL.md source — including the canonical prompt, the
-step-by-step procedure, the pitfalls list, the verification gates, and
-the bundled scripts/templates/references that ship with this skill.
-
-Pro subscribers see this section inline. Click the button below to
-unlock the full skill source + scripts.`}</code></pre>
-              </div>
-              <!-- Upsell overlay -->
-              <div class="absolute inset-0 flex items-center justify-center pt-12">
-                <div class="bg-bg-card/95 border border-accent/40 rounded-xl p-6 max-w-md text-center shadow-2xl backdrop-blur-sm">
-                  <div class="inline-flex items-center gap-2 mb-3 px-2.5 py-1 rounded-full bg-accent/15 text-accent text-xs font-semibold">
-                    <Icon name="shield" size={12} class="text-accent" />
-                    PRO ONLY
-                  </div>
-                  <h3 class="text-lg font-bold text-text mb-2">Read the full SKILL.md</h3>
-                  <p class="text-sm text-muted mb-4">
-                    Subscribe to Pro ($20/mo) to unlock the skill source, scripts, templates, and the bundled references for every paid skill in the catalog.
-                  </p>
-                  <a href="/pricing"
-                     class="inline-block px-5 py-2.5 rounded-lg font-semibold text-sm bg-accent text-bg hover:bg-accent-soft transition glow-amber"
-                     data-skill-body-upsell-cta>
-                    Unlock with Pro
-                  </a>
-                  <p class="text-xs text-muted-soft mt-3">
-                    Already Pro? <a href="/library" class="underline hover:text-accent">Sign in to view</a>
-                  </p>
-                </div>
-              </div>
-            </div>
-          )}
+          <!-- React island: lazy-hydrated via client:visible (only boots when scrolled into view) -->
+          <SkillFileExplorer
+            slug={display.slug}
+            defaultPath="SKILL.md"
+            skillTier={display.tier}
+            client:visible
+          />
         </section>
       </div>
 
-      <!-- Sidebar -->
+      <!-- Sidebar (right rail) -->
       <aside class="flex flex-col gap-4">
         <div class="bg-bg-card border border-border rounded-2xl p-5 flex flex-col gap-4 sticky top-20">
           {isFree ? (
@@ -433,6 +387,26 @@ unlock the full skill source + scripts.`}</code></pre>
           <div class="text-[11px] text-muted-soft text-center">
             {isFree ? 'Free forever. No subscription required.' : `Requires ${display.tier} subscription`}
           </div>
+        </div>
+
+        <!-- Audit bars (Phase Q) — 4 horizontal bars showing quality dimensions.
+             client:visible so they lazy-hydrate when the sidebar scrolls into view. -->
+        <div class="bg-bg-card border border-border rounded-2xl p-5">
+          <p class="eyebrow mb-3">Skill audit</p>
+          <AuditBars
+            qualityScore={display.quality_score}
+            hasReadme={Boolean(display.readme)}
+            lastVerifiedAt={display.last_verified}
+            sourceUrl={display.source_url}
+            client:visible
+          />
+        </div>
+
+        <!-- Runtime panel (Phase Q) — fetches /runtime + /install-events client-side.
+             client:visible so the fetch only fires when the panel is visible. -->
+        <div class="bg-bg-card border border-border rounded-2xl p-5">
+          <p class="eyebrow mb-3">Runtime</p>
+          <RuntimePanel slug={display.slug} client:visible />
         </div>
 
         <div class="bg-bg-card border border-border rounded-2xl p-5">
@@ -626,60 +600,6 @@ unlock the full skill source + scripts.`}</code></pre>
   })();
 </script>
 
-<!-- RCP-PUB-2026-05-18 Phase B body-hydration: the static build fetches
-     /api/skills/<slug> WITHOUT auth, so paid skills come back with
-     readme=null and the page renders the upsell card. For authed Pro/Pro+
-     callers, hydrate the body in-place by re-fetching /api/skills/<slug>
-     with credentials:'include' (the wr_jwt cookie). The API's
-     _resolve_caller_tier() reads the cookie, returns the full readme. -->
-<script>
-  import { marked } from 'marked';
-
-  (async () => {
-    const section = document.querySelector<HTMLElement>('[data-skill-body-section]');
-    if (!section) return;
-    const isFree = section.getAttribute('data-is-free') === '1';
-    if (isFree) return; // free skills already render inline
-
-    const slug = section.getAttribute('data-slug');
-    if (!slug) return;
-
-    // Only hydrate when the user is actually authed — skip the fetch for anonymous
-    // visitors so the upsell card stays visible (and we don't burn API calls).
-    let authed = false;
-    try {
-      const meRes = await fetch('/api/auth/me', { credentials: 'include' });
-      authed = meRes.ok;
-    } catch {
-      authed = false;
-    }
-    if (!authed) return;
-
-    let readme: string | null = null;
-    try {
-      const res = await fetch(`/api/skills/${slug}`, { credentials: 'include' });
-      if (!res.ok) return;
-      const detail = await res.json();
-      readme = detail?.readme ?? null;
-    } catch {
-      return;
-    }
-    if (!readme) return; // API returned null → user is authed but not paid
-
-    // Strip YAML frontmatter (matches server-side render path on line 171)
-    const stripped = readme.replace(/^---\s*\n[\s\S]*?\n---\s*\n/, '');
-    marked.setOptions({ gfm: true, breaks: false });
-    const html = marked.parse(stripped) as string;
-
-    // Replace the paywalled placeholder with the rendered body. We swap the
-    // outermost data-skill-body element for an <article class="prose"> so
-    // the typography matches the server-rendered branch above.
-    const oldBody = section.querySelector<HTMLElement>('[data-skill-body]');
-    if (!oldBody) return;
-    const article = document.createElement('article');
-    article.className = 'prose';
-    article.setAttribute('data-skill-body', '');
-    article.innerHTML = html;
-    oldBody.replaceWith(article);
-  })();
-</script>
+<!-- Phase Q: The old RCP-PUB-2026-05-18 body-hydration script has been replaced
+     by the SkillFileExplorer React island which handles auth-aware file loading
+     client-side via /api/skills/{slug}/file?path=SKILL.md. Removed 2026-05-28. -->
