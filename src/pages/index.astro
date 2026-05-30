@@ -205,7 +205,7 @@ const verticals = [
         </p>
 
         <div class="w-full max-w-2xl mt-4">
-          <InstallWidget />
+          <InstallWidget skillCount={liveSkillCount} />
         </div>
 
         {todaysPick && (
@@ -561,9 +561,9 @@ const verticals = [
           <span class="font-mono text-xs text-muted-soft">step 01 — meta-skill</span>
           <h3 class="text-xl font-semibold text-text tracking-tight">Install <code class="font-mono">recipes-skill</code></h3>
           <p class="text-sm text-muted leading-relaxed">
-            One command. Your agent gains marketplace awareness — it can search, install, and run any skill in the library.
+            One phrase to your agent. It gains marketplace awareness — it can search, install, and run any skill in the library.
           </p>
-          <code class="font-mono text-xs bg-[#0d0d0d] border border-border rounded px-3 py-2 mt-1">npm i -g wisechef-recipes</code>
+          <code class="font-mono text-xs bg-[#0d0d0d] border border-border rounded px-3 py-2 mt-1">"Install the recipes skill from recipes.wisechef.ai/skill"</code>
           <a href="/docs/install" class="text-xs text-accent hover:opacity-80 inline-flex items-center gap-1.5 mt-auto">
             Install instructions <Icon name="arrow-right" size={11} />
           </a>
@@ -577,7 +577,7 @@ const verticals = [
             in 60 seconds. MIT-licensed — yours forever, no subscription. The pro_open gateway: install
             free, see how we ship, then upgrade for the rest of the catalog.
           </p>
-          <code class="font-mono text-xs bg-[#0d0d0d] border border-border rounded px-3 py-2 mt-1">recipes install super-memory</code>
+          <code class="font-mono text-xs bg-[#0d0d0d] border border-border rounded px-3 py-2 mt-1">"Add the super-memory skill"</code>
           <a href="/skills/super-memory" class="text-xs text-accent hover:opacity-80 inline-flex items-center gap-1.5 mt-auto">
             View skill <Icon name="arrow-right" size={11} />
           </a>

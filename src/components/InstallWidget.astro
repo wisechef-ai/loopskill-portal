@@ -1,106 +1,67 @@
 ---
-// InstallWidget — three-tab install command picker (curl / npm / pip).
-// Vanilla JS, no React. Each tab shows a copy-able command.
-// Used in the homepage hero to make first-contact frictionless across runtimes.
+// InstallWidget — agent-install dialogue block.
+// Recipes is installed by telling your agent to fetch the skill via MCP —
+// NOT via npm/pip/curl (no such package exists). This block shows the actual
+// first-contact motion: paste one phrase to your agent, it installs Recipes.
+// Inspired by the larrybrain.com / AgentPact /skill install pattern.
 
-interface Tab {
-  id: 'curl' | 'npm' | 'pip';
-  label: string;
-  command: string;
-  hint: string;
+interface Props {
+  skillCount?: number;
 }
 
-const tabs: Tab[] = [
-  { id: 'curl', label: 'curl',  hint: 'macOS / Linux',   command: 'curl -fsSL recipes.wisechef.ai/install.sh | bash' },
-  { id: 'npm',  label: 'npm',   hint: 'Node 18+',        command: 'npm i -g wisechef-recipes && recipes init' },
-  { id: 'pip',  label: 'pip',   hint: 'Python 3.11+',    command: 'pip install wisechef-recipes && recipes init' },
-];
+const { skillCount } = Astro.props;
+const countLabel = skillCount && skillCount > 0 ? `${skillCount}+ skills` : 'the full catalog';
+
+// The single phrase the user pastes into their agent. This IS the install.
+const installPhrase = 'Install the recipes skill from recipes.wisechef.ai/skill please';
 ---
 
 <div
-  class="install-widget bg-[#0d0d0d] border border-border rounded-2xl overflow-hidden w-full max-w-2xl mx-auto"
+  class="install-widget bg-[#0d0d0d] border border-border rounded-2xl overflow-hidden w-full max-w-2xl mx-auto shadow-2xl shadow-black/40"
   data-component="install-widget"
 >
-  <div role="tablist" aria-label="Install methods" class="flex border-b border-border">
-    {tabs.map((t, i) => (
-      <button
-        type="button"
-        role="tab"
-        id={`install-tab-${t.id}`}
-        aria-controls={`install-panel-${t.id}`}
-        aria-selected={i === 0 ? 'true' : 'false'}
-        tabindex={i === 0 ? 0 : -1}
-        class:list={[
-          'flex-1 px-3 py-2.5 text-xs font-mono transition border-b-2',
-          i === 0 ? 'border-accent text-accent' : 'border-transparent text-muted hover:text-text',
-        ]}
-        data-tab={t.id}
-      >
-        {t.label}
-        <span class="ml-1.5 text-[9px] text-muted-soft uppercase">{t.hint}</span>
-      </button>
-    ))}
+  <!-- window chrome -->
+  <div class="flex items-center gap-2 px-4 py-3 border-b border-border bg-bg-elev">
+    <div class="flex gap-1.5">
+      <div class="w-2.5 h-2.5 rounded-full bg-[#ff5f56]"></div>
+      <div class="w-2.5 h-2.5 rounded-full bg-[#ffbd2e]"></div>
+      <div class="w-2.5 h-2.5 rounded-full bg-[#27c93f]"></div>
+    </div>
+    <span class="text-xs text-muted-soft ml-2 font-mono">agent session</span>
+    <button
+      type="button"
+      class="install-copy-btn ml-auto shrink-0 px-3 py-1.5 text-[11px] font-semibold text-muted hover:text-accent border border-border-soft rounded-md transition"
+      data-copy={installPhrase}
+      aria-label="Copy the install phrase for your agent"
+    >
+      Copy install phrase
+    </button>
   </div>
 
-  {tabs.map((t, i) => (
-    <div
-      id={`install-panel-${t.id}`}
-      role="tabpanel"
-      aria-labelledby={`install-tab-${t.id}`}
-      hidden={i !== 0}
-      data-panel={t.id}
-      class="p-4"
-    >
-      <div class="flex items-center gap-2">
-        <code class="flex-1 font-mono text-xs text-text overflow-x-auto whitespace-nowrap" data-command>{t.command}</code>
-        <button
-          type="button"
-          class="install-copy-btn shrink-0 px-3 py-1.5 text-[11px] font-semibold text-muted hover:text-accent border border-border-soft rounded-md transition"
-          data-copy={t.command}
-          aria-label={`Copy ${t.label} install command`}
-        >
-          Copy
-        </button>
-      </div>
+  <!-- you → agent dialogue -->
+  <div class="p-5 font-mono text-xs leading-relaxed text-left">
+    <div class="text-success">$ you</div>
+    <div class="text-text mb-3" data-command>{installPhrase}</div>
+
+    <div class="text-accent">$ agent</div>
+    <div class="text-muted mb-1">→ Fetching SKILL.md from recipes.wisechef.ai/skill</div>
+    <div class="text-muted mb-1">→ Wiring Recipes MCP — search · install · cookbooks</div>
+    <div class="text-success font-semibold">
+      ✓ Recipes installed. Access to <span class="text-text">{countLabel}</span>, MCP &amp; cookbooks — ready to ship.
     </div>
-  ))}
+    <div class="text-muted mt-2">Just tell me what you need.</div>
+  </div>
+
+  <!-- runtime affordance -->
+  <div class="px-5 py-3 border-t border-border bg-bg-elev/50 text-[11px] text-muted-soft">
+    Works in Claude Code, Cursor, Cline, OpenClaw, Hermes &amp; Windsurf — any MCP-capable agent.
+  </div>
 </div>
 
 <script is:inline>
   (function () {
     const widgets = document.querySelectorAll('[data-component="install-widget"]');
     widgets.forEach(function (root) {
-      const tabs = root.querySelectorAll('[role="tab"]');
-      const panels = root.querySelectorAll('[role="tabpanel"]');
-
-      function activate(id) {
-        tabs.forEach(function (t) {
-          const isActive = t.getAttribute('data-tab') === id;
-          t.setAttribute('aria-selected', isActive ? 'true' : 'false');
-          t.setAttribute('tabindex', isActive ? '0' : '-1');
-          t.classList.toggle('border-accent', isActive);
-          t.classList.toggle('text-accent', isActive);
-          t.classList.toggle('border-transparent', !isActive);
-          t.classList.toggle('text-muted', !isActive);
-        });
-        panels.forEach(function (p) {
-          p.hidden = p.getAttribute('data-panel') !== id;
-        });
-      }
-
-      tabs.forEach(function (t) {
-        t.addEventListener('click', function () { activate(t.getAttribute('data-tab')); });
-        t.addEventListener('keydown', function (e) {
-          if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
-          e.preventDefault();
-          const list = Array.from(tabs);
-          const idx = list.indexOf(t);
-          const next = e.key === 'ArrowRight' ? (idx + 1) % list.length : (idx - 1 + list.length) % list.length;
-          list[next].focus();
-          activate(list[next].getAttribute('data-tab'));
-        });
-      });
-
       root.querySelectorAll('.install-copy-btn').forEach(function (btn) {
         btn.addEventListener('click', async function () {
           const text = btn.getAttribute('data-copy') || '';
@@ -114,8 +75,8 @@ const tabs: Tab[] = [
               btn.classList.remove('text-success');
             }, 1400);
           } catch {
-            // Fallback for older browsers — select text instead.
-            const cmd = btn.parentElement.querySelector('[data-command]');
+            // Fallback for older browsers — select the command text instead.
+            const cmd = root.querySelector('[data-command]');
             if (!cmd) return;
             const range = document.createRange();
             range.selectNode(cmd);
