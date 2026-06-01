@@ -249,6 +249,7 @@ import Icon from '../components/Icon.astro';
                  subscription_current_period_end?: string | null };
   type Billing = { user_id: string; stripe_customer_id: string | null;
                    subscription_status: string | null; subscription_tier: string | null;
+                   cookbook_limit?: number | null;
                    subscription_current_period_end: string | null };
   type ApiKey = {
     id: string; prefix: string;
@@ -346,21 +347,26 @@ import Icon from '../components/Icon.astro';
     if (note) note.classList.remove('hidden');
 
     // quality_1705 Phase E — show tier-appropriate cookbook subtitle
+    // loopclose_3005 Phase X — cap numbers come from billing.cookbook_limit
+    // (SSOT: config/tiers.yaml via /api/billing/me), never a hardcoded literal.
     const cookbookSubtitle = document.getElementById('cookbook-tier-subtitle');
     const cookbookSubtitleText = document.getElementById('cookbook-tier-subtitle-text');
     if (cookbookSubtitle && cookbookSubtitleText && tier) {
       const isProPlus = ['pro_plus', 'operator', 'studio'].includes(tier);
       const isPro = ['pro', 'cook'].includes(tier);
+      const cap = typeof billing.cookbook_limit === 'number' ? billing.cookbook_limit : null;
       if (isProPlus) {
+        const capPhrase = cap !== null ? `up to ${cap} cookbooks` : 'multiple cookbooks';
         cookbookSubtitleText.textContent =
-          'You have up to 20 cookbooks available. Each can be named after a client (e.g. acme-corp-cookbook) and deployed to their agent fleet. Use cookbook scoping below to map each API key to a client.';
+          `You have ${capPhrase} available. Each can be named after a client (e.g. acme-corp-cookbook) and deployed to their agent fleet. Use cookbook scoping below to map each API key to a client.`;
         cookbookSubtitle.classList.remove('hidden');
         // Show the Pro+ client-naming hint in the create-key modal
         const proPlusHint = document.getElementById('modal-label-pro-plus-hint');
         if (proPlusHint) proPlusHint.classList.remove('hidden');
       } else if (isPro) {
+        const capPhrase = cap !== null ? `up to ${cap} cookbooks` : 'your personal cookbooks';
         cookbookSubtitleText.textContent =
-          'You have 1 personal cookbook. Use it to bundle your private skills and sync them across your agent fleet. Upgrade to Pro+ for up to 20 client-named cookbooks.';
+          `You have ${capPhrase}. Use them to bundle your private skills and sync them across your agent fleet. Upgrade to Pro+ for many more client-named cookbooks.`;
         cookbookSubtitle.classList.remove('hidden');
       }
     }
