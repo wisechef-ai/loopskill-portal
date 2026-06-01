@@ -24,6 +24,9 @@ const { Content } = await render(post);
       <time class="text-xs text-muted font-mono" datetime={post.data.pubDate.toISOString()}>
         {post.data.pubDate.toISOString().slice(0, 10)}
       </time>
+      {post.data.updatedDate && (
+        <span class="text-xs text-muted font-mono"> · updated {post.data.updatedDate.toISOString().slice(0, 10)}</span>
+      )}
       <h1 class="text-3xl font-semibold tracking-tight mt-2 mb-3">{post.data.title}</h1>
       <p class="text-muted text-sm">{post.data.description}</p>
       {post.data.tags.length > 0 && (

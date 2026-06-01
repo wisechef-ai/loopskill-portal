@@ -34,8 +34,10 @@ export const GET: APIRoute = async () => {
 
   const posts = await getCollection('blog');
   const blogUrls = posts.map((p) => {
-    const lastmod = p.data.pubDate
-      ? new Date(p.data.pubDate).toISOString().slice(0, 10)
+    // Prefer updatedDate (revision freshness signal) over pubDate for lastmod.
+    const lastmodDate = p.data.updatedDate ?? p.data.pubDate;
+    const lastmod = lastmodDate
+      ? new Date(lastmodDate).toISOString().slice(0, 10)
       : today;
     return `  <url>
     <loc>${SITE}/blog/${p.id}</loc>
