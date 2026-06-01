@@ -45,30 +45,31 @@ const payoutStatus    = user.payout_status     ?? 'pending';
       </p>
     </div>
 
-    <!-- Referral link block -->
-    {referralCode ? (
-      <div class="bg-bg-card border border-border rounded-2xl p-6 flex flex-col gap-4 mb-8">
-        <div class="flex flex-col gap-1">
-          <p class="text-xs uppercase tracking-widest font-semibold text-muted-soft">Your referral code</p>
-          <p class="text-2xl font-mono font-bold text-accent tracking-wider" id="referral-code-display">{referralCode}</p>
-        </div>
-        <div class="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
-          <code class="flex-1 font-mono text-sm bg-bg-elev border border-border-soft rounded-lg px-4 py-2.5 text-muted truncate" id="referral-link-display">{referralLink}</code>
-          <button
-            type="button"
-            id="copy-referral-link"
-            data-link={referralLink}
-            class="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg font-semibold text-sm bg-accent text-bg hover:bg-accent-soft transition shrink-0">
-            <Icon name="clipboard" size={14} />
-            Copy link
-          </button>
-        </div>
+    <!-- Referral link block.
+         NOTE: this page is statically built — `referralCode` is ALWAYS empty
+         at build time. The client script in /referrals fills #referral-code-display
+         and #referral-link-display from /api/me/referrals after load. So we must
+         ALWAYS render the populated structure (with placeholders), never the
+         build-time ternary's stuck-state else-branch — otherwise the JS
+         targets elements that don't exist and the placeholder sticks forever.
+         (livefix_0601: was a static-SSR stuck-state trap.) -->
+    <div class="bg-bg-card border border-border rounded-2xl p-6 flex flex-col gap-4 mb-8">
+      <div class="flex flex-col gap-1">
+        <p class="text-xs uppercase tracking-widest font-semibold text-muted-soft">Your referral code</p>
+        <p class="text-2xl font-mono font-bold text-accent tracking-wider" id="referral-code-display">{referralCode || '…'}</p>
       </div>
-    ) : (
-      <div class="bg-bg-card border border-border rounded-2xl p-6 mb-8">
-        <p class="text-muted text-sm">Your referral code is being generated. Refresh in a moment.</p>
+      <div class="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
+        <code class="flex-1 font-mono text-sm bg-bg-elev border border-border-soft rounded-lg px-4 py-2.5 text-muted truncate" id="referral-link-display">{referralLink || '…'}</code>
+        <button
+          type="button"
+          id="copy-referral-link"
+          data-link={referralLink}
+          class="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg font-semibold text-sm bg-accent text-bg hover:bg-accent-soft transition shrink-0">
+          <Icon name="clipboard" size={14} />
+          Copy link
+        </button>
       </div>
-    )}
+    </div>
 
     <!-- Stats grid -->
     <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">

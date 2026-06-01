@@ -147,19 +147,29 @@ const API_BASE = import.meta.env.PUBLIC_RECIPES_API_BASE || "https://recipes.wis
 
   async function load() {
     if (!cookbookId) { fail("state-notfound"); return; }
-    if (!apiKey) { hide("state-loading"); show("state-no-key"); return; }
+
+    // Auth resolution: portal/OAuth users carry a wr_jwt cookie (sent via
+    // credentials:"include"); agents/power-users may instead have pasted a
+    // Recipes API key into localStorage. Send whichever is present — the API
+    // honours both (cookie auth added in livefix_0601). No localStorage key is
+    // NOT a dead end: the cookie alone authenticates a logged-in browser user.
+    const headers = {};
+    if (apiKey) headers["x-api-key"] = apiKey;
 
     let res;
     try {
       res = await fetch(`${API_BASE}/api/cookbooks/${encodeURIComponent(cookbookId)}`, {
-        headers: { "x-api-key": apiKey },
+        headers,
+        credentials: "include",
       });
     } catch (e) {
       fail("state-error", "Network error: " + (e && e.message ? e.message : e));
       return;
     }
 
-    if (res.status === 401 || res.status === 402) { hide("state-loading"); show("state-upgrade"); return; }
+    // 401 = not logged in (no valid cookie AND no valid key) → point at sign-in.
+    if (res.status === 401) { hide("state-loading"); show("state-no-key"); return; }
+    if (res.status === 402) { hide("state-loading"); show("state-upgrade"); return; }
     if (res.status === 404) { hide("state-loading"); show("state-notfound"); return; }
     if (!res.ok) { fail("state-error", `API returned ${res.status}.`); return; }
 
