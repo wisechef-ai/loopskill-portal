@@ -1,7 +1,8 @@
 ---
 title: 'How to automate client reporting in 5 minutes'
-description: 'Stop spending Friday afternoons building client reports. Install one Recipes skill, point it at your data, and get branded PDFs on a schedule -- without writing a line of code.'
+description: 'Stop spending Friday afternoons building client reports. Point your AI agent at one Recipes skill and get branded PDFs on a schedule -- without writing a line of code.'
 pubDate: 2026-05-11
+updatedDate: 2026-06-01
 author: 'WiseChef'
 tags: ['client-reporting', 'automation', 'agencies', 'seo', 'gohighlevel']
 ---
@@ -14,20 +15,21 @@ The Client Reporter skill on Recipes kills this workflow dead.
 
 ## What it does
 
-Client Reporter is a free Recipes skill that connects to your data sources (Google Analytics, GoHighLevel, Meta Ads, Google Search Console) and generates a branded client report in under 60 seconds. Not a dashboard. A report -- the thing your clients actually read.
+Client Reporter connects to your data sources (Google Analytics, GoHighLevel, Meta Ads, Google Search Console) and generates a branded client report in under 60 seconds. Not a dashboard. A report -- the thing your clients actually read.
 
-You run one command:
+Your agent runs it for you:
 
 ```
-recipes install client-reporter
-recipes run client-reporter --client "Acme Corp" --period "last-7-days"
+"Install the client-reporter skill and run it for Acme Corp, last 7 days"
 ```
 
-The skill pulls the data, formats it into your branded template, and outputs a PDF. You can schedule it with cron, a GitHub Action, or whatever automation layer you already use.
+The skill pulls the data, formats it into your branded template, and outputs a PDF. You can have your agent schedule it to run every Friday, or wire it into whatever automation layer you already use.
 
-## Why it is free
+## Start free, then unlock the agency catalog
 
-Client Reporter is Recipes' gateway skill. It works fully, forever, at no cost. The idea is simple: if automating one report saves you three hours per week, you will want to automate the rest of your operations. That is what Recipes Pro is for -- the full catalog of 50+ skills for agencies who want to run their entire stack through agent commands.
+The free way into Recipes is **super-memory** -- an MIT-licensed gateway skill that gives any AI agent durable, cross-session memory. Install it in 60 seconds and see exactly how Recipes ships skills: signed, versioned, no cloud round-trip at run time.
+
+Client Reporter is part of **Recipes Pro** ($20/month) -- the full catalog of agency skills: client reporting, SEO auditing, proposal generation, content calendar management, and 50+ others. The logic is simple: if automating one report saves you three hours a week, you will want to automate the rest of your operations. That is what Pro is for.
 
 ## The reporting pipeline
 
@@ -45,15 +47,10 @@ Here is what Client Reporter does under the hood:
 
 ## Scheduling for zero-touch
 
-The real magic is scheduling. Set it once and forget it:
+The real magic is scheduling. Tell your agent once and forget it:
 
-```bash
-# Weekly report every Friday at 3 PM
-recipes schedule client-reporter \
-  --client "Acme Corp" \
-  --period "last-7-days" \
-  --cron "0 15 * * 5" \
-  --deliver email:client@acme.com
+```
+"Schedule client-reporter for Acme Corp every Friday at 3 PM, deliver by email to client@acme.com"
 ```
 
 Your client gets a professional report in their inbox every Friday at 3 PM. You did zero work.
@@ -66,11 +63,11 @@ The integration works through the standard GHL API key. You set it once per clie
 
 ## Getting started
 
-1. Install Recipes: `npm install -g @recipes/cli`
-2. Install the skill: `recipes install client-reporter`
-3. Configure your first client: `recipes config client-reporter --setup`
-4. Run it: `recipes run client-reporter --client "Your Client" --period "last-7-days"`
+1. Point your agent at Recipes -- `recipes.wisechef.ai/skill` (one phrase, the meta-skill gives it marketplace awareness).
+2. Install the free gateway: ask your agent to add `super-memory`.
+3. Upgrade to Pro and install Client Reporter: `"install the client-reporter skill"`.
+4. Configure your first client and run it.
 
-That is it. Five minutes from install to your first automated report.
+Five minutes from install to your first automated report.
 
-[Install Client Reporter](https://recipes.wisechef.ai/skills/client-reporter)
+[Start free with Super Memory](https://recipes.wisechef.ai/skills/super-memory) · [See Pricing](https://recipes.wisechef.ai/pricing)
