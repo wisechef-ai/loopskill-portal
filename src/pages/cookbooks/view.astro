@@ -1,0 +1,388 @@
+---
+// loopclose_3005 Phase E — Cookbook web visualization: /cookbooks/<id>
+//
+// REQUIRED read-surface (Adam 2026-05-31): a paying Pro/Pro+ user must be able
+// to OPEN their cookbook and SEE its skills directly — without asking an agent
+// or running a CLI. Two views, both load-bearing:
+//   1. List/table (primary job) — what skills are in here, at a glance, with
+//      pinned/floating + tailored/catalog badges + corrections-absorbed count.
+//   2. Force-graph (delight layer) — skills as nodes, fork-lineage as edges,
+//      reusing the dependency-free layout pattern from graph.astro.
+//
+// Data source: GET /api/cookbooks/<id> (enriched in loopclose_3005 Phase E to
+// return title, skill_variant, is_public, parent_skill_slug, pinned,
+// corrections_absorbed per skill). Auth: the portal's x-api-key bridge, same
+// pattern as dashboard/forks.astro (key in localStorage). Cook/free land on a
+// 402 upgrade banner; a 404 means "not yours / not found".
+
+import Base from "../../layouts/Base.astro";
+
+const API_BASE = import.meta.env.PUBLIC_RECIPES_API_BASE || "https://recipes.wisechef.ai";
+---
+
+<Base
+  title="Cookbook — Recipes"
+  description="View the skills in your cookbook: list and graph views, with tailored-vs-catalog and pinned badges."
+>
+  <main class="cb-view max-w-5xl mx-auto px-6 pt-12 pb-16">
+    <header class="flex flex-col gap-2 mb-8">
+      <a href="/library" class="text-xs text-muted hover:text-accent transition inline-flex items-center gap-1.5">← Library</a>
+      <div class="flex items-center justify-between gap-4 flex-wrap">
+        <h1 id="cb-name" class="text-3xl md:text-4xl font-semibold tracking-tight">Cookbook</h1>
+        <div id="cb-stats" class="text-sm text-muted"></div>
+      </div>
+      <p id="cb-desc" class="text-muted leading-relaxed max-w-2xl"></p>
+    </header>
+
+    <!-- States -->
+    <section id="state-loading" class="text-muted text-sm py-10">Loading cookbook…</section>
+
+    <section id="state-no-key" hidden class="bg-bg-card border border-border rounded-2xl p-6">
+      <h2 class="text-lg font-semibold mb-2">Connect your API key</h2>
+      <p class="text-sm text-muted mb-4">This page reads your cookbook over the API. Generate or paste a Recipes API key to continue.</p>
+      <a href="/library" class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-accent text-bg font-semibold text-sm hover:bg-accent-soft transition">Go to Library</a>
+    </section>
+
+    <section id="state-upgrade" hidden class="bg-bg-card border border-amber-500/40 rounded-2xl p-6">
+      <h2 class="text-lg font-semibold mb-2">Pro tier required</h2>
+      <p class="text-sm text-muted mb-4">Cookbooks are a Pro / Pro+ feature. Upgrade to create and view cookbooks.</p>
+      <a href="/pricing" class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-accent text-bg font-semibold text-sm hover:bg-accent-soft transition">See pricing</a>
+    </section>
+
+    <section id="state-notfound" hidden class="bg-bg-card border border-border rounded-2xl p-6">
+      <h2 class="text-lg font-semibold mb-2">Cookbook not found</h2>
+      <p class="text-sm text-muted">This cookbook doesn't exist, or it isn't on your account.</p>
+    </section>
+
+    <section id="state-error" hidden class="bg-bg-card border border-red-500/40 rounded-2xl p-6">
+      <h2 class="text-lg font-semibold mb-2">Couldn't load cookbook</h2>
+      <p id="error-detail" class="text-sm text-muted"></p>
+    </section>
+
+    <!-- Loaded content -->
+    <div id="content" hidden>
+      <!-- View toggle -->
+      <div class="flex items-center gap-2 mb-5">
+        <button id="tab-list" class="cb-tab cb-tab-active px-3 py-1.5 rounded-lg text-sm font-medium">List</button>
+        <button id="tab-graph" class="cb-tab px-3 py-1.5 rounded-lg text-sm font-medium">Graph</button>
+      </div>
+
+      <!-- Empty cookbook -->
+      <div id="cb-empty" hidden class="bg-bg-card border border-border rounded-2xl p-8 text-center">
+        <p class="text-sm text-muted">This cookbook has no skills yet. Add one with your agent (<code class="text-accent">recipes_cookbook_attach</code>) or the CLI.</p>
+      </div>
+
+      <!-- List / table view (primary) -->
+      <section id="view-list">
+        <div class="overflow-x-auto bg-bg-card border border-border rounded-2xl">
+          <table class="w-full text-sm">
+            <thead>
+              <tr class="text-left text-muted-soft border-b border-border-soft">
+                <th class="px-4 py-3 font-medium">Skill</th>
+                <th class="px-4 py-3 font-medium">Type</th>
+                <th class="px-4 py-3 font-medium">Version</th>
+                <th class="px-4 py-3 font-medium">Lineage</th>
+                <th class="px-4 py-3 font-medium text-right">Corrections</th>
+              </tr>
+            </thead>
+            <tbody id="skills-tbody"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Graph view (delight) -->
+      <section id="view-graph" hidden>
+        <div id="graph-container" class="relative w-full bg-bg-card border border-border rounded-2xl overflow-hidden" style="height: 560px;">
+          <svg id="cb-graph-svg" width="100%" height="100%" style="display:block;"></svg>
+          <div id="cb-graph-tooltip" class="absolute pointer-events-none px-2.5 py-1.5 rounded-md text-xs bg-bg-elev border border-border shadow-lg" style="opacity:0; transition:opacity .12s;"></div>
+          <div id="cb-graph-empty" hidden class="absolute inset-0 flex items-center justify-center text-sm text-muted">No skills to graph.</div>
+        </div>
+        <p class="text-xs text-muted-soft mt-3">Nodes = skills · gold = tailored fork · blue = catalog · lines = fork lineage. Drag to explore.</p>
+      </section>
+    </div>
+  </main>
+</Base>
+
+<style>
+  .cb-tab { border: 1px solid var(--border, #2a2f3a); color: var(--muted, #9aa3b2); background: transparent; transition: all .15s; }
+  .cb-tab:hover { color: var(--text, #e6e9ef); }
+  .cb-tab-active { background: var(--accent, #f5a623); color: var(--bg, #0f1115); border-color: var(--accent, #f5a623); }
+  .badge { display: inline-flex; align-items: center; gap: .25rem; font-size: 10px; text-transform: uppercase; letter-spacing: .04em; padding: .15rem .45rem; border-radius: 999px; border: 1px solid; }
+  .badge-tailored { color: #f5a623; background: rgba(245,166,35,.1); border-color: rgba(245,166,35,.35); }
+  .badge-catalog { color: #5b9bf5; background: rgba(91,155,245,.1); border-color: rgba(91,155,245,.35); }
+  .badge-pinned { color: #4ade80; background: rgba(74,222,128,.1); border-color: rgba(74,222,128,.3); }
+  .badge-floating { color: #9aa3b2; background: transparent; border-color: var(--border-soft, #2a2f3a); }
+  #skills-tbody tr { border-bottom: 1px solid var(--border-soft, #1c2029); }
+  #skills-tbody tr:last-child { border-bottom: none; }
+  #skills-tbody td { padding: .75rem 1rem; vertical-align: middle; }
+</style>
+
+<script define:vars={{ API_BASE }}>
+  // ── Resolve cookbook id: ?id=<uuid> (primary) or trailing path segment ──
+  // Static Astro can't pre-render per-user UUID routes, so this page lives at
+  // /cookbooks/view?id=<uuid>. A Caddy rewrite (/cookbooks/<id> →
+  // /cookbooks/view?id=<id>) gives the clean URL in prod; the path fallback
+  // keeps it working if that rewrite is ever bypassed.
+  const cookbookId = (() => {
+    const q = new URLSearchParams(location.search).get("id");
+    if (q) return q.trim();
+    const parts = location.pathname.split("/").filter(Boolean);
+    const last = parts[parts.length - 1];
+    return last && last !== "view" && last !== "cookbooks" ? last : "";
+  })();
+
+  const $ = (id) => document.getElementById(id);
+  const show = (id) => { const e = $(id); if (e) e.hidden = false; };
+  const hide = (id) => { const e = $(id); if (e) e.hidden = true; };
+
+  const apiKey = (() => {
+    try { return localStorage.getItem("recipes_api_key"); } catch { return null; }
+  })();
+
+  function fail(state, detail) {
+    hide("state-loading");
+    if (detail) { const d = $("error-detail"); if (d) d.textContent = detail; }
+    show(state);
+  }
+
+  async function load() {
+    if (!cookbookId) { fail("state-notfound"); return; }
+    if (!apiKey) { hide("state-loading"); show("state-no-key"); return; }
+
+    let res;
+    try {
+      res = await fetch(`${API_BASE}/api/cookbooks/${encodeURIComponent(cookbookId)}`, {
+        headers: { "x-api-key": apiKey },
+      });
+    } catch (e) {
+      fail("state-error", "Network error: " + (e && e.message ? e.message : e));
+      return;
+    }
+
+    if (res.status === 401 || res.status === 402) { hide("state-loading"); show("state-upgrade"); return; }
+    if (res.status === 404) { hide("state-loading"); show("state-notfound"); return; }
+    if (!res.ok) { fail("state-error", `API returned ${res.status}.`); return; }
+
+    let cb;
+    try { cb = await res.json(); } catch { fail("state-error", "Malformed API response."); return; }
+
+    render(cb);
+  }
+
+  function render(cb) {
+    hide("state-loading");
+    show("content");
+
+    $("cb-name").textContent = cb.name || "Cookbook";
+    if (cb.description) $("cb-desc").textContent = cb.description;
+
+    // Skills can include source==="disabled" (hidden) — surface but de-emphasise.
+    const skills = (cb.skills || []).filter((s) => s.source !== "disabled");
+    const tailored = skills.filter((s) => s.skill_variant === "custom" || s.is_public === false).length;
+    $("cb-stats").textContent =
+      `${skills.length} skill${skills.length === 1 ? "" : "s"}` +
+      (tailored ? ` · ${tailored} tailored` : "");
+
+    if (skills.length === 0) {
+      show("cb-empty");
+      hide("view-list");
+      return;
+    }
+
+    renderTable(skills);
+    setupGraph(skills);
+    setupTabs();
+  }
+
+  function isTailored(s) { return s.skill_variant === "custom" || s.is_public === false; }
+
+  function renderTable(skills) {
+    const tbody = $("skills-tbody");
+    tbody.innerHTML = "";
+    for (const s of skills) {
+      const tr = document.createElement("tr");
+
+      const nameTd = document.createElement("td");
+      const a = document.createElement("a");
+      a.href = `/skills/${s.slug}`;
+      a.className = "font-medium text-text hover:text-accent transition";
+      a.textContent = s.title || s.slug;
+      nameTd.appendChild(a);
+      const slugSpan = document.createElement("div");
+      slugSpan.className = "text-[11px] text-muted-soft mt-0.5";
+      slugSpan.textContent = s.slug;
+      nameTd.appendChild(slugSpan);
+      tr.appendChild(nameTd);
+
+      const typeTd = document.createElement("td");
+      const typeBadge = document.createElement("span");
+      if (isTailored(s)) { typeBadge.className = "badge badge-tailored"; typeBadge.textContent = "tailored"; }
+      else { typeBadge.className = "badge badge-catalog"; typeBadge.textContent = "catalog"; }
+      typeTd.appendChild(typeBadge);
+      tr.appendChild(typeTd);
+
+      const verTd = document.createElement("td");
+      const pinBadge = document.createElement("span");
+      if (s.pinned) { pinBadge.className = "badge badge-pinned"; pinBadge.textContent = "pinned " + (s.pinned_version || ""); }
+      else { pinBadge.className = "badge badge-floating"; pinBadge.textContent = "latest"; }
+      verTd.appendChild(pinBadge);
+      tr.appendChild(verTd);
+
+      const linTd = document.createElement("td");
+      if (s.parent_skill_slug) {
+        const pl = document.createElement("a");
+        pl.href = `/skills/${s.parent_skill_slug}`;
+        pl.className = "text-xs text-muted hover:text-accent transition";
+        pl.textContent = "↳ " + s.parent_skill_slug;
+        linTd.appendChild(pl);
+      } else {
+        linTd.innerHTML = '<span class="text-xs text-muted-soft">—</span>';
+      }
+      tr.appendChild(linTd);
+
+      const corrTd = document.createElement("td");
+      corrTd.className = "text-right";
+      const n = s.corrections_absorbed || 0;
+      corrTd.innerHTML = n > 0
+        ? `<span class="text-accent text-sm font-medium">${n}</span>`
+        : '<span class="text-muted-soft text-sm">0</span>';
+      tr.appendChild(corrTd);
+
+      tbody.appendChild(tr);
+    }
+  }
+
+  function setupTabs() {
+    const tabList = $("tab-list"), tabGraph = $("tab-graph");
+    tabList.addEventListener("click", () => {
+      tabList.classList.add("cb-tab-active"); tabGraph.classList.remove("cb-tab-active");
+      show("view-list"); hide("view-graph");
+    });
+    tabGraph.addEventListener("click", () => {
+      tabGraph.classList.add("cb-tab-active"); tabList.classList.remove("cb-tab-active");
+      hide("view-list"); show("view-graph");
+    });
+  }
+
+  // ── Dependency-free force-graph (cookbooks are ≤200 nodes) ──────────────
+  function setupGraph(skills) {
+    const svg = $("cb-graph-svg");
+    const container = $("graph-container");
+    const tip = $("cb-graph-tooltip");
+    if (!skills.length) { show("cb-graph-empty"); return; }
+
+    const slugSet = new Set(skills.map((s) => s.slug));
+    const W = container.clientWidth || 900;
+    const H = 560;
+
+    const nodes = skills.map((s, i) => {
+      const ang = (i / skills.length) * Math.PI * 2;
+      const r0 = Math.min(W, H) * 0.3;
+      return {
+        slug: s.slug, title: s.title || s.slug, tailored: isTailored(s),
+        x: W / 2 + Math.cos(ang) * r0, y: H / 2 + Math.sin(ang) * r0,
+        vx: 0, vy: 0, r: 7,
+      };
+    });
+    const idx = {}; nodes.forEach((n, i) => { idx[n.slug] = i; });
+
+    // Edges: fork lineage (child -> parent) when the parent is also in this cookbook.
+    const links = [];
+    skills.forEach((s) => {
+      if (s.parent_skill_slug && slugSet.has(s.parent_skill_slug)) {
+        links.push({ src: idx[s.slug], tgt: idx[s.parent_skill_slug] });
+      }
+    });
+
+    const ns = "http://www.w3.org/2000/svg";
+    const root = document.createElementNS(ns, "g"); svg.appendChild(root);
+    const linkGroup = document.createElementNS(ns, "g");
+    const nodeGroup = document.createElementNS(ns, "g");
+    root.appendChild(linkGroup); root.appendChild(nodeGroup);
+
+    const linkEls = links.map(() => {
+      const el = document.createElementNS(ns, "line");
+      el.setAttribute("stroke", "#f5a623"); el.setAttribute("stroke-width", "1.4");
+      el.setAttribute("stroke-opacity", "0.5"); linkGroup.appendChild(el); return el;
+    });
+
+    const nodeEls = nodes.map((n, i) => {
+      const el = document.createElementNS(ns, "circle");
+      el.setAttribute("r", String(n.r));
+      el.setAttribute("fill", n.tailored ? "#f5a623" : "#5b9bf5");
+      el.setAttribute("stroke", "#0f1115"); el.setAttribute("stroke-width", "1.5");
+      el.style.cursor = "pointer"; el.setAttribute("data-idx", String(i));
+      nodeGroup.appendChild(el); return el;
+    });
+
+    // Force sim
+    const REPEL = 2600, SPRING = 0.02, SPRING_LEN = 90, CENTRE = 0.002, FRICTION = 0.85;
+    let alpha = 1, frame = 0;
+    function step() {
+      for (let i = 0; i < nodes.length; i++) {
+        const a = nodes[i];
+        for (let j = i + 1; j < nodes.length; j++) {
+          const b = nodes[j];
+          let dx = b.x - a.x, dy = b.y - a.y, d2 = dx * dx + dy * dy;
+          if (d2 < 1) { dx = Math.random() - 0.5; dy = Math.random() - 0.5; d2 = 1; }
+          const d = Math.sqrt(d2), f = (REPEL / d2) * alpha;
+          const fx = (dx / d) * f, fy = (dy / d) * f;
+          a.vx -= fx; a.vy -= fy; b.vx += fx; b.vy += fy;
+        }
+      }
+      for (const { src, tgt } of links) {
+        const a = nodes[src], b = nodes[tgt];
+        const dx = b.x - a.x, dy = b.y - a.y, d = Math.sqrt(dx * dx + dy * dy) || 1;
+        const f = (d - SPRING_LEN) * SPRING * alpha;
+        const fx = (dx / d) * f, fy = (dy / d) * f;
+        a.vx += fx; a.vy += fy; b.vx -= fx; b.vy -= fy;
+      }
+      for (const n of nodes) {
+        n.vx += (W / 2 - n.x) * CENTRE * alpha;
+        n.vy += (H / 2 - n.y) * CENTRE * alpha;
+        n.vx *= FRICTION; n.vy *= FRICTION;
+        n.x += n.vx; n.y += n.vy;
+        n.x = Math.max(n.r, Math.min(W - n.r, n.x));
+        n.y = Math.max(n.r, Math.min(H - n.r, n.y));
+      }
+      links.forEach((l, i) => {
+        const a = nodes[l.src], b = nodes[l.tgt];
+        linkEls[i].setAttribute("x1", a.x); linkEls[i].setAttribute("y1", a.y);
+        linkEls[i].setAttribute("x2", b.x); linkEls[i].setAttribute("y2", b.y);
+      });
+      nodes.forEach((n, i) => { nodeEls[i].setAttribute("cx", n.x); nodeEls[i].setAttribute("cy", n.y); });
+      alpha *= 0.985;
+      if (frame++ < 600 && alpha > 0.02) requestAnimationFrame(step);
+    }
+    requestAnimationFrame(step);
+
+    // Tooltip + drag
+    let dragIdx = -1;
+    nodeGroup.addEventListener("mousemove", (e) => {
+      const t = e.target;
+      if (t && t.getAttribute("data-idx") !== null) {
+        const n = nodes[+t.getAttribute("data-idx")];
+        tip.textContent = n.title + (n.tailored ? "  (tailored)" : "");
+        const rect = container.getBoundingClientRect();
+        tip.style.left = (e.clientX - rect.left + 12) + "px";
+        tip.style.top = (e.clientY - rect.top + 12) + "px";
+        tip.style.opacity = "1";
+      }
+    });
+    nodeGroup.addEventListener("mouseleave", () => { tip.style.opacity = "0"; });
+    svg.addEventListener("mousedown", (e) => {
+      const t = e.target;
+      if (t && t.getAttribute("data-idx") !== null) dragIdx = +t.getAttribute("data-idx");
+    });
+    window.addEventListener("mousemove", (e) => {
+      if (dragIdx < 0) return;
+      const rect = svg.getBoundingClientRect();
+      nodes[dragIdx].x = e.clientX - rect.left; nodes[dragIdx].y = e.clientY - rect.top;
+      nodes[dragIdx].vx = 0; nodes[dragIdx].vy = 0; alpha = Math.max(alpha, 0.3);
+      requestAnimationFrame(step);
+    });
+    window.addEventListener("mouseup", () => { dragIdx = -1; });
+  }
+
+  load();
+</script>

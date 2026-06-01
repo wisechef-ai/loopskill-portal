@@ -219,6 +219,19 @@ import Icon from '../components/Icon.astro';
           </div>
         </div>
 
+        <!-- Your cookbooks (loopclose_3005 Phase E) -->
+        <div class="md:col-span-2 bg-bg-card border border-border rounded-2xl p-6">
+          <div class="flex items-center justify-between gap-3 mb-4">
+            <div>
+              <h2 class="text-lg font-semibold tracking-tight">Your cookbooks</h2>
+              <p class="text-xs text-muted mt-1">Open a cookbook to see its skills, lineage, and tailored-vs-catalog badges.</p>
+            </div>
+          </div>
+          <div id="cookbooks-list" class="text-sm">
+            <p id="cookbooks-empty" class="text-muted">No cookbooks yet. Your agent creates one automatically when it tailors or attaches a skill.</p>
+          </div>
+        </div>
+
         <!-- Installed skills -->
         <div class="md:col-span-2 bg-bg-card border border-border rounded-2xl p-6">
           <div class="flex items-center justify-between gap-3 mb-4">
@@ -419,19 +432,43 @@ import Icon from '../components/Icon.astro';
     renderKeyTable(data.keys);
   }
 
-  // ── Cookbooks — populate modal dropdown ───────────────────────────────
+  // ── Cookbooks — populate modal dropdown + the visible cookbooks list ───
   async function loadCookbooks(): Promise<void> {
     const data = await fetchJson<{ cookbooks: CookbookItem[] }>('/api/cookbooks');
     if (!data?.cookbooks) return;
     _cookbooks = data.cookbooks;
     const sel = $<HTMLSelectElement>('modal-cookbook');
-    if (!sel) return;
-    data.cookbooks.forEach(cb => {
-      const opt = document.createElement('option');
-      opt.value = cb.id;
-      opt.textContent = cb.name;
-      sel.appendChild(opt);
-    });
+    if (sel) {
+      data.cookbooks.forEach(cb => {
+        const opt = document.createElement('option');
+        opt.value = cb.id;
+        opt.textContent = cb.name;
+        sel.appendChild(opt);
+      });
+    }
+
+    // loopclose_3005 Phase E — render a linked list of cookbooks so a user can
+    // open /cookbooks/view?id=<id> and see the skills inside, zero-CLI.
+    const list = $('cookbooks-list');
+    const empty = $('cookbooks-empty');
+    if (list && data.cookbooks.length) {
+      if (empty) empty.remove();
+      list.innerHTML = '';
+      data.cookbooks.forEach(cb => {
+        const a = document.createElement('a');
+        a.href = `/cookbooks/view?id=${encodeURIComponent(cb.id)}`;
+        a.className = 'flex items-center justify-between gap-3 px-4 py-3 rounded-xl bg-bg-elev border border-border-soft hover:border-accent/40 transition mb-2';
+        const left = document.createElement('span');
+        left.className = 'font-medium text-text';
+        left.textContent = cb.name;
+        const right = document.createElement('span');
+        right.className = 'text-xs text-accent';
+        right.textContent = 'Open →';
+        a.appendChild(left);
+        a.appendChild(right);
+        list.appendChild(a);
+      });
+    }
   }
 
   // ── New key modal ──────────────────────────────────────────────────────
