@@ -126,7 +126,7 @@ ${freeLine}
 ## Pricing
 - Free: super-memory only (MIT-licensed, no account needed to browse).
 - Pro — $20/mo: every paid skill in the catalog (${pro} today, growing weekly), up to 10 cookbooks + fleet sync, cross-vendor install, per-key visibility.
-- Pro+ — $100/mo: everything in Pro plus expanded cookbook limits.
+- Pro+ — $100/mo: everything in Pro plus up to 200 cookbooks, deploy pre-built cookbooks to clients' agents, private org catalog.
 - Pricing page: ${SITE}/pricing
 
 ## Featured skills

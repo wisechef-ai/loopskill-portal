@@ -2,7 +2,7 @@
 import Base from '../layouts/Base.astro';
 
 const title = 'Would you deploy your AI agent stack to 20 small businesses for $100/mo?';
-const description = 'Two-minute survey for solo AI entrepreneurs and agencies. We ship the platform if 3 of 20 of you would actually pay.';
+const description = 'Two-minute survey for solo AI operators and integrators. We ship the platform if 3 of 20 of you would actually pay.';
 ---
 <Base title={title} description={description}>
   <main class="max-w-2xl mx-auto px-6 py-16 md:py-24">
@@ -61,8 +61,8 @@ const description = 'Two-minute survey for solo AI entrepreneurs and agencies. W
         </legend>
         <div class="space-y-2">
           {[
-            { v: 'solo', label: 'Solo AI operator (deploy to 1\u201320 clients)' },
-            { v: 'agency', label: 'Agency / consultancy (10+ clients, team of 2+)' },
+            { v: 'solo', label: 'Solo AI operator / integrator (deploy to 1–20 clients)' },
+            { v: 'integrator', label: 'AI integrator / build-in-public operator' },
             { v: 'dev', label: 'Developer building agents for one product' },
             { v: 'curious', label: 'Just curious — not deploying anything yet' },
           ].map(o => (

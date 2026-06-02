@@ -466,7 +466,7 @@
       var scale = totalFleet > 0 ? xi / totalFleet : 0;
       var pr  = s.proRefs    * scale;
       var pp  = s.proPlusRef * scale;
-      var cl  = Math.min(s.clients * scale, 20); // max 20 cookbooks
+      var cl  = Math.min(s.clients * scale, 200); // max 200 cookbooks (Pro+ SSOT)
 
       var refOnly = calcEarnings(pr, pp, 0);
       var full    = calcEarnings(pr, pp, cl);
