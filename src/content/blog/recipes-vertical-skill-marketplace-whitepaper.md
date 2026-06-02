@@ -1,136 +1,351 @@
 ---
-title: 'Recipes — vertical skill marketplace for AI agents (a 30-day report)'
-description: 'Architecture, trust model, economics, and real numbers from 30 days of running a production skill marketplace for AI agencies. FastAPI + MCP + ed25519 + cognee. No marketing fluff.'
-pubDate: 2026-05-10
+title: 'Recipes — the integrator toolchain for AI agents'
+description: 'Architecture, trust model, economics, and the compounding cookbook. For the solo operator, the robotics lead, and the AI agent that needs to learn the loop. DB-as-truth + optional git feedback beats both pure-marketplace and pure-git.'
+pubDate: 2026-06-02
 author: 'WiseChef'
-tags: ['recipes', 'skills', 'marketplace', 'mcp', 'architecture']
+tags: ['recipes', 'skills', 'marketplace', 'mcp', 'architecture', 'integrator', 'cookbook']
 ---
 
-## 1. Why this exists
+> **Reading modes:** This document is written for two audiences simultaneously. A founder can skim the thesis in §1–2 and the economics in §5. An AI agent can ingest the full document to reconstruct the complete operational loop — every tool name, every step, every API call is spelled out verbatim.
 
-AI agents are getting good at tool use. The problem is provisioning the tools. Every agency that runs Claude Code, Cursor, or Windsurf ends up maintaining a bespoke collection of scripts, SKILL.md files, and brittle shell one-liners that each engineer assembled independently. There is no canonical place to find a vetted, installable, versioned skill that works across agent hosts.
+---
 
-The Anthropic Skills standard changed that in early 2026. It gave the ecosystem a shared metadata shape — frontmatter in SKILL.md, a YAML allowlist manifest, a defined install handshake — so that any compliant agent host could load a skill without bespoke glue. What it did not provide was a catalog. Something had to fill that gap.
+## 1. Thesis: the integrator layer
 
-Recipes is that catalog. It exists because WiseChef was already running production agent workloads for marketing and SEO agencies, accumulating skills that solved real problems (client reporting, content calendar automation, semantic SEO auditing, proposal generation), and there was no good way to share them across clients or publish them for others to reuse. The marketplace is a side-effect of internal necessity: once you have 40 skills that work, the infrastructure cost of publishing them is marginal.
+The gap in the AI agent stack is not reasoning — it is *deployment*. There is no shortage of capable models, no shortage of agent frameworks, no shortage of people who want to use them. The gap is the person in the middle: the **integrator** who actually gets agents into production inside companies.
 
-The "missing layer" between the Anthropic Skills spec and actual deployed agents is trust, distribution, and economics. You need a pipeline that reviews skill quality and security, a hosting layer that makes install commands short, and a revenue model that incentivizes creators to publish real, maintained skills instead of toy examples. That is what this report is about.
+The integrator goes by different names. Solo operator who deploys agents for clients. Robotics engineer who ships ROS2 skills into production fleets. Build-in-public founder who provisions and iterates on agent capabilities for a real product. What they share is the deployment surface: they are responsible for *which tools the agent has*, *whether those tools are safe*, *how those tools improve over time*, and *how changes propagate to deployed instances*.
 
-## 2. The Anthropic Skills standard primer
+Recipes is built for that person. Not for the 5–20 person agency as a unit, not for the enterprise with a dedicated AI ops team, not for the hobbyist learning to use Claude. For the integrator who ships.
 
-A skill in the Anthropic Skills ecosystem is a directory with a `SKILL.md` file at its root. The frontmatter of that file is the skill's identity card. It carries fields like `slug`, `version`, `tier` (which maps to the billing gate), `allowlist` (the list of domains and endpoints the skill is permitted to contact), and `mcp` (whether the skill exposes an MCP server endpoint). An agent host reads this frontmatter, validates the allowlist against its own policy, and decides whether to install.
+The core thesis: **a database-of-record for skills, with optional git feedback routing back to whichever repo the integrator controls, beats both pure-marketplace (no sovereignty) and pure-git (no discovery, no install UX, no compounding).** The compounding cookbook is the deployable, self-improving unit. The feedback moat is the mechanism by which that unit improves without leaving the integrator's control.
 
-The allowlist manifest is the security boundary. A skill that claims to do client reporting should only need to reach the client's analytics API and maybe a PDF renderer — nothing else. If the manifest lists `api.stripe.com` and the skill description says "SEO audit", a compliant agent host will refuse to install it. This is not a suggestion; it is the handshake.
+---
 
-YAML drives the rest of the skill definition: dependencies, environment variables it expects, the command it runs, and the MCP server spec if applicable. The install command (`npx @wisechef/recipes-skill install <slug>`) pulls this manifest from the Recipes API, resolves dependencies, writes environment scaffolding, and registers the skill with the agent host in one step.
+## 2. What Recipes is (and is not)
 
-The key insight is that the standard makes skills *portable*. A skill published to Recipes works on Claude Code, Cursor, Windsurf, Cline, OpenClaw, and Hermes without modification — as long as those hosts implement the same handshake. The standard is the interoperability layer; Recipes is the distribution layer.
+**What it is:**
 
-## 3. Why vertical (agencies-only) vs. horizontal
+- A curated, signed, versioned catalog of installable AI agent skills — 62 skills as of 2026-06-02, verified against the live system at `GET /api/marketing/snapshot`.
+- A native MCP server with 28 dedicated tools (not a generic REST wrapper). Verified live from `GET /skill`.
+- A subscription platform where Pro ($20/month) gives access to all 61 paid skills with up to 10 cookbooks, and Pro+ ($100/month) scales to 200 cookbooks for integrators who deploy agents at client scale.
+- A complete tailor-and-deploy loop: fork a public skill, version it privately, attach it to a cookbook, deploy it — entirely through MCP tool calls, without leaving the agent conversation.
+- A feedback routing system where agent field feedback lands as GitHub issues in *whichever repo the integrator configures* — not necessarily ours.
 
-A horizontal marketplace serves everyone: developers, students, researchers, hobbyists, enterprises. It maximizes top-of-funnel reach and minimizes addressable depth. The economics of horizontal marketplaces favor breadth: list everything, charge nothing (or almost nothing), monetize at scale.
+**What it is not:**
 
-We chose vertical on purpose. The target audience is AI agencies: small teams (2-20 people) that run agents as a service for clients in marketing, SEO, content, sales ops, and adjacent fields. This audience has three properties that make vertical economics work.
+- A horizontal marketplace for everyone. The catalog is curated and vertical.
+- A one-time purchase platform. Subscriptions only — recurring, cancel anytime.
+- Free-tier first. There is one permanently free skill (`super-memory`). The value proposition is the paid catalog.
+- A prompt library or RAG store. Skills are installable tools with SKILL.md specifications, allowlists, and versioned tarballs — not text snippets.
 
-First, they have real workflows with real pain. A content agency running weekly blog audits for 30 clients does not want a general-purpose "web scraper" skill. They want a skill that fetches a client's sitemap, runs semantic similarity scoring against their competitors' top pages, and outputs a ranked gap report in the format their account manager already uses. The specificity is the value.
+---
 
-Second, they have real budgets. Agencies bill clients. A skill that saves an account manager 3 hours a week is worth $60-150/month in reclaimed billable time. A $20/month Pro subscription is a rounding error. The conversation is not "can I afford this" — it is "which skills will I use this week."
+## 3. Architecture
 
-Third, they have fleet deployment needs. A 10-person agency where every operator runs Claude Code needs to provision the same skills across 10 seats, keep them synchronized, and audit what each seat has installed. That is a Pro+ problem ($100/month for 20 endpoints with fleet sync), not a problem that a one-size-fits-all free tier solves.
+The backend is FastAPI, reverse-proxied by Caddy. PostgreSQL is the source of truth for skills, users, subscriptions, cookbooks, forks, and feedback routing. The MCP server (`app/mcp/server.py`) runs as a StreamableHTTP endpoint alongside the REST API.
 
-Staying vertical means we can price for real value, support real workflows, and build a creator community that publishes real skills instead of toy examples.
+**The SKILL.md contract.** Every skill is a directory with a `SKILL.md` file. Frontmatter carries `slug`, `version`, `tier`, `allowlist`, and `requiredEnv`. The allowlist is the security boundary: a skill can only call the domains it declares. Agent hosts validate the allowlist before installing. The publish pipeline enforces that the declared allowlist matches actual network calls in sandboxed execution.
 
-## 4. Architecture
+**SkillSpector security wall.** All skill content PRs run through NVIDIA SkillSpector (Apache-2.0) in CI — a static scanner with 64 vulnerability patterns across 16 categories (prompt injection, data exfiltration, privilege escalation, supply chain, MCP poisoning, and more). It runs in `--no-llm` static-only mode. Findings are emitted as SARIF to the GitHub Security tab. Advisory by default; one environment variable (`SKILLSPECTOR_BLOCK_ON_HIGH=true`) switches it to a CI blocker. Source: `docs/security/skillspector.md`.
 
-The backend is a FastAPI application running on port 3360, reverse-proxied by Caddy. Postgres (pghybrid, port 5433) is the source of truth for skills, users, subscriptions, and install counts. Cognee 1.0.5 runs as a sidecar service, providing the knowledge graph and pgvector-backed semantic recall that powers the `super-memory` gateway skill.
+**ed25519 signing.** Every published skill artifact is signed. The Recipes CLI verifies the signature before writing anything to disk. A skill whose signature does not verify is refused, even if it comes from `recipes.wisechef.ai`.
 
-Skill publishing runs through `publisher_routes.py`, specifically the `POST /api/skills/publish` endpoint (lines 148-431 in the current build). This route handles intake: it receives a skill archive, validates frontmatter, runs the 5-step quality pipeline (security scan, discipline check, quality score, allowlist validation, manifest integrity), signs the artifact with ed25519, and writes the result to both Postgres and the file store. A successful publish returns a signed skill ID that the install command can verify.
+**Cookbook data model.** A cookbook is a named collection of skills owned by a user (`cookbook_owner` column, `CHECK ck_cookbooks_owner_required` DB constraint enforces NOT NULL). A cookbook can hold:
+- Catalog skills from the public catalog (synced, auto-updated)
+- Tailored private skills (promoted from the integrator's own forks)
+- Pinned skills (fixed at a specific version, opt-out of auto-sync)
 
-The MCP server (`app/mcp/server.py`) exposes the catalog over the Model Context Protocol. Agent hosts that implement MCP discovery can enumerate the catalog programmatically — useful for agents that want to self-provision skills based on the task at hand rather than waiting for a human to run an install command. The MCP server respects the same tier gating as the REST API.
+Cookbooks are visualizable at `/cookbooks/view?id=<id>` — a web graph of skills as nodes, lineage arrows, and badges for pinned/tailored/corrections-absorbed.
 
-Auto-publish works via a cookbook propagation pipeline: internal WiseChef production workloads that have been running successfully for 30+ days are eligible for automatic skill extraction. A weekly cron job reviews production workflow telemetry, identifies stable tool call patterns, and opens a draft skill PR against the Recipes catalog. A human reviews and merges. This is how the catalog grew to 54 skills in 30 days without a manual submission process.
+---
 
-Install count tracking is a separate concern. `install_count_drift_probe.py` runs hourly via cron. It cross-references the install event log against the `install_count_total` column in Postgres and reconciles any drift — this matters because distributed installs from multiple agent hosts can arrive out-of-order and race against each other. In the last 7 days (as of 2026-05-10), drift probe has reported 0 discrepancies.
+## 4. The MCP tool surface
 
-## 5. Trust model
+Recipes exposes 28 MCP tools via StreamableHTTP at `GET /api/mcp/http/`. Verified 2026-06-02 from `GET /skill`. Grouped by workflow:
 
-Skill trust is two-stage. Any GitHub account can open a PR against the Recipes catalog. That PR lands as a **draft skill** — visible in the catalog with a `draft` badge, installable by opt-in testers, but not surfaced in search or the default skills list. Draft status persists until a human reviewer approves it.
+**Discovery & install**
 
-The 5-step quality pipeline runs on every PR and every update to a published skill:
+| Tool | Purpose |
+|---|---|
+| `recipes_search` | Full-text + semantic search across the catalog |
+| `recipes_recall` | Hybrid BM25 + vector recall ranked for your tier |
+| `recipes_carousel_today` | Today's curated carousel |
+| `recipes_install` | Return signed tarball URL + manifest for a slug |
+| `recipes_cookbook_install` | Install all skills from a cookbook (bulk or single slug) |
 
-1. **Security scan** — static analysis for known malicious patterns (exfiltration, credential harvesting, prompt injection attempts in SKILL.md descriptions).
-2. **Discipline check** — does the skill do what it says? Does the allowlist match the actual network calls the skill makes? Automated sandboxed execution with network traffic logged.
-3. **Quality score** — documentation completeness, test coverage, error handling presence. A skill with no tests and a one-line description scores below the publish threshold.
-4. **Allowlist validation** — every domain in the allowlist must be resolvable and must match the skill's stated purpose. An allowlist entry for `login.microsoftonline.com` on a "CSV formatter" skill fails this check.
-5. **Manifest integrity** — the SKILL.md frontmatter must parse cleanly, required fields must be present, version must follow semver.
+**Cookbook management**
 
-Skills that pass all 5 steps are signed with an ed25519 key pair. The public key is pinned in the Recipes CLI. The install command verifies the signature before writing anything to disk. A skill whose signature does not verify is refused, even if it came from recipes.wisechef.ai.
+| Tool | Purpose |
+|---|---|
+| `recipes_list_cookbook` | List your cookbook and skill provenance rows |
+| `recipes_sync` | Sync a cookbook's skills to latest versions (dry_run or apply) |
+| `recipes_recipify` | Convert a SKILL.md draft into a CookbookSkill row |
 
-The two-stage model means the catalog has no "upload and go live" path. It also means creators who invest in quality get faster human review turnaround — we track review latency and prioritize skills that enter the pipeline with a clean quality score.
+**Tailoring & forks (the deploy loop)**
 
-## 6. Pro / Pro+ economic model
+| Tool | Purpose |
+|---|---|
+| `recipes_tailor` | Fork a public skill to create a private editable copy |
+| `recipes_fork_list` | List your existing forks |
+| `recipes_tailor_version` | Upload a new version tarball to a fork (base64-encoded, MCP-native) |
+| `recipes_cookbook_attach` | Deploy a fork's latest version into a cookbook as a private catalog skill |
 
-Pricing is live as of 2026-05-10:
+**Cookbook handoff**
 
-- **Pro** — $20/month, 1 seat, full access to all 38 Pro-tier skills (labeled `cook` in the DB, `Pro` in the UI after the rev7.3 label rename).
-- **Pro+** — $100/month, 20 agent endpoints, fleet sync, full access to all 14 Pro+ skills (labeled `operator` in the DB, `Pro+` in the UI).
-- **Free** — 2 skills permanently free (including `super-memory`). No credit card required.
+| Tool | Purpose |
+|---|---|
+| `recipes_cookbook_handoff` | Transfer or fork a cookbook to a new owner, preserving tailored skills + lineage |
 
-The referral model pays **50% recurring** on every subscriber a creator refers. A creator who refers 10 Pro subscribers earns $100/month recurring, indefinitely, as long as those subscribers stay active. This is not a one-time bounty; it is a revenue share. The mechanics: the referred user signs up with a `?ref=<code>` link, which sets a 30-day cookie at the Caddy edge. If that user subscribes within 30 days, the referral is attributed.
+**Publishing**
 
-Current subscription state (verified 2026-05-10): 7 total users, 0 paid subscribers. 3 internal users (chef@, tori@, adam.krawczyk0698@gmail.com) on $0 Co-worker pricing. 4 external signups (adam-krawczyk@outlook.com, hello@agentforgelabs.com, team@wisechef.ai, wise@wisechef.ai) — all currently on the free tier. The goal for the next 30 days is the first 5 paid conversions.
+| Tool | Purpose |
+|---|---|
+| `recipes_publish_request` | Submit a skill for public catalog review |
+| `recipes_propose_skill_patch` | Submit a patch PR to a marketplace skill |
 
-The DB slug vs. display label distinction matters for API consumers. The REST API returns `tier: "cook"` and `tier: "operator"` — these are stable identifiers that will not change. The portal UI displays "Pro" and "Pro+" respectively. The rev7.3 commit (feat(pricing): label rename Cook→Pro, Operator→Pro+) updated only display strings; the underlying model is unchanged.
+**Diagnostics**
 
-## 7. The skill creator deal
+| Tool | Purpose |
+|---|---|
+| `recipes_doctor` | Audit a local install directory for missing files and hardcoded paths |
+| `recipes_seeker` | Probe local vendor skill directories and diff against the catalog |
 
-Publishing a skill to Recipes is free. There is no listing fee, no revenue split on the skill itself (skills are not sold individually; they are part of the subscription catalog). What creators earn is the referral revenue share.
+**Community & feedback**
 
-The creator deal, explicitly:
+| Tool | Purpose |
+|---|---|
+| `recipes_feedback` | Send feedback — routes to your own repo if configured |
+| `recipes_configure_feedback` | Configure your feedback routing target (Pro/Pro+) |
+| `recipes_request_recipe` | Request a new skill |
+| `recipes_report_skill_error` | Report a broken skill |
 
-- **Free to publish.** Submit a PR. Pass the 5-step pipeline. Get your skill in the catalog.
-- **50% recurring revenue share.** Your skill page on recipes.wisechef.ai has your referral code baked in. Every user who discovers your skill, clicks through, and subscribes within 30 days generates 50% of their subscription fee for you, every month, for as long as they stay subscribed.
-- **First 100 creators** who publish an approved skill get permanent featured placement in the catalog — a `featured` badge and priority in search ranking. This is not a time-limited promotion; it is permanent for the first 100 slots.
-- **Chef→Recipes pipeline.** If your skill consistently performs well in the WiseChef production workload, it gets nominated for the auto-publish pipeline, which means WiseChef's own agent infrastructure tests and validates your skill at production scale.
+**Share tokens**
 
-The economics make sense for creators who build skills that solve real agency problems. A skill that 50 agencies install generates 50 referral chains. If 10 of those agencies subscribe to Pro ($20/month), the creator earns $100/month recurring — from one skill, indefinitely. Skills that solve narrow, real problems with good documentation and active maintenance compound over time.
+| Tool | Purpose |
+|---|---|
+| `recipes_share_create` | Create a cookbook share token (shown once) |
+| `recipes_share_list` | List share tokens (metadata only) |
+| `recipes_share_revoke` | Revoke a share token |
+| `recipes_share_rotate` | Rotate a share token |
 
-## 8. What we learned in 30 days
+**Fleet management**
 
-Numbers first, verified as of 2026-05-10:
+| Tool | Purpose |
+|---|---|
+| `recipes_fleet_create` | Create a named fleet of agents |
+| `recipes_fleet_list` | List fleets and cookbook subscriptions |
+| `recipes_fleet_subscribe` | Subscribe a cookbook to a fleet |
+| `recipes_fleet_sync` | Sync all cookbooks in a fleet |
 
-- **54 skills** in the catalog total.
-- **38 Pro-tier** (cook slug), **14 Pro+ tier** (operator slug), **2 Free**.
-- **7 users** — 3 internal, 4 external. 0 paid.
-- **0 install count drift** in the last 7 days (install_count_drift_probe.py, hourly cron).
-- Architecture stable: FastAPI 3360 + Caddy + Postgres pghybrid:5433 + cognee 1.0.5.
+---
 
-The most significant product decision in the 30 days was the tier label refactor. The original labels were "cook" and "operator" — meaningful internally (cook = someone who uses skills, operator = someone who deploys them at scale) but confusing externally. Prospect after prospect read "operator" and assumed it meant something about their role in their own organization, not the scale of their agent deployment. The rev7.3 rename to "Pro" and "Pro+" reduced that confusion immediately: the first external signup after the rename did not ask what "operator" meant.
+## 5. The subscription model
 
-The technical lesson was that display strings and DB identifiers must be explicitly decoupled from day one. We now have a translation layer in the portal that maps DB slugs to display labels, and the API contract explicitly documents that `cook` and `operator` are stable identifiers. Any future rename (if we ever need one) touches only the translation layer.
+**Pricing (live as of 2026-06-02, verified against `GET /api/marketing/snapshot`):**
 
-The install count drift probe surfaced one interesting edge case: agent hosts that queue install events and flush them in batches can produce out-of-order timestamps in the event log. The probe handles this with a 5-minute settlement window before reconciling — events within 5 minutes of "now" are considered in-flight and skipped. This eliminated false-positive drift alerts.
+- **Pro — $20/month.** Every paid skill in the catalog (61 today, growing weekly). Up to 10 cookbooks. Fleet sync. Cross-vendor install (Claude Code, Cursor, Cline, OpenClaw, Hermes, Windsurf). Recurring, cancel anytime.
+- **Pro+ — $100/month.** Everything in Pro. Up to 200 cookbooks. Per-cookbook scoped API keys (up to 20). Deploy cookbooks to client agents. Private org-only catalog. Priority skill review.
+- **Free.** One permanently free skill (`super-memory`). No credit card required. No time limit.
 
-The quality pipeline's discipline check has been the most valuable gate. Three of the first ten external skill submissions failed the allowlist-vs-actual-traffic check — skills whose stated allowlist was narrower than what they actually called at runtime. All three were honest mistakes (developers testing against localhost, forgetting to add their actual API domain). The check caught them before they hit the catalog. One submission failed the security scan for prompt injection patterns in the skill description — an edge case we did not anticipate but are glad the scanner caught.
+There is no founding tier, no lifetime purchase, and no per-skill charge. The DB identifiers are `cook` (Pro) and `operator` (Pro+) — stable, not changed by display label updates. The portal UI shows "Pro" and "Pro+".
 
-## 9. What's next
+**DB tier identifiers vs. display labels.** The API returns `tier: "cook"` and `tier: "operator"` — these are stable. The UI maps them to "Pro" and "Pro+" respectively. Any future label change touches only the translation layer. API consumers should key on `cook` and `operator`.
 
-The Chef→Recipes auto-pipeline is the near-term priority. WiseChef's production workloads generate tool call telemetry that is already being logged. The pipeline that converts stable telemetry patterns into draft skill PRs is built and tested; what remains is the human review interface — a lightweight dashboard where a Recipes maintainer can approve, reject, or edit a draft skill that the pipeline surfaced.
+---
 
-The goal is weekly skill PRs from production WiseChef workloads. If the workload telemetry shows a stable, high-frequency tool call pattern (same sequence of API calls, same input/output shape, used at least 5 times in 7 days), the pipeline extracts a skill template, populates frontmatter, generates a test fixture from real inputs, and opens a PR. A human reviews, adjusts if needed, and merges. This should add 5-10 new skills per month without any manual skill authoring.
+## 6. The compounding cookbook
 
-The second priority is the first paid conversion. The 4 external free users are the target. The `super-memory` free skill is explicitly designed as a conversion funnel: it works, it is useful, it demonstrates the install UX, and it surfaces the Pro catalog naturally. The follow-up sequence after a `super-memory` install is: 7-day email with Pro skill suggestions relevant to the user's agent host, 14-day email with install count for their `super-memory` install (social proof), 21-day Pro trial offer.
+The cookbook is the integrator's primary deliverable. Not a skill, not a prompt — the cookbook. It is what you build, tailor, hand off, and iterate on.
 
-Fleet sync for Pro+ is the third near-term item. Currently, a Pro+ subscriber can create 20 endpoint slots, but the sync mechanism (push a skill update to all endpoints simultaneously) is manual via API call. The goal is a one-command fleet sync: `recipes fleet sync` reads the subscriber's endpoint list, diffs installed skill versions against the latest catalog, and pushes updates to all endpoints in parallel.
+A cookbook starts as a named collection of catalog skills. Over time the integrator tailors some of those skills (forks + versions a private copy), attaches the tailored versions back to the cookbook, and the cookbook becomes a bespoke, versioned deployment unit that installs identically to any catalog skill but contains the integrator's own adaptations.
 
-## 10. How to get started
+The compounding effect: every feedback signal the integrator receives improves the tailored skill. Every improved skill makes the cookbook more valuable to the client. Every improved cookbook, if handed off to a new client, carries the accumulated improvements. The cookbook is the moat as a product artifact.
 
-Three paths, depending on what you want to do:
+**Cookbook web visualization.** Live at `/cookbooks/view?id=<id>`. Renders skills as nodes, lineage as arrows, and badges for pinned, tailored, and corrections-absorbed count. Backend: `GET /api/cookbooks/{id}`. Verified live 2026-06-02.
 
-**Evaluate:** Install `super-memory` free. It takes 60 seconds, requires no account, and demonstrates the full install UX including allowlist validation and signature verification. The command is on the skill page: [recipes.wisechef.ai/skills/super-memory](https://recipes.wisechef.ai/skills/super-memory).
+**Cookbook handoff.** `recipes_cookbook_handoff` supports two modes:
+- `transfer` — in-place ownership swap. The cookbook UUID is unchanged. Original owner loses access; new owner gains it.
+- `fork` — creates a new cookbook for the new owner with `parent_cookbook_id` and `synced_from_cookbook_id` set to the source. Custom-added (tailored) skills are copied; catalog-sync rows are not.
 
-**Subscribe:** Browse the full catalog at [/skills](https://recipes.wisechef.ai/skills). Skills are filterable by category, tier, and agent host compatibility. The pricing page at [/pricing](https://recipes.wisechef.ai/pricing) has the current USD prices and a comparison of Pro vs. Pro+. The install docs at [/docs/install](https://recipes.wisechef.ai/docs/install) cover per-agent-host setup for Claude Code, Cursor, Windsurf, Cline, OpenClaw, and Hermes.
+Both modes preserve the lineage graph. A handed-off cookbook retains attribution to its tailored skills. Live, Phase I, 2026-06-02.
 
-**Publish:** Read the publishing docs at [/docs/publishing](https://recipes.wisechef.ai/docs/publishing). The SKILL.md spec, the 5-step pipeline criteria, and the allowlist format are all documented there. Open a PR against the Recipes catalog. The pipeline runs automatically on PR open. Expected first review within 48 hours for skills that score above the quality threshold.
+---
 
-The catalog is 54 skills on day 30. The auto-pipeline target is 60+ by day 60. If you build something real, submit it.
+## 7. The tailor → deploy → feedback loop (the operational loop)
+
+This is the core workflow for the integrator. Every step is an MCP tool call. No REST API knowledge required.
+
+```
+recipes_tailor          (fork a public catalog skill)
+      ↓
+recipes_tailor_version  (upload a modified tarball, base64-encoded)
+      ↓
+recipes_cookbook_attach (deploy into a cookbook → promotes to private catalog skill)
+      ↓
+recipes_cookbook_install (install from the cookbook — byte-identical to a catalog install)
+      ↓
+[agent runs in production, generates feedback events]
+      ↓
+recipes_feedback        (routes to your own repo if configured, otherwise to ours)
+```
+
+**Step 1 — `recipes_tailor(source_slug, name)`**
+
+Creates a private `SkillFork` of the specified public skill. Returns `fork_id` and `fork_slug`. Idempotent: calling again with the same `(user, source_slug)` returns the existing fork. Requires Pro tier. Source: `app/mcp/tools/tailor.py`.
+
+**Step 2 — `recipes_tailor_version(fork_id, tarball_base64, semver)`**
+
+Uploads a version of the fork's modified content. The tarball is base64-encoded because MCP cannot carry multipart file uploads. Validates semver format and size (max 10 MB). Mints a `ForkVersion` row and advances `fork.latest_version_id`. Returns `version_id`, `semver`, `checksum_sha256`. Source: `app/mcp/tools/fork_deploy.py`.
+
+**Step 3 — `recipes_cookbook_attach(fork_id, target_cookbook_id)`**
+
+The bridge between the fork tables and the catalog. Reads the fork's latest `ForkVersion` tarball, extracts its `SKILL.md`, and promotes it to:
+- A real `Skill` row (`is_public=False`, private to the integrator's catalog)
+- A `CookbookSkill` link in the target cookbook
+- A `SkillVersion` from the same tarball, minted with the canonical `recipes-skill-install` salt
+
+This last point is the key: because the promoted unit is a real `Skill` row with a canonical install salt, `recipes_cookbook_install` installs it byte-identically to any public catalog skill — no special deploy path, no schema migration. Source: `app/mcp/tools/fork_deploy.py`.
+
+**Step 4 — `recipes_cookbook_install(cookbook_id)` (or single slug)**
+
+Installs all skills in the cookbook (or a single skill by slug). Works identically whether the skill is a public catalog skill or a tailored private skill promoted via step 3. The integration is seamless and complete.
+
+**Step 5 — feedback**
+
+After the agent runs, `recipes_feedback(category, message)` submits field feedback. Where it lands depends on routing (§8).
+
+**Dogfood verification.** This loop was verified end-to-end with a real Pro account on 2026-06-02. A tailored private fork installed byte-identically to a catalog skill via `recipes_cookbook_install`. Source: Phase C integration test, `tests/test_fork_deploy.py`.
+
+---
+
+## 8. The feedback moat: two paths
+
+This is the architectural feature that creates integrator lock-in — not platform lock-in, but *data-gravity lock-in in the integrator's own infrastructure*.
+
+**Default path (→ wisechef-ai/recipes-api)**
+
+Without configuration, `recipes_feedback` dispatches a GitHub issue to `wisechef-ai/recipes-api`. This is the standard path for skill improvement contributions — bug reports, feature requests, UX friction. Any Recipes subscriber gets this out of the box.
+
+**Custom path (→ your repo)**
+
+A Pro or Pro+ subscriber can configure their cookbook's feedback routing to point to *any GitHub repo they own*:
+
+```
+recipes_configure_feedback(
+  repo="your-org/your-repo",
+  mode="pat",
+  pat="ghp_<fine-grained-PAT-with-issues:write>"
+)
+```
+
+After this call, every `recipes_feedback` invocation from that subscriber's agent — for that cookbook — creates a GitHub issue *in their repo*, not ours. The issue contains the full feedback body, category, and submission ID.
+
+**Why this is the moat:** The integrator's accumulated feedback lives in their own repo. Their skill improvement history is in their own repo. Their agent's field knowledge — the corpus of "here is what broke in production" — accretes in infrastructure they own and control. Recipes provides the dispatch mechanism; the data never leaves their control. This is why the loop compounds: improved skills + owned feedback history = a cookbook that gets demonstrably better over time without platform dependency.
+
+**Implementation.** `recipes_configure_feedback` stores `feedback_repo`, `feedback_mode`, and an encrypted PAT (`feedback_pat_enc`) on the `Cookbook` row. The PAT is verified against the target repo before storage (GitHub API call to confirm `issues:write` permission). At dispatch time, `recipes_feedback` resolves the target by looking up the caller's cookbook for a configured `feedback_repo`. If found with `mode="pat"`, it decrypts the PAT in-memory (never logged), creates the issue via `github_dispatch.dispatch_issue`, and falls back to the default path on any failure. Source: `app/mcp/tools/feedback.py`, `app/mcp/tools/configure_feedback.py`.
+
+**Verified live.** A real GitHub issue was created in a non-wisechef repo via this path on 2026-06-02. Source: Phase J integration test.
+
+---
+
+## 9. Trust model and security
+
+**Two-stage publishing.** Any GitHub account can submit a skill PR. That PR enters as a *draft* — visible with a `draft` badge, installable by opt-in testers, not surfaced in default search. A human reviewer approves before catalog promotion.
+
+**Five-step quality pipeline** (runs on every PR and every update):
+
+1. **Security scan** — SkillSpector static analysis, 64 patterns, 16 categories. SARIF output to GitHub Security tab.
+2. **Discipline check** — sandboxed execution with network traffic logged. Allowlist must match actual calls.
+3. **Quality score** — documentation completeness, test coverage, error handling. Below-threshold skills are not promoted.
+4. **Allowlist validation** — every domain must be resolvable and match the skill's stated purpose.
+5. **Manifest integrity** — frontmatter must parse cleanly, required fields present, version follows semver.
+
+**ed25519 signing.** All promoted artifacts are signed. The public key is pinned in the Recipes CLI. The install command verifies the signature before any disk write.
+
+**Cookbook ownership enforcement.** The `cookbooks.cookbook_owner` column has a `CHECK ck_cookbooks_owner_required` constraint (NOT NULL). `recipes_recipify` creates cookbooks owned by the calling user (`ctx.user_id`, fail-closed). Verified via `app/cookbook_routes.py` and live DB constraint. Source: migration `lc3005_x_cookbook_owner_ck`.
+
+**Fail-closed philosophy.** Every auth predicate in the system fails closed: no `user_id` = no fork, no cookbook, no feedback routing. `authz.can_write_cookbook` returns False for any ambiguous state. `_require_pro_user` rejects master-key callers (no `user_id` to own anything). `_resolve_feedback_target` returns `(None, None, None)` — default path — on any lookup failure.
+
+---
+
+## 10. For the AI agent: reconstructing the loop from scratch
+
+This section exists for the AI agent reader. If you are an AI agent ingesting this document to learn how to operate the Recipes platform, this is the minimum viable operational sequence.
+
+**Pre-requisite:** You have a Pro-tier API key (`RECIPES_API_KEY=rec_*`). Your MCP client is configured with `RECIPES_API_KEY` in the environment.
+
+**Install a skill from the catalog:**
+```
+recipes_search(query="<what you need>")       # find the slug
+recipes_install(slug="<slug>")                # get signed tarball URL
+# download tarball, verify ed25519 signature, extract to skills/
+```
+
+**Tailor a skill for private use (the full loop):**
+```
+# 1. Fork
+recipes_tailor(source_slug="<public-slug>", name="my-tailored-version")
+# → {fork_id: "...", fork_slug: "..."}
+
+# 2. Version (package your modified SKILL.md + scripts as a .tar.gz, base64-encode it)
+recipes_tailor_version(fork_id="...", tarball_base64="<base64>", semver="1.0.0")
+# → {version_id: "...", checksum_sha256: "..."}
+
+# 3. Attach to cookbook (get cookbook_id from recipes_list_cookbook)
+recipes_cookbook_attach(fork_id="...", target_cookbook_id="...")
+# → {skill_slug: "...", version: "1.0.0", is_public: false}
+
+# 4. Install
+recipes_cookbook_install(cookbook_id="...")
+# installs all skills in the cookbook, including your tailored one
+```
+
+**Configure feedback routing to your own repo:**
+```
+recipes_configure_feedback(
+  repo="your-org/your-repo",
+  mode="pat",
+  pat="ghp_<issues-write-token>"
+)
+# Verify: call recipes_feedback — issue should appear in your repo
+```
+
+**The two feedback paths, answered directly:**
+- Path A (default): `recipes_feedback` → `github_dispatch.dispatch_event` → issue in `wisechef-ai/recipes-api`. No config needed.
+- Path B (the moat): `recipes_configure_feedback(repo=..., mode="pat", pat=...)` → `recipes_feedback` → issue in *your repo*. Requires Pro/Pro+. Your feedback corpus stays in your infrastructure.
+
+---
+
+## 11. Get started
+
+**Three entry points:**
+
+**Evaluate:** Install `super-memory` free at [recipes.wisechef.ai/skills/super-memory](https://recipes.wisechef.ai/skills/super-memory). No account required. Demonstrates the full install UX — allowlist validation, signature verification, agent host handshake — in under 60 seconds.
+
+**Subscribe:** Browse the catalog at [/skills](https://recipes.wisechef.ai/skills). Filter by category, tier, and agent host. Pricing at [/pricing](https://recipes.wisechef.ai/pricing). Install docs for Claude Code, Cursor, Cline, OpenClaw, Hermes, and Windsurf at [/docs/install](https://recipes.wisechef.ai/docs/install).
+
+**Tailor and deploy:** Once subscribed (Pro), the tailor loop is live. Use `recipes_tailor` → `recipes_tailor_version` → `recipes_cookbook_attach` → `recipes_cookbook_install`. Configure feedback routing with `recipes_configure_feedback`. Your compounding cookbook starts with the first `recipes_cookbook_attach` call.
+
+---
+
+## Appendix: verified claims
+
+All quantitative claims in this document are sourced. The complete claim ledger is at `docs/WHITEPAPER_CLAIMS.md` in the `wisechef-ai/recipes-portal` repository.
+
+| Claim | Source | Verified |
+|---|---|---|
+| 62 total skills | `GET /api/marketing/snapshot` → `counts.skills_total` | 2026-06-02 |
+| 1 free skill | `GET /api/marketing/snapshot` → `counts.free_skills` | 2026-06-02 |
+| 61 Pro skills | `GET /api/marketing/snapshot` → `counts.pro_skills` | 2026-06-02 |
+| 28 MCP tools | `GET /skill` grep of `recipes_*` tool names | 2026-06-02 |
+| Pro $20/month | `GET /api/marketing/snapshot` → `tiers.pro.price_usd` | 2026-06-02 |
+| Pro+ $100/month | `GET /api/marketing/snapshot` → `tiers.pro_plus.price_usd` | 2026-06-02 |
+| Pro: 10 cookbooks | `GET /api/marketing/snapshot` → `counts.pro_cookbooks` | 2026-06-02 |
+| Pro+: 200 cookbooks | `GET /api/marketing/snapshot` → `counts.pro_plus_cookbooks` | 2026-06-02 |
+| Tailor loop complete + byte-identical | `app/mcp/tools/fork_deploy.py` + Phase C test | 2026-06-02 |
+| Feedback moat live | `app/mcp/tools/feedback.py` + Phase J test | 2026-06-02 |
+| Cookbook viz live | `/cookbooks/view?id=<id>` + `GET /api/cookbooks/{id}` | 2026-06-02 |
+| Cookbook ownership constraint | Migration `lc3005_x_cookbook_owner_ck`, `CHECK ck_cookbooks_owner_required` | 2026-06-02 |
+| SkillSpector advisory CI | `docs/security/skillspector.md`, NVIDIA/skillspector Apache-2.0 | 2026-06-02 |
+| Cookbook handoff live | `app/mcp/tools/cookbook_handoff.py`, Phase I | 2026-06-02 |

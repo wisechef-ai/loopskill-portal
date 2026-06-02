@@ -1,0 +1,65 @@
+---
+import { getEntry, render } from 'astro:content';
+import Base from '../layouts/Base.astro';
+
+const post = await getEntry('blog', 'recipes-vertical-skill-marketplace-whitepaper');
+if (!post) throw new Error('Whitepaper blog entry not found');
+const { Content } = await render(post);
+---
+
+<Base
+  title="Recipes Whitepaper — The Integrator Toolchain for AI Agents"
+  description="Architecture, trust model, economics, and the compounding cookbook. DB-as-truth + optional git feedback routing. For the solo operator, the robotics lead, and the AI agent that needs to learn the loop."
+  pageType="article"
+>
+  <article class="max-w-3xl mx-auto px-6 pt-12 pb-24">
+    <header class="mb-10">
+      <div class="flex items-center gap-3 mb-4">
+        <span class="text-xs font-mono px-2 py-0.5 rounded-full border border-accent text-accent">Whitepaper</span>
+        <time class="text-xs text-muted font-mono" datetime="2026-06-02">2026-06-02</time>
+      </div>
+      <h1 class="text-3xl font-semibold tracking-tight mb-3">
+        Recipes — the integrator toolchain for AI agents
+      </h1>
+      <p class="text-muted text-sm leading-relaxed">
+        Architecture, trust model, economics, and the compounding cookbook.
+        DB-as-truth + optional git feedback (including feedback-to-your-own-repo) beats both
+        pure-marketplace and pure-git. The deployable unit is the cookbook; the moat is
+        data gravity in the integrator's own infrastructure.
+      </p>
+      <div class="flex gap-3 mt-6 flex-wrap">
+        <a
+          href="/blog/recipes-vertical-skill-marketplace-whitepaper"
+          class="inline-flex items-center gap-1.5 text-xs font-mono px-3 py-1.5 rounded border border-border text-muted hover:text-text hover:border-text transition-colors"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/>
+          </svg>
+          Read on blog
+        </a>
+        <a
+          href="/whitepaper.pdf"
+          class="inline-flex items-center gap-1.5 text-xs font-mono px-3 py-1.5 rounded border border-border text-muted hover:text-text hover:border-text transition-colors"
+          target="_blank"
+          rel="noopener"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+          </svg>
+          Download PDF
+        </a>
+      </div>
+    </header>
+
+    <div class="prose prose-invert prose-sm max-w-none">
+      <Content />
+    </div>
+
+    <footer class="mt-12 pt-8 border-t border-border">
+      <div class="flex justify-between items-center">
+        <a href="/blog" class="text-sm text-muted hover:text-text transition-colors">← All posts</a>
+        <a href="/pricing" class="text-sm text-accent hover:underline">Get started →</a>
+      </div>
+    </footer>
+  </article>
+</Base>
