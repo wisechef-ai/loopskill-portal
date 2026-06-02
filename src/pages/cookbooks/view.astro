@@ -213,11 +213,20 @@ const API_BASE = import.meta.env.PUBLIC_RECIPES_API_BASE || "https://recipes.wis
       const tr = document.createElement("tr");
 
       const nameTd = document.createElement("td");
-      const a = document.createElement("a");
-      a.href = `/skills/${s.slug}`;
-      a.className = "font-medium text-text hover:text-accent transition";
-      a.textContent = s.title || s.slug;
-      nameTd.appendChild(a);
+      // A tailored (private, custom-added) skill has NO public catalog page —
+      // linking it to /skills/<slug> dead-ends in a 404. Only catalog skills
+      // link out; tailored skills render as plain text.
+      let nameEl;
+      if (isTailored(s)) {
+        nameEl = document.createElement("span");
+        nameEl.className = "font-medium text-text";
+      } else {
+        nameEl = document.createElement("a");
+        nameEl.href = `/skills/${s.slug}`;
+        nameEl.className = "font-medium text-text hover:text-accent transition";
+      }
+      nameEl.textContent = s.title || s.slug;
+      nameTd.appendChild(nameEl);
       const slugSpan = document.createElement("div");
       slugSpan.className = "text-[11px] text-muted-soft mt-0.5";
       slugSpan.textContent = s.slug;
