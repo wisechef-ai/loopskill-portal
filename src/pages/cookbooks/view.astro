@@ -188,7 +188,7 @@ const API_BASE = import.meta.env.PUBLIC_RECIPES_API_BASE || "https://recipes.wis
 
     // Skills can include source==="disabled" (hidden) — surface but de-emphasise.
     const skills = (cb.skills || []).filter((s) => s.source !== "disabled");
-    const tailored = skills.filter((s) => s.skill_variant === "custom" || s.is_public === false).length;
+    const tailored = skills.filter((s) => isTailored(s)).length;
     $("cb-stats").textContent =
       `${skills.length} skill${skills.length === 1 ? "" : "s"}` +
       (tailored ? ` · ${tailored} tailored` : "");
@@ -204,7 +204,16 @@ const API_BASE = import.meta.env.PUBLIC_RECIPES_API_BASE || "https://recipes.wis
     setupTabs();
   }
 
-  function isTailored(s) { return s.skill_variant === "custom" || s.is_public === false; }
+  // Tailored-vs-catalog is decided by the per-attachment `source` field on
+  // cookbook_skills ("custom-added" = a tailored fork, "catalog" = a catalog
+  // skill). The skill row's own `skill_variant` defaults to "custom" for every
+  // skill and is NOT reliable here. Fall back to is_public only when source is
+  // missing (legacy rows).
+  function isTailored(s) {
+    if (s.source === "custom-added") return true;
+    if (s.source === "catalog") return false;
+    return s.skill_variant === "custom" || s.is_public === false;
+  }
 
   function renderTable(skills) {
     const tbody = $("skills-tbody");
