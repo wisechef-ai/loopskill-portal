@@ -97,7 +97,7 @@ const API_BASE = import.meta.env.PUBLIC_RECIPES_API_BASE || "https://recipes.wis
           <div id="cb-graph-tooltip" class="absolute pointer-events-none px-2.5 py-1.5 rounded-md text-xs bg-bg-elev border border-border shadow-lg" style="opacity:0; transition:opacity .12s;"></div>
           <div id="cb-graph-empty" hidden class="absolute inset-0 flex items-center justify-center text-sm text-muted">No skills to graph.</div>
         </div>
-        <p class="text-xs text-muted-soft mt-3">Nodes = skills · gold = tailored fork · blue = catalog · lines = fork lineage. Drag to explore.</p>
+        <p class="text-xs text-muted-soft mt-3">Nodes = skills · gold = tailored fork · blue = catalog · solid gold line = fork lineage · dashed blue line = related skills. Drag to explore.</p>
       </section>
     </div>
   </main>
@@ -316,10 +316,23 @@ const API_BASE = import.meta.env.PUBLIC_RECIPES_API_BASE || "https://recipes.wis
 
     // Edges: fork lineage (child -> parent) when the parent is also in this cookbook.
     const links = [];
+    const seen = new Set();
+    const edgeKey = (a, b) => (a < b ? a + "|" + b : b + "|" + a);
     skills.forEach((s) => {
       if (s.parent_skill_slug && slugSet.has(s.parent_skill_slug)) {
-        links.push({ src: idx[s.slug], tgt: idx[s.parent_skill_slug] });
+        const k = edgeKey(s.slug, s.parent_skill_slug);
+        if (!seen.has(k)) { seen.add(k); links.push({ src: idx[s.slug], tgt: idx[s.parent_skill_slug], kind: "lineage" }); }
       }
+    });
+    // Edges: declared related-skill connections when both ends are in this cookbook.
+    // Undirected + de-duped against lineage edges (lineage wins the styling).
+    skills.forEach((s) => {
+      (s.related_skills || []).forEach((rel) => {
+        if (slugSet.has(rel) && rel !== s.slug) {
+          const k = edgeKey(s.slug, rel);
+          if (!seen.has(k)) { seen.add(k); links.push({ src: idx[s.slug], tgt: idx[rel], kind: "related" }); }
+        }
+      });
     });
 
     const ns = "http://www.w3.org/2000/svg";
@@ -328,10 +341,18 @@ const API_BASE = import.meta.env.PUBLIC_RECIPES_API_BASE || "https://recipes.wis
     const nodeGroup = document.createElementNS(ns, "g");
     root.appendChild(linkGroup); root.appendChild(nodeGroup);
 
-    const linkEls = links.map(() => {
+    const linkEls = links.map((lk) => {
       const el = document.createElementNS(ns, "line");
-      el.setAttribute("stroke", "#f5a623"); el.setAttribute("stroke-width", "1.4");
-      el.setAttribute("stroke-opacity", "0.5"); linkGroup.appendChild(el); return el;
+      if (lk.kind === "related") {
+        // declared related-skill edge: dashed, cooler colour, lighter
+        el.setAttribute("stroke", "#5b9bf5"); el.setAttribute("stroke-width", "1.2");
+        el.setAttribute("stroke-dasharray", "4 3"); el.setAttribute("stroke-opacity", "0.45");
+      } else {
+        // fork-lineage edge: solid gold
+        el.setAttribute("stroke", "#f5a623"); el.setAttribute("stroke-width", "1.4");
+        el.setAttribute("stroke-opacity", "0.5");
+      }
+      linkGroup.appendChild(el); return el;
     });
 
     const nodeEls = nodes.map((n, i) => {
