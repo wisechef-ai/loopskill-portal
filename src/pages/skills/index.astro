@@ -108,6 +108,11 @@ for (const s of skills) {
         <h1 class="text-4xl md:text-5xl font-semibold tracking-tight" id="skills-heading">{total} skills, ready to install.</h1>
         <p class="text-muted">Production-grade skills for AI integrators, solo operators, and agent fleets. Free skills to start. Pro tier $20/mo (1 seat) unlocks the full library; Pro+ $100/mo gives you up to 200 cookbooks, fleet-wide cookbook sync, and the framework installer.</p>
         {fetchError && <p class="text-xs text-muted-soft">(showing seed data — API: {fetchError})</p>}
+        <p class="text-sm text-muted-soft mt-1">
+          Looking beyond the curated catalog?
+          <a href="/skills/external" class="text-accent hover:underline">Browse external skills</a>
+          — community-contributed, as-is, federated from other hubs.
+        </p>
       </div>
     </div>
 
