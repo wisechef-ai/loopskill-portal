@@ -51,21 +51,27 @@ for (const s of skills) {
 const categories = Array.from(new Set(skills.map(s => s.category || 'general'))).filter(Boolean).sort();
 
 // Phase 5 (RCP-INCIDENT-2026-05-11): 'pro' and 'pro_plus' are the canonical slugs.
-// Legacy slugs 'cook', 'operator', 'studio' kept as shims for any legacy skill rows in DB.
-const tiers = ['free', 'pro', 'pro_plus', 'cook', 'operator', 'studio'];
+// Canonical tier slugs only. Legacy aliases (cook/operator/studio) are
+// normalized to these via canonicalTier() so the filter shows ONE chip per
+// real tier (no duplicate "Pro"). RCP-INCIDENT-2026-05-11 shim collapse.
+const tiers = ['free', 'pro', 'pro_plus'];
+
+// Collapse any legacy alias to its canonical slug.
+function canonicalTier(t: string | null | undefined): string {
+  const s = (t || 'pro').toLowerCase();
+  if (s === 'free') return 'free';
+  if (s === 'pro_plus' || s === 'operator' || s === 'studio') return 'pro_plus';
+  return 'pro';  // pro, cook + anything unknown
+}
 
 const TIER_LABEL: Record<string, string> = {
   free: 'Free',
   pro: 'Pro · $20/mo',
   pro_plus: 'Pro+ · $100/mo',
-  // Legacy alias shims:
-  cook: 'Pro · $20/mo',
-  operator: 'Pro+ · $100/mo',
-  studio: 'Pro+ · $100/mo',
 };
 const tierCount: Record<string, number> = {};
 for (const s of skills) {
-  const t = s.tier || 'pro';  // default to 'pro' (canonical)
+  const t = canonicalTier(s.tier);  // collapse cook→pro etc. before counting
   tierCount[t] = (tierCount[t] || 0) + 1;
 }
 
@@ -203,7 +209,7 @@ for (const s of skills) {
 
     <div id="skill-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
       {skills.map(s => {
-        const tier = s.tier || 'pro';
+        const tier = canonicalTier(s.tier);  // normalize so the canonical Pro chip matches cook cards
         const tierClass = tierBadgeClass(tier);
         const tierDisplay = tierBadgeText(tier);
         const cat = s.category || 'general';
