@@ -79,7 +79,7 @@ if (fed.ok && fed.data?.per_source) {
 // per-source so a handful of sources yields a sane payload; the full firehose
 // stays one click away at /skills/external.
 const COMMUNITY_SOURCES = 'hermes-hub,skills-sh,well-known,clawhub,lobehub,browse-sh,github-oss';
-const COMMUNITY_LIMIT = 24; // per-source cap (server hard-limits to 50)
+const COMMUNITY_LIMIT = 50; // per-source cap (route now allows up to 100)
 const COMMUNITY_INITIAL_VISIBLE = 24; // cards shown before "show more"
 let communitySkills: any[] = [];
 // Try the broad federated set first (best case = many sources). The per-query

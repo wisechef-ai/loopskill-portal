@@ -260,7 +260,7 @@ const SOURCE_META: Record<string, { label: string; blurb: string }> = {
 
         setStatus('<p class="text-sm">Loading external skills…</p>', true);
         const q = (queryInput.value || '').trim();
-        const params = new URLSearchParams({ sources: srcs.join(',') });
+        const params = new URLSearchParams({ sources: srcs.join(','), limit: '100' });
         if (q) params.set('q', q);
 
         let data;
