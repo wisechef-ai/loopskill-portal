@@ -22,14 +22,36 @@ const teaser = await fetchApi<{
 }>('/api/skills/external', { authed: false });
 
 const perSource = teaser.ok && teaser.data ? teaser.data.per_source : {};
-const availableSources = (teaser.ok && teaser.data?.available_sources) || ['hermes-hub', 'github-oss'];
+const availableSources = (teaser.ok && teaser.data?.available_sources) ||
+  ['hermes-hub', 'skills-sh', 'well-known', 'clawhub', 'lobehub', 'browse-sh', 'github-oss'];
 const hermesIndexed = perSource['hermes-hub']?.indexed ?? null;
 
 // Source display metadata (label + blurb). Indexed counts come from the API.
+// Mirrors the canonical Hermes Skills Hub source set (federation_0604).
 const SOURCE_META: Record<string, { label: string; blurb: string }> = {
   'hermes-hub': {
     label: 'Hermes Hub',
     blurb: 'Nous Research bundled skills (MIT) — install straight from origin.',
+  },
+  'skills-sh': {
+    label: 'skills.sh',
+    blurb: 'Community skill directory aggregating GitHub repos. Deep-links to origin.',
+  },
+  'well-known': {
+    label: 'Well-Known',
+    blurb: 'Any site exposing /.well-known/skills/index.json — install real SKILL.md from origin.',
+  },
+  'clawhub': {
+    label: 'ClawHub',
+    blurb: 'Community registry (clawhub.ai). Deep-link only — supply-chain unvetted, as-is.',
+  },
+  'lobehub': {
+    label: 'LobeHub',
+    blurb: 'LobeHub agent marketplace (prompt templates). Deep-links to the agent page.',
+  },
+  'browse-sh': {
+    label: 'browse.sh',
+    blurb: 'Browserbase site-automation skills. Public SKILL.md — installs from origin.',
   },
   'github-oss': {
     label: 'GitHub OSS',
