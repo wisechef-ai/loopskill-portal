@@ -1,0 +1,195 @@
+---
+// fedui_0604 Unit C — shared behaviour for every <AddToCookbook /> button on a page.
+// Include ONCE near the end of any page that renders the picker. Reads the API
+// base the same way the rest of the portal does (PUBLIC_API_BASE), and uses the
+// livefix_0601 cookie+optional-key auth pattern.
+const API_BASE = import.meta.env.PUBLIC_RECIPES_API_BASE || 'https://recipes.wisechef.ai';
+---
+<script is:inline define:vars={{ API_BASE }}>
+  (function () {
+    if (window.__atcInit) return;        // idempotent — only wire once
+    window.__atcInit = true;
+
+    const apiKey = (() => { try { return localStorage.getItem('recipes_api_key'); } catch (e) { return null; } })();
+    function authHeaders(extra) {
+      const h = Object.assign({}, extra || {});
+      if (apiKey) h['x-api-key'] = apiKey;
+      return h;
+    }
+
+    // ── tiny toast ──────────────────────────────────────────────────────
+    let toastTimer = null;
+    function toast(msg, kind) {
+      let el = document.getElementById('atc-toast');
+      if (!el) {
+        el = document.createElement('div');
+        el.id = 'atc-toast';
+        el.style.cssText =
+          'position:fixed;bottom:1.25rem;left:50%;transform:translateX(-50%);z-index:80;' +
+          'padding:.6rem 1rem;border-radius:.6rem;font-size:.82rem;font-weight:600;' +
+          'box-shadow:0 6px 24px rgba(0,0,0,.35);max-width:90vw;';
+        document.body.appendChild(el);
+      }
+      const ok = kind !== 'error';
+      el.style.background = ok ? 'var(--accent, #6ee7b7)' : '#7f1d1d';
+      el.style.color = ok ? 'var(--bg, #0b0b0c)' : '#fff';
+      el.textContent = msg;
+      el.style.opacity = '1';
+      if (toastTimer) clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => { el.style.transition = 'opacity .4s'; el.style.opacity = '0'; }, 3200);
+    }
+
+    // ── cookbooks cache (fetched once per page, refreshed after create) ──
+    let cookbooks = null;     // null = not loaded; [] = loaded-empty; array = loaded
+    let authState = 'unknown'; // 'ok' | 'anon'
+    async function loadCookbooks(force) {
+      if (cookbooks !== null && !force) return cookbooks;
+      let res;
+      try {
+        res = await fetch(API_BASE + '/api/cookbooks', { headers: authHeaders(), credentials: 'include' });
+      } catch (e) { authState = 'unknown'; return null; }
+      if (res.status === 401) { authState = 'anon'; cookbooks = []; return []; }
+      if (!res.ok) { authState = 'unknown'; return null; }
+      authState = 'ok';
+      let data;
+      try { data = await res.json(); } catch (e) { return null; }
+      cookbooks = Array.isArray(data) ? data : (data.cookbooks || data.items || []);
+      return cookbooks;
+    }
+
+    function esc(s) {
+      return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+        return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+      });
+    }
+
+    async function addSkill(root, cookbookId, cookbookName) {
+      const btn = root.querySelector('.atc-btn');
+      const slug = btn.getAttribute('data-atc-slug');
+      const external = btn.getAttribute('data-atc-external') || '';
+      const body = external ? { slug: slug, external_source: external } : { slug: slug };
+      let res;
+      try {
+        res = await fetch(API_BASE + '/api/cookbooks/' + encodeURIComponent(cookbookId) + '/skills', {
+          method: 'POST',
+          headers: authHeaders({ 'content-type': 'application/json' }),
+          credentials: 'include',
+          body: JSON.stringify(body),
+        });
+      } catch (e) { toast('Network error — try again.', 'error'); return; }
+
+      if (res.status === 201 || res.status === 200) {
+        toast('Added to ' + cookbookName, 'ok');
+        closeAll();
+        return;
+      }
+      if (res.status === 401) { toast('Sign in to save skills.', 'error'); return; }
+      if (res.status === 403) {
+        let d = {}; try { d = await res.json(); } catch (e) {}
+        const reason = (d && d.detail && (d.detail.reason || d.detail)) || '';
+        toast(String(reason).indexOf('cap') >= 0 ? 'Skill cap reached — upgrade to Pro+.' : 'Not allowed on this tier.', 'error');
+        return;
+      }
+      if (res.status === 404) { toast('Skill could not be resolved from its source.', 'error'); return; }
+      if (res.status === 422) { toast('Unknown source — cannot add this skill.', 'error'); return; }
+      toast('Could not add (HTTP ' + res.status + ').', 'error');
+    }
+
+    async function createAndAdd(root, name) {
+      let res;
+      try {
+        res = await fetch(API_BASE + '/api/cookbooks', {
+          method: 'POST',
+          headers: authHeaders({ 'content-type': 'application/json' }),
+          credentials: 'include',
+          body: JSON.stringify({ name: name }),
+        });
+      } catch (e) { toast('Network error — try again.', 'error'); return; }
+      if (res.status === 401) { toast('Sign in to create a cookbook.', 'error'); return; }
+      if (res.status === 403) { toast('Cookbook cap reached — upgrade for more.', 'error'); return; }
+      if (res.status !== 201 && res.status !== 200) { toast('Could not create cookbook (HTTP ' + res.status + ').', 'error'); return; }
+      let cb; try { cb = await res.json(); } catch (e) { toast('Malformed response.', 'error'); return; }
+      await loadCookbooks(true);
+      await addSkill(root, cb.id, cb.name || name);
+    }
+
+    function renderMenu(root) {
+      const list = root.querySelector('.atc-list');
+      const loading = root.querySelector('.atc-loading');
+      const signin = root.querySelector('.atc-signin');
+      const empty = root.querySelector('.atc-empty');
+      loading.classList.add('hidden');
+      signin.classList.add('hidden');
+      empty.classList.add('hidden');
+      list.innerHTML = '';
+
+      if (authState === 'anon') { signin.classList.remove('hidden'); return; }
+      if (!cookbooks || cookbooks.length === 0) { empty.classList.remove('hidden'); return; }
+
+      cookbooks.forEach(function (cb) {
+        const item = document.createElement('button');
+        item.type = 'button';
+        item.className = 'atc-item w-full text-left rounded-md px-3 py-1.5 text-xs text-text hover:bg-accent/10 hover:text-accent transition truncate';
+        item.textContent = cb.name || 'Untitled cookbook';
+        item.addEventListener('click', function () { addSkill(root, cb.id, cb.name || 'cookbook'); });
+        list.appendChild(item);
+      });
+    }
+
+    function closeAll() {
+      document.querySelectorAll('[data-atc-root]').forEach(function (r) {
+        r.querySelector('.atc-menu').classList.add('hidden');
+        const b = r.querySelector('.atc-btn');
+        b.setAttribute('aria-expanded', 'false');
+        const caret = r.querySelector('.atc-caret');
+        if (caret) caret.style.transform = '';
+      });
+    }
+
+    async function openMenu(root) {
+      closeAll();
+      const menu = root.querySelector('.atc-menu');
+      menu.classList.remove('hidden');
+      root.querySelector('.atc-btn').setAttribute('aria-expanded', 'true');
+      const caret = root.querySelector('.atc-caret');
+      if (caret) caret.style.transform = 'rotate(180deg)';
+      root.querySelector('.atc-loading').classList.remove('hidden');
+      await loadCookbooks(false);
+      renderMenu(root);
+    }
+
+    // ── wire every picker on the page (idempotent per-element) ──────────
+    function wireRoot(root) {
+      if (root.__atcWired) return;
+      root.__atcWired = true;
+      const btn = root.querySelector('.atc-btn');
+      btn.addEventListener('click', function (e) {
+        e.preventDefault(); e.stopPropagation();
+        const isOpen = root.querySelector('.atc-menu').classList.contains('hidden') === false;
+        if (isOpen) { closeAll(); } else { openMenu(root); }
+      });
+      const form = root.querySelector('.atc-new');
+      form.addEventListener('submit', function (e) {
+        e.preventDefault(); e.stopPropagation();
+        const input = root.querySelector('.atc-new-name');
+        const name = (input.value || '').trim();
+        if (!name) { input.focus(); return; }
+        createAndAdd(root, name);
+        input.value = '';
+      });
+      // stop clicks inside the menu from bubbling to the card link
+      root.querySelector('.atc-menu').addEventListener('click', function (e) { e.stopPropagation(); });
+    }
+
+    function wireAll() {
+      document.querySelectorAll('[data-atc-root]').forEach(wireRoot);
+    }
+    // Expose for pages that render picker markup dynamically (e.g. /skills/external
+    // builds cards client-side after this script has already run).
+    window.__atcWire = wireAll;
+    wireAll();
+
+    document.addEventListener('click', function () { closeAll(); });
+    document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeAll(); });
+  })();
+</script>

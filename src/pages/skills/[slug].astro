@@ -9,6 +9,8 @@ import { tierBadge as tierBadgeText, tierBadgeClass } from '../../lib/tiers';
 import { SkillFileExplorer } from '../../components/skill/SkillFileExplorer';
 import { RuntimePanel } from '../../components/skill/RuntimePanel';
 import { AuditBars } from '../../components/skill/AuditBars';
+import AddToCookbook from '../../components/AddToCookbook.astro';
+import AddToCookbookScript from '../../components/AddToCookbookScript.astro';
 
 export async function getStaticPaths() {
   const result = await fetchApi<{ results: any[]; total: number }>(
@@ -387,6 +389,10 @@ const externalResources: Array<{ slug?: string; url: string; relation?: string; 
           <div class="text-[11px] text-muted-soft text-center">
             {isFree ? 'Free forever. No subscription required.' : `Requires ${display.tier} subscription`}
           </div>
+          <!-- fedui_0604 Unit C — save this catalog skill to a cookbook -->
+          <div class="pt-3 border-t border-border-soft flex justify-center">
+            <AddToCookbook slug={display.slug} size="md" class="w-full" />
+          </div>
         </div>
 
         <!-- Audit bars (Phase Q) — 4 horizontal bars showing quality dimensions.
@@ -530,6 +536,7 @@ const externalResources: Array<{ slug?: string; url: string; relation?: string; 
       </div>
     )}
   </section>
+  <AddToCookbookScript />
 </Base>
 
 <script>
