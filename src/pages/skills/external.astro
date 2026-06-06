@@ -28,7 +28,10 @@ const availableSources = (teaser.ok && teaser.data?.available_sources) ||
 const hermesIndexed = perSource['hermes-hub']?.indexed ?? null;
 
 // Source display metadata (label + blurb). Indexed counts come from the API.
-// Mirrors the canonical Hermes Skills Hub source set (federation_0604).
+// Mirrors the canonical Hermes Skills Hub source set (federation_0604) plus the
+// superset_0606 Phase C provider facets (Anthropic/OpenAI/HuggingFace/NVIDIA/
+// gstack/superpowers) — named, curated-source toggles that mirror the Hub's
+// provider-facet UI.
 const SOURCE_META: Record<string, { label: string; blurb: string }> = {
   'hermes-hub': {
     label: 'Hermes Hub',
@@ -58,7 +61,50 @@ const SOURCE_META: Record<string, { label: string; blurb: string }> = {
     label: 'GitHub OSS',
     blurb: 'Open-source SKILL.md repos. Redistributable licenses install; others deep-link.',
   },
+  // superset_0606 Phase C provider facets — curated-source taps. Each is a
+  // single repo (or org) read via the GitHub Contents API; redistributable
+  // skills install from origin, source-available ones deep-link.
+  'github-anthropic': {
+    label: 'Anthropic',
+    blurb: 'Official anthropics/skills. Apache-2.0 skills install; source-available (docx/pdf/…) deep-link.',
+  },
+  'github-openai': {
+    label: 'OpenAI',
+    blurb: 'Curated OpenAI agent skills. Redistributable subset installs from origin.',
+  },
+  'github-huggingface': {
+    label: 'Hugging Face',
+    blurb: 'Hugging Face Hub skills (Apache-2.0) — install straight from origin.',
+  },
+  'github-nvidia': {
+    label: 'NVIDIA',
+    blurb: 'NVIDIA agent skills (Apache-2.0 / CC-BY-4.0) — install from origin.',
+  },
+  'github-gstack': {
+    label: 'gstack',
+    blurb: 'gstack community skills (MIT) — install straight from origin.',
+  },
+  'github-superpowers': {
+    label: 'Superpowers',
+    blurb: 'obra/superpowers skill pack (MIT) — install straight from origin.',
+  },
 };
+
+// superset_0606 Phase E — group the toggles into "provider facets" (named,
+// curated-source taps that mirror the Hub's facet UI) and "community hubs"
+// (open aggregators). Facets are a notch above raw community: a known provider,
+// a known license posture. The grouping is purely presentational — the API
+// treats every source identically.
+const FACET_SOURCES = [
+  'github-anthropic',
+  'github-openai',
+  'github-huggingface',
+  'github-nvidia',
+  'github-gstack',
+  'github-superpowers',
+];
+const facetSources = availableSources.filter((s) => FACET_SOURCES.includes(s));
+const hubSources = availableSources.filter((s) => !FACET_SOURCES.includes(s));
 ---
 
 <Base
@@ -101,32 +147,78 @@ const SOURCE_META: Record<string, { label: string; blurb: string }> = {
     <!-- Source toggles + search (client-hydrated) -->
     <div class="rounded-xl border border-border-soft bg-bg-card p-5 mb-8">
       <div class="flex flex-col gap-4">
-        <div class="flex flex-wrap gap-3" id="source-toggles">
-          {availableSources.map((src) => {
-            const meta = SOURCE_META[src] || { label: src, blurb: '' };
-            const indexed = perSource[src]?.indexed;
-            return (
-              <label
-                class="flex items-center gap-3 rounded-lg border border-border-soft px-4 py-3 cursor-pointer hover:border-accent/50 transition flex-1 min-w-[240px]"
-                data-source-card={src}
-              >
-                <input
-                  type="checkbox"
-                  class="source-toggle w-4 h-4 accent-accent"
-                  data-source={src}
-                />
-                <div class="flex-1">
-                  <div class="flex items-center justify-between gap-2">
-                    <span class="font-semibold text-text">{meta.label}</span>
-                    {indexed != null && (
-                      <span class="text-xs text-muted whitespace-nowrap">~{indexed.toLocaleString()} indexed</span>
-                    )}
+        {/* superset_0606 Phase E — provider facets: named, curated-source taps
+            (Anthropic/OpenAI/HuggingFace/NVIDIA/gstack/Superpowers) mirroring
+            the Hub's facet UI. A notch above raw community: known provider,
+            known license posture. */}
+        {facetSources.length > 0 && (
+          <div>
+            <div class="flex items-center gap-2 mb-2">
+              <span class="text-[11px] uppercase tracking-wider text-emerald-300/90 font-semibold">Provider facets</span>
+              <span class="text-[11px] text-muted">· community · curated-source</span>
+            </div>
+            <div class="flex flex-wrap gap-3">
+              {facetSources.map((src) => {
+                const meta = SOURCE_META[src] || { label: src, blurb: '' };
+                const indexed = perSource[src]?.indexed;
+                const installable = perSource[src]?.installable;
+                return (
+                  <label
+                    class="flex items-center gap-3 rounded-lg border border-emerald-500/20 px-4 py-3 cursor-pointer hover:border-emerald-400/50 transition flex-1 min-w-[240px]"
+                    data-source-card={src}
+                  >
+                    <input type="checkbox" class="source-toggle w-4 h-4 accent-accent" data-source={src} />
+                    <div class="flex-1">
+                      <div class="flex items-center justify-between gap-2">
+                        <span class="font-semibold text-text">{meta.label}</span>
+                        {indexed != null && (
+                          <span class="text-xs text-muted whitespace-nowrap">
+                            {indexed.toLocaleString()} indexed{installable != null ? ` · ${installable.toLocaleString()} installable` : ''}
+                          </span>
+                        )}
+                      </div>
+                      <p class="text-xs text-muted mt-0.5">{meta.blurb}</p>
+                    </div>
+                  </label>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Community hubs: open aggregators (Hermes/skills.sh/ClawHub/…). */}
+        <div>
+          <div class="flex items-center gap-2 mb-2">
+            <span class="text-[11px] uppercase tracking-wider text-amber-300/90 font-semibold">Community hubs</span>
+            <span class="text-[11px] text-muted">· as-is · not quality-gated</span>
+          </div>
+          <div class="flex flex-wrap gap-3" id="source-toggles">
+            {hubSources.map((src) => {
+              const meta = SOURCE_META[src] || { label: src, blurb: '' };
+              const indexed = perSource[src]?.indexed;
+              return (
+                <label
+                  class="flex items-center gap-3 rounded-lg border border-border-soft px-4 py-3 cursor-pointer hover:border-accent/50 transition flex-1 min-w-[240px]"
+                  data-source-card={src}
+                >
+                  <input
+                    type="checkbox"
+                    class="source-toggle w-4 h-4 accent-accent"
+                    data-source={src}
+                  />
+                  <div class="flex-1">
+                    <div class="flex items-center justify-between gap-2">
+                      <span class="font-semibold text-text">{meta.label}</span>
+                      {indexed != null && (
+                        <span class="text-xs text-muted whitespace-nowrap">~{indexed.toLocaleString()} indexed</span>
+                      )}
+                    </div>
+                    <p class="text-xs text-muted mt-0.5">{meta.blurb}</p>
                   </div>
-                  <p class="text-xs text-muted mt-0.5">{meta.blurb}</p>
-                </div>
-              </label>
-            );
-          })}
+                </label>
+              );
+            })}
+          </div>
         </div>
 
         <div class="flex gap-2">

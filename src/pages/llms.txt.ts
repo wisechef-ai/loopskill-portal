@@ -50,12 +50,18 @@ export const GET: APIRoute = async () => {
   // install-based trending is too thin to be representative (only a couple
   // of skills have install traction yet), whereas an empty-query search
   // returns a broad, current catalog slice across categories.
-  const [snapRes, catRes] = await Promise.all([
+  const [snapRes, catRes, fedRes] = await Promise.all([
     fetchApi<Snapshot>('/api/marketing/snapshot', { authed: false }),
     fetchApi<{ results?: CatalogSkill[] }>(
       '/api/skills/search?q=&limit=24',
       { authed: false },
     ),
+    // superset_0606 Phase F — the federation surface is the superset story.
+    // Grounded at build time from the public cache-backed counts (no key).
+    fetchApi<{
+      counts?: { external_indexed?: number; external_installable?: number };
+      available_sources?: string[];
+    }>('/api/skills/external', { authed: false }),
   ]);
 
   const counts = snapRes.data?.counts ?? {};
@@ -74,6 +80,21 @@ export const GET: APIRoute = async () => {
   const catalog = (catRes.data?.results ?? []).filter(
     (s: CatalogSkill) => s?.slug,
   );
+
+  // superset_0606 Phase F — honest federation numbers (indexed vs installable,
+  // never conflated). When the cache is warm these are the real ~89.7k / ~500;
+  // a cold/unreachable build omits the section rather than fabricate a count.
+  const fedIndexed = fedRes.data?.counts?.external_indexed ?? 0;
+  const fedInstallable = fedRes.data?.counts?.external_installable ?? 0;
+  const fedSources = (fedRes.data?.available_sources ?? []).length;
+  // Round the headline DOWN to a defensible "+" figure (89,748 → "89,000+"),
+  // so the copy is always true even as the giants' counts drift between walks.
+  const fedHeadline =
+    fedIndexed >= 1000
+      ? `${Math.floor(fedIndexed / 1000)}k+`
+      : fedIndexed > 0
+        ? `${fedIndexed}`
+        : '';
 
   // The single free seed. Surfaced first and explicitly so an agent knows
   // exactly which skill is the zero-friction way in.
@@ -106,9 +127,20 @@ export const GET: APIRoute = async () => {
     return `- [${s.title ?? s.slug}](${SITE}/skills/${s.slug})${tier}: ${desc}`;
   });
 
+  const supersetSection = fedHeadline
+    ? `
+
+## Beyond the curated catalog — the superset
+Recipes is a superset of the public agent-skill ecosystem, not just its ${total} curated skills. The federation layer indexes **${fedHeadline}** community skills across ${fedSources} sources (every skill the Hermes Skills Hub lists, plus GitHub provider taps — Anthropic, OpenAI, Hugging Face, NVIDIA, gstack, Superpowers — and aggregators like skills.sh and ClawHub). Counts are honest and never conflated: **${fedIndexed.toLocaleString()} indexed**, **${fedInstallable.toLocaleString()} installable** today (redistributable-licensed skills install straight from origin into a cookbook; supply-chain-unvetted or source-available ones deep-link to origin and are never rehosted).
+- Browse/search the superset (no key): \`GET ${SITE}/api/skills/external?sources=<comma-separated>\`
+- Provider facets: \`github-anthropic\`, \`github-openai\`, \`github-huggingface\`, \`github-nvidia\`, \`github-gstack\`, \`github-superpowers\`; aggregators: \`hermes-hub\`, \`skills-sh\`, \`clawhub\`, \`lobehub\`, \`browse-sh\`, \`well-known\`
+- Install a redistributable external skill (real SKILL.md from origin): \`GET ${SITE}/api/skills/external/{source}/{slug}/install\`
+- One library: the curated catalog is the quality-gated headline; the federation is community/as-is underneath. You never need to open the Hermes Hub separately — Recipes indexes it.`
+    : '';
+
   const body = `# Recipes — the vertical skill marketplace for AI agents
 
-> Recipes (by WiseChef) is a curated marketplace of ${total} production-grade, versioned skills for AI coding agents. Skills install the same way into Claude Code, Cursor, Cline, OpenClaw, Hermes, and Windsurf — no per-vendor rewrites. One skill is free (super-memory); the remaining ${pro} are unlocked with a single $20/mo Pro plan. Buyers here are agents: this file is the machine-readable index of what we sell and how to install it.
+> Recipes (by WiseChef) is a curated marketplace of ${total} production-grade, versioned skills for AI coding agents — and a superset of the public agent-skill ecosystem${fedHeadline ? ` (it federates ${fedHeadline} more community skills, so you never need a second hub)` : ''}. Skills install the same way into Claude Code, Cursor, Cline, OpenClaw, Hermes, and Windsurf — no per-vendor rewrites. One skill is free (super-memory); the remaining ${pro} are unlocked with a single $20/mo Pro plan. Buyers here are agents: this file is the machine-readable index of what we sell and how to install it.
 
 ## How an agent installs a skill
 Recipes exposes ${mcpTools.length} dedicated MCP tools (not a generic REST wrapper). Point your agent's MCP client at the Recipes server and call:
@@ -118,7 +150,7 @@ Or hit the public REST API directly (no key for read/search):
 - Search: \`GET ${SITE}/api/skills/search?q=<query>\`
 - Detail: \`GET ${SITE}/api/skills/{slug}\`
 - Trending: \`GET ${SITE}/api/skills/trending\`
-- Install (returns a signed tarball): \`GET ${SITE}/api/skills/install\`
+- Install (returns a signed tarball): \`GET ${SITE}/api/skills/install\`${supersetSection}
 
 ## Start free
 ${freeLine}
