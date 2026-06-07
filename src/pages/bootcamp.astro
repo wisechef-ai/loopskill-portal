@@ -1,0 +1,198 @@
+---
+import Base from '../layouts/Base.astro';
+import { fetchApi } from '../lib/api';
+
+// Agent Bootcamp landing page (bootcamp_0607).
+// The #1-agent-hub wedge: Recipes is the default INSTALL ORDER, not a flat
+// catalog. Pulls the 3 curated tracks + their steps from the public
+// /api/bootcamp endpoints at BUILD time (same fetchApi pattern as /skills).
+
+type Step = {
+  position: number;
+  slug: string;
+  why: string;
+  title: string | null;
+  tier: string | null;
+  is_free: boolean | null;
+  available: boolean;
+  install_link: string | null;
+};
+type Track = {
+  id: string;
+  title: string;
+  subtitle: string;
+  audience: string;
+  outcome: string;
+  steps: Step[];
+};
+type TrackSummary = {
+  id: string;
+  title: string;
+  subtitle: string;
+  audience: string;
+  outcome: string;
+  step_count: number;
+  free_steps: number;
+  paid_steps: number;
+};
+
+// Build-time fetch. /api/bootcamp is public (no key needed).
+let tracks: Track[] = [];
+let fetchError: string | null = null;
+
+const list = await fetchApi<{ version: number; tracks: TrackSummary[] }>(
+  '/api/bootcamp',
+  { authed: false, maxAttempts: 7, timeoutMs: 15000 },
+);
+
+if (list.error || !list.data) {
+  fetchError = list.error ?? 'bootcamp list unavailable';
+} else {
+  // Fetch each track's full steps in parallel.
+  const details = await Promise.all(
+    list.data.tracks.map((t) =>
+      fetchApi<Track>(`/api/bootcamp/${t.id}`, { authed: false, maxAttempts: 7, timeoutMs: 15000 }),
+    ),
+  );
+  tracks = details
+    .map((d) => d.data)
+    .filter((d): d is Track => d !== null && Array.isArray(d.steps));
+}
+
+// Honest fallback (API-verified slugs only) so an API-offline build still renders
+// a real, non-empty page instead of an empty shell.
+if (tracks.length === 0) {
+  fetchError = fetchError ?? 'bootcamp API returned no tracks';
+  tracks = [
+    {
+      id: 'zero-to-agent',
+      title: 'Zero to Agent',
+      subtitle: 'Stand up a production-grade agent from scratch — memory first, then capability.',
+      audience: 'A builder who wants the canonical setup, not 50 tabs of trial-and-error.',
+      outcome: 'A persistent-memory agent that survives restarts, keeps its skills current, and runs a daily operating loop.',
+      steps: [
+        { position: 1, slug: 'super-memory', title: 'super-memory', tier: 'free', is_free: true, available: true, why: 'Start here. Full memory stack in one command. Free on-ramp — zero spend on day one.', install_link: '/skills/super-memory?ref=bootcamp-zero-to-agent-step-1' },
+        { position: 2, slug: 'recipes-cookbook-reconcile', title: 'recipes-cookbook-reconcile', tier: 'free', is_free: true, available: true, why: 'Keep skills evergreen — auto-update instead of rotting.', install_link: '/skills/recipes-cookbook-reconcile?ref=bootcamp-zero-to-agent-step-2' },
+        { position: 3, slug: 'cognee', title: 'cognee', tier: 'pro', is_free: false, available: true, why: 'Self-hosted graph retrieval at scale. The first Pro skill — where free stops working.', install_link: '/skills/cognee?ref=bootcamp-zero-to-agent-step-3' },
+        { position: 4, slug: 'maestro', title: 'maestro', tier: 'pro', is_free: false, available: true, why: 'The operating loop — morning brief, marketing, code delegation while you sleep.', install_link: '/skills/maestro?ref=bootcamp-zero-to-agent-step-4' },
+        { position: 5, slug: 'framework-v0', title: 'framework-v0', tier: 'pro', is_free: false, available: true, why: 'One-call bootstrap for the full Maestro stack.', install_link: '/skills/framework-v0?ref=bootcamp-zero-to-agent-step-5' },
+      ],
+    },
+    {
+      id: 'content-engine',
+      title: 'Content Engine',
+      subtitle: 'A self-hosted media pipeline an agent can drive end-to-end.',
+      audience: 'Builders who want their agent to produce media without per-call API bills.',
+      outcome: 'An agent that scrapes source material and produces finished video + audio locally.',
+      steps: [
+        { position: 1, slug: 'super-memory', title: 'super-memory', tier: 'free', is_free: true, available: true, why: 'Free on-ramp — memory of what it has produced, avoids duplicate work.', install_link: '/skills/super-memory?ref=bootcamp-content-engine-step-1' },
+        { position: 2, slug: 'scrapling-official', title: 'scrapling-official', tier: 'pro', is_free: false, available: true, why: 'Headless scraping for JS-heavy / Cloudflare-protected pages — the input side.', install_link: '/skills/scrapling-official?ref=bootcamp-content-engine-step-2' },
+        { position: 3, slug: 'comfyui', title: 'comfyui', tier: 'pro', is_free: false, available: true, why: 'Generate images, video, audio locally — no per-frame API spend.', install_link: '/skills/comfyui?ref=bootcamp-content-engine-step-3' },
+        { position: 4, slug: 'local-tts-kokoro', title: 'local-tts-kokoro', tier: 'pro', is_free: false, available: true, why: 'Local text-to-speech at 2.6x realtime — voiceover without an ElevenLabs bill.', install_link: '/skills/local-tts-kokoro?ref=bootcamp-content-engine-step-4' },
+        { position: 5, slug: 'manim-video', title: 'manim-video', tier: 'pro', is_free: false, available: true, why: '3Blue1Brown-style explainer animations — the local-media capstone.', install_link: '/skills/manim-video?ref=bootcamp-content-engine-step-5' },
+      ],
+    },
+    {
+      id: 'agent-fleet',
+      title: 'Run a Fleet',
+      subtitle: 'Coordinate multiple agents without infinite loops or split-brain.',
+      audience: 'Builders graduating from one agent to a coordinated team.',
+      outcome: 'A multi-agent setup with shared memory, loop-safe coordination, and per-client reporting.',
+      steps: [
+        { position: 1, slug: 'super-memory', title: 'super-memory', tier: 'free', is_free: true, available: true, why: 'Shared memory is the substrate a fleet coordinates on. Free on-ramp.', install_link: '/skills/super-memory?ref=bootcamp-agent-fleet-step-1' },
+        { position: 2, slug: 'multi-agent-discord-coordination', title: 'multi-agent-discord-coordination', tier: 'pro', is_free: false, available: true, why: 'The protocol for 2+ agents without infinite loops — the failure mode that kills naive fleets.', install_link: '/skills/multi-agent-discord-coordination?ref=bootcamp-agent-fleet-step-2' },
+        { position: 3, slug: 'chef', title: 'chef', tier: 'pro', is_free: false, available: true, why: 'The per-agent operating template you replicate across the fleet.', install_link: '/skills/chef?ref=bootcamp-agent-fleet-step-3' },
+        { position: 4, slug: 'client-reporter', title: 'client-reporter', tier: 'pro', is_free: false, available: true, why: 'GA4 / GSC / Meta / TikTok → branded client PDF. Turns a fleet into billable work.', install_link: '/skills/client-reporter?ref=bootcamp-agent-fleet-step-4' },
+      ],
+    },
+  ];
+}
+
+function tierLabel(s: Step): string {
+  return (s.tier || '').toLowerCase() === 'free' ? 'FREE' : 'PRO';
+}
+
+// First paid step index per track = the conversion boundary marker.
+function firstPaidPosition(t: Track): number | null {
+  const paid = t.steps.find((s) => (s.tier || '').toLowerCase() !== 'free');
+  return paid ? paid.position : null;
+}
+---
+
+<Base
+  title="Agent Bootcamp — the opinionated install path | Recipes"
+  description="Don't browse 72 skills — follow the install path. Three curated bootcamp tracks take your agent from zero to a production setup. Start free, upgrade when it earns it."
+>
+  <main class="max-w-5xl mx-auto px-6 py-16">
+    <header class="mb-14 text-center">
+      <p class="text-sm uppercase tracking-widest text-orange-500 font-semibold">Agent Bootcamp</p>
+      <h1 class="text-4xl md:text-6xl font-bold mt-3 mb-5 tracking-tighter" style="letter-spacing:-0.03em;">
+        Don't browse the catalog.<br />Follow the install path.
+      </h1>
+      <p class="text-lg md:text-xl text-gray-600 max-w-2xl mx-auto">
+        Three curated tracks take your agent from zero to a production setup —
+        each one an opinionated, ordered sequence of skills. Start on the free
+        on-ramp. Upgrade at the step where free stops working.
+      </p>
+    </header>
+
+    {fetchError && (
+      <p class="text-xs text-gray-400 text-center mb-8">
+        (Showing the canonical curriculum — live catalog enrichment will refresh on next build.)
+      </p>
+    )}
+
+    <div class="space-y-12">
+      {tracks.map((track) => {
+        const boundary = firstPaidPosition(track);
+        return (
+          <section class="border border-gray-200 rounded-2xl p-6 md:p-8 bg-white/50">
+            <div class="mb-6">
+              <h2 class="text-2xl md:text-3xl font-bold tracking-tight">{track.title}</h2>
+              <p class="text-gray-600 mt-1">{track.subtitle}</p>
+              <p class="text-sm text-gray-500 mt-3"><span class="font-semibold text-gray-700">You end with:</span> {track.outcome}</p>
+            </div>
+
+            <ol class="space-y-3">
+              {track.steps.map((step) => (
+                <>
+                  {boundary !== null && step.position === boundary && (
+                    <li class="flex items-center gap-3 py-1" aria-hidden="true">
+                      <span class="text-xs uppercase tracking-widest text-orange-500 font-semibold whitespace-nowrap">↑ upgrade to Pro here</span>
+                      <span class="h-px flex-1 bg-orange-200"></span>
+                    </li>
+                  )}
+                  <li class="flex items-start gap-4">
+                    <span class="shrink-0 w-7 h-7 rounded-full bg-gray-900 text-white text-sm font-bold flex items-center justify-center mt-0.5">{step.position}</span>
+                    <div class="flex-1 min-w-0">
+                      <div class="flex items-center gap-2 flex-wrap">
+                        {step.available && step.install_link ? (
+                          <a href={step.install_link} class="font-semibold text-gray-900 hover:text-orange-600 underline-offset-2 hover:underline">{step.slug}</a>
+                        ) : (
+                          <span class="font-semibold text-gray-400">{step.slug}</span>
+                        )}
+                        <span class={`text-[10px] font-bold px-1.5 py-0.5 rounded ${tierLabel(step) === 'FREE' ? 'bg-green-100 text-green-700' : 'bg-gray-900 text-white'}`}>{tierLabel(step)}</span>
+                      </div>
+                      <p class="text-sm text-gray-600 mt-0.5">{step.why}</p>
+                    </div>
+                  </li>
+                </>
+              ))}
+            </ol>
+          </section>
+        );
+      })}
+    </div>
+
+    <section class="mt-16 text-center">
+      <h2 class="text-2xl font-bold mb-3">Start the first step free</h2>
+      <p class="text-gray-600 mb-6 max-w-xl mx-auto">
+        Every track begins with <code class="text-sm">super-memory</code> — MIT-licensed, installs in seconds, zero cost. Tell your agent to install it and you're on the path.
+      </p>
+      <div class="flex items-center justify-center gap-4 flex-wrap">
+        <a href="/skills/super-memory?ref=bootcamp-cta" class="bg-gray-900 text-white px-6 py-3 rounded-lg font-semibold hover:bg-gray-700">Start free → super-memory</a>
+        <a href="/skills?ref=bootcamp-cta" class="px-6 py-3 rounded-lg font-semibold border border-gray-300 hover:border-gray-500">Browse all 72 skills →</a>
+      </div>
+    </section>
+  </main>
+</Base>
