@@ -60,13 +60,13 @@ const normalizedCarouselToday = carouselToday.map(normalizeCarouselEntry);
 
 // pick_1605: pick slot 1, then fall through to subsequent slots if slot 1 is gated/empty.
 // Premortem #2 mitigation: a gated/private slot 0 entry would lead the hero CTA to a 404.
-// We accept free or cook-tier entries (the public/Pro $20 surface). If none qualify,
+// We accept free or pro-tier entries (the public/Pro $20 surface). If none qualify,
 // todaysPick is null and the hero falls back to the hardcoded spotlight grid.
 const todaysPick = (() => {
   for (const n of normalizedCarouselToday) {
     if (!n.slug) continue;
-    // Allow free skills and cook-tier (= Pro $20 included). Reject operator-only.
-    if (n.isFree || n.tier === 'cook' || n.tier === '') return n;
+    // Allow free skills and pro-tier skills. 'cook' was a legacy label, normalized to 'pro' since #471 — guard both for backwards compat with any residual API values.
+    if (n.isFree || n.tier === 'pro' || n.tier === 'cook' || n.tier === '') return n;
   }
   return null;
 })();
@@ -85,12 +85,12 @@ const roleLabel = (role: string): string => {
   return labels[role] || "Today's Pick";
 };
 
-// Pull live skill count for the stats strip (retry+jitter; fallback to 59 if API unreachable).
-// pick_1605: bumped fallback 80 → 59 to match current production reality.
+// Pull live skill count for the stats strip (retry+jitter; fallback to 72 if API unreachable).
+// 2026-06-07: bumped fallback 59 → 72 to match verified live catalog count per /api/marketing/snapshot.
 // 2026-05-20: API rate limiter now exempts authenticated callers (per-IP cap
 // was busting on 116-page parallel builds even with our retry+cache); this
 // fetch reliably gets the live total now. Fallback retained as belt-and-suspenders.
-let liveSkillCount = 59;
+let liveSkillCount = 72;
 try {
   const result = await fetchApi<{ total: number }>('/api/skills/search?page_size=1');
   if (result.ok && result.data && typeof result.data.total === 'number' && result.data.total > 0) {
@@ -115,8 +115,10 @@ const cookFallback: CookSkill[] = [
   { slug: 'summarize-cli', title: 'Summarize CLI', tagline: 'Summarize URLs, PDFs, transcripts', description: 'Summarize any content from your terminal.', category: 'general', install_count_total: 0 },
   { slug: 'frontend-design', title: 'Frontend Design', tagline: 'React/Next.js/Tailwind frontend conventions', description: 'Production-grade frontend design guidelines.', category: 'code', install_count_total: 0 },
   { slug: 'pr-draft', title: 'PR Draft', tagline: 'Structured PRs from git diffs', description: 'Generate PR descriptions from git diffs using LLM.', category: 'code', install_count_total: 0 },
-  { slug: 'nano-banana-pro', title: 'Nano Banana Pro', tagline: 'Generate or edit images via Gemini 3', description: 'Image generation and editing via Google Gemini 3 Pro.', category: 'creative', install_count_total: 0 },
-  { slug: 'grok-search', title: 'Grok Search', tagline: 'Search the web + X/Twitter via xAI', description: 'Real-time search via xAI with citations.', category: 'research', install_count_total: 0 },
+  // 2026-06-07 claim-grounding pass: removed nano-banana-pro (404) and grok-search (404).
+  // Replaced with verified-real slugs from the live catalog.
+  { slug: 'web-scraper-pro', title: 'Web Scraper Pro', tagline: 'Stealth scraping for JS-heavy pages', description: 'Headless scraping with Cloudflare bypass, structured output, and auto-retry.', category: 'web-scraping', install_count_total: 0 },
+  { slug: 'ascii-video', title: 'ASCII Video', tagline: 'Convert video to high-res ASCII art', description: 'Render any video as animated ASCII — local, no API spend.', category: 'creative', install_count_total: 0 },
 ];
 if (cookSkills.length === 0) cookSkills = cookFallback;
 // Pin larry first; sort the rest by install_count desc so the most-used cook skills surface.
@@ -146,6 +148,107 @@ try {
 } catch {} // Rationale: offline build or API down — spotlightFallback keeps the hero non-empty
 if (spotlight.length === 0) spotlight = spotlightFallback;
 
+// ─── Agent Bootcamp — live fetch at build time ───────────────────────────────
+// GET /api/bootcamp is PUBLIC (no auth required). We pass authed:false to skip
+// the x-api-key header. Tracks are stable (low churn) so build-time bake is safe;
+// the carousel client-side pattern is only needed for daily-rotating data.
+// 2026-06-07: Bootcamp shipped as PRs #472+#473. Three tracks, each starting on
+// the free on-ramp (super-memory) and crossing free→Pro at a documented step.
+type BootcampTrack = {
+  id: string;
+  title: string;
+  subtitle: string;
+  audience: string;
+  outcome: string;
+  step_count: number;
+  free_steps: number;
+  paid_steps: number;
+};
+type BootcampTrackResponse = { tracks: BootcampTrack[] };
+
+type BootcampStep = {
+  position: number;
+  slug: string;
+  title: string;
+  tier: string;
+  is_free: boolean | null;
+  available: boolean;
+  install_link: string;
+  why: string;
+};
+type BootcampTrackDetail = BootcampTrack & { steps: BootcampStep[] };
+
+// Fallback uses ONLY verified-real slugs (all confirmed 200 on /api/bootcamp endpoints, 2026-06-07).
+const bootcampFallback: BootcampTrackDetail[] = [
+  {
+    id: 'zero-to-agent',
+    title: 'Zero to Agent',
+    subtitle: 'Stand up a production-grade agent from scratch — memory first, then capability.',
+    audience: 'Builders who want the canonical setup, not 50 tabs of trial-and-error.',
+    outcome: 'A persistent-memory agent that survives restarts and runs a daily operating loop.',
+    step_count: 5, free_steps: 2, paid_steps: 3,
+    steps: [
+      { position: 1, slug: 'super-memory', title: 'super-memory', tier: 'free', is_free: true, available: true, why: 'Start here. Full memory stack in one command. Free on-ramp — zero spend on day one.', install_link: '/skills/super-memory?ref=bootcamp-zero-to-agent-step-1' },
+      { position: 2, slug: 'recipes-cookbook-reconcile', title: 'recipes-cookbook-reconcile', tier: 'free', is_free: true, available: true, why: 'Keep skills evergreen. Auto-updates instead of rotting.', install_link: '/skills/recipes-cookbook-reconcile?ref=bootcamp-zero-to-agent-step-2' },
+      { position: 3, slug: 'cognee', title: 'cognee', tier: 'pro', is_free: false, available: true, why: 'Self-hosted graph retrieval at scale. First Pro skill.', install_link: '/skills/cognee?ref=bootcamp-zero-to-agent-step-3' },
+      { position: 4, slug: 'maestro', title: 'maestro', tier: 'pro', is_free: false, available: true, why: 'Morning brief, marketing, code delegation. Turns an agent into an operating loop.', install_link: '/skills/maestro?ref=bootcamp-zero-to-agent-step-4' },
+      { position: 5, slug: 'framework-v0', title: 'framework-v0', tier: 'pro', is_free: false, available: true, why: 'One-call bootstrap for the full Maestro stack.', install_link: '/skills/framework-v0?ref=bootcamp-zero-to-agent-step-5' },
+    ],
+  },
+  {
+    id: 'content-engine',
+    title: 'Content Engine',
+    subtitle: 'A self-hosted media + distribution pipeline your agent drives end-to-end.',
+    audience: 'Operators who want their agent to produce and ship media without per-call API bills.',
+    outcome: 'An agent that scrapes, generates video + audio — zero per-generation API spend.',
+    step_count: 5, free_steps: 1, paid_steps: 4,
+    steps: [
+      { position: 1, slug: 'super-memory', title: 'super-memory', tier: 'free', is_free: true, available: true, why: 'Memory of what it has produced — avoids duplicate work. Free on-ramp.', install_link: '/skills/super-memory?ref=bootcamp-content-engine-step-1' },
+      { position: 2, slug: 'scrapling-official', title: 'scrapling-official', tier: 'pro', is_free: false, available: true, why: 'Headless scraping for JS-heavy / Cloudflare-protected pages — the input side.', install_link: '/skills/scrapling-official?ref=bootcamp-content-engine-step-2' },
+      { position: 3, slug: 'comfyui', title: 'comfyui', tier: 'pro', is_free: false, available: true, why: 'Generate images, video, audio locally — no per-frame API spend.', install_link: '/skills/comfyui?ref=bootcamp-content-engine-step-3' },
+      { position: 4, slug: 'local-tts-kokoro', title: 'local-tts-kokoro', tier: 'pro', is_free: false, available: true, why: 'Local TTS at 2.6× realtime — voiceover without an ElevenLabs bill.', install_link: '/skills/local-tts-kokoro?ref=bootcamp-content-engine-step-4' },
+      { position: 5, slug: 'manim-video', title: 'manim-video', tier: 'pro', is_free: false, available: true, why: '3Blue1Brown-style animations — the high-retention capstone of a local-first media stack.', install_link: '/skills/manim-video?ref=bootcamp-content-engine-step-5' },
+    ],
+  },
+  {
+    id: 'agent-fleet',
+    title: 'Run a Fleet',
+    subtitle: 'Coordinate multiple agents without infinite loops or split-brain.',
+    audience: 'Operators graduating from one agent to a coordinated team.',
+    outcome: 'Shared memory, loop-safe Discord coordination, per-client reporting.',
+    step_count: 4, free_steps: 1, paid_steps: 3,
+    steps: [
+      { position: 1, slug: 'super-memory', title: 'super-memory', tier: 'free', is_free: true, available: true, why: 'Shared memory is the substrate a fleet coordinates on. Free on-ramp.', install_link: '/skills/super-memory?ref=bootcamp-agent-fleet-step-1' },
+      { position: 2, slug: 'multi-agent-discord-coordination', title: 'multi-agent-discord-coordination', tier: 'pro', is_free: false, available: true, why: 'Loop-safe protocol for 2+ agents on Discord — the exact failure mode that kills naive fleets.', install_link: '/skills/multi-agent-discord-coordination?ref=bootcamp-agent-fleet-step-2' },
+      { position: 3, slug: 'chef', title: 'Chef', tier: 'pro', is_free: false, available: true, why: 'Per-agent operating template: morning brief, marketing, code delegation.', install_link: '/skills/chef?ref=bootcamp-agent-fleet-step-3' },
+      { position: 4, slug: 'client-reporter', title: 'Client Reporter', tier: 'pro', is_free: false, available: true, why: 'GA4, GSC, Meta + TikTok Ads → branded PDF. Turns a fleet into billable client work.', install_link: '/skills/client-reporter?ref=bootcamp-agent-fleet-step-4' },
+    ],
+  },
+];
+
+let bootcampTracks: BootcampTrackDetail[] = [];
+try {
+  // Step 1: fetch the track list
+  const listResult = await fetchApi<BootcampTrackResponse>('/api/bootcamp', { authed: false });
+  if (listResult.ok && listResult.data?.tracks?.length) {
+    // Step 2: fetch each track detail in parallel
+    const trackIds = listResult.data.tracks.map((t: BootcampTrack) => t.id);
+    const detailResults = await Promise.all(
+      trackIds.map((id: string) => fetchApi<BootcampTrackDetail>(`/api/bootcamp/${id}`, { authed: false }))
+    );
+    const resolved = detailResults.filter(r => r.ok && r.data).map(r => r.data as BootcampTrackDetail);
+    if (resolved.length > 0) bootcampTracks = resolved;
+  }
+} catch {}
+if (bootcampTracks.length === 0) bootcampTracks = bootcampFallback;
+
+// Track accent colors — visual differentiation per track
+const trackAccents: Record<string, { badge: string; dot: string; label: string }> = {
+  'zero-to-agent':   { badge: 'bg-accent/10 border-accent/30 text-accent', dot: 'bg-accent', label: 'Foundation' },
+  'content-engine':  { badge: 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400', dot: 'bg-emerald-400', label: 'Media' },
+  'agent-fleet':     { badge: 'bg-violet-500/10 border-violet-500/30 text-violet-400', dot: 'bg-violet-400', label: 'Fleet' },
+};
+
 const howItWorks = [
   { num: '01', title: 'You describe the goal', body: 'Plain language, in your existing AI agent. No searches, no docs, no copy-paste.', icon: 'lightning' },
   { num: '02', title: 'Recipes finds the skill', body: 'The meta-skill makes your agent aware of every Recipes skill. It picks the perfect match.', icon: 'search' },
@@ -155,7 +258,7 @@ const howItWorks = [
 
 const stats = [
   { num: `${liveSkillCount}+`, label: 'Production skills, live' },
-  { num: '7', label: 'Carousel slots, refreshed daily' },
+  { num: '3', label: 'Bootcamp tracks — free on-ramp to Pro' },
   { num: '< 30s', label: 'Install to first run' },
 ];
 
@@ -186,16 +289,16 @@ const verticals = [
 
     <div class="max-w-6xl mx-auto px-6 pt-20 md:pt-28 pb-16 relative w-full">
       <div class="flex flex-col items-center text-center gap-6 max-w-3xl mx-auto">
-        <a href="https://wisechef.ai" class="group inline-flex items-center gap-2 px-3 py-1 rounded-full border border-border text-xs text-muted hover:text-text hover:border-accent/40 transition backdrop-blur-sm bg-bg/40">
-          <span class="w-1.5 h-1.5 rounded-full bg-accent group-hover:animate-pulse"></span>
-          A new product from WiseChef
-          <Icon name="arrow-right" size={11} class="opacity-50 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all" />
+        <a href="/bootcamp" class="group inline-flex items-center gap-2 px-3 py-1 rounded-full border border-accent/40 text-xs text-accent hover:text-text hover:border-accent/60 transition backdrop-blur-sm bg-accent/5">
+          <span class="w-1.5 h-1.5 rounded-full bg-accent animate-pulse"></span>
+          New: Agent Bootcamp — the opinionated install path
+          <Icon name="arrow-right" size={11} class="opacity-70 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all" />
         </a>
         <h1 class="text-5xl md:text-7xl font-bold tracking-tighter leading-[1.02]" style="letter-spacing: -0.04em;">
           Tell your agent.<br/><span class="text-gradient hero-glow">We make it good.</span>
         </h1>
         <p class="text-lg md:text-xl text-muted leading-relaxed max-w-2xl">
-          Recipes is the curated catalog your agent picks from. Skills are text. The value is what your agent does with them.
+          {liveSkillCount} production skills, curated and signed. Don't browse the catalog — <strong class="text-text font-semibold">follow the install path</strong>. Start free. Upgrade when it earns it.
         </p>
         <p class="text-base md:text-lg font-semibold text-text -mt-2">
           One curated cookbook. Every agent. Every machine. Every IDE.
@@ -243,15 +346,13 @@ const verticals = [
         )}
 
         <div class="flex flex-col sm:flex-row items-center gap-3 mt-4">
-          <a href="/catalog"
+          <a href="/bootcamp"
              class="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg font-semibold text-sm bg-accent text-bg transition hover:opacity-90">
-            See the catalog →
+            Start Bootcamp — free →
           </a>
-          <a href="https://github.com/wisechef-ai/recipes-skill"
-             target="_blank" rel="noopener"
+          <a href="/skills"
              class="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg font-semibold text-sm border border-border hover:border-accent text-text transition backdrop-blur-sm bg-bg/40">
-            <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0a8 8 0 0 0-2.53 15.59c.4.07.55-.17.55-.38v-1.4c-2.23.48-2.7-.94-2.7-.94-.36-.93-.89-1.18-.89-1.18-.73-.5.05-.49.05-.49.81.06 1.23.83 1.23.83.72 1.23 1.88.88 2.34.67.07-.52.28-.88.51-1.08-1.78-.2-3.65-.89-3.65-3.96 0-.87.31-1.59.83-2.15-.08-.2-.36-1.02.08-2.13 0 0 .67-.21 2.2.82a7.65 7.65 0 0 1 4 0c1.53-1.04 2.2-.82 2.2-.82.44 1.11.16 1.93.08 2.13.51.56.83 1.28.83 2.15 0 3.08-1.87 3.76-3.66 3.96.29.25.55.74.55 1.49v2.21c0 .21.15.46.55.38A8 8 0 0 0 8 0z"/></svg>
-            Audit on GitHub →
+            Browse {liveSkillCount}+ skills →
           </a>
           <a href="/security"
              class="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg text-sm text-muted hover:text-accent transition">
@@ -296,6 +397,108 @@ const verticals = [
           </div>
         ))}
       </div>
+    </div>
+  </section>
+
+  {/* ─── Agent Bootcamp Section ─────────────────────────────────────────────── */}
+  {/* Three curated install-order tracks. Data: live from /api/bootcamp at build time.
+      Wedge: Recipes is the default INSTALL ORDER, not a flat catalog.
+      Each track starts on the free on-ramp (super-memory) and crosses to Pro at a
+      documented conversion step — the natural upgrade moment. 2026-06-07. */}
+  <section class="border-t border-border bg-bg-card/10" id="bootcamp-section">
+    <div class="max-w-6xl mx-auto px-6 py-20">
+      <div class="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-12">
+        <div class="max-w-2xl">
+          <p class="eyebrow text-accent">Agent Bootcamp — new</p>
+          <h2 class="text-3xl md:text-5xl font-bold tracking-tight mt-2" style="letter-spacing: -0.03em;">
+            Don't browse.<br/><span class="text-gradient">Follow the install path.</span>
+          </h2>
+          <p class="text-muted mt-3 text-lg leading-relaxed">
+            3 curated tracks. Each starts free (super-memory) and tells you exactly when — and why — to upgrade.
+            The carousel is discovery. Bootcamp is the operating curriculum.
+          </p>
+        </div>
+        <a href="/bootcamp" class="text-sm text-accent hover:opacity-80 inline-flex items-center gap-1.5 shrink-0 font-semibold">
+          See all tracks <Icon name="arrow-right" size={11} />
+        </a>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-5">
+        {bootcampTracks.map(track => {
+          const accent = trackAccents[track.id] ?? trackAccents['zero-to-agent'];
+          return (
+            <div class="flex flex-col bg-bg-card border border-border-soft rounded-2xl overflow-hidden hover:border-border transition group">
+              {/* Track header */}
+              <div class="p-5 border-b border-border-soft">
+                <div class="flex items-center justify-between gap-2 mb-3">
+                  <span class={`inline-flex items-center gap-1.5 text-[10px] font-mono uppercase tracking-wider px-2 py-0.5 rounded-full border ${accent.badge}`}>
+                    <span class={`w-1.5 h-1.5 rounded-full ${accent.dot}`}></span>
+                    {accent.label}
+                  </span>
+                  <span class="text-[10px] text-muted font-mono">{track.free_steps} free · {track.paid_steps} Pro</span>
+                </div>
+                <h3 class="text-lg font-semibold text-text tracking-tight">{track.title}</h3>
+                <p class="text-xs text-muted-soft mt-1.5 leading-relaxed line-clamp-2">{track.subtitle}</p>
+              </div>
+
+              {/* Install steps */}
+              <ol class="flex flex-col gap-0 flex-1 px-4 py-3">
+                {track.steps.slice(0, 5).map((step, idx) => {
+                  const isFreeStep = step.is_free === true || step.tier === 'free';
+                  const isConversionBoundary = !isFreeStep && (idx === 0 || track.steps[idx - 1]?.is_free === true || track.steps[idx - 1]?.tier === 'free');
+                  return (
+                    <li class="flex gap-3 items-start py-2.5 border-b border-border-soft last:border-0">
+                      {/* Step number + free/pro indicator */}
+                      <div class="flex flex-col items-center gap-1 shrink-0 mt-0.5">
+                        <span class={`text-[9px] font-mono w-5 h-5 rounded-full flex items-center justify-center font-bold ${isFreeStep ? 'bg-success/15 text-success' : 'bg-accent/10 text-accent'}`}>
+                          {step.position}
+                        </span>
+                        {idx < track.steps.slice(0, 5).length - 1 && (
+                          <span class="w-px h-3 bg-border-soft"></span>
+                        )}
+                      </div>
+
+                      {/* Step content */}
+                      <div class="flex flex-col gap-0.5 min-w-0 flex-1">
+                        <div class="flex items-center gap-2">
+                          <a
+                            href={step.install_link}
+                            class="text-xs font-mono font-semibold text-text hover:text-accent transition truncate"
+                          >
+                            {step.slug}
+                          </a>
+                          <span class={`text-[9px] uppercase font-semibold tracking-wider shrink-0 ${isFreeStep ? 'text-success' : 'text-accent'}`}>
+                            {isFreeStep ? 'FREE' : 'PRO'}
+                          </span>
+                        </div>
+                        {isConversionBoundary && (
+                          <span class="text-[9px] text-accent/70 font-mono italic">↑ upgrade here</span>
+                        )}
+                      </div>
+                    </li>
+                  );
+                })}
+              </ol>
+
+              {/* Track footer CTA */}
+              <div class="px-5 py-3 border-t border-border-soft">
+                <a
+                  href={`/bootcamp#${track.id}`}
+                  class="inline-flex items-center gap-1.5 text-xs text-accent hover:opacity-80 transition font-semibold"
+                >
+                  Start this track
+                  <Icon name="arrow-right" size={11} class="group-hover:translate-x-0.5 transition" />
+                </a>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      <p class="text-xs text-muted-soft mt-6 text-center">
+        Every slug verified against the live catalog. Free skills work on day one — no card required.
+        <a href="/skills/super-memory" class="text-accent hover:opacity-80 ml-1 underline underline-offset-2">Start with super-memory →</a>
+      </p>
     </div>
   </section>
 
