@@ -30,6 +30,23 @@ export default defineConfig({
   //   }
   // The viz page's JS resolves the id from ?id= (rewrite) or the path segment,
   // so it works on both the clean URL and /cookbooks/view?id= directly.
+  //
+  // spotify_0608 Ph F: PUBLIC cookbook page lives at /cookbooks/p/?slug=<slug>
+  // (static Astro can't pre-render per-slug routes). For the clean shareable URL
+  // /cookbooks/p/<slug>, add this Caddy block BEFORE the catch-all, AFTER the
+  // @cookbook_id block above:
+  //   @cookbook_pub {
+  //       path_regexp cbslug ^/cookbooks/p/([A-Za-z0-9][A-Za-z0-9-]*)/?$
+  //   }
+  //   handle @cookbook_pub {
+  //       rewrite * /cookbooks/p?slug={http.regexp.cbslug.1}
+  //       root * /home/wisechef/recipes-portal/dist
+  //       try_files /cookbooks/p/index.html
+  //       file_server
+  //   }
+  // The page's JS resolves the slug from ?slug= (rewrite) or the trailing path
+  // segment, so it works on both the clean URL and /cookbooks/p/?slug= directly.
+  // /cookbooks (discover feed) is a normal static route — no rewrite needed.
   redirects: {
     '/creators': '/referrals',
   },

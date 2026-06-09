@@ -19,7 +19,11 @@
 
 import Base from "../../layouts/Base.astro";
 
-const apiBase = import.meta.env.PUBLIC_API_BASE_URL || "https://api.recipes.wisechef.ai";
+// spotify_0608 Ph F (plan P0#5): same-origin API. The old api-subdomain
+// default created a cookie-host split (the wr_jwt cookie is host-only, so it
+// never reached a separate api host). Correct to the same-origin default used
+// by every other portal page.
+const apiBase = import.meta.env.PUBLIC_RECIPES_API_BASE || "https://recipes.wisechef.ai";
 
 // Server-side pre-fetch of buckets list for first paint. Token comes from
 // the wr_jwt cookie which the portal forwards via `request.headers`.
