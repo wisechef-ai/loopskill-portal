@@ -1,48 +1,198 @@
 ---
-// /fleets — portal_0610. The Fleets headline surface. J1 ships the shell-mounted
-// page + nav placement (L2: Fleets is a first-class rail item, not buried under
-// /account — PM3 guard). J3 fills in create/subscribe/channel/sync UI over the
-// recipes_fleet_* API. Until then this renders the user's fleets (if any) and a
-// create affordance, degrading gracefully when the web fleet routes aren't live.
+// /fleets — portal_0610 J3: the Fleets management surface (L2 / PM3 — a
+// first-class rail item, not buried under /account). Drives the HTTP fleet API
+// (J3 backend): GET /api/fleets, POST /api/fleets, POST .../subscribe,
+// POST .../sync. A fleet keeps a set of agents on the same cookbooks; subscribe
+// a cookbook on a channel (stable/canary/frozen), sync once, every agent
+// converges. The fleet key is shown ONCE on create (rec_fleet_…).
 import AppShell from '../layouts/AppShell.astro';
 ---
 <AppShell title="Fleets — Recipes" active="fleets">
-  <section class="max-w-6xl mx-auto px-6 py-10">
-    <header class="mb-8">
-      <h1 class="text-2xl font-semibold tracking-tight">Fleets</h1>
-      <p class="text-sm text-muted mt-1">Your team's agents, one cookbook, one sync.</p>
+  <section class="max-w-5xl mx-auto px-6 py-10">
+    <header class="mb-8 flex items-end justify-between gap-4 flex-wrap">
+      <div>
+        <h1 class="text-2xl font-semibold tracking-tight">Fleets</h1>
+        <p class="text-sm text-muted mt-1">Your team's agents, one cookbook, one sync. Subscribe a cookbook on a channel, sync once — every agent converges.</p>
+      </div>
+      <button id="new-fleet-btn" class="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-accent text-bg text-sm font-semibold hover:bg-accent-soft transition shrink-0">
+        + New fleet
+      </button>
     </header>
 
-    <div id="fleets-list" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-      <div class="col-span-full text-sm text-muted py-8 text-center" id="fleets-loading">Loading…</div>
+    <div id="fleets-list" class="flex flex-col gap-4">
+      <div class="text-sm text-muted py-8 text-center" id="fleets-loading">Loading…</div>
+    </div>
+
+    <!-- New-fleet modal -->
+    <div id="fleet-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-bg/80 backdrop-blur-sm p-4" role="dialog" aria-modal="true">
+      <div class="bg-bg-card border border-border rounded-2xl p-6 w-full max-w-sm flex flex-col gap-4 shadow-2xl">
+        <div class="flex items-center justify-between gap-3">
+          <h3 class="text-base font-semibold">Create a fleet</h3>
+          <button id="fleet-modal-close" class="text-muted hover:text-text text-lg leading-none" aria-label="Close">✕</button>
+        </div>
+        <input id="fleet-name" type="text" maxlength="120" placeholder="e.g. acme-prod-agents"
+               class="w-full px-3 py-2 text-sm bg-bg-elev border border-border rounded-lg text-text placeholder:text-muted focus:outline-none focus:border-accent" />
+        <div id="fleet-modal-error" class="hidden text-xs text-red-400 bg-red-500/10 border border-red-500/30 rounded-lg p-2"></div>
+        <div class="flex gap-2">
+          <button id="fleet-create-submit" class="flex-1 px-4 py-2 rounded-lg bg-accent text-bg text-sm font-semibold hover:bg-accent-soft transition">Create</button>
+          <button id="fleet-modal-cancel" class="px-4 py-2 rounded-lg border border-border text-text text-sm hover:border-accent transition">Cancel</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Fleet-key reveal (shown once after create) -->
+    <div id="key-reveal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-bg/80 backdrop-blur-sm p-4" role="dialog" aria-modal="true">
+      <div class="bg-bg-card border border-accent/40 rounded-2xl p-6 w-full max-w-md flex flex-col gap-3 shadow-2xl">
+        <h3 class="text-base font-semibold text-accent">⚠ Save this fleet key now</h3>
+        <p class="text-xs text-muted">It will not be shown again. Set it as <code class="text-accent">x-fleet-key</code> in each agent's config to keep them synced.</p>
+        <div class="flex items-center gap-2">
+          <code id="reveal-key" class="font-mono text-xs bg-bg-elev border border-border rounded px-3 py-2 flex-1 break-all"></code>
+          <button id="reveal-copy" class="px-3 py-2 rounded-lg bg-accent text-bg text-xs font-semibold shrink-0">Copy</button>
+        </div>
+        <button id="reveal-done" class="text-xs text-muted hover:text-text underline self-start">I've saved it</button>
+      </div>
     </div>
   </section>
 
   <script>
-    (async () => {
-      const fetchJson = async (u: string) => {
-        try { const r = await fetch(u, { credentials: 'include' }); return r.ok ? await r.json() : null; }
-        catch { return null; }
-      };
-      const wrap = document.getElementById('fleets-list');
-      const loading = document.getElementById('fleets-loading');
-      const data = await fetchJson('/api/fleets');
-      const fleets = (data && (data.fleets || data.items)) || [];
-      loading?.remove();
-      if (!wrap) return;
+    const API_BASE = (import.meta as any).env?.PUBLIC_RECIPES_API_BASE || 'https://recipes.wisechef.ai';
+    const $ = (id: string) => document.getElementById(id)!;
+    const apiKey = (() => { try { return localStorage.getItem('recipes_api_key'); } catch { return null; } })();
+    const authHeaders = (extra?: any) => { const h = Object.assign({}, extra || {}); if (apiKey) h['x-api-key'] = apiKey; return h; };
+    const api = (p: string, o: any = {}) => fetch(API_BASE + p, { credentials: 'include', ...o, headers: authHeaders(o.headers) });
+    const esc = (s: any) => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'} as any)[c]);
+
+    const CHANNELS = ['stable', 'canary', 'frozen'];
+    let cookbooks: any[] = [];
+
+    function toast(msg: string, kind?: string) {
+      let el = document.getElementById('fl-toast');
+      if (!el) { el = document.createElement('div'); el.id = 'fl-toast';
+        el.style.cssText = 'position:fixed;bottom:1.25rem;left:50%;transform:translateX(-50%);z-index:90;padding:.6rem 1rem;border-radius:.6rem;font-size:.82rem;font-weight:600;box-shadow:0 6px 24px rgba(0,0,0,.35);';
+        document.body.appendChild(el); }
+      el.style.background = kind === 'error' ? '#7f1d1d' : 'var(--accent,#6ee7b7)';
+      el.style.color = kind === 'error' ? '#fff' : 'var(--bg,#0b0b0c)';
+      el.textContent = msg; el.style.opacity = '1';
+      setTimeout(() => { el!.style.transition = 'opacity .4s'; el!.style.opacity = '0'; }, 2800);
+    }
+
+    function cookbookName(id: string) { const cb = cookbooks.find(c => c.id === id); return cb ? cb.name : id.slice(0, 8) + '…'; }
+
+    function fleetCard(f: any): string {
+      const subs = f.subscriptions || [];
+      const subsHtml = subs.length
+        ? subs.map((s: any) => `<div class="flex items-center justify-between gap-2 px-3 py-2 rounded-lg bg-bg-elev border border-border-soft text-xs">
+            <span class="text-text truncate">${esc(cookbookName(s.cookbook_id))}</span>
+            <span class="text-[10px] uppercase tracking-wide px-1.5 py-0.5 rounded-full border border-accent/30 text-accent">${esc(s.channel)}</span>
+          </div>`).join('')
+        : '<p class="text-xs text-muted-soft px-1 py-2">No cookbooks subscribed yet.</p>';
+      const cbOptions = cookbooks.map(c => `<option value="${esc(c.id)}">${esc(c.name)}</option>`).join('');
+      const chOptions = CHANNELS.map(c => `<option value="${c}">${c}</option>`).join('');
+      return `<div class="bg-bg-card border border-border rounded-2xl p-5" data-fleet="${esc(f.fleet_id)}">
+        <div class="flex items-center justify-between gap-3 mb-3">
+          <h2 class="text-lg font-semibold tracking-tight truncate">${esc(f.name)}</h2>
+          <button class="fleet-sync text-xs px-3 py-1.5 rounded-lg border border-border hover:border-accent text-text transition shrink-0" data-fleet="${esc(f.fleet_id)}">Sync ▸</button>
+        </div>
+        <div class="flex flex-col gap-1.5 mb-3">${subsHtml}</div>
+        <form class="fleet-sub-form flex items-center gap-1.5 pt-3 border-t border-border-soft" data-fleet="${esc(f.fleet_id)}">
+          <select class="sub-cb flex-1 px-2 py-1.5 text-xs bg-bg-elev border border-border rounded-lg text-text focus:outline-none focus:border-accent">
+            <option value="">Subscribe a cookbook…</option>${cbOptions}
+          </select>
+          <select class="sub-ch px-2 py-1.5 text-xs bg-bg-elev border border-border rounded-lg text-text focus:outline-none focus:border-accent">${chOptions}</select>
+          <button type="submit" class="px-3 py-1.5 rounded-lg bg-accent text-bg text-xs font-semibold hover:bg-accent-soft transition">Add</button>
+        </form>
+        <div class="fleet-sync-out hidden mt-3 text-xs text-muted bg-bg-elev border border-border-soft rounded-lg p-3 font-mono whitespace-pre-wrap"></div>
+      </div>`;
+    }
+
+    async function loadCookbooks() {
+      try { const r = await api('/api/cookbooks'); if (r.ok) { const d = await r.json(); cookbooks = (d.cookbooks || d.items || d || []); } } catch {}
+    }
+
+    async function load() {
+      await loadCookbooks();
+      const wrap = $('fleets-list');
+      const r = await api('/api/fleets');
+      if (r.status === 401) { window.location.href = '/signin?next=/fleets'; return; }
+      if (!r.ok) { wrap.innerHTML = '<p class="text-sm text-muted py-8 text-center">Could not load fleets.</p>'; return; }
+      const fleets = (await r.json()).fleets || [];
       if (!fleets.length) {
-        wrap.innerHTML = `<div class="col-span-full flex flex-col items-center justify-center gap-3 py-16 rounded-2xl border border-dashed border-border text-center">
+        wrap.innerHTML = `<div class="flex flex-col items-center justify-center gap-3 py-16 rounded-2xl border border-dashed border-border text-center">
           <span class="text-sm text-text font-medium">No fleets yet</span>
-          <span class="text-xs text-muted max-w-sm">A fleet keeps a set of agents on the same cookbooks. Subscribe a cookbook on a channel (stable / canary / frozen), sync once, and every agent converges. Full fleet management ships next.</span>
-          <a href="/docs/fleet" class="text-xs text-accent hover:opacity-80 mt-1">How fleets work →</a>
+          <span class="text-xs text-muted max-w-sm">Create a fleet, subscribe a cookbook on a channel (stable / canary / frozen), and sync — every agent on the fleet key converges to the same skills.</span>
+          <button id="empty-new-fleet" class="text-xs text-accent hover:opacity-80 mt-1">+ Create your first fleet</button>
         </div>`;
-      } else {
-        wrap.innerHTML = fleets.map((f: any) =>
-          `<div class="flex items-center justify-between gap-3 p-5 rounded-2xl bg-bg-card border border-border">
-            <span class="font-semibold text-text truncate">${(f.name || 'Fleet')}</span>
-            <span class="text-xs text-muted-soft">${(f.subscriptions ? f.subscriptions.length + ' cookbooks' : '')}</span>
-          </div>`).join('');
+        document.getElementById('empty-new-fleet')?.addEventListener('click', openModal);
+        return;
       }
-    })();
+      wrap.innerHTML = fleets.map(fleetCard).join('');
+      wireFleetCards();
+    }
+
+    function wireFleetCards() {
+      document.querySelectorAll<HTMLFormElement>('.fleet-sub-form').forEach(form => {
+        form.addEventListener('submit', async (e) => {
+          e.preventDefault();
+          const fid = form.dataset.fleet!;
+          const cb = (form.querySelector('.sub-cb') as HTMLSelectElement).value;
+          const ch = (form.querySelector('.sub-ch') as HTMLSelectElement).value;
+          if (!cb) { toast('Pick a cookbook first.', 'error'); return; }
+          const r = await api(`/api/fleets/${fid}/subscribe`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ cookbook_id: cb, channel: ch }) });
+          if (r.status === 201 || r.status === 200) { toast('Subscribed.'); await load(); }
+          else if (r.status === 422) { toast('Invalid channel or cookbook.', 'error'); }
+          else if (r.status === 403) { toast('Not your fleet.', 'error'); }
+          else { toast(`Could not subscribe (HTTP ${r.status}).`, 'error'); }
+        });
+      });
+      document.querySelectorAll<HTMLButtonElement>('.fleet-sync').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const fid = btn.dataset.fleet!;
+          const out = btn.closest('[data-fleet]')!.querySelector('.fleet-sync-out') as HTMLElement;
+          btn.textContent = 'Syncing…'; btn.disabled = true;
+          const r = await api(`/api/fleets/${fid}/sync`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ dry_run: false }) });
+          btn.textContent = 'Sync ▸'; btn.disabled = false;
+          if (r.ok) {
+            const d = await r.json();
+            const synced = d.cookbooks_synced || [];
+            out.classList.remove('hidden');
+            out.textContent = synced.length
+              ? synced.map((c: any) => `${cookbookName(c.cookbook_id)}: ${(c.changes || []).length} change(s)${c.applied ? ' ✓ applied' : ''}`).join('\n')
+              : 'Nothing to sync — all agents already converged.';
+            toast('Sync complete.');
+          } else { toast(`Sync failed (HTTP ${r.status}).`, 'error'); }
+        });
+      });
+    }
+
+    // ── modal ──────────────────────────────────────────────────────────
+    function openModal() { $('fleet-modal').classList.remove('hidden'); ($('fleet-name') as HTMLInputElement).focus(); $('fleet-modal-error').classList.add('hidden'); }
+    function closeModal() { $('fleet-modal').classList.add('hidden'); ($('fleet-name') as HTMLInputElement).value = ''; }
+    $('new-fleet-btn').addEventListener('click', openModal);
+    $('fleet-modal-close').addEventListener('click', closeModal);
+    $('fleet-modal-cancel').addEventListener('click', closeModal);
+    $('fleet-modal').addEventListener('click', (e) => { if (e.target === $('fleet-modal')) closeModal(); });
+
+    $('fleet-create-submit').addEventListener('click', async () => {
+      const name = ($('fleet-name') as HTMLInputElement).value.trim();
+      const err = $('fleet-modal-error');
+      if (!name) { err.textContent = 'Name is required.'; err.classList.remove('hidden'); return; }
+      const r = await api('/api/fleets', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ name }) });
+      if (r.status === 201 || r.status === 200) {
+        const d = await r.json();
+        closeModal();
+        // reveal the key once
+        ($('reveal-key') as HTMLElement).textContent = d.fleet_key || '(key not returned)';
+        $('key-reveal').classList.remove('hidden');
+        await load();
+      } else if (r.status === 401) { err.textContent = 'Sign in to create a fleet.'; err.classList.remove('hidden'); }
+      else { err.textContent = `Could not create (HTTP ${r.status}).`; err.classList.remove('hidden'); }
+    });
+
+    $('reveal-copy').addEventListener('click', async () => {
+      try { await navigator.clipboard.writeText(($('reveal-key') as HTMLElement).textContent || ''); const b = $('reveal-copy'); b.textContent = 'Copied ✓'; setTimeout(() => b.textContent = 'Copy', 1500); } catch {}
+    });
+    $('reveal-done').addEventListener('click', () => $('key-reveal').classList.add('hidden'));
+
+    load();
   </script>
 </AppShell>
