@@ -86,6 +86,26 @@ const API_BASE = import.meta.env.PUBLIC_RECIPES_API_BASE || "https://recipes.wis
         </div>
       </div>
 
+      <!-- portal_0610 J6 — living-object signals strip. Populated from cb.signals. -->
+      <div id="cb-signals" hidden class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
+        <div class="bg-bg-card border border-border rounded-xl p-3">
+          <div class="text-lg font-semibold text-text tabular-nums" id="sig-installs">—</div>
+          <div class="text-[10px] uppercase tracking-wider text-muted-soft mt-0.5">Installs <span id="sig-installs-7d" class="text-success"></span></div>
+        </div>
+        <div class="bg-bg-card border border-border rounded-xl p-3">
+          <div class="text-lg font-semibold text-text tabular-nums" id="sig-fleets">—</div>
+          <div class="text-[10px] uppercase tracking-wider text-muted-soft mt-0.5">Fleets using</div>
+        </div>
+        <div class="bg-bg-card border border-border rounded-xl p-3">
+          <div class="text-lg font-semibold text-text tabular-nums" id="sig-corrections">—</div>
+          <div class="text-[10px] uppercase tracking-wider text-muted-soft mt-0.5">Corrections absorbed</div>
+        </div>
+        <div class="bg-bg-card border border-border rounded-xl p-3">
+          <div class="text-sm font-medium text-text" id="sig-synced">—</div>
+          <div class="text-[10px] uppercase tracking-wider text-muted-soft mt-0.5">Last updated</div>
+        </div>
+      </div>
+
       <!-- View toggle -->
       <div class="flex items-center gap-2 mb-5">
         <button id="tab-list" class="cb-tab cb-tab-active px-3 py-1.5 rounded-lg text-sm font-medium">List</button>
@@ -226,6 +246,26 @@ const API_BASE = import.meta.env.PUBLIC_RECIPES_API_BASE || "https://recipes.wis
         if (cloneWrap) cloneWrap.hidden = false;
       }
     } catch (e) { /* quick-install is best-effort */ }
+
+    // portal_0610 J6 — render the living-object signals strip from cb.signals.
+    try {
+      const sig = cb.signals;
+      if (sig) {
+        const fmt = (n) => (typeof n === "number" ? n.toLocaleString() : "—");
+        const setText = (id, v) => { const el = $(id); if (el) el.textContent = v; };
+        setText("sig-installs", fmt(sig.installs_total));
+        const wk = $("sig-installs-7d");
+        if (wk) wk.textContent = (typeof sig.installs_7d === "number" && sig.installs_7d > 0) ? `+${sig.installs_7d}/wk` : "";
+        setText("sig-fleets", fmt(sig.fleet_usage));
+        setText("sig-corrections", fmt(sig.corrections_absorbed));
+        if (sig.last_synced) {
+          const d = new Date(sig.last_synced);
+          setText("sig-synced", isNaN(d.getTime()) ? "—" : d.toLocaleDateString());
+        }
+        const strip = $("cb-signals");
+        if (strip) strip.hidden = false;
+      }
+    } catch (e) { /* signals are decorative */ }
 
     // Skills can include source==="disabled" (hidden) — surface but de-emphasise.
     const skills = (cb.skills || []).filter((s) => s.source !== "disabled");
