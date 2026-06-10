@@ -1,0 +1,92 @@
+---
+// QuickInstall — portal_0610 J5: the omnipresent, ?ref-attributed quick-install
+// block for a single skill OR a whole cookbook. Drop it on every skill detail
+// page and every cookbook page so the install motion is always one copy away.
+//
+// HONESTY: shows the REAL motions only.
+//   - skill: the MCP tool call `recipes_install(slug="X")` (the canonical agent
+//     motion) + the working signed-URL install endpoint
+//     `/api/skills/install?slug=X&ref=…` (the `ref` query param is consumed by
+//     install_routes for UTM attribution — verified live).
+//   - cookbook: `recipes_cookbook_install(cookbook_id="…")` (MCP) +
+//     `recipes_install_from_cookbook from "cookbook://<slug>"` for a public one.
+// We do NOT emit a `curl /i/<slug> | bash` line — that endpoint 404s (it was
+// aspirational on the old skills page). Every line here actually works.
+//
+// `ref` defaults to "portal" so installs originating from a page click are
+// attributable; pages can pass a more specific ref (e.g. "skill-page").
+interface Props {
+  kind: 'skill' | 'cookbook';
+  slug: string;                 // skill slug OR cookbook slug
+  cookbookId?: string;          // required for kind='cookbook' (MCP call uses id)
+  visibility?: string;          // cookbook only: 'public' shows the cookbook:// clone line
+  ref?: string;                 // attribution carrier; default 'portal'
+  class?: string;
+}
+const { kind, slug, cookbookId = '', visibility = 'private', ref = 'portal', class: extra = '' } = Astro.props;
+
+const API = 'https://recipes.wisechef.ai';
+const refQ = encodeURIComponent(ref);
+
+// Build the canonical lines for this artifact.
+const mcpLine = kind === 'skill'
+  ? `recipes_install(slug="${slug}")`
+  : `recipes_cookbook_install(cookbook_id="${cookbookId}")`;
+
+const urlLine = kind === 'skill'
+  ? `${API}/api/skills/install?slug=${encodeURIComponent(slug)}&ref=${refQ}`
+  : (visibility === 'public'
+      ? `recipes_install_from_cookbook from "cookbook://${slug}"`
+      : `${API}/api/cookbooks/${cookbookId}/install`);
+
+const urlLabel = kind === 'skill'
+  ? 'Signed install URL (curl-able with your API key)'
+  : (visibility === 'public' ? 'Public clone (any agent)' : 'Install URL (your API key)');
+---
+<div class={`quick-install bg-[#0d0d0d] border border-border rounded-2xl overflow-hidden ${extra}`} data-quick-install>
+  <div class="flex items-center gap-2 px-4 py-2.5 border-b border-border bg-bg-elev">
+    <svg width="13" height="13" viewBox="0 0 20 20" fill="none" class="text-accent"><path d="M5 7l5 5 5-5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    <span class="text-[11px] uppercase tracking-wider text-muted-soft font-semibold">Quick install</span>
+    <span class="ml-auto text-[10px] text-muted-soft font-mono">{kind === 'skill' ? slug : 'cookbook'}</span>
+  </div>
+
+  <div class="p-4 flex flex-col gap-3">
+    <!-- MCP motion (the canonical agent call) -->
+    <div>
+      <div class="text-[10px] uppercase tracking-wider text-muted-soft mb-1.5">In your agent (MCP)</div>
+      <div class="flex items-center gap-1.5">
+        <code class="qi-code font-mono text-xs bg-bg-elev border border-border rounded px-2.5 py-2 flex-1 break-all text-accent">{mcpLine}</code>
+        <button class="qi-copy px-2.5 py-2 rounded bg-accent text-bg text-[11px] font-semibold shrink-0" data-qi-copy={mcpLine}>Copy</button>
+      </div>
+    </div>
+
+    <!-- Working URL / clone line -->
+    <div>
+      <div class="text-[10px] uppercase tracking-wider text-muted-soft mb-1.5">{urlLabel}</div>
+      <div class="flex items-center gap-1.5">
+        <code class="qi-code font-mono text-xs bg-bg-elev border border-border rounded px-2.5 py-2 flex-1 break-all text-muted">{urlLine}</code>
+        <button class="qi-copy px-2.5 py-2 rounded border border-border-soft text-muted hover:text-accent hover:border-accent text-[11px] font-semibold shrink-0 transition" data-qi-copy={urlLine}>Copy</button>
+      </div>
+    </div>
+
+    <p class="text-[10px] text-muted-soft">Works in any MCP-capable agent — Claude Code, Cursor, Cline, OpenClaw, Hermes, Windsurf.</p>
+  </div>
+</div>
+
+<script is:inline>
+  (function () {
+    document.querySelectorAll('[data-quick-install]').forEach(function (root) {
+      root.querySelectorAll('.qi-copy').forEach(function (btn) {
+        if (btn.__qiWired) return; btn.__qiWired = true;
+        btn.addEventListener('click', async function () {
+          const txt = btn.getAttribute('data-qi-copy') || '';
+          try {
+            await navigator.clipboard.writeText(txt);
+            const o = btn.textContent; btn.textContent = 'Copied ✓';
+            setTimeout(function () { btn.textContent = o; }, 1400);
+          } catch (e) { /* clipboard unavailable */ }
+        });
+      });
+    });
+  })();
+</script>

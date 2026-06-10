@@ -11,6 +11,7 @@ import { RuntimePanel } from '../../components/skill/RuntimePanel';
 import { AuditBars } from '../../components/skill/AuditBars';
 import AddToCookbook from '../../components/AddToCookbook.astro';
 import AddToCookbookScript from '../../components/AddToCookbookScript.astro';
+import QuickInstall from '../../components/QuickInstall.astro';
 
 export async function getStaticPaths() {
   const result = await fetchApi<{ results: any[]; total: number }>(
@@ -281,12 +282,11 @@ const externalResources: Array<{ slug?: string; url: string; relation?: string; 
             <Icon name="terminal" size={14} class="text-accent" />
             <p class="eyebrow">Install in your agent</p>
           </div>
-          <div class="font-mono text-xs text-muted leading-relaxed">
-            <span class="text-success">→</span> Tell your agent: <span class="text-accent">"install the recipes skill, then add {display.slug}"</span>
+          <div class="font-mono text-xs text-muted leading-relaxed mb-3">
+            <span class="text-success">→</span> First time? Tell your agent: <span class="text-accent">"install the recipes skill from recipes.wisechef.ai/skill"</span> — then the lines below add this skill.
           </div>
-          <div class="font-mono text-xs text-muted-soft">
-            Or via curl: <code class="bg-bg-card border border-border-soft rounded px-1.5 py-0.5">curl -sL https://recipes.wisechef.ai/skill -o ~/.claude/skills/recipes/SKILL.md</code>
-          </div>
+          {/* portal_0610 J5 — omnipresent ?ref-attributed quick-install (real motions only). */}
+          <QuickInstall kind="skill" slug={display.slug} ref="skill-page" />
         </div>
 
         <!-- Auth-aware install gate (WIS-647) — hidden by default, populated by client-side script -->
