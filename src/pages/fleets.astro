@@ -1,0 +1,48 @@
+---
+// /fleets — portal_0610. The Fleets headline surface. J1 ships the shell-mounted
+// page + nav placement (L2: Fleets is a first-class rail item, not buried under
+// /account — PM3 guard). J3 fills in create/subscribe/channel/sync UI over the
+// recipes_fleet_* API. Until then this renders the user's fleets (if any) and a
+// create affordance, degrading gracefully when the web fleet routes aren't live.
+import AppShell from '../layouts/AppShell.astro';
+---
+<AppShell title="Fleets — Recipes" active="fleets">
+  <section class="max-w-6xl mx-auto px-6 py-10">
+    <header class="mb-8">
+      <h1 class="text-2xl font-semibold tracking-tight">Fleets</h1>
+      <p class="text-sm text-muted mt-1">Your team's agents, one cookbook, one sync.</p>
+    </header>
+
+    <div id="fleets-list" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <div class="col-span-full text-sm text-muted py-8 text-center" id="fleets-loading">Loading…</div>
+    </div>
+  </section>
+
+  <script>
+    (async () => {
+      const fetchJson = async (u: string) => {
+        try { const r = await fetch(u, { credentials: 'include' }); return r.ok ? await r.json() : null; }
+        catch { return null; }
+      };
+      const wrap = document.getElementById('fleets-list');
+      const loading = document.getElementById('fleets-loading');
+      const data = await fetchJson('/api/fleets');
+      const fleets = (data && (data.fleets || data.items)) || [];
+      loading?.remove();
+      if (!wrap) return;
+      if (!fleets.length) {
+        wrap.innerHTML = `<div class="col-span-full flex flex-col items-center justify-center gap-3 py-16 rounded-2xl border border-dashed border-border text-center">
+          <span class="text-sm text-text font-medium">No fleets yet</span>
+          <span class="text-xs text-muted max-w-sm">A fleet keeps a set of agents on the same cookbooks. Subscribe a cookbook on a channel (stable / canary / frozen), sync once, and every agent converges. Full fleet management ships next.</span>
+          <a href="/docs/fleet" class="text-xs text-accent hover:opacity-80 mt-1">How fleets work →</a>
+        </div>`;
+      } else {
+        wrap.innerHTML = fleets.map((f: any) =>
+          `<div class="flex items-center justify-between gap-3 p-5 rounded-2xl bg-bg-card border border-border">
+            <span class="font-semibold text-text truncate">${(f.name || 'Fleet')}</span>
+            <span class="text-xs text-muted-soft">${(f.subscriptions ? f.subscriptions.length + ' cookbooks' : '')}</span>
+          </div>`).join('');
+      }
+    })();
+  </script>
+</AppShell>

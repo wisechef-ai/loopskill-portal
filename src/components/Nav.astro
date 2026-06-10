@@ -71,8 +71,10 @@ const isActive = (p: string) => path === p || (p !== '/' && path.startsWith(p));
             </div>
           </div>
           <nav class="flex flex-col text-sm">
-            <a href="/library" class="px-4 py-3 text-muted hover:text-text hover:bg-bg-card transition">Library</a>
-            <a href="/pricing" class="px-4 py-3 text-muted hover:text-text hover:bg-bg-card transition">Plans &amp; billing</a>
+            <a href="/home" class="px-4 py-3 text-muted hover:text-text hover:bg-bg-card transition">Home</a>
+            <a href="/library" class="px-4 py-3 text-muted hover:text-text hover:bg-bg-card transition">Your Library</a>
+            <a href="/fleets" class="px-4 py-3 text-muted hover:text-text hover:bg-bg-card transition">Fleets</a>
+            <a href="/account" class="px-4 py-3 text-muted hover:text-text hover:bg-bg-card transition">Account &amp; billing</a>
             <a href="/skills" class="px-4 py-3 text-muted hover:text-text hover:bg-bg-card transition">Browse skills</a>
             <button id="signout-btn" type="button" class="text-left px-4 py-3 text-muted hover:text-accent hover:bg-bg-card transition border-t border-border">
               Sign out

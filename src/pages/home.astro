@@ -1,0 +1,102 @@
+---
+// /home — portal_0610 J1 authed landing.
+// PM1 guard: members land on THEIR stuff (cookbooks + fleets + quick actions),
+// NEVER a marketing hero / earnings calculator. The anonymous marketing landing
+// stays at "/".
+import AppShell from '../layouts/AppShell.astro';
+---
+<AppShell title="Home — Recipes" active="home">
+  <section class="max-w-6xl mx-auto px-6 py-10">
+    <header class="mb-8 flex items-end justify-between gap-4 flex-wrap">
+      <div>
+        <h1 class="text-2xl font-semibold tracking-tight" id="home-greeting">Welcome back</h1>
+        <p class="text-sm text-muted mt-1">Compose once, reproduce across every agent, sync your fleet.</p>
+      </div>
+      <div class="flex gap-2">
+        <a href="/composer" class="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-accent text-bg text-sm font-semibold hover:bg-accent-soft transition">
+          + Compose a cookbook
+        </a>
+        <a href="/fleets" class="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg border border-border hover:border-accent text-text text-sm font-medium transition">
+          Your fleets
+        </a>
+      </div>
+    </header>
+
+    <!-- Your cookbooks -->
+    <div class="mb-10">
+      <div class="flex items-center justify-between mb-3">
+        <h2 class="text-sm font-semibold uppercase tracking-widest text-muted-soft">Your cookbooks</h2>
+        <a href="/library" class="text-xs text-accent hover:opacity-80">View library →</a>
+      </div>
+      <div id="home-cookbooks" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div class="text-sm text-muted py-8 text-center col-span-full" id="home-cookbooks-loading">Loading…</div>
+      </div>
+    </div>
+
+    <!-- Your fleets -->
+    <div class="mb-10">
+      <div class="flex items-center justify-between mb-3">
+        <h2 class="text-sm font-semibold uppercase tracking-widest text-muted-soft">Your fleets</h2>
+        <a href="/fleets" class="text-xs text-accent hover:opacity-80">Manage fleets →</a>
+      </div>
+      <div id="home-fleets" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div class="text-sm text-muted py-8 text-center col-span-full" id="home-fleets-loading">Loading…</div>
+      </div>
+    </div>
+  </section>
+
+  <script>
+    (async () => {
+      const fetchJson = async (u: string) => {
+        try { const r = await fetch(u, { credentials: 'include' }); return r.ok ? await r.json() : null; }
+        catch { return null; }
+      };
+
+      const me = await fetchJson('/api/auth/me');
+      if (me) {
+        const g = document.getElementById('home-greeting');
+        if (g) g.textContent = `Welcome back, ${(me.display_name || me.email || '').split(' ')[0] || ''}`.trim();
+      }
+
+      // Cookbooks
+      const cbWrap = document.getElementById('home-cookbooks');
+      const cbData = await fetchJson('/api/cookbooks');
+      const cbooks = (cbData && cbData.cookbooks) || [];
+      if (cbWrap) {
+        if (!cbooks.length) {
+          cbWrap.innerHTML = `<a href="/composer" class="col-span-full flex flex-col items-center justify-center gap-2 py-10 rounded-2xl border border-dashed border-border hover:border-accent/50 transition text-center">
+            <span class="text-3xl text-muted-soft">+</span>
+            <span class="text-sm text-text font-medium">Compose your first cookbook</span>
+            <span class="text-xs text-muted">Search the catalog, multi-select skills, share one link.</span>
+          </a>`;
+        } else {
+          cbWrap.innerHTML = cbooks.map((cb: any) => `
+            <a href="/cookbooks/view?id=${encodeURIComponent(cb.id)}" class="flex flex-col gap-2 p-5 rounded-2xl bg-bg-card border border-border hover:border-accent/40 transition">
+              <span class="font-semibold text-text truncate">${(cb.name || 'Untitled')}</span>
+              <span class="text-xs text-muted line-clamp-2">${(cb.description || 'No description')}</span>
+              <span class="text-xs text-accent mt-1">Open →</span>
+            </a>`).join('');
+        }
+      }
+
+      // Fleets (net-new web surface in J3; degrade gracefully if route absent)
+      const flWrap = document.getElementById('home-fleets');
+      const flData = await fetchJson('/api/fleets');
+      const fleets = (flData && (flData.fleets || flData.items)) || [];
+      if (flWrap) {
+        if (!fleets.length) {
+          flWrap.innerHTML = `<a href="/fleets" class="col-span-full flex flex-col items-center justify-center gap-2 py-8 rounded-2xl border border-dashed border-border hover:border-accent/50 transition text-center">
+            <span class="text-sm text-text font-medium">Create a fleet</span>
+            <span class="text-xs text-muted">Your team's agents, one cookbook, one sync.</span>
+          </a>`;
+        } else {
+          flWrap.innerHTML = fleets.map((f: any) => `
+            <a href="/fleets" class="flex items-center justify-between gap-3 p-5 rounded-2xl bg-bg-card border border-border hover:border-accent/40 transition">
+              <span class="font-semibold text-text truncate">${(f.name || 'Fleet')}</span>
+              <span class="text-xs text-accent">Open →</span>
+            </a>`).join('');
+        }
+      }
+    })();
+  </script>
+</AppShell>
