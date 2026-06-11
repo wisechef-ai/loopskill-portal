@@ -85,8 +85,16 @@ const roleLabel = (role: string): string => {
   return labels[role] || "Today's Pick";
 };
 
-// Pull live skill count for the stats strip (retry+jitter; fallback to 72 if API unreachable).
-// 2026-06-07: bumped fallback 59 → 72 to match verified live catalog count per /api/marketing/snapshot.
+// Pull live skill count for the stats strip (retry+jitter; fallback below if API unreachable).
+// CANONICAL NUMBER = 72 = the BROWSABLE catalog (marketing SSOT).
+//   - /api/marketing/snapshot → counts.skills_total = 72  (the marketing source of truth)
+//   - /api/skills/search      → total = 72                (what /skills actually lists; this fetch)
+//   - /api/stats              → total_skills = 76         (total INCL. 4 private/unlisted pro skills)
+// DO NOT "fix" this fallback to 76. The hero links "Browse {N}+ skills → /skills", and /skills
+// only exposes the 72 public skills; marketing 76 would overstate the browsable catalog and break
+// claim-grounded-marketing. The 4-skill gap is private pro skills not reachable from the catalog.
+// The `+` suffix keeps "72+" honest even as the public count grows. Verified 2026-06-08.
+// 2026-06-07: bumped fallback 59 → 72 to match the marketing SSOT (/api/marketing/snapshot).
 // 2026-05-20: API rate limiter now exempts authenticated callers (per-IP cap
 // was busting on 116-page parallel builds even with our retry+cache); this
 // fetch reliably gets the live total now. Fallback retained as belt-and-suspenders.
@@ -346,19 +354,25 @@ const verticals = [
         )}
 
         <div class="flex flex-col sm:flex-row items-center gap-3 mt-4">
-          <a href="/bootcamp"
+          <a href="/composer"
              class="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg font-semibold text-sm bg-accent text-bg transition hover:opacity-90">
-            Start Bootcamp — free →
+            Compose a cookbook →
           </a>
-          <a href="/skills"
+          <a href="/cookbooks"
              class="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg font-semibold text-sm border border-border hover:border-accent text-text transition backdrop-blur-sm bg-bg/40">
-            Browse {liveSkillCount}+ skills →
+            Browse cookbooks →
           </a>
-          <a href="/security"
+          <a href="/bootcamp"
              class="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg text-sm text-muted hover:text-accent transition">
-            How we audit
+            Or start Bootcamp
           </a>
         </div>
+        <p class="text-xs text-muted-soft mt-1 max-w-2xl">
+          Compose skills into a cookbook, share one link, and your whole fleet installs it.
+          <a href="/fleets" class="text-accent hover:opacity-80 underline underline-offset-2">See Fleets →</a>
+          · <a href="/skills" class="hover:text-accent transition underline underline-offset-2">Browse {liveSkillCount}+ skills</a>
+          · <a href="/security" class="hover:text-accent transition underline underline-offset-2">How we audit</a>
+        </p>
 
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mt-8 w-full max-w-4xl text-left">
           {heroPillars.map(p => (

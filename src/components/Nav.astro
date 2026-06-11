@@ -31,6 +31,8 @@ const isActive = (p: string) => path === p || (p !== '/' && path.startsWith(p));
       <div class="hidden md:flex items-center gap-5 text-sm text-muted">
         <a href="/skills" class={`hover:text-text transition ${isActive('/skills') ? 'text-text' : ''}`}>Skills</a>
         <a href="/cookbooks" class={`hover:text-text transition ${isActive('/cookbooks') ? 'text-text' : ''}`}>Cookbooks</a>
+        <a href="/composer" class={`hover:text-text transition ${isActive('/composer') ? 'text-text' : ''}`}>Compose</a>
+        <a href="/fleets" class={`hover:text-text transition ${isActive('/fleets') ? 'text-text' : ''}`}>Fleets</a>
         <a href="/referrals" class={`hover:text-text transition ${isActive('/referrals') ? 'text-text' : ''}`}>Referrals</a>
         <a href="/integrations" class={`hover:text-text transition ${isActive('/integrations') ? 'text-text' : ''}`}>Integrations</a>
         <a href="/stats" class={`hover:text-text transition ${isActive('/stats') ? 'text-text' : ''}`}>Stats</a>
@@ -94,6 +96,8 @@ const isActive = (p: string) => path === p || (p !== '/' && path.startsWith(p));
           <nav class="flex flex-col text-sm">
             <a href="/skills" class="px-4 py-3 text-muted hover:text-text hover:bg-bg-card transition">Skills</a>
             <a href="/cookbooks" class="px-4 py-3 text-muted hover:text-text hover:bg-bg-card transition">Cookbooks</a>
+            <a href="/composer" class="px-4 py-3 text-muted hover:text-text hover:bg-bg-card transition">Compose</a>
+            <a href="/fleets" class="px-4 py-3 text-muted hover:text-text hover:bg-bg-card transition">Fleets</a>
             <a href="/referrals" class="px-4 py-3 text-muted hover:text-text hover:bg-bg-card transition">Referrals</a>
             <a href="/stats" class="px-4 py-3 text-muted hover:text-text hover:bg-bg-card transition">Stats</a>
             <a href="/graph" class="px-4 py-3 text-muted hover:text-text hover:bg-bg-card transition">Graph</a>
