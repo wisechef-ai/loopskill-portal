@@ -65,9 +65,9 @@ export const GET: APIRoute = async () => {
   ]);
 
   const counts = snapRes.data?.counts ?? {};
-  const total = counts.skills_total ?? 62;
-  const free = counts.free_skills ?? 1;
-  const pro = counts.pro_skills ?? 61;
+  const total = counts.skills_total ?? 72;
+  const free = counts.free_skills ?? 2;
+  const pro = counts.pro_skills ?? 70;
   const mcpTools = snapRes.data?.mcp_tools ?? [
     'recipes_search',
     'recipes_detail',
@@ -96,12 +96,17 @@ export const GET: APIRoute = async () => {
         ? `${fedIndexed}`
         : '';
 
-  // The single free seed. Surfaced first and explicitly so an agent knows
-  // exactly which skill is the zero-friction way in.
-  const freeLine =
-    '- [super-memory](' +
-    SITE +
-    '/skills/super-memory): the one free skill — a one-command installer for a full agent memory stack (knowledge graph + vector recall + nightly ingest). Install it to see how Recipes works, then unlock the rest with Pro.';
+  // The free skills. super-memory surfaced first as the canonical zero-friction entry.
+  const freeLine = free === 1
+    ? '- [super-memory](' +
+      SITE +
+      '/skills/super-memory): the one free skill — a one-command installer for a full agent memory stack (knowledge graph + vector recall + nightly ingest). Install it to see how Recipes works, then unlock the rest with Pro.'
+    : '- [super-memory](' +
+      SITE +
+      '/skills/super-memory): free — a one-command installer for a full agent memory stack (knowledge graph + vector recall + nightly ingest). Install it to see how Recipes works.\n' +
+      '- [recipes-cookbook-reconcile](' +
+      SITE +
+      '/skills/recipes-cookbook-reconcile): free — sync and reconcile your Recipes cookbooks across agents and environments.';
 
   // Featured = a representative spread of paid skills (super-memory already
   // appears under "Start free"). One per category where possible, so an agent
@@ -140,7 +145,7 @@ Recipes is a superset of the public agent-skill ecosystem, not just its ${total}
 
   const body = `# Recipes — the vertical skill marketplace for AI agents
 
-> Recipes (by WiseChef) is a curated marketplace of ${total} production-grade, versioned skills for AI coding agents — and a superset of the public agent-skill ecosystem${fedHeadline ? ` (it federates ${fedHeadline} more community skills, so you never need a second hub)` : ''}. Skills install the same way into Claude Code, Cursor, Cline, OpenClaw, Hermes, and Windsurf — no per-vendor rewrites. One skill is free (super-memory); the remaining ${pro} are unlocked with a single $20/mo Pro plan. Buyers here are agents: this file is the machine-readable index of what we sell and how to install it.
+> Recipes (by WiseChef) is a curated marketplace of ${total} production-grade, versioned skills for AI coding agents — and a superset of the public agent-skill ecosystem${fedHeadline ? ` (it federates ${fedHeadline} more community skills, so you never need a second hub)` : ''}. Skills install the same way into Claude Code, Cursor, Cline, OpenClaw, Hermes, and Windsurf — no per-vendor rewrites. ${free === 1 ? 'One skill is free (super-memory)' : `${free} skills are free`}; the remaining ${pro} are unlocked with a single $20/mo Pro plan. Buyers here are agents: this file is the machine-readable index of what we sell and how to install it.
 
 ## How an agent installs a skill
 Recipes exposes ${mcpTools.length} dedicated MCP tools (not a generic REST wrapper). Point your agent's MCP client at the Recipes server and call:
@@ -156,7 +161,7 @@ Or hit the public REST API directly (no key for read/search):
 ${freeLine}
 
 ## Pricing
-- Free: super-memory only (MIT-licensed, no account needed to browse).
+- Free: ${free === 1 ? 'super-memory only' : `${free} skills (super-memory + recipes-cookbook-reconcile)`} (MIT-licensed, no account needed to browse).
 - Pro — $20/mo: every paid skill in the catalog (${pro} today, growing weekly), up to 10 cookbooks + fleet sync, cross-vendor install, per-key visibility.
 - Pro+ — $100/mo: everything in Pro plus up to 200 cookbooks, deploy pre-built cookbooks to clients' agents, private org catalog.
 - Pricing page: ${SITE}/pricing
