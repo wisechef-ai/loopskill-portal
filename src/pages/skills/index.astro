@@ -809,6 +809,13 @@ for (const s of skills) {
       activeSubset = subsetParam;
       setActivePill('subset', activeSubset);
     }
-    if (cat || tierParam || vertParam || subsetParam) apply();
+    // onechrome_0611 P4 — accept ?q= handoff from the shell's unified search.
+    const qParam = params.get('q');
+    if (qParam && search) {
+      search.value = qParam;
+      activeQuery = qParam.toLowerCase().trim();
+      queueCommunitySearch(qParam.trim());
+    }
+    if (cat || tierParam || vertParam || subsetParam || qParam) apply();
   })();
 </script>

@@ -277,9 +277,54 @@ import AppShell from '../layouts/AppShell.astro';
       } else if (r.status === 403) {
         const d = await r.json().catch(() => ({}));
         const reason = (d && d.detail && (d.detail.reason || d.detail)) || '';
-        toast(String(reason).includes('cap') ? 'Skill cap reached — upgrade to Pro+.' : 'Not allowed on this tier.', 'error');
+        if (String(reason).includes('cap')) {
+          showUpgradeWall();           // P4: inline panel, never a toast dead-end
+        } else {
+          toast('Not allowed on this tier.', 'error');
+        }
       } else if (r.status === 401) { toast('Sign in to compose.', 'error'); }
       else { toast(`Could not add (HTTP ${r.status}).`, 'error'); }
+    }
+
+    // ── Inline upgrade wall (onechrome_0611 P4) — slides INTO the basket
+    // pane on a cap hit. Checkout via POST /api/checkout/pro_plus (same
+    // session-cookie path as /pricing); NEVER a redirect/modal eject.
+    function showUpgradeWall() {
+      if (document.getElementById('upgrade-wall')) return;
+      const basketList = document.getElementById('basket-list');
+      if (!basketList) { toast('Skill cap reached — upgrade to Pro+.', 'error'); return; }
+      const wall = document.createElement('div');
+      wall.id = 'upgrade-wall';
+      wall.className = 'mt-2 rounded-xl border border-accent/40 bg-accent/8 p-4 flex flex-col gap-2.5 overflow-hidden';
+      wall.style.maxHeight = '0';
+      wall.style.opacity = '0';
+      wall.style.transition = 'max-height 320ms ease, opacity 280ms ease';
+      wall.innerHTML = `
+        <p class="text-xs font-semibold text-text">Cookbook is full on your tier.</p>
+        <p class="text-xs text-muted leading-relaxed">Pro+ raises the cap (up to 200 cookbooks), unlocks client deployment and the private org catalog.</p>
+        <div class="flex items-center gap-2">
+          <button id="upgrade-wall-go" class="px-3 py-1.5 rounded-lg bg-accent text-bg text-xs font-semibold hover:bg-accent-soft transition">Upgrade to Pro+ — $100/mo</button>
+          <button id="upgrade-wall-dismiss" class="text-xs text-muted-soft hover:text-text transition">Not now</button>
+        </div>`;
+      basketList.insertAdjacentElement('afterend', wall);
+      requestAnimationFrame(() => { wall.style.maxHeight = '200px'; wall.style.opacity = '1'; });
+      document.getElementById('upgrade-wall-dismiss')?.addEventListener('click', () => {
+        wall.style.maxHeight = '0'; wall.style.opacity = '0';
+        setTimeout(() => wall.remove(), 350);
+      });
+      document.getElementById('upgrade-wall-go')?.addEventListener('click', async () => {
+        const btn = document.getElementById('upgrade-wall-go') as HTMLButtonElement;
+        btn.textContent = 'Loading…'; btn.disabled = true;
+        try {
+          const res = await fetch('/api/checkout/pro_plus', {
+            method: 'POST', credentials: 'include',
+            headers: { 'Content-Type': 'application/json' }, body: '{}',
+          });
+          if (res.ok) { const d = await res.json(); window.location.href = d.url; return; }
+        } catch { /* fall through */ }
+        btn.textContent = 'Upgrade to Pro+ — $100/mo'; btn.disabled = false;
+        toast('Checkout unavailable — try again or use /pricing.', 'error');
+      });
     }
 
     async function persistOrder() {

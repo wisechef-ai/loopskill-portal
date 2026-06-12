@@ -89,16 +89,18 @@ jobs:
         # Regression guard for the "Sign in / Get access still visible while logged in"
         # bug fixed 2026-04-30. The fix adds inline style.display swaps; if a future
         # refactor strips this, the bug returns silently. CI catches it here.
+        # onechrome_0611 P4: Astro now externalizes larger page scripts into
+        # dist/_astro/*.js, so grep the whole dist (HTML + JS bundles).
         run: |
           if ! grep -RIq 'data-auth-anon' dist/index.html; then
-            echo "ERROR: data-auth-anon hook missing from index.html — Nav.astro regressed"
+            echo "ERROR: data-auth-anon hook missing from index.html — auth-aware markup regressed"
             exit 1
           fi
-          if ! grep -RIq 'style.display' dist/index.html; then
-            echo "ERROR: inline style.display swap missing — Nav anon-CTA hide will break at md+ breakpoint"
+          if ! grep -RIq 'style.display' dist/index.html dist/_astro/; then
+            echo "ERROR: inline style.display swap missing — anon-CTA hide will break at md+ breakpoint"
             exit 1
           fi
-          echo "✓ Nav.astro auth-aware hooks present"
+          echo "✓ auth-aware hooks present"
 
       - name: Upload built site as artifact
         uses: actions/upload-artifact@v4
