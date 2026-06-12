@@ -11,7 +11,7 @@
 // Same-origin: the portal IS recipes.wisechef.ai, so /api/skills/external is a
 // same-origin public fetch (no auth, no CORS). The route never surfaces
 // internal/private skills — it is external-only by construction.
-import Base from '../../layouts/Base.astro';
+import AppShell from '../../layouts/AppShell.astro';
 import { fetchApi } from '../../lib/api';
 import AddToCookbookScript from '../../components/AddToCookbookScript.astro';
 
@@ -107,7 +107,7 @@ const facetSources = availableSources.filter((s) => FACET_SOURCES.includes(s));
 const hubSources = availableSources.filter((s) => !FACET_SOURCES.includes(s));
 ---
 
-<Base
+<AppShell mode="public" active="search"
   title="External skills — community catalog"
   description="Browse community-contributed agent skills federated from Hermes Hub, GitHub OSS, and more. Community · as-is. The curated, supported catalog is at /skills."
 >
@@ -392,4 +392,4 @@ const hubSources = availableSources.filter((s) => !FACET_SOURCES.includes(s));
     })();
   </script>
   <AddToCookbookScript />
-</Base>
+</AppShell>

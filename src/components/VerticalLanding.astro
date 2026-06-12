@@ -1,5 +1,5 @@
 ---
-import Base from '../layouts/Base.astro';
+import AppShell from '../layouts/AppShell.astro';
 import CrossSell from './CrossSell.astro';
 import SkillCard from './SkillCard.astro';
 import Icon from './Icon.astro';
@@ -52,7 +52,7 @@ const pageTitle = title ?? `${meta.label} skills — Recipes`;
 const pageDesc = description ?? `Production-grade ${meta.label.toLowerCase()} skills for AI agents. ${meta.desc}.`;
 ---
 
-<Base title={pageTitle} description={pageDesc}>
+<AppShell title={pageTitle} description={pageDesc} mode="public" active="search">
   <section class="max-w-7xl mx-auto px-6 pt-16 pb-8">
     <div class="flex flex-col gap-3 mb-8 max-w-3xl">
       <p class="eyebrow">Vertical · {meta.label}</p>
@@ -83,4 +83,4 @@ const pageDesc = description ?? `Production-grade ${meta.label.toLowerCase()} sk
     )}
   </section>
   <CrossSell />
-</Base>
+</AppShell>

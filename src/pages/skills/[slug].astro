@@ -1,5 +1,5 @@
 ---
-import Base from '../../layouts/Base.astro';
+import AppShell from '../../layouts/AppShell.astro';
 import CrossSell from '../../components/CrossSell.astro';
 import Icon from '../../components/Icon.astro';
 import AuditRow from '../../components/AuditRow.astro';
@@ -183,7 +183,7 @@ const externalResources: Array<{ slug?: string; url: string; relation?: string; 
   Array.isArray(skill?.external_resources) ? skill.external_resources : [];
 ---
 
-<Base title={`${display.title} — Recipes`} description={display.description}>
+<AppShell title={`${display.title} — Recipes`} description={display.description} mode="public" active="search">
   <section class="max-w-6xl mx-auto px-6 pt-12 pb-12">
     <a href="/skills" class="inline-flex items-center gap-1.5 text-xs text-muted hover:text-text transition mb-8">
       <Icon name="chevron-left" size={12} />
@@ -537,7 +537,7 @@ const externalResources: Array<{ slug?: string; url: string; relation?: string; 
     )}
   </section>
   <AddToCookbookScript />
-</Base>
+</AppShell>
 
 <script>
   // Auth-aware install gate (WIS-647)
