@@ -1,3 +1,104 @@
+# recipes-portal — agent guide (onechrome_0611, updated 2026-06-12)
+
+`recipes.wisechef.ai` — Astro 5 STATIC site (no SSR; `astro.config.mjs` has no
+`output:` line). npm, Node 22. Marketing for the product lives on `wisechef.ai`
+(separate repo `wisechef-portal-v3`); THIS repo is the app.
+
+## The ONE chrome
+
+`src/layouts/AppShell.astro` is THE layout for the entire site (the "Garden":
+left rail = unified search + Home / Search / Your Library / Fleets / Delivery +
+live cookbook list + ambient fleet status + account footer). The legacy
+`Base.astro` / `Nav.astro` marketing chrome was DELETED in onechrome_0611 P3 —
+do not reintroduce a second chrome. `grep -rl "layouts/Base" src/pages` must
+stay empty.
+
+### The mode contract
+
+```astro
+<AppShell mode="member" ...>   <!-- default; omit mode -->
+<AppShell mode="public" ...>
+```
+
+- `member` (default): member surfaces. Anonymous visitors are HARD-BOUNCED to
+  `/signin?next=<here>` behind a gate splash (`#appshell-gate`). robots=noindex.
+- `public`: public-browse surfaces. NO bounce, NO gate. The rail renders
+  sign-in CTAs in static HTML (`[data-shell-anon]` nodes); when
+  `/api/auth/me` resolves a session, client JS swaps to the member rail
+  (`[data-shell-member]` nodes). Indexable; carries canonical/OG/JSON-LD,
+  the `?ref=` referral-cookie script, and IntentSurvey.
+- `src/layouts/AuthEdge.astro`: minimal no-rail layout for `signin` and
+  `billing/success` only.
+
+### The 3 IA tiers
+
+| Tier | mode | Pages |
+|---|---|---|
+| PUBLIC-BROWSE | `public` | `/` (+ logged-in redirect), `skills/*`, `pricing`, `cookbooks/*`, `cookbook`, `docs/*`, `blog/*`, `bootcamp`, `carousel`, `integrations`, `intent`, `privacy`, `security`, `publish`, `referrals`, `404` |
+| MEMBER-APP | `member` | `home`, `library`, `fleets`, `cockpit`, `composer`, `account`, `dashboard/*` |
+| AUTH-EDGE | AuthEdge | `signin`, `billing/success` |
+
+`/` detects a session client-side and `location.replace('/home')` for members;
+anonymous visitors get the marketplace hero inside the public shell.
+
+## Auth-state rules (REQUIRED for every state-driven UI — 4 trap classes)
+
+1. Render BOTH states in static HTML; never branch a JS-fill target away
+   behind a build-time ternary (Trap C).
+2. Swap with `classList` AND inline `style.display` — Tailwind responsive
+   variants (`md:flex`) outrank `.hidden` in the cascade (Trap A).
+3. NEVER fetch `/api/auth/me` (or any user data) in frontmatter — frontmatter
+   runs at BUILD time in static mode and bakes the anonymous branch (Trap B).
+   All auth fetches are client-side with `credentials: 'include'`.
+4. New authed page? Add its path to the API's `SAFE_NEXT_PREFIXES` allow-list
+   (repo `recipes-api`) or OAuth will silently land users on `/library`.
+
+Full doctrine: Hermes skill `tailwind-auth-aware-ui-class-toggle-trap`.
+
+## Build-time fetch ban
+
+NEVER add a build-time API fetch for user data. A handful of catalog pages
+(index, skills) do build-time fetches WITH fallbacks — do not add more; a
+build-time fetch couples the build to API uptime (WIS-737 incident class;
+`scripts/assert-dist.sh` guards the blast radius). New live data = client
+island over `src/lib/api.ts` (`API_BASE = https://recipes.wisechef.ai`).
+
+## Build, CI, deploy (deploy is MANUAL)
+
+- `npm run build` = `astro build && bash scripts/assert-dist.sh`.
+- CI (`.github/workflows/ci.yml`, runner `wisechef-runner`): astro check,
+  build, page-size anti-SPA-fallback asserts, auth-marker guard (greps
+  `dist/index.html` AND `dist/_astro/` — Astro externalizes big scripts).
+  CI does NOT deploy.
+- Deploy: `npm run build` -> backup prod dist -> `rsync -az --delete dist/
+  wisechef-hq:/home/wisechef/recipes-portal/dist/`. Caddy serves it.
+  "Merged to main" is NOT "live" — re-probe live URLs after rsync.
+- Redirects: static SSG means redirects are client-JS or Caddy. Cut pages
+  301 in `/etc/caddy/Caddyfile` on wisechef-hq (`/graph`->`/skills`,
+  `/stats`->`/home`, `/vs`->wisechef.ai, `/whitepaper`->`/whitepaper.pdf`,
+  `/compatibility`->`/docs`, `/whats-new`->`/blog/`). Validate with
+  `caddy validate` then `systemctl reload caddy` (sudo, on wisechef-hq).
+
+## Page-cut policy (D6)
+
+Cut pages are archived in git history + 301'd at Caddy — never hard-404 a
+formerly-live URL. The 6 cuts above were Adam-confirmed 2026-06-12.
+
+## P4 impress layer (where it lives)
+
+- Unified search (one box, two groups): `AppShell.astro` (`#shell-search`).
+  Hands off to `/skills?q=` — `skills/index.astro` honors `?q=`.
+- First-login onboarding pane: `AppShell.astro` member hydration
+  (localStorage `recipes_onboarding_v1`, only when 0 cookbooks).
+- Inline upgrade wall: `composer.astro` `showUpgradeWall()` — cap 403 slides
+  a panel into the basket pane, live `POST /api/checkout/pro_plus`. Never
+  replace it with a toast or redirect.
+- Ambient fleet status: `AppShell.astro` member hydration -> `#rail-fleet-status`.
+
+Canonical architecture doc: `~/obsidian-vault/shared-knowledge/recipes/portal-architecture.md`.
+
+---
+
 <!-- gitnexus:start -->
 # GitNexus — Code Intelligence
 
