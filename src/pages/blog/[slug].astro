@@ -1,6 +1,6 @@
 ---
 import { getCollection, render } from 'astro:content';
-import Base from '../../layouts/Base.astro';
+import AppShell from '../../layouts/AppShell.astro';
 
 export async function getStaticPaths() {
   const posts = await getCollection('blog');
@@ -14,7 +14,7 @@ const { post } = Astro.props;
 const { Content } = await render(post);
 ---
 
-<Base
+<AppShell mode="public"
   title={post.data.title}
   description={post.data.description}
   pageType="article"
@@ -45,4 +45,4 @@ const { Content } = await render(post);
       <a href="/blog" class="text-sm text-muted hover:text-text transition-colors">← All posts</a>
     </footer>
   </article>
-</Base>
+</AppShell>

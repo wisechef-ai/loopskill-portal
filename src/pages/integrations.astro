@@ -1,5 +1,5 @@
 ---
-import Base from '../layouts/Base.astro';
+import AppShell from '../layouts/AppShell.astro';
 import Icon from '../components/Icon.astro';
 
 const clients = [
@@ -82,7 +82,7 @@ const statusBadge: Record<string, string> = {
 };
 ---
 
-<Base
+<AppShell mode="public"
   title="Integrations — Recipes"
   description="Recipes works with Claude Code, Codex, Claude Desktop, Cursor, Cline, Continue.dev, Zed, and any agent that speaks REST or MCP. Native skills + MCP server + raw API."
 >
@@ -157,4 +157,4 @@ const statusBadge: Record<string, string> = {
       </div>
     </div>
   </section>
-</Base>
+</AppShell>

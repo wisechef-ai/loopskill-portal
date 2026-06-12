@@ -1,5 +1,5 @@
 ---
-import Base from '../layouts/Base.astro';
+import AppShell from '../layouts/AppShell.astro';
 import CrossSell from '../components/CrossSell.astro';
 import Icon from '../components/Icon.astro';
 import AgentLogos from '../components/AgentLogos.astro';
@@ -286,10 +286,19 @@ const verticals = [
   { label: 'Sim & robotics', icon: 'lightning', desc: 'ROS workflows, simulation pipelines' },
 ];
 ---
-<Base
+<AppShell
+  mode="public"
   title="Recipes — The recipe book for AI agents"
   description="Production-grade skills for AI agents. Client reporting, code writing, web scraping, SEO audits, content calendars, proposals — installed by your agent in seconds. From $20/mo. By WiseChef."
 >
+  <script is:inline>
+    // onechrome_0611 seam #1: returning members land on THEIR home, not marketing.
+    // Client-side (static SSG, no server). location.replace = no history entry.
+    fetch('/api/auth/me', { credentials: 'include' })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (u) { if (u && u.id) window.location.replace('/home'); })
+      .catch(function () { /* anon stays */ });
+  </script>
   <section class="relative overflow-hidden min-h-[88vh] md:min-h-screen flex items-center">
     <NeuronAnimation />
     <div class="absolute inset-0 -z-20 opacity-[0.025] pointer-events-none"
@@ -804,4 +813,4 @@ const verticals = [
   </section>
 
   <CrossSell variant="banner" title="Need it run for you?" body="WiseChef Framework gives you a managed AI employee — same skills as Recipes, but operated end-to-end. From €199/month." />
-</Base>
+</AppShell>

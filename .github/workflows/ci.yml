@@ -46,7 +46,7 @@ jobs:
         run: |
           set -e
           home_size=$(stat -c %s dist/index.html)
-          for route in skills pricing carousel stats integrations graph; do
+          for route in skills pricing carousel integrations; do
             page="dist/$route/index.html"
             if [ ! -f "$page" ]; then
               echo "ERROR: $route/index.html not built"
@@ -60,32 +60,7 @@ jobs:
             echo "✓ /$route ($page_size bytes, distinct from /)"
           done
 
-      - name: Verify /graph page renders skill-graph nodes
-        # Stage 3 (G17): /graph embeds the full skill graph as inline JSON
-        # so the client can run a force-directed layout without re-fetching.
-        # The original guard failed on <10 nodes; that conflated two failure
-        # modes — SPA-fallback regression (which we DO want to block) and
-        # build-time API rate-limit (transient, blocks every PR for days).
-        # Now: fail if /graph is missing or byte-identical to / (the actual
-        # SPA-fallback symptom); warn-only if nodes count is low.
-        run: |
-          set -e
-          if [ ! -f dist/graph/index.html ]; then
-            echo "ERROR: dist/graph/index.html not built"
-            exit 1
-          fi
-          home_size=$(stat -c %s dist/index.html)
-          graph_size=$(stat -c %s dist/graph/index.html)
-          if [ "$graph_size" -eq "$home_size" ]; then
-            echo "ERROR: /graph is byte-identical to / — SPA-fallback regression"
-            exit 1
-          fi
-          NODES=$(grep -oE '"slug":"[^"]+"' dist/graph/index.html | wc -l)
-          if [ "$NODES" -lt 10 ]; then
-            echo "::warning::/graph contains only $NODES nodes — likely build-time API rate-limit; not blocking"
-          else
-            echo "✓ /graph contains $NODES nodes"
-          fi
+      # /graph check removed (onechrome_0611 D5): page disabled, Caddy 301 → /skills.
 
       - name: Verify /skills renders the full catalog
         # Same softening as /graph: fail only on SPA-fallback regression

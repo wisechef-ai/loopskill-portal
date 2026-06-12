@@ -15,12 +15,12 @@
 // pattern as dashboard/forks.astro (key in localStorage). Cook/free land on a
 // 402 upgrade banner; a 404 means "not yours / not found".
 
-import Base from "../../layouts/Base.astro";
+import AppShell from "../../layouts/AppShell.astro";
 
 const API_BASE = import.meta.env.PUBLIC_RECIPES_API_BASE || "https://recipes.wisechef.ai";
 ---
 
-<Base
+<AppShell mode="public"
   title="Cookbook — Recipes"
   description="View the skills in your cookbook: list and graph views, with tailored-vs-catalog and pinned badges."
 >
@@ -146,7 +146,7 @@ const API_BASE = import.meta.env.PUBLIC_RECIPES_API_BASE || "https://recipes.wis
       </section>
     </div>
   </main>
-</Base>
+</AppShell>
 
 <style>
   .cb-tab { border: 1px solid var(--border, #2a2f3a); color: var(--muted, #9aa3b2); background: transparent; transition: all .15s; }

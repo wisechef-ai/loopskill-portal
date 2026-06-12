@@ -16,12 +16,12 @@
 // /cookbooks/p/?slug=<slug>) gives the clean shareable URL in prod. The client
 // also resolves the slug from the trailing path segment as a fallback.
 
-import Base from "../../layouts/Base.astro";
+import AppShell from "../../layouts/AppShell.astro";
 
 const API_BASE = import.meta.env.PUBLIC_RECIPES_API_BASE || "https://recipes.wisechef.ai";
 ---
 
-<Base
+<AppShell mode="public"
   title="Cookbook — Recipes"
   description="A public, security-vetted skill stack for AI agents. Compose the whole cookbook into your agent with one MCP line."
   pageType="product"
@@ -89,7 +89,7 @@ const API_BASE = import.meta.env.PUBLIC_RECIPES_API_BASE || "https://recipes.wis
       </section>
     </div>
   </main>
-</Base>
+</AppShell>
 
 <style>
   .badge { display: inline-flex; align-items: center; gap: .25rem; font-size: 10px; text-transform: uppercase; letter-spacing: .04em; padding: .15rem .5rem; border-radius: 999px; border: 1px solid; }

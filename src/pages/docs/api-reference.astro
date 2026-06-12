@@ -1,5 +1,5 @@
 ---
-import Base from '../../layouts/Base.astro';
+import AppShell from '../../layouts/AppShell.astro';
 import CrossSell from '../../components/CrossSell.astro';
 
 // Pre-built code strings to avoid JSX curly-brace escaping issues
@@ -59,7 +59,7 @@ const telemetryBodyEx = `{
   "agent_class_hash": "sha256:..."
 }`;
 ---
-<Base title="API reference — Recipes Docs"
+<AppShell mode="public" title="API reference — Recipes Docs"
      description="Complete API reference for the Recipes marketplace. Every endpoint with method, path, auth, request/response schema, and error codes.">
   <section class="max-w-3xl mx-auto px-6 pt-16 pb-12">
     <p class="eyebrow mb-2">Documentation · API reference</p>
@@ -240,4 +240,4 @@ const telemetryBodyEx = `{
     </div>
     <CrossSell />
   </section>
-</Base>
+</AppShell>

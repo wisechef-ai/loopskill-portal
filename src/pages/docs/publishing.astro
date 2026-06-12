@@ -1,8 +1,8 @@
 ---
-import Base from '../../layouts/Base.astro';
+import AppShell from '../../layouts/AppShell.astro';
 import CrossSell from '../../components/CrossSell.astro';
 ---
-<Base title="Publishing a skill — Recipes Docs"
+<AppShell mode="public" title="Publishing a skill — Recipes Docs"
      description="How to publish a skill to the Recipes marketplace using the MCP-first path via recipes_publish_request.">
   <section class="max-w-3xl mx-auto px-6 pt-16 pb-12">
     <p class="eyebrow mb-2">Documentation · Publishing</p>
@@ -215,4 +215,4 @@ recipes_publish_request({
     </div>
     <CrossSell />
   </section>
-</Base>
+</AppShell>

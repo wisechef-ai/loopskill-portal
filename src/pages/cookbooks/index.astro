@@ -11,12 +11,12 @@
 // page is indexable; the ranked list is client-fetched (it changes as installs
 // accrue and must not bake stale rankings into dist).
 
-import Base from "../../layouts/Base.astro";
+import AppShell from "../../layouts/AppShell.astro";
 
 const API_BASE = import.meta.env.PUBLIC_RECIPES_API_BASE || "https://recipes.wisechef.ai";
 ---
 
-<Base
+<AppShell mode="public"
   title="Discover cookbooks — Recipes"
   description="Browse public, security-vetted skill stacks for AI agents. Compose any cookbook into your agent with one MCP line."
   pageType="website"
@@ -53,7 +53,7 @@ const API_BASE = import.meta.env.PUBLIC_RECIPES_API_BASE || "https://recipes.wis
 
     <ul id="cb-grid" hidden class="grid grid-cols-1 sm:grid-cols-2 gap-4"></ul>
   </main>
-</Base>
+</AppShell>
 
 <style>
   .cb-tab { border: 1px solid var(--border, #2a2f3a); color: var(--muted, #9aa3b2); background: transparent; transition: all .15s; }

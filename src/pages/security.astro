@@ -1,5 +1,5 @@
 ---
-import Base from '../layouts/Base.astro';
+import AppShell from '../layouts/AppShell.astro';
 import Icon from '../components/Icon.astro';
 
 // Build-time stamp for "Last audited" indicators across the site.
@@ -43,7 +43,7 @@ const guarantees = [
 ];
 ---
 
-<Base
+<AppShell mode="public"
   title="Security & audit — Recipes"
   description="How Recipes audits skills before they ship: allowlist linter + sandbox runner + creator track record. Triple-layer review with verifiable signatures on every skill."
 >
@@ -126,4 +126,4 @@ const guarantees = [
       Apache-2.0 licensed
     </p>
   </section>
-</Base>
+</AppShell>

@@ -1,5 +1,5 @@
 ---
-import Base from '../layouts/Base.astro';
+import AppShell from '../layouts/AppShell.astro';
 import { fetchApi } from '../lib/api';
 
 // Agent Bootcamp landing page (bootcamp_0607).
@@ -119,7 +119,7 @@ function firstPaidPosition(t: Track): number | null {
 }
 ---
 
-<Base
+<AppShell mode="public"
   title="Agent Bootcamp — the opinionated install path | Recipes"
   description="Don't browse 72 skills — follow the install path. Three curated bootcamp tracks take your agent from zero to a production setup. Start free, upgrade when it earns it."
 >
@@ -195,4 +195,4 @@ function firstPaidPosition(t: Track): number | null {
       </div>
     </section>
   </main>
-</Base>
+</AppShell>

@@ -1,9 +1,9 @@
 ---
-import Base from '../../layouts/Base.astro';
+import AppShell from '../../layouts/AppShell.astro';
 import CrossSell from '../../components/CrossSell.astro';
 import Icon from '../../components/Icon.astro';
 ---
-<Base title="Install guide — Recipes Docs" description="Install Recipes in any AI coding agent. MCP-first, zero-friction for free skills, one-line setup for the full catalog.">
+<AppShell mode="public" title="Install guide — Recipes Docs" description="Install Recipes in any AI coding agent. MCP-first, zero-friction for free skills, one-line setup for the full catalog.">
   <section class="max-w-3xl mx-auto px-6 pt-16 pb-12">
     <p class="eyebrow mb-2">Documentation · Install guide</p>
     <h1 class="text-4xl font-semibold tracking-tight mb-4">Install in seconds.</h1>
@@ -109,4 +109,4 @@ curl -sL https://recipes.wisechef.ai/skill -o ~/.hermes/skills/recipes/SKILL.md<
 
     <CrossSell />
   </section>
-</Base>
+</AppShell>

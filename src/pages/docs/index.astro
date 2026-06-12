@@ -1,5 +1,5 @@
 ---
-import Base from '../../layouts/Base.astro';
+import AppShell from '../../layouts/AppShell.astro';
 import CrossSell from '../../components/CrossSell.astro';
 
 const onboarding = [
@@ -79,7 +79,7 @@ const api = [
 ];
 ---
 
-<Base title="Documentation — Recipes" description="Install, integrate, configure. Everything you need to use Recipes from any AI coding agent.">
+<AppShell mode="public" title="Documentation — Recipes" description="Install, integrate, configure. Everything you need to use Recipes from any AI coding agent.">
   <section class="max-w-6xl mx-auto px-6 pt-16 pb-12">
     <div class="flex flex-col gap-3 mb-12">
       <p class="eyebrow">Documentation</p>
@@ -135,4 +135,4 @@ const api = [
     </div>
   </section>
   <CrossSell />
-</Base>
+</AppShell>

@@ -1,10 +1,10 @@
 ---
-import Base from '../layouts/Base.astro';
+import AppShell from '../layouts/AppShell.astro';
 
 const title = 'Would you deploy your AI agent stack to 20 small businesses for $100/mo?';
 const description = 'Two-minute survey for solo AI operators and integrators. We ship the platform if 3 of 20 of you would actually pay.';
 ---
-<Base title={title} description={description}>
+<AppShell mode="public" title={title} description={description}>
   <main class="max-w-2xl mx-auto px-6 py-16 md:py-24">
     <header class="mb-10">
       <a href="/" class="text-xs text-muted hover:text-text transition inline-flex items-center gap-1.5 mb-6">
@@ -157,4 +157,4 @@ const description = 'Two-minute survey for solo AI operators and integrators. We
       });
     })();
   </script>
-</Base>
+</AppShell>

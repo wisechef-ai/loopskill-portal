@@ -1,9 +1,9 @@
 ---
-import Base from '../layouts/Base.astro';
+import AppShell from '../layouts/AppShell.astro';
 const lastUpdated = '2026-05-03';
 ---
 
-<Base title="Privacy — Recipes by WiseChef" description="What we collect, what we do not collect, and why our heartbeat is mathematically anonymous.">
+<AppShell mode="public" title="Privacy — Recipes by WiseChef" description="What we collect, what we do not collect, and why our heartbeat is mathematically anonymous.">
   <main class="prose">
     <h1>Privacy</h1>
     <p><em>Last updated: {lastUpdated}</em></p>
@@ -55,4 +55,4 @@ const lastUpdated = '2026-05-03';
     <h2>Questions</h2>
     <p>Email <a href="mailto:privacy@wisechef.ai">privacy@wisechef.ai</a>.</p>
   </main>
-</Base>
+</AppShell>

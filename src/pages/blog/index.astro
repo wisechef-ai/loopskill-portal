@@ -1,13 +1,13 @@
 ---
 import { getCollection } from 'astro:content';
-import Base from '../../layouts/Base.astro';
+import AppShell from '../../layouts/AppShell.astro';
 
 const posts = (await getCollection('blog')).sort(
   (a, b) => b.data.pubDate.getTime() - a.data.pubDate.getTime()
 );
 ---
 
-<Base title="Blog — Recipes" description="Engineering notes, architecture decisions, and product updates from the Recipes team.">
+<AppShell mode="public" title="Blog — Recipes" description="Engineering notes, architecture decisions, and product updates from the Recipes team.">
   <section class="max-w-3xl mx-auto px-6 pt-12 pb-24">
     <h1 class="text-3xl font-semibold tracking-tight mb-2">Blog</h1>
     <p class="text-muted text-sm mb-10">Engineering notes and product updates from the Recipes team.</p>
@@ -28,4 +28,4 @@ const posts = (await getCollection('blog')).sort(
       ))}
     </ul>
   </section>
-</Base>
+</AppShell>
