@@ -1,5 +1,5 @@
 ---
-import Base from '../layouts/Base.astro';
+import AuthEdge from '../layouts/AuthEdge.astro';
 
 const mode = Astro.url.searchParams.get('mode') ?? 'signin';
 const isSignup = mode === 'signup';
@@ -14,7 +14,7 @@ const isSignup = mode === 'signup';
 // so attribution survives even if the user lands on a different page first.
 ---
 
-<Base title={isSignup ? 'Get access — Recipes' : 'Sign in — Recipes'} description="Sign in with Google or GitHub to unlock premium skills and earn from publishing.">
+<AuthEdge title={isSignup ? 'Get access — Recipes' : 'Sign in — Recipes'} description="Sign in with Google or GitHub to unlock premium skills and earn from publishing.">
   <section class="max-w-md mx-auto px-6 pt-20 pb-16">
     <div class="bg-bg-card border border-border rounded-2xl p-8">
       <div class="flex flex-col items-center text-center gap-2 mb-8">
@@ -57,7 +57,7 @@ const isSignup = mode === 'signup';
       </div>
     </div>
   </section>
-</Base>
+</AuthEdge>
 
 <script is:inline>
   // rev 7.3: client-side ?ref= passthrough + already-authed short-circuit

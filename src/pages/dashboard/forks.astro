@@ -17,12 +17,12 @@
 // PATCH /api/forks/<id> for visibility/readme updates without bumping
 // a version.)
 
-import Base from "../../layouts/Base.astro";
+import AppShell from '../../layouts/AppShell.astro';
 
 const API_BASE = import.meta.env.PUBLIC_RECIPES_API_BASE || "https://recipes.wisechef.ai";
 ---
 
-<Base title="Your forks — Recipes">
+<AppShell title="Your forks — Recipes">
   <main class="forks-dashboard">
     <header>
       <h1>Your forks</h1>
@@ -78,7 +78,7 @@ const API_BASE = import.meta.env.PUBLIC_RECIPES_API_BASE || "https://recipes.wis
       </li>
     </template>
   </main>
-</Base>
+</AppShell>
 
 <script define:vars={{ API_BASE }}>
   const apiKey = localStorage.getItem("recipes_api_key");

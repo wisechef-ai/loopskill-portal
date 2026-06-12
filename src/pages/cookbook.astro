@@ -1,10 +1,10 @@
 ---
-import Base from '../layouts/Base.astro';
+import AppShell from '../layouts/AppShell.astro';
 import CrossSell from '../components/CrossSell.astro';
 import Icon from '../components/Icon.astro';
 ---
 
-<Base
+<AppShell mode="public"
   title="Your Cookbook — Recipes"
   description="Your personal Cookbook syncs skills across all your agents. Auto-created when you install your first skill on Pro tier."
 >
@@ -142,4 +142,4 @@ import Icon from '../components/Icon.astro';
     </div>
   </section>
   <CrossSell />
-</Base>
+</AppShell>

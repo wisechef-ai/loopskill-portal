@@ -17,7 +17,7 @@
 //      longer `applying`.
 //   3. Audit log — install_events scoped to this bucket (server-rendered).
 
-import Base from "../../layouts/Base.astro";
+import AppShell from '../../layouts/AppShell.astro';
 
 // spotify_0608 Ph F (plan P0#5): same-origin API. The old api-subdomain
 // default created a cookie-host split (the wr_jwt cookie is host-only, so it
@@ -53,7 +53,7 @@ try {
 }
 ---
 
-<Base title="Buckets — Recipes Operator">
+<AppShell title="Buckets — Recipes Operator">
   {tier === "insufficient" ? (
     <section class="upsell">
       <h1>Buckets are an Operator feature</h1>
@@ -105,7 +105,7 @@ try {
       </section>
     </section>
   )}
-</Base>
+</AppShell>
 
 <script define:vars={{ apiBase }}>
   // ── New-bucket flow ────────────────────────────────────────────────────

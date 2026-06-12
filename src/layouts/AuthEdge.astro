@@ -1,0 +1,49 @@
+---
+// AuthEdge.astro — minimal standalone layout for transitional pages
+// (signin, signup, billing/success). onechrome_0611 P3.
+//
+// No rail, no nav: these are focused moments (OAuth choice, payment
+// confirmation) where chrome is noise. Footer kept for legal links.
+import '../styles/global.css';
+import Footer from '../components/Footer.astro';
+
+interface Props {
+  title?: string;
+  description?: string;
+}
+
+const {
+  title = 'Recipes',
+  description = 'Recipes by WiseChef — the skill marketplace for AI agents.',
+} = Astro.props;
+
+const ogTitle = title.includes('Recipes') ? title : `${title} | Recipes`;
+const canonicalURL = new URL(Astro.url.pathname, 'https://recipes.wisechef.ai');
+---
+<!doctype html>
+<html lang="en" class="scroll-smooth">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content={description} />
+    <link rel="canonical" href={canonicalURL} />
+    <meta name="robots" content="noindex" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="theme-color" content="#0a0a0a" />
+    <title>{ogTitle}</title>
+  </head>
+  <body class="bg-bg text-text font-sans antialiased min-h-screen flex flex-col">
+    <header class="flex items-center justify-center h-16 border-b border-border">
+      <a href="/" class="flex items-center gap-2.5 group">
+        <span class="relative flex items-center justify-center w-9 h-9 rounded-lg bg-gradient-to-br from-accent/15 to-cool/10 border border-accent/40 group-hover:border-accent/70 transition">
+          <img src="/brand/mark-96.png?v=2" alt="" width="28" height="28" class="select-none" />
+        </span>
+        <span class="text-base font-semibold tracking-tight group-hover:text-accent transition">Recipes</span>
+      </a>
+    </header>
+    <main class="flex-1 flex flex-col">
+      <slot />
+    </main>
+    <Footer />
+  </body>
+</html>

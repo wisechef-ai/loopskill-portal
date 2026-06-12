@@ -1,5 +1,5 @@
 ---
-import Base from '../layouts/Base.astro';
+import AppShell from '../layouts/AppShell.astro';
 
 // Phase D (top1pct_1105) — custom 404 with did-you-mean suggestions.
 // Static list of top-visited paths; Phase G could swap to analytics-driven.
@@ -12,7 +12,7 @@ const POPULAR_PATHS: { path: string; label: string; description: string }[] = [
 ];
 ---
 
-<Base title="Page not found — Recipes" description="That page doesn't exist (yet). Here's where most people are headed.">
+<AppShell mode="public" title="Page not found — Recipes" description="That page doesn't exist (yet). Here's where most people are headed.">
   <section class="max-w-2xl mx-auto px-6 pt-20 pb-24 text-center">
     <p class="eyebrow mb-3">Error · 404</p>
     <h1 class="text-4xl md:text-5xl font-semibold tracking-tight mb-4">That page doesn't exist.</h1>
@@ -46,4 +46,4 @@ const POPULAR_PATHS: { path: string; label: string; description: string }[] = [
       Or just <a href="/" class="text-accent underline hover:opacity-80">go home</a>.
     </div>
   </section>
-</Base>
+</AppShell>
