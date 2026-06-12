@@ -1,29 +1,76 @@
 ---
-// AppShell.astro — portal_0610 J1
-// Persistent authed application shell with a left-rail (Home · Search · Your
-// Library · Fleets) + the user's live cookbook list. This is the "control room"
-// surface (plan §1 BREAK 1: the human is the DJ/librarian, not a listener), as
-// opposed to Base.astro which is the anonymous marketing chrome.
+// AppShell.astro — THE one chrome for recipes.wisechef.ai (onechrome_0611).
 //
-// Auth model mirrors Nav.astro: client-side fetch('/api/auth/me'). Anonymous
-// visitors to an app-shell route are bounced to /signin (these are member
-// surfaces). The rail is hydrated from /api/auth/me + /api/cookbooks.
+// portal_0610 J1 shipped this as the authed "Garden" shell (left rail: Home ·
+// Search · Your Library · Fleets · Delivery + live cookbook list).
+// onechrome_0611 P0 adds the `mode` contract so the SAME chrome serves the
+// whole site:
+//
+//   mode="member" (default) — member surfaces (/home, /library, /fleets,
+//     /cockpit, /composer, account, dashboards). Anonymous visitors are
+//     bounced to /signin?next=… behind a gate splash. Zero behavior change
+//     for the 5 pre-P0 consumers.
+//
+//   mode="public" — public-browse surfaces (marketplace, pricing, docs,
+//     legal…). NO anon bounce, NO gate splash (anon-first static render).
+//     The rail renders sign-in CTAs by default; if /api/auth/me resolves a
+//     session, JS swaps in the live member rail (cookbooks + account footer).
+//     Member-only nav stays VISIBLE for discoverability — anon clicks land
+//     on /signin?next=<target> via the member-nav links' normal hrefs
+//     (AppShell member pages bounce, preserving intent).
+//
+// State-swap rules (skill: tailwind-auth-aware-ui-class-toggle-trap):
+//   - Both anon + member rail states exist in the public-mode static HTML
+//     (Trap C: never branch away a JS-fill target at build time).
+//   - Swaps use classList AND inline style.display (Trap A: responsive
+//     variants outrank `.hidden`).
+//   - All auth fetches use credentials:'include' (Trap B pitfall 5).
+//
+// Public mode also carries the marketing-chrome responsibilities Base.astro
+// used to own (Base retires in P3): canonical + OG/twitter tags, schema.org
+// Organization JSON-LD, the WIS-660 ?ref= referral-cookie script, and the
+// IntentSurvey exit modal. Member mode keeps robots=noindex.
 import '../styles/global.css';
 import Footer from '../components/Footer.astro';
+import IntentSurvey from '../components/IntentSurvey.astro';
 
 interface Props {
   title?: string;
   description?: string;
   active?: 'home' | 'search' | 'library' | 'fleets' | 'cockpit' | 'account' | '';
+  mode?: 'member' | 'public';
+  ogImage?: string;
+  pageType?: 'website' | 'product' | 'article';
 }
 
 const {
   title = 'Recipes',
   description = 'Your agent-environment library — compose once, reproduce across every agent, sync your whole fleet.',
   active = '',
+  mode = 'member',
+  ogImage = '/og-default.png',
+  pageType = 'website',
 } = Astro.props;
 
+const isPublic = mode === 'public';
+const siteURL = 'https://recipes.wisechef.ai';
+const canonicalURL = new URL(Astro.url.pathname, siteURL);
 const ogTitle = title.includes('Recipes') ? title : `${title} | Recipes`;
+
+const orgSchema = {
+  '@context': 'https://schema.org',
+  '@type': 'Organization',
+  name: 'Recipes',
+  alternateName: 'Recipes by WiseChef',
+  url: siteURL,
+  logo: `${siteURL}/favicon.svg`,
+  description,
+  parentOrganization: {
+    '@type': 'Organization',
+    name: 'WiseChef',
+    url: 'https://wisechef.ai',
+  },
+};
 
 const navItems = [
   { id: 'home',    href: '/home',    label: 'Home',         icon: 'M3 9.5L10 3l7 6.5M5 8.5V16h10V8.5' },
@@ -39,27 +86,57 @@ const navItems = [
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="description" content={description} />
-    <meta name="robots" content="noindex" />
+    <meta name="generator" content={Astro.generator} />
+    <link rel="canonical" href={canonicalURL} />
+    {!isPublic && <meta name="robots" content="noindex" />}
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta property="og:type" content={pageType} />
+    <meta property="og:url" content={canonicalURL} />
+    <meta property="og:title" content={ogTitle} />
+    <meta property="og:description" content={description} />
+    <meta property="og:site_name" content="Recipes by WiseChef" />
+    <meta property="og:image" content={ogImage} />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={ogTitle} />
+    <meta name="twitter:description" content={description} />
     <meta name="theme-color" content="#0a0a0a" />
     <title>{ogTitle}</title>
+    {isPublic && <script type="application/ld+json" set:html={JSON.stringify(orgSchema)}></script>}
   </head>
   <body class="bg-bg text-text font-sans antialiased min-h-screen flex flex-col">
+    <script is:inline>
+      // WIS-660: Detect ?ref=<code> on any page → set referral cookie (30-day TTL).
+      // Runs on EVERY AppShell page (member too — harmless, a member clicking a
+      // ref link just refreshes the cookie).
+      (function() {
+        var p = new URLSearchParams(window.location.search);
+        var ref = p.get('ref');
+        if (ref && /^[A-Za-z0-9]{4,16}$/.test(ref)) {
+          document.cookie = 'recipes_ref=' + ref + '; Max-Age=2592000; Path=/; SameSite=Lax';
+          var u = new URL(window.location.href);
+          u.searchParams.delete('ref');
+          window.history.replaceState({}, '', u.toString());
+        }
+      })();
+    </script>
+
     <a href="#app-main"
        class="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-[100] focus:px-4 focus:py-2 focus:rounded-lg focus:bg-accent focus:text-bg focus:font-semibold focus:text-sm">
       Skip to content
     </a>
 
-    <!-- Anon-gate splash: shown until /api/auth/me confirms a session. -->
-    <div id="appshell-gate" class="fixed inset-0 z-[60] flex items-center justify-center bg-bg">
-      <p class="text-sm text-muted">Loading…</p>
-    </div>
+    {!isPublic && (
+      <!-- Anon-gate splash (member mode only): covers until /api/auth/me resolves. -->
+      <div id="appshell-gate" class="fixed inset-0 z-[60] flex items-center justify-center bg-bg">
+        <p class="text-sm text-muted">Loading…</p>
+      </div>
+    )}
 
-    <div class="flex flex-1 min-h-screen" id="appshell-root">
+    <div class="flex flex-1 min-h-screen" id="appshell-root" data-mode={mode}>
       <!-- ── Left rail ──────────────────────────────────────────────── -->
       <aside class="hidden md:flex w-64 shrink-0 flex-col border-r border-border bg-bg/60 sticky top-0 h-screen overflow-y-auto"
              aria-label="App navigation">
-        <a href="/home" class="flex items-center gap-2.5 px-5 h-16 shrink-0 border-b border-border group">
+        <a href={isPublic ? '/' : '/home'} class="flex items-center gap-2.5 px-5 h-16 shrink-0 border-b border-border group">
           <span class="relative flex items-center justify-center w-9 h-9 rounded-lg bg-gradient-to-br from-accent/15 to-cool/10 border border-accent/40 group-hover:border-accent/70 transition">
             <img src="/brand/mark-96.png?v=2" alt="" width="28" height="28" class="select-none" />
           </span>
@@ -79,8 +156,20 @@ const navItems = [
           ))}
         </nav>
 
-        <!-- Live cookbook rail (plan §2: the user's cookbooks one click from every page) -->
-        <div class="px-3 pb-4 flex-1 min-h-0">
+        <!-- Rail body: anon CTA (public default) ⇄ live cookbook list (member). -->
+        {isPublic && (
+          <div class="px-3 pb-4 flex-1 min-h-0" data-shell-anon>
+            <div class="mx-3 rounded-xl border border-border bg-bg-card/50 p-4 flex flex-col gap-2.5">
+              <span class="text-[10px] uppercase tracking-widest text-muted-soft">Your cookbooks</span>
+              <p class="text-xs text-muted leading-relaxed">Sign in to bundle skills into cookbooks and sync them to your whole fleet.</p>
+              <a href="/signin" data-signin-next
+                 class="inline-flex items-center justify-center px-3 py-1.5 rounded-lg bg-accent text-bg text-xs font-semibold hover:bg-accent-soft transition">
+                Sign in to build cookbooks
+              </a>
+            </div>
+          </div>
+        )}
+        <div class={`px-3 pb-4 flex-1 min-h-0 ${isPublic ? 'hidden' : ''}`} data-shell-member>
           <div class="flex items-center justify-between px-3 mb-1.5">
             <span class="text-[10px] uppercase tracking-widest text-muted-soft">Your cookbooks</span>
             <a href="/composer" class="text-muted-soft hover:text-accent text-base leading-none" title="New cookbook" aria-label="New cookbook">+</a>
@@ -90,8 +179,20 @@ const navItems = [
           </div>
         </div>
 
-        <!-- User footer -->
-        <div class="border-t border-border px-3 py-3 shrink-0">
+        <!-- Rail footer: sign-in (public default) ⇄ account (member). -->
+        {isPublic && (
+          <div class="border-t border-border px-3 py-3 shrink-0" data-shell-anon>
+            <a href="/signin" data-signin-next
+               class="flex items-center gap-2.5 px-2 py-2 rounded-lg hover:bg-bg-card transition">
+              <span class="w-7 h-7 rounded-full bg-bg-card border border-border flex items-center justify-center text-xs font-semibold shrink-0">→</span>
+              <span class="flex flex-col min-w-0">
+                <span class="text-xs text-text truncate">Sign in</span>
+                <span class="text-[10px] text-muted-soft uppercase tracking-wider">free to start</span>
+              </span>
+            </a>
+          </div>
+        )}
+        <div class={`border-t border-border px-3 py-3 shrink-0 ${isPublic ? 'hidden' : ''}`} data-shell-member>
           <a href="/account" class={`flex items-center gap-2.5 px-2 py-2 rounded-lg transition ${active === 'account' ? 'bg-accent/12' : 'hover:bg-bg-card'}`}>
             <span id="rail-avatar" class="w-7 h-7 rounded-full bg-bg-card border border-border flex items-center justify-center text-xs font-semibold overflow-hidden shrink-0">·</span>
             <span class="flex flex-col min-w-0">
@@ -106,7 +207,7 @@ const navItems = [
       <div class="flex-1 flex flex-col min-w-0">
         <!-- Mobile top bar (rail collapses on small screens) -->
         <header class="md:hidden sticky top-0 z-40 flex items-center justify-between gap-3 h-14 px-4 border-b border-border bg-bg/85 backdrop-blur-md">
-          <a href="/home" class="flex items-center gap-2 font-semibold">
+          <a href={isPublic ? '/' : '/home'} class="flex items-center gap-2 font-semibold">
             <img src="/brand/mark-96.png?v=2" alt="" width="26" height="26" />
             <span>Recipes</span>
           </a>
@@ -119,7 +220,10 @@ const navItems = [
                 {navItems.map((item) => (
                   <a href={item.href} class="px-4 py-3 text-muted hover:text-text hover:bg-bg-card transition">{item.label}</a>
                 ))}
-                <a href="/account" class="px-4 py-3 text-muted hover:text-text hover:bg-bg-card transition border-t border-border">Account</a>
+                {isPublic && (
+                  <a href="/signin" data-signin-next data-shell-anon class="px-4 py-3 text-accent font-medium hover:bg-bg-card transition border-t border-border">Sign in</a>
+                )}
+                <a href="/account" data-shell-member class={`px-4 py-3 text-muted hover:text-text hover:bg-bg-card transition border-t border-border ${isPublic ? 'hidden' : ''}`}>Account</a>
               </nav>
             </div>
           </details>
@@ -132,10 +236,15 @@ const navItems = [
       </div>
     </div>
 
+    {isPublic && <IntentSurvey />}
+
     <script>
-      // AppShell hydration — gate on auth, populate rail.
+      // AppShell hydration — mode-aware auth gate + rail population.
       (async () => {
+        const root = document.getElementById('appshell-root');
+        const mode = root?.getAttribute('data-mode') || 'member';
         const gate = document.getElementById('appshell-gate');
+
         let user: any = null;
         try {
           const res = await fetch('/api/auth/me', { credentials: 'include' });
@@ -143,12 +252,33 @@ const navItems = [
         } catch { /* network error → treat as anon */ }
 
         if (!user) {
-          // Member surface — bounce anonymous visitors to sign-in, preserving intent.
-          const next = encodeURIComponent(window.location.pathname + window.location.search);
-          window.location.href = `/signin?next=${next}`;
+          if (mode === 'member') {
+            // Member surface — bounce anonymous visitors to sign-in, preserving intent.
+            const next = encodeURIComponent(window.location.pathname + window.location.search);
+            window.location.href = `/signin?next=${next}`;
+            return;
+          }
+          // Public surface, anonymous visitor: static anon state is already
+          // correct. Just thread ?next= into the sign-in CTAs so OAuth
+          // returns the visitor HERE, not /library.
+          document.querySelectorAll<HTMLAnchorElement>('[data-signin-next]').forEach((a) => {
+            a.href = `/signin?next=${encodeURIComponent(window.location.pathname + window.location.search)}`;
+          });
           return;
         }
         gate?.remove();
+
+        // Member confirmed. In public mode, swap anon rail → member rail.
+        // classList AND inline style.display: responsive variants (md:flex)
+        // outrank `.hidden` in the cascade (Trap A).
+        document.querySelectorAll<HTMLElement>('[data-shell-anon]').forEach((el) => {
+          el.classList.add('hidden');
+          el.style.display = 'none';
+        });
+        document.querySelectorAll<HTMLElement>('[data-shell-member]').forEach((el) => {
+          el.classList.remove('hidden');
+          el.style.display = '';
+        });
 
         // User footer
         const initials = (user.display_name || user.email || '?').slice(0, 1).toUpperCase();
