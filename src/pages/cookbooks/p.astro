@@ -55,7 +55,10 @@ const API_BASE = import.meta.env.PUBLIC_RECIPES_API_BASE || "https://recipes.wis
         <div id="cb-stats" class="text-sm text-muted-soft flex items-center gap-4 flex-wrap"></div>
       </header>
 
-      <!-- THE GTM GATE: one copy-paste MCP line that composes the whole stack -->
+      <!-- THE GTM GATE: one copy-paste line that composes the whole stack.
+           Two install methods — MCP (in-agent) and the native agentskills.io
+           CLI (well-known bundle, works in Hermes / Claude Code / any
+           agentskills.io agent). -->
       <section class="bg-bg-card border border-accent/30 rounded-2xl p-6 mb-10">
         <div class="flex items-center justify-between gap-3 mb-3 flex-wrap">
           <h2 class="text-base font-semibold">Install this whole stack — one line</h2>
@@ -68,6 +71,21 @@ const API_BASE = import.meta.env.PUBLIC_RECIPES_API_BASE || "https://recipes.wis
         <p class="text-xs text-muted-soft mt-3">
           Your agent runs this over MCP (StreamableHTTP at <code>recipes.wisechef.ai/api/mcp/http</code>) and pulls every skill below in a single call. No account required to install free skills.
         </p>
+
+        <!-- Native skill-bundle install (agentskills.io / .well-known) -->
+        <div class="mt-5 pt-5 border-t border-border-soft">
+          <div class="flex items-center justify-between gap-3 mb-2 flex-wrap">
+            <h3 class="text-sm font-semibold text-text">…or install as a skill bundle</h3>
+            <span class="text-[11px] text-muted-soft">Hermes · Claude Code · any agentskills.io agent</span>
+          </div>
+          <div class="relative">
+            <pre class="bg-[#0d0d0d] border border-border rounded-xl p-4 pr-12 text-sm text-cool overflow-x-auto"><code id="wellknown-line">hermes skills install well-known:https://recipes.wisechef.ai/api/cookbooks/public/…</code></pre>
+            <button id="copy-wk-btn" class="absolute top-3 right-3 px-2.5 py-1 rounded-md bg-bg-elev border border-border text-xs text-muted hover:text-cool hover:border-cool/40 transition" type="button">Copy</button>
+          </div>
+          <p class="text-xs text-muted-soft mt-3">
+            Standards-based install via the open <a href="https://agentskills.io/specification" class="text-cool hover:underline" target="_blank" rel="noopener">agentskills.io</a> <code>.well-known/skills</code> convention — the whole cookbook lands as native skills in your agent. Free skills install verbatim; paid skills ship a locked pointer until you install with a Recipes key.
+          </p>
+        </div>
       </section>
 
       <!-- Skill list -->
@@ -164,6 +182,24 @@ const API_BASE = import.meta.env.PUBLIC_RECIPES_API_BASE || "https://recipes.wis
         copyBtn.textContent = "Select & copy";
       }
     });
+
+    // Native skill-bundle install line (agentskills.io .well-known). Uses the
+    // public cookbook slug; the resolver fetches index.json + each SKILL.md.
+    const wkLine = `hermes skills install well-known:https://recipes.wisechef.ai/api/cookbooks/public/${cb.slug}`;
+    const wkEl = $("wellknown-line");
+    if (wkEl) wkEl.textContent = wkLine;
+    const copyWkBtn = $("copy-wk-btn");
+    if (copyWkBtn) {
+      copyWkBtn.addEventListener("click", async () => {
+        try {
+          await navigator.clipboard.writeText(wkLine);
+          copyWkBtn.textContent = "Copied";
+          setTimeout(() => { copyWkBtn.textContent = "Copy"; }, 1600);
+        } catch {
+          copyWkBtn.textContent = "Select & copy";
+        }
+      });
+    }
 
     if (skills.length === 0) { show("cb-empty"); return; }
 
