@@ -41,8 +41,36 @@ const grad = HUES[cat] || grad_palette[hashIdx(slug, grad_palette.length)];
 const mono = ((title || slug).trim()[0] || 'R').toUpperCase();
 const isPro = tier && tier !== 'free';
 const isExt = !!source;
+
+// Per-category watermark glyph paths (stroke icons, 24×24 viewBox).
+// Keyed by the same `cat` string used for HUES above.
+const GLYPHS: Record<string, string> = {
+  // marketing / agency → megaphone with sound waves
+  marketing: 'M3 10v4h4l5 3.5V6.5L7 10H3zm11-1.5a5 5 0 0 1 0 7M17 6a8 8 0 0 1 0 12',
+  agency:    'M3 10v4h4l5 3.5V6.5L7 10H3zm11-1.5a5 5 0 0 1 0 7M17 6a8 8 0 0 1 0 12',
+  // research / discovery → magnifying glass
+  research:  'M21 21l-5.2-5.2M16 11a7 7 0 1 1-14 0 7 7 0 0 1 14 0z',
+  discovery: 'M21 21l-5.2-5.2M16 11a7 7 0 1 1-14 0 7 7 0 0 1 14 0z',
+  // content / meta → 4-point sparkle
+  content:   'M12 2l2.4 7.6L22 12l-7.6 2.4L12 22l-2.4-7.6L2 12l7.6-2.4z',
+  meta:      'M12 2l2.4 7.6L22 12l-7.6 2.4L12 22l-2.4-7.6L2 12l7.6-2.4z',
+  // ops / devops → gear (8-spoke sun + center circle)
+  ops:    'M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM12 3v2m0 14v2M3 12h2m14 0h2M5.64 5.64l1.41 1.41m9.9 9.9 1.41 1.41M5.64 18.36l1.41-1.41m9.9-9.9 1.41-1.41',
+  devops: 'M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM12 3v2m0 14v2M3 12h2m14 0h2M5.64 5.64l1.41 1.41m9.9 9.9 1.41 1.41M5.64 18.36l1.41-1.41m9.9-9.9 1.41-1.41',
+  // data / planning → database cylinder (ellipse top + sides + middle ring + bottom arc)
+  data:     'M5 6a7 2.5 0 0 1 14 0a7 2.5 0 0 1-14 0zM5 6v12m14-12v12M5 18a7 2.5 0 0 0 14 0M5 12a7 2.5 0 0 0 14 0',
+  planning: 'M5 6a7 2.5 0 0 1 14 0a7 2.5 0 0 1-14 0zM5 6v12m14-12v12M5 18a7 2.5 0 0 0 14 0M5 12a7 2.5 0 0 0 14 0',
+  // productivity / automation → lightning bolt
+  productivity: 'M13 2 4 13h7l-2 9 11-12h-7z',
+  automation:   'M13 2 4 13h7l-2 9 11-12h-7z',
+};
+// Fallback for unknown/uncategorized: hexagon
+const glyph: string = GLYPHS[cat] ?? 'M12 2l9 5v10l-9 5-9-5V7z';
 ---
 <div class="skill-cover" style={`background:linear-gradient(135deg, ${grad[0]} 0%, ${grad[1]} 100%);`}>
+  <svg class="sc-glyph" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+    <path d={glyph} />
+  </svg>
   <span class="sc-mono" aria-hidden="true">{mono}</span>
   <div class="sc-badges">
     {isPro && <span class="sc-tier">{(tier || 'pro').toUpperCase()}</span>}
@@ -52,6 +80,7 @@ const isExt = !!source;
 </div>
 <style>
   .skill-cover { position:relative; width:100%; aspect-ratio:1/1; border-radius:0.6rem; overflow:hidden; }
+  .sc-glyph { position:absolute; width:70%; height:70%; top:-5%; right:-5%; opacity:0.09; pointer-events:none; }
   .sc-mono { position:absolute; inset:0; display:flex; align-items:flex-end; justify-content:flex-start; padding:0.5rem 0.7rem; font-size:5rem; font-weight:800; line-height:0.8; color:rgba(255,255,255,0.95); letter-spacing:-0.04em; text-shadow:0 2px 12px rgba(0,0,0,0.25); }
   .sc-badges { position:absolute; top:0.5rem; right:0.5rem; display:flex; flex-direction:column; align-items:flex-end; gap:0.25rem; }
   .sc-tier { font-size:0.56rem; font-weight:700; letter-spacing:0.06em; padding:0.15rem 0.4rem; border-radius:0.4rem; background:rgba(0,0,0,0.45); color:#fff; backdrop-filter:blur(4px); }

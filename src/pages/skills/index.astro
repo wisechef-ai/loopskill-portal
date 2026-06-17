@@ -3,6 +3,7 @@ import AppShell from '../../layouts/AppShell.astro';
 import CrossSell from '../../components/CrossSell.astro';
 import Icon from '../../components/Icon.astro';
 import AddToCookbookScript from '../../components/AddToCookbookScript.astro';
+import SkillCover from '../../components/SkillCover.astro';
 import { fetchApi } from '../../lib/api';
 import { VERTICALS, skillVertical } from '../../lib/verticals';
 import { tierBadge as tierBadgeText, tierBadgeClass } from '../../lib/tiers';
@@ -110,6 +111,42 @@ if (communitySkills.length === 0) {
   }
 }
 
+// ─── Federation rails — marquee sources (WIS-737 pattern) ──────────────────
+// Build-time fetch with try/catch — the build NEVER fails on API error.
+// 4 marquee sources → 4 horizontal-scroll SkillCover rails surfaced above the
+// curated catalog. If the fetch returns 0 results, the entire rails block is
+// simply omitted; the curated catalog and existing community-section still render.
+// DO NOT fetch user/auth data here — frontmatter runs at build time (Trap B).
+type ExtRailSkill = {
+  slug: string;
+  title?: string;
+  source?: string;
+  description?: string;
+  category?: string;
+  origin_url?: string;
+};
+const RAIL_DEFS = [
+  { source: 'github-anthropic', label: 'From Anthropic' },
+  { source: 'github-openai',    label: 'From OpenAI' },
+  { source: 'clawhub',          label: 'Trending on ClawHub' },
+  { source: 'skills-sh',        label: 'From skills.sh' },
+] as const;
+const fedRailMap: Record<string, ExtRailSkill[]> = {};
+try {
+  const railSrcCsv = RAIL_DEFS.map(r => r.source).join(',');
+  const fedRailRes = await fetchApi<{ external: ExtRailSkill[] }>(
+    `/api/skills/external?sources=${railSrcCsv}&limit=48`,
+    { authed: false, timeoutMs: 30000, maxAttempts: 8, initialDelayMs: 600, maxDelayMs: 15000 },
+  );
+  if (fedRailRes.ok && fedRailRes.data?.external) {
+    for (const row of fedRailRes.data.external) {
+      if (!row.source) continue;
+      if (!fedRailMap[row.source]) fedRailMap[row.source] = [];
+      if (fedRailMap[row.source].length < 12) fedRailMap[row.source].push(row);
+    }
+  }
+} catch {} // WIS-737: API unavailable at build time → fedRailMap stays {}; build succeeds
+
 // Phase 5 (RCP-INCIDENT-2026-05-11): 'pro' and 'pro_plus' are the canonical slugs.
 // Canonical tier slugs only. Legacy aliases (cook/operator/studio) are
 // normalized to these via canonicalTier() so the filter shows ONE chip per
@@ -165,30 +202,94 @@ for (const s of skills) {
     <div class="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-8">
       <div class="flex flex-col gap-2">
         <p class="eyebrow">Catalog</p>
-        <h1 class="text-4xl md:text-5xl font-semibold tracking-tight" id="skills-heading">{total} skills, ready to install.</h1>
+        <h1 class="text-4xl md:text-5xl font-semibold tracking-tight" id="skills-heading">{total} curated skills + the whole ecosystem.</h1>
         <p class="text-muted">Production-grade skills for AI integrators, solo operators, and agent fleets. Free skills to start. Pro tier $20/mo (1 seat) unlocks the full library; Pro+ $100/mo gives you up to 200 cookbooks, fleet-wide cookbook sync, and the framework installer.</p>
         {fetchError && <p class="text-xs text-muted-soft">(showing seed data — API: {fetchError})</p>}
-        {/* fedui_0604 Unit B — dual count: curated catalog + federated community
-            library, so the superset is visible the moment you land. Counts are
-            honest (curated = real catalog total; community = summed INDEXED
-            across live federation sources, never a fabricated "installable"). */}
-        {communityIndexed > 0 ? (
-          <p class="text-sm text-muted-soft mt-1">
-            <span class="text-text font-semibold">{total} curated</span>
-            <span class="mx-1.5">+</span>
-            <span class="text-text font-semibold">{communityIndexed.toLocaleString()}+ community</span>
-            <span class="text-muted-soft"> across {communitySources} federated source{communitySources === 1 ? '' : 's'}.</span>
-            Search below spans both — curated first, community (as-is) underneath.
-          </p>
-        ) : (
-          <p class="text-sm text-muted-soft mt-1">
-            Looking beyond the curated catalog?
-            <a href="/skills/external" class="text-accent hover:underline">Browse external skills</a>
-            — community-contributed, as-is, federated from other hubs.
-          </p>
-        )}
+        {/* fedui_0604 Unit B + rail-rework: dual count made prominent — the 84k+
+            community number is the product's biggest differentiator; show it as
+            a badge CTA, not buried muted text. Counts remain honest (never fabricated). */}
+        <div class="flex flex-wrap items-center gap-3 mt-2">
+          <a
+            href="/skills/external"
+            class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-accent/40 bg-accent/5 text-xs font-semibold text-accent hover:border-accent hover:bg-accent/10 transition"
+          >
+            <span class="w-1.5 h-1.5 rounded-full bg-accent animate-pulse"></span>
+            {communityIndexed > 0
+              ? `${communityIndexed.toLocaleString()}+ community skills · ${communitySources} registries`
+              : '84,000+ community skills · 13 registries'}
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+          </a>
+          <span class="text-[11px] text-muted-soft">Federation rails below · curated core further down</span>
+        </div>
       </div>
     </div>
+
+    {/* ─── FEDERATION RAILS ───────────────────────────────────────────────────
+        These are surfaced ABOVE the curated catalog because 84,000+ federated
+        skills across 13 registries is the product's biggest differentiator.
+        Each rail = horizontal scroll row using SkillCover (same Spotify-shelf
+        pattern as the homepage). Falls back to omitting the rail section when
+        no skills were fetched (WIS-737-safe). External cards link to origin_url
+        (target=_blank) matching the view-source fallback in the community section
+        (line 661+ resolveSourceLink pattern), or /skills/external when no URL. */}
+    {RAIL_DEFS.some(r => (fedRailMap[r.source]?.length ?? 0) > 0) && (
+      <div class="mb-12">
+        {/* Section header — same style as homepage 'Popular skills' rail header */}
+        <div class="flex items-center justify-between mb-5">
+          <div>
+            <p class="text-[10px] font-semibold uppercase tracking-widest text-muted-soft mb-1">Community · Federation</p>
+            <h2 class="text-xl font-semibold tracking-tight text-text">
+              {communityIndexed > 0
+                ? `${communityIndexed.toLocaleString()}+ skills across ${communitySources} registries`
+                : '84,000+ skills across 13 registries'}
+            </h2>
+          </div>
+          <a href="/skills/external" class="text-xs text-accent hover:opacity-80 shrink-0">Browse all →</a>
+        </div>
+
+        {RAIL_DEFS.map(railDef => {
+          const railSkills = fedRailMap[railDef.source] ?? [];
+          if (railSkills.length === 0) return null;
+          return (
+            <div class="mb-8">
+              <div class="flex items-center justify-between mb-2">
+                <h3 class="text-sm font-semibold uppercase tracking-widest text-muted-soft">{railDef.label}</h3>
+                <a href="/skills/external" class="text-[11px] text-accent hover:opacity-80">More →</a>
+              </div>
+              <div class="flex gap-3 overflow-x-auto pb-2 -mx-1 px-1 snap-x">
+                {railSkills.map((s: ExtRailSkill) => {
+                  // Link: use origin_url (opens externally, matches resolveSourceLink
+                  // fallback at line 673+). Fall back to /skills/external when none.
+                  const href = s.origin_url || '/skills/external';
+                  const isExternal = !!s.origin_url;
+                  return (
+                    <a
+                      href={href}
+                      class="skill-rail-card group shrink-0 w-[140px] sm:w-[160px] snap-start"
+                      {...(isExternal ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
+                    >
+                      <SkillCover
+                        slug={s.slug}
+                        title={s.title}
+                        category={s.category}
+                        tier="free"
+                        source={s.source}
+                      />
+                      <div class="mt-2 px-0.5">
+                        <p class="text-sm font-semibold text-text group-hover:text-accent transition truncate">{s.title || s.slug}</p>
+                        <p class="text-[11px] text-muted-soft capitalize truncate">{s.source}</p>
+                      </div>
+                    </a>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })}
+
+        <div class="h-px bg-border-soft mb-12"></div>
+      </div>
+    )}
 
     {/* A4 (rev 7.2): super-memory featured card — open-source pro_open gateway skill.
         MIT-licensed, install in 60s, hands-off agent memory stack. Drives trust by
@@ -495,7 +596,7 @@ for (const s of skills) {
         if (show) visible++;
       });
       heading.textContent = visible === totalCount
-        ? `${totalCount} skills, ready to install.`
+        ? `${totalCount} curated skills + the whole ecosystem.`
         : `${visible} of ${totalCount} skills.`;
       empty.classList.toggle('hidden', visible > 0);
     }

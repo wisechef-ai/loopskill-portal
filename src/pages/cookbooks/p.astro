@@ -79,7 +79,7 @@ const API_BASE = import.meta.env.PUBLIC_RECIPES_API_BASE || "https://recipes.wis
             <span class="text-[11px] text-muted-soft">Hermes · Claude Code · any agentskills.io agent</span>
           </div>
           <div class="relative">
-            <pre class="bg-[#0d0d0d] border border-border rounded-xl p-4 pr-12 text-sm text-cool overflow-x-auto"><code id="wellknown-line">hermes skills install well-known:https://recipes.wisechef.ai/api/cookbooks/public/…</code></pre>
+            <pre class="bg-[#0d0d0d] border border-border rounded-xl p-4 pr-12 text-sm text-cool overflow-x-auto"><code id="wellknown-line">Install the agentskills.io skill bundle from recipes.wisechef.ai/api/cookbooks/public/…</code></pre>
             <button id="copy-wk-btn" class="absolute top-3 right-3 px-2.5 py-1 rounded-md bg-bg-elev border border-border text-xs text-muted hover:text-cool hover:border-cool/40 transition" type="button">Copy</button>
           </div>
           <p class="text-xs text-muted-soft mt-3">
@@ -183,9 +183,10 @@ const API_BASE = import.meta.env.PUBLIC_RECIPES_API_BASE || "https://recipes.wis
       }
     });
 
-    // Native skill-bundle install line (agentskills.io .well-known). Uses the
-    // public cookbook slug; the resolver fetches index.json + each SKILL.md.
-    const wkLine = `hermes skills install well-known:https://recipes.wisechef.ai/api/cookbooks/public/${cb.slug}`;
+    // Open-standard bundle install (agentskills.io). Plain-English, cross-vendor —
+    // no leaked "well-known:" token, no vendor-locked CLI. Any agentskills.io-aware
+    // agent resolves the /.well-known/skills bundle from this base URL.
+    const wkLine = `Install the agentskills.io skill bundle from recipes.wisechef.ai/api/cookbooks/public/${cb.slug}`;
     const wkEl = $("wellknown-line");
     if (wkEl) wkEl.textContent = wkLine;
     const copyWkBtn = $("copy-wk-btn");
