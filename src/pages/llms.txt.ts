@@ -66,8 +66,10 @@ export const GET: APIRoute = async () => {
 
   const counts = snapRes.data?.counts ?? {};
   const total = counts.skills_total ?? 72;
-  const free = counts.free_skills ?? 2;
-  const pro = counts.pro_skills ?? 70;
+  const free = counts.free_skills ?? 1;
+  // Derive paid count from catalog (total - free) so it can never drift from
+  // a stale hard-coded value. /api/skills/search returns total=72, free=1 → paid=71.
+  const pro = counts.pro_skills ?? (total - free);
   const mcpTools = snapRes.data?.mcp_tools ?? [
     'recipes_search',
     'recipes_detail',

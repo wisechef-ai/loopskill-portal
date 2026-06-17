@@ -221,6 +221,10 @@ const navItems = [
               <span id="rail-user-plan" class="text-[10px] text-muted-soft uppercase tracking-wider">free</span>
             </span>
           </a>
+          <button id="rail-signout" type="button" class="w-full mt-1 flex items-center gap-2.5 px-2 py-2 rounded-lg text-muted-soft hover:text-text hover:bg-bg-card transition text-xs">
+            <span class="w-7 h-7 rounded-full bg-bg-card border border-border flex items-center justify-center shrink-0" aria-hidden="true">⏻</span>
+            <span>Sign out</span>
+          </button>
         </div>
       </aside>
 
@@ -245,6 +249,7 @@ const navItems = [
                   <a href="/signin" data-signin-next data-shell-anon class="px-4 py-3 text-accent font-medium hover:bg-bg-card transition border-t border-border">Sign in</a>
                 )}
                 <a href="/account" data-shell-member class={`px-4 py-3 text-muted hover:text-text hover:bg-bg-card transition border-t border-border ${isPublic ? 'hidden' : ''}`}>Account</a>
+                <button id="rail-signout-mobile" type="button" data-shell-member class={`px-4 py-3 text-left text-muted hover:text-text hover:bg-bg-card transition border-t border-border ${isPublic ? 'hidden' : ''}`}>Sign out</button>
               </nav>
             </div>
           </details>
@@ -402,6 +407,14 @@ const navItems = [
             }
           }
         } catch { /* onboarding is best-effort */ }
+
+        // Sign out — both rail (desktop) and mobile menu, mirrors /account.
+        const _logout = async () => {
+          try { await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' }); } catch {}
+          window.location.href = '/';
+        };
+        document.getElementById('rail-signout')?.addEventListener('click', _logout);
+        document.getElementById('rail-signout-mobile')?.addEventListener('click', _logout);
       })();
     </script>
 
