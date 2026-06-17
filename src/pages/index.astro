@@ -306,9 +306,9 @@ const verticals = [
 
     <div class="max-w-6xl mx-auto px-6 pt-20 md:pt-28 pb-16 relative w-full">
       <div class="flex flex-col items-center text-center gap-6 max-w-3xl mx-auto">
-        <a href="/bootcamp" class="group inline-flex items-center gap-2 px-3 py-1 rounded-full border border-accent/40 text-xs text-accent hover:text-text hover:border-accent/60 transition backdrop-blur-sm bg-accent/5">
+        <a href="/cookbooks" class="group inline-flex items-center gap-2 px-3 py-1 rounded-full border border-accent/40 text-xs text-accent hover:text-text hover:border-accent/60 transition backdrop-blur-sm bg-accent/5">
           <span class="w-1.5 h-1.5 rounded-full bg-accent animate-pulse"></span>
-          New: Agent Bootcamp — the opinionated install path
+          84,000+ skills · 13 registries · one fleet sync
           <Icon name="arrow-right" size={11} class="opacity-70 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all" />
         </a>
         <h1 class="text-5xl md:text-7xl font-bold tracking-tighter leading-[1.02]" style="letter-spacing: -0.04em;">
@@ -423,107 +423,6 @@ const verticals = [
     </div>
   </section>
 
-  {/* ─── Agent Bootcamp Section ─────────────────────────────────────────────── */}
-  {/* Three curated install-order tracks. Data: live from /api/bootcamp at build time.
-      Wedge: Recipes is the default INSTALL ORDER, not a flat catalog.
-      Each track starts on the free on-ramp (super-memory) and crosses to Pro at a
-      documented conversion step — the natural upgrade moment. 2026-06-07. */}
-  <section class="border-t border-border bg-bg-card/10" id="bootcamp-section">
-    <div class="max-w-6xl mx-auto px-6 py-20">
-      <div class="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-12">
-        <div class="max-w-2xl">
-          <p class="eyebrow text-accent">Agent Bootcamp — new</p>
-          <h2 class="text-3xl md:text-5xl font-bold tracking-tight mt-2" style="letter-spacing: -0.03em;">
-            Don't browse.<br/><span class="text-gradient">Follow the install path.</span>
-          </h2>
-          <p class="text-muted mt-3 text-lg leading-relaxed">
-            3 curated tracks. Each starts free (super-memory) and tells you exactly when — and why — to upgrade.
-            The carousel is discovery. Bootcamp is the operating curriculum.
-          </p>
-        </div>
-        <a href="/bootcamp" class="text-sm text-accent hover:opacity-80 inline-flex items-center gap-1.5 shrink-0 font-semibold">
-          See all tracks <Icon name="arrow-right" size={11} />
-        </a>
-      </div>
-
-      <div class="grid grid-cols-1 lg:grid-cols-3 gap-5">
-        {bootcampTracks.map(track => {
-          const accent = trackAccents[track.id] ?? trackAccents['zero-to-agent'];
-          return (
-            <div class="flex flex-col bg-bg-card border border-border-soft rounded-2xl overflow-hidden hover:border-border transition group">
-              {/* Track header */}
-              <div class="p-5 border-b border-border-soft">
-                <div class="flex items-center justify-between gap-2 mb-3">
-                  <span class={`inline-flex items-center gap-1.5 text-[10px] font-mono uppercase tracking-wider px-2 py-0.5 rounded-full border ${accent.badge}`}>
-                    <span class={`w-1.5 h-1.5 rounded-full ${accent.dot}`}></span>
-                    {accent.label}
-                  </span>
-                  <span class="text-[10px] text-muted font-mono">{track.free_steps} free · {track.paid_steps} Pro</span>
-                </div>
-                <h3 class="text-lg font-semibold text-text tracking-tight">{track.title}</h3>
-                <p class="text-xs text-muted-soft mt-1.5 leading-relaxed line-clamp-2">{track.subtitle}</p>
-              </div>
-
-              {/* Install steps */}
-              <ol class="flex flex-col gap-0 flex-1 px-4 py-3">
-                {track.steps.slice(0, 5).map((step, idx) => {
-                  const isFreeStep = step.is_free === true || step.tier === 'free';
-                  const isConversionBoundary = !isFreeStep && (idx === 0 || track.steps[idx - 1]?.is_free === true || track.steps[idx - 1]?.tier === 'free');
-                  return (
-                    <li class="flex gap-3 items-start py-2.5 border-b border-border-soft last:border-0">
-                      {/* Step number + free/pro indicator */}
-                      <div class="flex flex-col items-center gap-1 shrink-0 mt-0.5">
-                        <span class={`text-[9px] font-mono w-5 h-5 rounded-full flex items-center justify-center font-bold ${isFreeStep ? 'bg-success/15 text-success' : 'bg-accent/10 text-accent'}`}>
-                          {step.position}
-                        </span>
-                        {idx < track.steps.slice(0, 5).length - 1 && (
-                          <span class="w-px h-3 bg-border-soft"></span>
-                        )}
-                      </div>
-
-                      {/* Step content */}
-                      <div class="flex flex-col gap-0.5 min-w-0 flex-1">
-                        <div class="flex items-center gap-2">
-                          <a
-                            href={step.install_link}
-                            class="text-xs font-mono font-semibold text-text hover:text-accent transition truncate"
-                          >
-                            {step.slug}
-                          </a>
-                          <span class={`text-[9px] uppercase font-semibold tracking-wider shrink-0 ${isFreeStep ? 'text-success' : 'text-accent'}`}>
-                            {isFreeStep ? 'FREE' : 'PRO'}
-                          </span>
-                        </div>
-                        {isConversionBoundary && (
-                          <span class="text-[9px] text-accent/70 font-mono italic">↑ upgrade here</span>
-                        )}
-                      </div>
-                    </li>
-                  );
-                })}
-              </ol>
-
-              {/* Track footer CTA */}
-              <div class="px-5 py-3 border-t border-border-soft">
-                <a
-                  href={`/bootcamp#${track.id}`}
-                  class="inline-flex items-center gap-1.5 text-xs text-accent hover:opacity-80 transition font-semibold"
-                >
-                  Start this track
-                  <Icon name="arrow-right" size={11} class="group-hover:translate-x-0.5 transition" />
-                </a>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-
-      <p class="text-xs text-muted-soft mt-6 text-center">
-        Every slug verified against the live catalog. Free skills work on day one — no card required.
-        <a href="/skills/super-memory" class="text-accent hover:opacity-80 ml-1 underline underline-offset-2">Start with super-memory →</a>
-      </p>
-    </div>
-  </section>
 
   <section class="border-t border-border bg-bg-card/30">
     <div class="max-w-6xl mx-auto px-6 py-12">
@@ -551,7 +450,7 @@ const verticals = [
         <div class="flex flex-col gap-5">
           <p class="eyebrow text-accent">How it works</p>
           <h2 class="text-3xl md:text-5xl font-bold tracking-tight" style="letter-spacing: -0.03em;">Your agent already does this — it just doesn't know about us yet.</h2>
-          <p class="text-muted text-lg leading-relaxed">Recipes is a single Markdown file. Drop it into your agent's skills directory. From that point on, every time you ask for something Recipes covers, your agent searches the catalog, installs the right skill, and runs it locally.</p>
+          <p class="text-muted text-lg leading-relaxed">Recipes is a single Markdown file. Drop it into your agent's skills directory. From then on your agent searches 84,000+ skills across 13 registries, installs the right one locally, bundles your picks into a cookbook, and syncs that cookbook to every agent in your fleet — versioned, signed, auto-rolled-back.</p>
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">
             {howItWorks.map(s => (
               <div class="flex flex-col gap-2 p-4 bg-bg-card/50 border border-border-soft rounded-xl hover:border-border transition">
@@ -581,18 +480,18 @@ const verticals = [
             <div class="text-success">$ you</div>
             <div class="text-text mb-3">install the recipes skill from recipes.wisechef.ai</div>
             <div class="text-accent">$ agent</div>
-            <div class="text-muted mb-1">→ Fetching SKILL.md (188 lines)</div>
-            <div class="text-muted mb-3">✓ Recipes installed. <span class="text-text">{liveSkillCount}+ skills</span> across reporting · code · scraping · ops · sales.</div>
+            <div class="text-muted mb-1">→ Fetching SKILL.md · wiring MCP (search · install · cookbooks · fleet)</div>
+            <div class="text-muted mb-3">✓ Recipes installed. <span class="text-text">84,000+ skills</span> across 13 registries — searchable now.</div>
             <div class="text-success">$ you</div>
-            <div class="text-text mb-3">give my agent durable cross-session memory</div>
+            <div class="text-text mb-3">build my agents a memory + scraping stack and keep them all in sync</div>
             <div class="text-accent">$ agent</div>
-            <div class="text-muted mb-1">→ Searching marketplace... <span class="text-text">match: super-memory (MIT, open-source)</span></div>
-            <div class="text-muted mb-1">→ Installing skills/super-memory/...</div>
-            <div class="text-muted mb-1">→ Bootstrapping cognee + Postgres + pgvector — <span class="text-success">graph store ready in 47s</span></div>
-            <div class="text-muted mb-1">→ Wiring agent memory hooks — <span class="text-success">3 files patched</span></div>
-            <div class="text-success font-semibold">✓ Memory online. <span class="text-accent">Ask anything from previous sessions.</span></div>
+            <div class="text-muted mb-1">→ Searching ClawHub · skills.sh · curated — <span class="text-text">match: super-memory + web-scraper-pro</span></div>
+            <div class="text-muted mb-1">→ Composing cookbook <span class="text-text">"agent-core"</span> (2 skills, 1 link)</div>
+            <div class="text-muted mb-1">→ Subscribing fleet on <span class="text-text">stable</span> channel — <span class="text-success">3 agents reconciled</span></div>
+            <div class="text-muted mb-1">→ Auto-rollback armed; only changed files pulled (304-cheap)</div>
+            <div class="text-success font-semibold">✓ Fleet in lockstep. <span class="text-accent">Every machine, same signed stack.</span></div>
             <div class="mt-3 inline-flex items-center text-xs">
-              <span class="text-muted">elapsed:</span> <span class="text-success ml-1.5 font-semibold">62s</span>
+              <span class="text-muted">elapsed:</span> <span class="text-success ml-1.5 font-semibold">71s</span>
               <span class="ml-1.5 inline-block w-1.5 h-3 bg-accent animate-pulse"></span>
             </div>
           </div>
@@ -606,7 +505,7 @@ const verticals = [
       <div class="flex flex-col gap-3 mb-12 max-w-2xl">
         <p class="eyebrow text-accent">Skill spotlight</p>
         <h2 class="text-3xl md:text-5xl font-bold tracking-tight" style="letter-spacing: -0.03em;">These are not prompts.<br/>They are <span class="text-accent">products</span>.</h2>
-        <p class="text-muted text-lg">Every skill replaces a SaaS subscription or a freelancer hour. Real working software, run locally by your agent. New: <a href="/skills/larry" class="text-accent hover:opacity-80 underline-offset-2 hover:underline">Larry</a> — autonomous TikTok slideshow marketing, ported from the LarryBrain reference and audited through our discipline-lint and leak-audit gates.</p>
+        <p class="text-muted text-lg">Our 72 curated skills are signed, audited, and fleet-ready — the trusted core inside the 84,000-skill universe. Every one replaces a SaaS subscription or a freelancer hour, run locally by your agent. New: <a href="/skills/larry" class="text-accent hover:opacity-80 underline-offset-2 hover:underline">Larry</a> — autonomous TikTok slideshow marketing, ported from the LarryBrain reference and audited through our discipline-lint and leak-audit gates.</p>
       </div>
       <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
         {spotlight.map(s => {

@@ -43,6 +43,18 @@ import AppShell from '../layouts/AppShell.astro';
         <div class="text-sm text-muted py-8 text-center col-span-full" id="home-fleets-loading">Loading…</div>
       </div>
     </div>
+
+    <!-- Discover public cookbooks — the shareable playlists others published -->
+    <div class="mb-10">
+      <div class="flex items-center justify-between mb-3">
+        <h2 class="text-sm font-semibold uppercase tracking-widest text-muted-soft">Discover cookbooks</h2>
+        <a href="/cookbooks" class="text-xs text-accent hover:opacity-80">Browse all →</a>
+      </div>
+      <p class="text-xs text-muted mb-4">Public, ranked skill bundles you can clone in one line — then subscribe to your fleet.</p>
+      <div id="home-discover" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div class="text-sm text-muted py-8 text-center col-span-full" id="home-discover-loading">Loading…</div>
+      </div>
+    </div>
   </section>
 
   <script>
@@ -95,6 +107,31 @@ import AppShell from '../layouts/AppShell.astro';
               <span class="font-semibold text-text truncate">${(f.name || 'Fleet')}</span>
               <span class="text-xs text-accent">Open →</span>
             </a>`).join('');
+        }
+      }
+      // Discover — public cookbooks (the shareable playlists). Anon-OK endpoint.
+      const dWrap = document.getElementById('home-discover');
+      const dData = await fetchJson('/api/cookbooks/discover?sort=installs&limit=6');
+      const discover = (dData && (dData.cookbooks || dData.items)) || [];
+      if (dWrap) {
+        if (!discover.length) {
+          dWrap.innerHTML = `<a href="/cookbooks" class="col-span-full flex flex-col items-center justify-center gap-2 py-8 rounded-2xl border border-dashed border-border hover:border-accent/50 transition text-center">
+            <span class="text-sm text-text font-medium">Browse public cookbooks</span>
+            <span class="text-xs text-muted">Curated skill bundles, ranked by installs.</span>
+          </a>`;
+        } else {
+          dWrap.innerHTML = discover.map((cb: any) => {
+            const slug = encodeURIComponent(cb.slug || '');
+            const n = cb.skill_count != null ? `${cb.skill_count} skill${cb.skill_count === 1 ? '' : 's'}` : '';
+            const inst = (cb.installs_total || cb.installs_7d) ? `· ${cb.installs_total || cb.installs_7d} installs` : '';
+            const verified = cb.is_verified ? '<span class="text-accent">✓ verified</span>' : '';
+            return `<a href="/cookbooks/p/${slug}" class="flex flex-col gap-2 p-5 rounded-2xl bg-bg-card border border-border hover:border-accent/40 transition">
+              <span class="font-semibold text-text truncate">${(cb.name || 'Untitled')}</span>
+              <span class="text-xs text-muted line-clamp-2">${(cb.description || 'No description')}</span>
+              <span class="text-[11px] text-muted-soft mt-1">${n} ${inst} ${verified}</span>
+              <span class="text-xs text-accent mt-1">View cookbook →</span>
+            </a>`;
+          }).join('');
         }
       }
     })();
