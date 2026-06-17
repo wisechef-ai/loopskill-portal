@@ -1,0 +1,50 @@
+---
+// SkillCover — Spotify-style generated "album art" for a skill.
+// Full-bleed gradient by category + large white monogram + tier + source.
+// Deterministic: same category → same hue. No real images needed (scales to 84k).
+interface Props {
+  slug: string;
+  title?: string;
+  category?: string;
+  tier?: string;
+  source?: string | null; // external registry (clawhub, skills-sh, …) | null = ours
+}
+const { slug, title, category, tier, source } = Astro.props;
+const cat = (category || 'general').toLowerCase();
+// Category → vibrant 2-stop gradient (site palette hues).
+const HUES: Record<string, [string, string]> = {
+  marketing:    ['#1fb6c0', '#0d7d77'],
+  agency:       ['#1fb6c0', '#0d7d77'],
+  research:     ['#a06bff', '#6d28d9'],
+  discovery:    ['#a06bff', '#6d28d9'],
+  content:      ['#c084fc', '#7c3aed'],
+  meta:         ['#c084fc', '#7c3aed'],
+  ops:          ['#ffb446', '#c2410c'],
+  devops:       ['#ffb446', '#c2410c'],
+  data:         ['#ff6e50', '#b91c1c'],
+  planning:     ['#ff6e50', '#b91c1c'],
+  productivity: ['#34d399', '#0f766e'],
+  automation:   ['#34d399', '#0f766e'],
+};
+const grad = HUES[cat] || ['#ffb446', '#c2410c'];
+// Monogram: first letter of the category, huge. Fallback to title initial.
+const mono = (cat[0] || (title || slug)[0] || 'R').toUpperCase();
+const isPro = tier && tier !== 'free';
+const isExt = !!source;
+---
+<div class="skill-cover" style={`background:linear-gradient(135deg, ${grad[0]} 0%, ${grad[1]} 100%);`}>
+  <span class="sc-mono" aria-hidden="true">{mono}</span>
+  <div class="sc-badges">
+    {isPro && <span class="sc-tier">{(tier || 'pro').toUpperCase()}</span>}
+    {isExt && <span class="sc-src">{source}</span>}
+    {!isPro && <span class="sc-tier sc-free">FREE</span>}
+  </div>
+</div>
+<style>
+  .skill-cover { position:relative; width:100%; aspect-ratio:1/1; border-radius:0.6rem; overflow:hidden; }
+  .sc-mono { position:absolute; inset:0; display:flex; align-items:flex-end; justify-content:flex-start; padding:0.5rem 0.7rem; font-size:5rem; font-weight:800; line-height:0.8; color:rgba(255,255,255,0.95); letter-spacing:-0.04em; text-shadow:0 2px 12px rgba(0,0,0,0.25); }
+  .sc-badges { position:absolute; top:0.5rem; right:0.5rem; display:flex; flex-direction:column; align-items:flex-end; gap:0.25rem; }
+  .sc-tier { font-size:0.56rem; font-weight:700; letter-spacing:0.06em; padding:0.15rem 0.4rem; border-radius:0.4rem; background:rgba(0,0,0,0.45); color:#fff; backdrop-filter:blur(4px); }
+  .sc-free { background:rgba(255,255,255,0.92); color:#0a0a0a; }
+  .sc-src { font-size:0.52rem; font-weight:600; letter-spacing:0.04em; padding:0.12rem 0.4rem; border-radius:0.4rem; background:rgba(0,0,0,0.4); color:rgba(255,255,255,0.9); text-transform:lowercase; }
+</style>
