@@ -163,7 +163,7 @@ if (spotlight.length === 0) spotlight = spotlightFallback;
 type RailSkill = { slug: string; title?: string; name?: string; description?: string; category?: string; tier?: string; install_count_total?: number };
 let popularSkills: RailSkill[] = [];
 try {
-  const result = await fetchApi<{ results: RailSkill[] }>('/api/skills/search?is_public=true&page_size=10&sort=install_count_desc');
+  const result = await fetchApi<{ results: RailSkill[] }>('/api/skills/search?limit=12');
   if (result.ok && result.data?.results) popularSkills = result.data.results;
 } catch {} // Rationale: offline build — spotlight fallback keeps the rail non-empty
 if (popularSkills.length === 0) popularSkills = spotlight.map(s => ({ slug: s.slug, title: s.title, name: s.name, category: s.category, tier: s.tier }));

@@ -11,24 +11,34 @@ interface Props {
 }
 const { slug, title, category, tier, source } = Astro.props;
 const cat = (category || 'general').toLowerCase();
-// Category → vibrant 2-stop gradient (site palette hues).
+const grad_palette: [string, string][] = [
+  ['#1fb6c0', '#0d7d77'], // teal
+  ['#a06bff', '#6d28d9'], // violet
+  ['#c084fc', '#7c3aed'], // purple
+  ['#ffb446', '#c2410c'], // amber
+  ['#ff6e50', '#b91c1c'], // warm-red
+  ['#34d399', '#0f766e'], // green
+  ['#60a5fa', '#1d4ed8'], // blue
+];
 const HUES: Record<string, [string, string]> = {
-  marketing:    ['#1fb6c0', '#0d7d77'],
-  agency:       ['#1fb6c0', '#0d7d77'],
-  research:     ['#a06bff', '#6d28d9'],
-  discovery:    ['#a06bff', '#6d28d9'],
-  content:      ['#c084fc', '#7c3aed'],
-  meta:         ['#c084fc', '#7c3aed'],
-  ops:          ['#ffb446', '#c2410c'],
-  devops:       ['#ffb446', '#c2410c'],
-  data:         ['#ff6e50', '#b91c1c'],
-  planning:     ['#ff6e50', '#b91c1c'],
-  productivity: ['#34d399', '#0f766e'],
-  automation:   ['#34d399', '#0f766e'],
+  marketing: grad_palette[0], agency: grad_palette[0],
+  research: grad_palette[1], discovery: grad_palette[1],
+  content: grad_palette[2], meta: grad_palette[2],
+  ops: grad_palette[3], devops: grad_palette[3],
+  data: grad_palette[4], planning: grad_palette[4],
+  productivity: grad_palette[5], automation: grad_palette[5],
 };
-const grad = HUES[cat] || ['#ffb446', '#c2410c'];
-// Monogram: first letter of the category, huge. Fallback to title initial.
-const mono = (cat[0] || (title || slug)[0] || 'R').toUpperCase();
+// Deterministic slug→hue fallback when category is unknown/unmapped (cookbooks,
+// uncategorized skills): hash the slug to a palette index so cards still vary
+// instead of all collapsing to one color.
+function hashIdx(s: string, n: number): number {
+  let h = 0;
+  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
+  return h % n;
+}
+const grad = HUES[cat] || grad_palette[hashIdx(slug, grad_palette.length)];
+// Monogram: first letter of the TITLE (Spotify-style), fallback slug. Varies per card.
+const mono = ((title || slug).trim()[0] || 'R').toUpperCase();
 const isPro = tier && tier !== 'free';
 const isExt = !!source;
 ---
