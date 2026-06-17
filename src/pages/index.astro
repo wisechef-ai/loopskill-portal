@@ -139,7 +139,7 @@ const cookStrip: CookSkill[] = (larryRow ? [larryRow, ...restCook] : restCook).s
 // Spotlight — Pro skill highlights in the hero grid.
 // Phase H (recipes_2005): replaced hardcoded array with live API fetch to eliminate
 // the web-scraper-pro 404. spotlightFallback is used when the API is unreachable at build time.
-type SpotlightSkill = { slug: string; title?: string; name?: string; tier?: string; tagline?: string; description?: string; badge?: string | null; icon?: string };
+type SpotlightSkill = { slug: string; title?: string; name?: string; tier?: string; tagline?: string; description?: string; badge?: string | null; icon?: string; category?: string };
 const spotlightFallback: SpotlightSkill[] = [
   { slug: 'super-memory', name: 'Super Memory', tier: 'free', tagline: 'Open-source agent memory in 60 seconds',
     description: 'Cognee + Postgres + pgvector wired together. MIT-licensed. The pro_open gateway — install free, then upgrade for the rest of the catalog.', badge: 'MIT · Free forever', icon: 'box' },
