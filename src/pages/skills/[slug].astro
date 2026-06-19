@@ -181,9 +181,45 @@ const isOriginalVariant = skillVariant === 'original';
 const originalSourceUrl: string | null = skill?.original_source_url || null;
 const externalResources: Array<{ slug?: string; url: string; relation?: string; description?: string }> =
   Array.isArray(skill?.external_resources) ? skill.external_resources : [];
+
+// JSON-LD: SoftwareApplication with interactionStatistic (real install_count).
+// install_count comes from the API response (Skill.install_count_total backed
+// by the denormalised counter updated on every install telemetry event).
+// We emit interactionStatistic only when the count is ≥ 1 so we never write
+// a zero-install UserInteractionCount into search-engine markup.
+// aggregateRating is intentionally omitted — there is no review/rating source
+// and fabricating one would violate schema.org guidelines and risk penalties.
+const siteURL = 'https://recipes.wisechef.ai';
+const skillSchema = {
+  '@context': 'https://schema.org',
+  '@type': 'SoftwareApplication',
+  name: display.title,
+  description: display.description,
+  url: `${siteURL}/skills/${display.slug}`,
+  applicationCategory: 'DeveloperApplication',
+  operatingSystem: 'Any',
+  offers: {
+    '@type': 'Offer',
+    price: display.tier === 'free' ? '0' : '20',
+    priceCurrency: 'USD',
+    url: display.tier === 'free'
+      ? `${siteURL}/skills/${display.slug}`
+      : `${siteURL}/pricing`,
+  },
+  ...(display.install_count >= 1 ? {
+    interactionStatistic: {
+      '@type': 'InteractionCounter',
+      interactionType: 'https://schema.org/DownloadAction',
+      userInteractionCount: display.install_count,
+    },
+  } : {}),
+};
 ---
 
 <AppShell title={`${display.title} — Recipes`} description={display.description} mode="public" active="search">
+  <Fragment slot="head">
+    <script type="application/ld+json" set:html={JSON.stringify(skillSchema)}></script>
+  </Fragment>
   <section class="max-w-6xl mx-auto px-6 pt-12 pb-12">
     <a href="/skills" class="inline-flex items-center gap-1.5 text-xs text-muted hover:text-text transition mb-8">
       <Icon name="chevron-left" size={12} />
