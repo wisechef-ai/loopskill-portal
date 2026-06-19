@@ -103,6 +103,7 @@ const navItems = [
     <meta name="theme-color" content="#0a0a0a" />
     <title>{ogTitle}</title>
     {isPublic && <script type="application/ld+json" set:html={JSON.stringify(orgSchema)}></script>}
+    <slot name="head" />
   </head>
   <body class="bg-bg text-text font-sans antialiased min-h-screen flex flex-col">
     <script is:inline>
