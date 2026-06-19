@@ -8,7 +8,7 @@
 // (build-time fetch of /api/marketing/snapshot + /api/skills/search, both
 // public/no-key) so it can never drift from the real catalog. If the API is
 // unreachable at build time, a hard fallback keeps the file claim-accurate
-// for the current single-free-seed positioning (super-memory free; rest Pro).
+// for the current two-free-seed positioning (super-memory + recipes-cookbook-reconcile free; rest Pro).
 //
 // Static endpoint — emits dist/llms.txt at build time. No deps.
 import type { APIRoute } from 'astro';
@@ -66,9 +66,9 @@ export const GET: APIRoute = async () => {
 
   const counts = snapRes.data?.counts ?? {};
   const total = counts.skills_total ?? 72;
-  const free = counts.free_skills ?? 1;
+  const free = counts.free_skills ?? 2;
   // Derive paid count from catalog (total - free) so it can never drift from
-  // a stale hard-coded value. /api/skills/search returns total=72, free=1 → paid=71.
+  // a stale hard-coded value. Live: total=72, free=2 → paid=70.
   const pro = counts.pro_skills ?? (total - free);
   const mcpTools = snapRes.data?.mcp_tools ?? [
     'recipes_search',
@@ -110,6 +110,17 @@ export const GET: APIRoute = async () => {
       SITE +
       '/skills/recipes-cookbook-reconcile): free — sync and reconcile your Recipes cookbooks across agents and environments.';
 
+  // Free-skill intro copy — names the free skills explicitly so agent-buyers
+  // see what's free without clicking through. Dynamic so it tracks DB counts.
+  // free===1: "One skill is free (super-memory)"
+  // free===2: "2 skills are free (super-memory, recipes-cookbook-reconcile)"
+  // free>2:   "{N} skills are free" (generic — update the list when new free skills land)
+  const freeIntro = free === 1
+    ? 'One skill is free (super-memory)'
+    : free === 2
+      ? '2 skills are free (super-memory, recipes-cookbook-reconcile)'
+      : `${free} skills are free`;
+
   // Featured = a representative spread of paid skills (super-memory already
   // appears under "Start free"). One per category where possible, so an agent
   // skimming the manifest sees the catalog's breadth, not just one vertical.
@@ -147,7 +158,7 @@ Recipes is a superset of the public agent-skill ecosystem, not just its ${total}
 
   const body = `# Recipes — the vertical skill marketplace for AI agents
 
-> Recipes (by WiseChef) is a curated marketplace of ${total} production-grade, versioned skills for AI coding agents — and a superset of the public agent-skill ecosystem${fedHeadline ? ` (it federates ${fedHeadline} more community skills, so you never need a second hub)` : ''}. Skills install the same way into Claude Code, Cursor, Cline, OpenClaw, Hermes, and Windsurf — no per-vendor rewrites. ${free === 1 ? 'One skill is free (super-memory)' : `${free} skills are free`}; the remaining ${pro} are unlocked with a single $20/mo Pro plan. Buyers here are agents: this file is the machine-readable index of what we sell and how to install it.
+> Recipes (by WiseChef) is a curated marketplace of ${total} production-grade, versioned skills for AI coding agents — and a superset of the public agent-skill ecosystem${fedHeadline ? ` (it federates ${fedHeadline} more community skills, so you never need a second hub)` : ''}. Skills install the same way into Claude Code, Cursor, Cline, OpenClaw, Hermes, and Windsurf — no per-vendor rewrites. ${freeIntro}; the remaining ${pro} are unlocked with a single $20/mo Pro plan. Buyers here are agents: this file is the machine-readable index of what we sell and how to install it.
 
 ## How an agent installs a skill
 Recipes exposes ${mcpTools.length} dedicated MCP tools (not a generic REST wrapper). Point your agent's MCP client at the Recipes server and call:
