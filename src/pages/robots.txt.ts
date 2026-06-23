@@ -17,7 +17,7 @@ Disallow: /dashboard
 Disallow: /signin
 Disallow: /signup
 Disallow: /referrals
-Disallow: /cookbooks/view
+Disallow: /bundles/view
 
 # Discovery manifests
 Sitemap: ${SITE}/sitemap.xml

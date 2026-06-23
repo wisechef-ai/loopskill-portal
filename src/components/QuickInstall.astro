@@ -1,7 +1,7 @@
 ---
 // QuickInstall — portal_0610 J5: the omnipresent, ?ref-attributed quick-install
 // block for a single skill OR a whole cookbook. Drop it on every skill detail
-// page and every cookbook page so the install motion is always one copy away.
+// page and every bundle page so the install motion is always one copy away.
 //
 // HONESTY: shows the REAL motions only.
 //   - skill: the MCP tool call `recipes_install(slug="X")` (the canonical agent
@@ -17,9 +17,9 @@
 // attributable; pages can pass a more specific ref (e.g. "skill-page").
 interface Props {
   kind: 'skill' | 'cookbook';
-  slug: string;                 // skill slug OR cookbook slug
+  slug: string;                 // skill slug OR bundle slug
   cookbookId?: string;          // required for kind='cookbook' (MCP call uses id)
-  visibility?: string;          // cookbook only: 'public' shows the cookbook:// clone line
+  visibility?: string;          // bundle only: 'public' shows the bundle:// clone line
   ref?: string;                 // attribution carrier; default 'portal'
   class?: string;
 }

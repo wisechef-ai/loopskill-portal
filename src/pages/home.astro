@@ -1,6 +1,6 @@
 ---
 // /home — portal_0610 J1 authed landing.
-// PM1 guard: members land on THEIR stuff (cookbooks + fleets + quick actions),
+// PM1 guard: members land on THEIR stuff (bundles + fleets + quick actions),
 // NEVER a marketing hero / earnings calculator. The anonymous marketing landing
 // stays at "/".
 import AppShell from '../layouts/AppShell.astro';
@@ -22,14 +22,14 @@ import AppShell from '../layouts/AppShell.astro';
       </div>
     </header>
 
-    <!-- Your cookbooks -->
+    <!-- Your bundles -->
     <div class="mb-10">
       <div class="flex items-center justify-between mb-3">
         <h2 class="text-sm font-semibold uppercase tracking-widest text-muted-soft">Your bundles</h2>
         <a href="/library" class="text-xs text-accent hover:opacity-80">View library →</a>
       </div>
-      <div id="home-cookbooks" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        <div class="text-sm text-muted py-8 text-center col-span-full" id="home-cookbooks-loading">Loading…</div>
+      <div id="home-bundles" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div class="text-sm text-muted py-8 text-center col-span-full" id="home-bundles-loading">Loading…</div>
       </div>
     </div>
 
@@ -44,7 +44,7 @@ import AppShell from '../layouts/AppShell.astro';
       </div>
     </div>
 
-    <!-- Discover public cookbooks — the shareable playlists others published -->
+    <!-- Discover public bundles — the shareable playlists others published -->
     <div class="mb-10">
       <div class="flex items-center justify-between mb-3">
         <h2 class="text-sm font-semibold uppercase tracking-widest text-muted-soft">Discover bundles</h2>
@@ -70,10 +70,10 @@ import AppShell from '../layouts/AppShell.astro';
         if (g) g.textContent = `Welcome back, ${(me.display_name || me.email || '').split(' ')[0] || ''}`.trim();
       }
 
-      // Cookbooks
-      const cbWrap = document.getElementById('home-cookbooks');
+      // Bundles
+      const cbWrap = document.getElementById('home-bundles');
       const cbData = await fetchJson('/api/cookbooks');
-      const cbooks = (cbData && cbData.cookbooks) || [];
+      const cbooks = (cbData && cbData.bundles) || [];
       if (cbWrap) {
         if (!cbooks.length) {
           cbWrap.innerHTML = `<a href="/composer" class="col-span-full flex flex-col items-center justify-center gap-2 py-10 rounded-2xl border border-dashed border-border hover:border-accent/50 transition text-center">
@@ -109,10 +109,10 @@ import AppShell from '../layouts/AppShell.astro';
             </a>`).join('');
         }
       }
-      // Discover — public cookbooks (the shareable playlists). Anon-OK endpoint.
+      // Discover — public bundles (the shareable playlists). Anon-OK endpoint.
       const dWrap = document.getElementById('home-discover');
       const dData = await fetchJson('/api/cookbooks/discover?sort=installs&limit=6');
-      const discover = (dData && (dData.cookbooks || dData.items)) || [];
+      const discover = (dData && (dData.bundles || dData.items)) || [];
       if (dWrap) {
         if (!discover.length) {
           dWrap.innerHTML = `<a href="/cookbooks" class="col-span-full flex flex-col items-center justify-center gap-2 py-8 rounded-2xl border border-dashed border-border hover:border-accent/50 transition text-center">

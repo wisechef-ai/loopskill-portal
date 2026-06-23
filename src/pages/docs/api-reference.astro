@@ -146,25 +146,25 @@ const telemetryBodyEx = `{
       <p><strong>Errors:</strong> <code>404</code> if no carousel exists for that date.</p>
 
       <!-- ────────────────────────────────── COOKBOOKS ── -->
-      <h2>Cookbooks</h2>
-      <p>All cookbook endpoints require auth (<code>x-api-key</code> header).</p>
+      <h2>Bundles</h2>
+      <p>All bundle endpoints require auth (<code>x-api-key</code> header).</p>
 
       <h3>POST /api/cookbooks</h3>
       <p>Create a new cookbook.</p>
       <pre><code>curl -X POST -H "x-api-key: $RECIPES_API_KEY" \
   -H "Content-Type: application/json" \
-  -d '&#123;"name": "My Team Cookbook"&#125;' \
+  -d '&#123;"name": "My Team Bundle"&#125;' \
   https://recipes.wisechef.ai/api/cookbooks</code></pre>
-      <p><strong>Response:</strong> <code>201</code> with cookbook object including <code>id</code>.</p>
+      <p><strong>Response:</strong> <code>201</code> with bundle object including <code>id</code>.</p>
 
       <h3>GET /api/cookbooks</h3>
-      <p>List all cookbooks for the authenticated account.</p>
+      <p>List all bundles for the authenticated account.</p>
 
       <h3>GET /api/cookbooks/&#123;cookbook_id&#125;</h3>
-      <p>Get a single cookbook with its skill list and version pins.</p>
+      <p>Get a single bundle with its skill list and version pins.</p>
 
       <h3>POST /api/cookbooks/&#123;cookbook_id&#125;/skills</h3>
-      <p>Add a skill to a cookbook (pins to current latest version).</p>
+      <p>Add a skill to a bundle (pins to current latest version).</p>
       <pre><code>curl -X POST -H "x-api-key: $RECIPES_API_KEY" \
   -H "Content-Type: application/json" \
   -d '&#123;"slug": "seo-audit-engine"&#125;' \
@@ -224,7 +224,7 @@ const telemetryBodyEx = `{
           <tr><td><code>400</code></td><td>Missing or invalid parameters</td></tr>
           <tr><td><code>401</code></td><td>Invalid or missing API key</td></tr>
           <tr><td><code>403</code></td><td>Subscription required (skill is premium)</td></tr>
-          <tr><td><code>404</code></td><td>Skill / cookbook / resource not found</td></tr>
+          <tr><td><code>404</code></td><td>Skill / bundle / resource not found</td></tr>
           <tr><td><code>429</code></td><td>Rate limited — check <code>Retry-After</code> header</td></tr>
           <tr><td><code>503</code></td><td>Temporary service issue — retry with backoff</td></tr>
         </tbody>

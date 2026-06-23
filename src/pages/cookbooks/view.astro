@@ -1,8 +1,8 @@
 ---
-// loopclose_3005 Phase E — Cookbook web visualization: /cookbooks/<id>
+// loopclose_3005 Phase E — Bundle web visualization: /bundles/<id>
 //
 // REQUIRED read-surface (Adam 2026-05-31): a paying Pro/Pro+ user must be able
-// to OPEN their cookbook and SEE its skills directly — without asking an agent
+// to OPEN their bundle and SEE its skills directly — without asking an agent
 // or running a CLI. Two views, both load-bearing:
 //   1. List/table (primary job) — what skills are in here, at a glance, with
 //      pinned/floating + tailored/catalog badges + corrections-absorbed count.
@@ -21,41 +21,41 @@ const API_BASE = import.meta.env.PUBLIC_RECIPES_API_BASE || "https://recipes.wis
 ---
 
 <AppShell mode="public"
-  title="Cookbook — LoopSkill"
-  description="View the skills in your cookbook: list and graph views, with tailored-vs-catalog and pinned badges."
+  title="Bundle — LoopSkill"
+  description="View the skills in your bundle: list and graph views, with tailored-vs-catalog and pinned badges."
 >
   <main class="cb-view max-w-5xl mx-auto px-6 pt-12 pb-16">
     <header class="flex flex-col gap-2 mb-8">
       <a href="/library" class="text-xs text-muted hover:text-accent transition inline-flex items-center gap-1.5">← Library</a>
       <div class="flex items-center justify-between gap-4 flex-wrap">
-        <h1 id="cb-name" class="text-3xl md:text-4xl font-semibold tracking-tight">Cookbook</h1>
+        <h1 id="cb-name" class="text-3xl md:text-4xl font-semibold tracking-tight">Bundle</h1>
         <div id="cb-stats" class="text-sm text-muted"></div>
       </div>
       <p id="cb-desc" class="text-muted leading-relaxed max-w-2xl"></p>
     </header>
 
     <!-- States -->
-    <section id="state-loading" class="text-muted text-sm py-10">Loading cookbook…</section>
+    <section id="state-loading" class="text-muted text-sm py-10">Loading bundle…</section>
 
     <section id="state-no-key" hidden class="bg-bg-card border border-border rounded-2xl p-6">
       <h2 class="text-lg font-semibold mb-2">Connect your API key</h2>
-      <p class="text-sm text-muted mb-4">This page reads your cookbook over the API. Generate or paste a LoopSkill API key to continue.</p>
+      <p class="text-sm text-muted mb-4">This page reads your bundle over the API. Generate or paste a LoopSkill API key to continue.</p>
       <a href="/library" class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-accent text-bg font-semibold text-sm hover:bg-accent-soft transition">Go to Library</a>
     </section>
 
     <section id="state-upgrade" hidden class="bg-bg-card border border-amber-500/40 rounded-2xl p-6">
       <h2 class="text-lg font-semibold mb-2">Pro tier required</h2>
-      <p class="text-sm text-muted mb-4">Cookbooks are a Pro / Pro+ feature. Upgrade to create and view cookbooks.</p>
+      <p class="text-sm text-muted mb-4">Bundles are a Pro / Pro+ feature. Upgrade to create and view bundles.</p>
       <a href="/pricing" class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-accent text-bg font-semibold text-sm hover:bg-accent-soft transition">See pricing</a>
     </section>
 
     <section id="state-notfound" hidden class="bg-bg-card border border-border rounded-2xl p-6">
-      <h2 class="text-lg font-semibold mb-2">Cookbook not found</h2>
-      <p class="text-sm text-muted">This cookbook doesn't exist, or it isn't on your account.</p>
+      <h2 class="text-lg font-semibold mb-2">Bundle not found</h2>
+      <p class="text-sm text-muted">This bundle doesn't exist, or it isn't on your account.</p>
     </section>
 
     <section id="state-error" hidden class="bg-bg-card border border-red-500/40 rounded-2xl p-6">
-      <h2 class="text-lg font-semibold mb-2">Couldn't load cookbook</h2>
+      <h2 class="text-lg font-semibold mb-2">Couldn't load bundle</h2>
       <p id="error-detail" class="text-sm text-muted"></p>
     </section>
 
@@ -112,7 +112,7 @@ const API_BASE = import.meta.env.PUBLIC_RECIPES_API_BASE || "https://recipes.wis
         <button id="tab-graph" class="cb-tab px-3 py-1.5 rounded-lg text-sm font-medium">Graph</button>
       </div>
 
-      <!-- Empty cookbook -->
+      <!-- Empty bundle -->
       <div id="cb-empty" hidden class="bg-bg-card border border-border rounded-2xl p-8 text-center">
         <p class="text-sm text-muted">This cookbook has no skills yet. Add one with your agent (<code class="text-accent">recipes_cookbook_attach</code>) or the CLI.</p>
       </div>
@@ -163,10 +163,10 @@ const API_BASE = import.meta.env.PUBLIC_RECIPES_API_BASE || "https://recipes.wis
 </style>
 
 <script define:vars={{ API_BASE }}>
-  // ── Resolve cookbook id: ?id=<uuid> (primary) or trailing path segment ──
+  // ── Resolve bundle id: ?id=<uuid> (primary) or trailing path segment ──
   // Static Astro can't pre-render per-user UUID routes, so this page lives at
-  // /cookbooks/view?id=<uuid>. A Caddy rewrite (/cookbooks/<id> →
-  // /cookbooks/view?id=<id>) gives the clean URL in prod; the path fallback
+  // /bundles/view?id=<uuid>. A Caddy rewrite (/bundles/<id> →
+  // /bundles/view?id=<id>) gives the clean URL in prod; the path fallback
   // keeps it working if that rewrite is ever bypassed.
   const cookbookId = (() => {
     const q = new URLSearchParams(location.search).get("id");
@@ -228,7 +228,7 @@ const API_BASE = import.meta.env.PUBLIC_RECIPES_API_BASE || "https://recipes.wis
     hide("state-loading");
     show("content");
 
-    $("cb-name").textContent = cb.name || "Cookbook";
+    $("cb-name").textContent = cb.name || "Bundle";
     if (cb.description) $("cb-desc").textContent = cb.description;
 
     // portal_0610 J5 — populate the omnipresent quick-install for this cookbook.
@@ -286,7 +286,7 @@ const API_BASE = import.meta.env.PUBLIC_RECIPES_API_BASE || "https://recipes.wis
     wireQuickInstallCopy();
   }
 
-  // portal_0610 J5 — copy handlers for the cookbook quick-install block.
+  // portal_0610 J5 — copy handlers for the bundle quick-install block.
   function wireQuickInstallCopy() {
     document.querySelectorAll(".cb-qi-copy").forEach((btn) => {
       if (btn.__wired) return; btn.__wired = true;
@@ -390,7 +390,7 @@ const API_BASE = import.meta.env.PUBLIC_RECIPES_API_BASE || "https://recipes.wis
     });
   }
 
-  // ── Dependency-free force-graph (cookbooks are ≤200 nodes) ──────────────
+  // ── Dependency-free force-graph (bundles are ≤200 nodes) ──────────────
   function setupGraph(skills) {
     const svg = $("cb-graph-svg");
     const container = $("graph-container");

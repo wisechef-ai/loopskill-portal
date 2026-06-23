@@ -1,10 +1,10 @@
 ---
-// spotify_0608 Ph F — Public cookbook DISCOVER feed: /cookbooks
+// spotify_0608 Ph F — Public bundle DISCOVER feed: /bundles
 //
 // The Spotify "browse" surface: a ranked, anonymous-reachable feed of public
 // cookbooks. Data source: GET /api/cookbooks/discover (Ph B — public, ranked
 // by real installs with test/CI excluded; sort=installs|newest). Each card
-// links to /cookbooks/p/<slug> (the public cookbook page with the one-line
+// links to /bundles/p/<slug> (the public bundle page with the one-line
 // clone).
 //
 // SEO note: the static shell (h1, intro, JSON-LD) renders at build time so the
@@ -92,16 +92,16 @@ const API_BASE = import.meta.env.PUBLIC_RECIPES_API_BASE || "https://recipes.wis
     render(data.cookbooks || []);
   }
 
-  function render(cookbooks) {
+  function render(bundles) {
     hide("state-loading");
-    if (!cookbooks.length) { show("state-empty"); return; }
+    if (!bundles.length) { show("state-empty"); return; }
     const grid = $("cb-grid");
     grid.innerHTML = "";
-    for (const cb of cookbooks) {
+    for (const cb of bundles) {
       const ref = cb.ref ? `?ref=${encodeURIComponent(cb.ref)}` : "";
       const a = document.createElement("a");
       a.className = "cb-card";
-      a.href = `/cookbooks/p/${encodeURIComponent(cb.slug)}${ref}`;
+      a.href = `/bundles/p/${encodeURIComponent(cb.slug)}${ref}`;
 
       const name = document.createElement("div");
       name.className = "font-semibold text-text";

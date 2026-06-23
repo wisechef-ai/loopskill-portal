@@ -5,15 +5,15 @@ import Icon from '../components/Icon.astro';
 ---
 
 <AppShell mode="public"
-  title="Your Cookbook — LoopSkill"
-  description="Your personal Cookbook syncs skills across all your agents. Auto-created when you install your first skill on Pro tier."
+  title="Your Bundle — LoopSkill"
+  description="Your personal Bundle syncs skills across all your agents. Auto-created when you install your first skill on Pro tier."
 >
   <section class="max-w-4xl mx-auto px-6 pt-16 pb-12">
     <div class="flex flex-col gap-3 mb-10">
       <p class="eyebrow">Pro tier</p>
-      <h1 class="text-4xl md:text-5xl font-semibold tracking-tight">Your Cookbook</h1>
+      <h1 class="text-4xl md:text-5xl font-semibold tracking-tight">Your Bundle</h1>
       <p class="text-lg text-muted leading-relaxed max-w-2xl">
-        Your Cookbook is automatically created when you install your first skill on Pro tier.
+        Your Bundle is automatically created when you install your first skill on Pro tier.
         We track which skills you've added, customized, or hidden — and sync those across all your agents.
       </p>
     </div>
@@ -26,7 +26,7 @@ import Icon from '../components/Icon.astro';
         </div>
         <h3 class="text-base font-semibold">Auto-created</h3>
         <p class="text-sm text-muted leading-relaxed">
-          Install your first skill and your personal Cookbook is created automatically.
+          Install your first skill and your personal Bundle is created automatically.
           No setup required — it's ready when you are.
         </p>
       </div>
@@ -38,7 +38,7 @@ import Icon from '../components/Icon.astro';
         <h3 class="text-base font-semibold">Tracks your changes</h3>
         <p class="text-sm text-muted leading-relaxed">
           We track which skills you've added, customized, or hidden.
-          Your Cookbook reflects exactly what's running on your agents.
+          Your Bundle reflects exactly what's running on your agents.
         </p>
       </div>
 
@@ -54,12 +54,12 @@ import Icon from '../components/Icon.astro';
       </div>
     </div>
 
-    <!-- Wireframe mock — visual representation of a Cookbook -->
+    <!-- Wireframe mock — visual representation of a Bundle -->
     <div class="bg-bg-card border border-border rounded-2xl p-6 mb-10">
       <div class="flex items-center justify-between gap-3 mb-5">
         <div>
           <p class="eyebrow">Preview</p>
-          <h2 class="text-xl font-semibold mt-1">Your Cookbook · Pro tier</h2>
+          <h2 class="text-xl font-semibold mt-1">Your Bundle · Pro tier</h2>
         </div>
         <span class="text-[10px] uppercase tracking-wider px-2.5 py-1 rounded-full border border-border text-muted-soft">Pro</span>
       </div>
@@ -112,7 +112,7 @@ import Icon from '../components/Icon.astro';
       <div class="flex flex-col gap-3">
         {[
           {
-            q: 'When is my Cookbook created?',
+            q: 'When is my Bundle created?',
             a: 'Automatically when you install your first skill on Pro tier. You never need to set it up manually.',
           },
           {
@@ -121,11 +121,11 @@ import Icon from '../components/Icon.astro';
           },
           {
             q: 'What does "hidden" mean?',
-            a: 'Skills you\'ve chosen not to run. They stay in your Cookbook but won\'t be installed on your agents during sync.',
+            a: 'Skills you\'ve chosen not to run. They stay in your Bundle but won\'t be installed on your agents during sync.',
           },
           {
             q: 'How does syncing work across agents?',
-            a: 'Each agent in your fleet syncs from your personal Cookbook. Install a skill once and it propagates everywhere. Remove or hide it and it\'s gone from all agents on the next sync.',
+            a: 'Each agent in your fleet syncs from your personal Bundle. Install a skill once and it propagates everywhere. Remove or hide it and it\'s gone from all agents on the next sync.',
           },
         ].map(faq => (
           <details class="group bg-bg-card border border-border rounded-xl px-5 py-4 open:border-accent/40 transition">

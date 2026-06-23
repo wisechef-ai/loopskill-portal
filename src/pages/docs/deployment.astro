@@ -4,7 +4,7 @@ import AppShell from '../../layouts/AppShell.astro';
 
 <AppShell mode="public"
   title="Client deployment — LoopSkill Docs"
-  description="How Pro+ customers push cookbooks to client agents: create cookbook, assign endpoint API key, client installs meta-skill, cookbook auto-syncs."
+  description="How Pro+ customers push bundles to client agents: create bundle, assign endpoint API key, client installs meta-skill, bundle auto-syncs."
 >
   <section class="max-w-3xl mx-auto px-6 pt-16 pb-24">
     <p class="eyebrow mb-3">Docs · Deployment</p>
@@ -12,7 +12,7 @@ import AppShell from '../../layouts/AppShell.astro';
     <!-- Phase C gating banner -->
     <div class="bg-yellow-500/10 border border-yellow-500/40 rounded p-4 mb-8">
       <p class="text-sm text-yellow-200">
-        <strong>Coming Q2 2026 with per-cookbook API keys and client deployment.</strong>
+        <strong>Coming Q2 2026 with per-bundle API keys and client deployment.</strong>
         The deployment pipeline described here ships as part of Phase C.
         This page documents the intended flow so you can plan your client onboarding.
         Everything described below is forward-looking and will be updated when Phase C ships.
@@ -20,10 +20,10 @@ import AppShell from '../../layouts/AppShell.astro';
     </div>
 
     <h1 class="text-4xl md:text-5xl font-semibold tracking-tight mb-6">
-      Deploying cookbooks to client agents
+      Deploying bundles to client agents
     </h1>
     <p class="text-muted text-lg leading-relaxed mb-12">
-      Pro+ lets you push a pre-built skill bundle — a cookbook — straight into an agent you
+      Pro+ lets you push a pre-built skill bundle — a bundle — straight into an agent you
       operate for a client. One install command. Stays in sync. No LoopSkill branding on the
       client side unless you want it.
     </p>
@@ -37,7 +37,7 @@ import AppShell from '../../layouts/AppShell.astro';
       </li>
       <li class="flex items-start gap-2">
         <svg width="16" height="16" viewBox="0 0 16 16" fill="none" class="text-success mt-0.5 shrink-0"><path d="M3 8.5L6 11.5L13 4.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
-        <span>At least one cookbook created in your <a href="/library" class="text-accent hover:opacity-80 underline">library</a></span>
+        <span>At least one bundle created in your <a href="/library" class="text-accent hover:opacity-80 underline">library</a></span>
       </li>
       <li class="flex items-start gap-2">
         <svg width="16" height="16" viewBox="0 0 16 16" fill="none" class="text-success mt-0.5 shrink-0"><path d="M3 8.5L6 11.5L13 4.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
@@ -60,15 +60,15 @@ import AppShell from '../../layouts/AppShell.astro';
           <div class="w-px flex-1 bg-border mt-2"></div>
         </div>
         <div class="pb-6">
-          <h3 class="text-base font-semibold text-text mb-2">Create a cookbook</h3>
+          <h3 class="text-base font-semibold text-text mb-2">Create a bundle</h3>
           <p class="text-sm text-muted mb-3">
             In <a href="/library" class="text-accent hover:opacity-80 underline">/library</a>, click
-            <strong>New cookbook</strong>. Give it a name (visible only to you), and select the
+            <strong>New bundle</strong>. Give it a name (visible only to you), and select the
             skills you want to include. Pin versions or track latest — your choice.
           </p>
           <p class="text-sm text-muted">
-            Set visibility to <strong class="text-text">Private</strong> if this cookbook is
-            client-specific. Public cookbooks are discoverable by anyone with the URL.
+            Set visibility to <strong class="text-text">Private</strong> if this bundle is
+            client-specific. Public bundles are discoverable by anyone with the URL.
           </p>
         </div>
       </div>
@@ -81,13 +81,13 @@ import AppShell from '../../layouts/AppShell.astro';
         <div class="pb-6">
           <h3 class="text-base font-semibold text-text mb-2">Assign an endpoint API key</h3>
           <p class="text-sm text-muted mb-3">
-            From the cookbook detail view, click <strong>Assign key</strong>. You'll create a
-            labeled API key scoped to this cookbook — for example,
+            From the bundle detail view, click <strong>Assign key</strong>. You'll create a
+            labeled API key scoped to this bundle — for example,
             <code class="text-xs bg-bg-elev rounded px-1">acme-client-prod</code>.
           </p>
           <p class="text-sm text-muted">
             This key will only serve skills in this cookbook. Even if someone guesses or leaks the
-            key, they can't access your other skills or other cookbooks.
+            key, they can't access your other skills or other bundles.
           </p>
         </div>
       </div>
@@ -100,8 +100,8 @@ import AppShell from '../../layouts/AppShell.astro';
         <div class="pb-6">
           <h3 class="text-base font-semibold text-text mb-2">Give your client the install command</h3>
           <p class="text-sm text-muted mb-3">
-            Copy the one-line meta-skill install command from the cookbook detail view. It includes
-            the cookbook-scoped key pre-filled:
+            Copy the one-line meta-skill install command from the bundle detail view. It includes
+            the bundle-scoped key pre-filled:
           </p>
           <pre class="bg-[#0d0d0d] border border-border rounded-xl p-4 text-sm text-text overflow-x-auto"><code>RECIPES_API_KEY=rec_live_cbk_... \
   curl -sL https://recipes.wisechef.ai/skill \
@@ -118,9 +118,9 @@ import AppShell from '../../layouts/AppShell.astro';
           <div class="w-px flex-1 bg-border mt-2"></div>
         </div>
         <div class="pb-6">
-          <h3 class="text-base font-semibold text-text mb-2">Cookbook auto-syncs</h3>
+          <h3 class="text-base font-semibold text-text mb-2">Bundle auto-syncs</h3>
           <p class="text-sm text-muted">
-            The meta-skill fetches the cookbook manifest on every poll cycle (default: every 15 minutes).
+            The meta-skill fetches the bundle manifest on every poll cycle (default: every 15 minutes).
             When you push an update — adding a skill, bumping a version, removing something outdated —
             all agents using that key receive the change on their next sync automatically.
           </p>
@@ -132,8 +132,8 @@ import AppShell from '../../layouts/AppShell.astro';
     <!-- Updates -->
     <h2 class="text-xl font-semibold text-text mb-4">Pushing updates</h2>
     <p class="text-muted mb-4">
-      Edit the cookbook in your library: add skills, remove skills, or change version pins.
-      Save. Done. Every agent that installed via the cookbook-scoped key picks up the update
+      Edit the bundle in your library: add skills, remove skills, or change version pins.
+      Save. Done. Every agent that installed via the bundle-scoped key picks up the update
       within one poll cycle — there is no push command, no client-side action required.
     </p>
     <p class="text-muted mb-10">
@@ -153,7 +153,7 @@ import AppShell from '../../layouts/AppShell.astro';
       </li>
       <li class="flex items-start gap-2">
         <svg width="16" height="16" viewBox="0 0 16 16" fill="none" class="text-success mt-0.5 shrink-0"><path d="M3 8.5L6 11.5L13 4.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
-        <span>The cookbook-scoped API key URL path does not expose your account name or any identifiable information.</span>
+        <span>The bundle-scoped API key URL path does not expose your account name or any identifiable information.</span>
       </li>
       <li class="flex items-start gap-2">
         <svg width="16" height="16" viewBox="0 0 16 16" fill="none" class="text-success mt-0.5 shrink-0"><path d="M3 8.5L6 11.5L13 4.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
@@ -163,11 +163,11 @@ import AppShell from '../../layouts/AppShell.astro';
 
     <div class="p-6 bg-bg-card border border-border rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
       <div>
-        <p class="text-sm font-semibold text-text">Learn about cookbooks first</p>
-        <p class="text-sm text-muted mt-1">See what a cookbook is, visibility options, and how versions work.</p>
+        <p class="text-sm font-semibold text-text">Learn about bundles first</p>
+        <p class="text-sm text-muted mt-1">See what a bundle is, visibility options, and how versions work.</p>
       </div>
-      <a href="/docs/cookbooks" class="shrink-0 inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold border border-border hover:border-accent text-text transition">
-        Cookbooks →
+      <a href="/docs/bundles" class="shrink-0 inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold border border-border hover:border-accent text-text transition">
+        Bundles →
       </a>
     </div>
   </section>

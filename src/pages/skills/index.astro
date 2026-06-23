@@ -173,12 +173,12 @@ for (const s of skills) {
 }
 
 // Subset filter — maps skill_variant to subset names
-// variant=original → pantry, variant=custom → menu, cookbook handled client-side
+// variant=original → pantry, variant=custom → menu, bundle handled client-side
 const subsets = ['pantry', 'menu', 'cookbook'] as const;
 const subsetLabel: Record<string, string> = {
   pantry: 'Pantry',
   menu: 'Menu',
-  cookbook: 'Cookbook',
+  bundle: 'Bundle',
 };
 
 // Derive subset from skill_variant
@@ -203,7 +203,7 @@ for (const s of skills) {
       <div class="flex flex-col gap-2">
         <p class="eyebrow">Catalog</p>
         <h1 class="text-4xl md:text-5xl font-semibold tracking-tight" id="skills-heading">{total} curated skills + the whole ecosystem.</h1>
-        <p class="text-muted">Production-grade skills for AI integrators, solo operators, and agent fleets. Free skills to start. Pro tier $20/mo (1 seat) unlocks the full library; Pro+ $100/mo gives you up to 200 cookbooks, fleet-wide cookbook sync, and the framework installer.</p>
+        <p class="text-muted">Production-grade skills for AI integrators, solo operators, and agent fleets. Free skills to start. Pro tier $20/mo (1 seat) unlocks the full library; Pro+ $100/mo gives you up to 200 bundles, fleet-wide bundle sync, and the framework installer.</p>
         {fetchError && <p class="text-xs text-muted-soft">(showing seed data — API: {fetchError})</p>}
         {/* fedui_0604 Unit B + rail-rework: dual count made prominent — the 84k+
             community number is the product's biggest differentiator; show it as
@@ -354,7 +354,7 @@ for (const s of skills) {
 
     {/* Tier + search filter row */}
     <div class="flex flex-col gap-3 mb-6">
-      {/* Subset filter chips — Pantry / Menu / Cookbook */}
+      {/* Subset filter chips — Pantry / Menu / Bundle */}
       <div class="flex flex-wrap gap-2 items-center">
         <span class="text-[10px] uppercase tracking-wider text-muted-soft">Subset:</span>
         <button data-subset-filter="all" class="subset-pill text-[11px] px-2.5 py-1 rounded-full border border-accent text-accent bg-accent/10 transition">All</button>
@@ -527,17 +527,17 @@ for (const s of skills) {
               {installable && (
                 <div class="atc-wrap relative inline-block mt-3" data-atc-root>
                   <button type="button" class="atc-btn inline-flex items-center gap-1.5 rounded-lg border border-border-soft text-text hover:border-accent hover:text-accent transition font-semibold px-3 py-1.5 text-xs" data-atc-slug={s.slug} data-atc-external={s.source} aria-haspopup="true" aria-expanded="false">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg><span class="atc-label">Add to cookbook</span>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg><span class="atc-label">Add to bundle</span>
                     <svg width="10" height="10" viewBox="0 0 12 12" fill="none" class="atc-caret transition-transform" aria-hidden="true"><path d="M3 4.5 6 7.5 9 4.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
                   </button>
                   <div class="atc-menu hidden absolute right-0 z-30 mt-1 w-64 rounded-xl border border-border bg-bg-card shadow-xl p-1.5" role="menu">
                     <div class="atc-list flex flex-col gap-0.5 max-h-56 overflow-y-auto"></div>
-                    <div class="atc-loading px-3 py-2 text-xs text-muted">Loading your cookbooks…</div>
+                    <div class="atc-loading px-3 py-2 text-xs text-muted">Loading your bundles…</div>
                     <div class="atc-signin hidden px-3 py-3 text-xs text-muted"><a href="/signup" class="text-accent hover:underline font-semibold">Sign in</a> to save skills to a cookbook.</div>
-                    <div class="atc-empty hidden px-3 py-2 text-xs text-muted">No cookbooks yet — create one below.</div>
+                    <div class="atc-empty hidden px-3 py-2 text-xs text-muted">No bundles yet — create one below.</div>
                     <div class="atc-cap hidden px-3 py-2 text-xs text-amber-300">Skill cap reached. <a href="/pricing" class="text-accent hover:underline">Upgrade</a>.</div>
                     <div class="border-t border-border-soft mt-1 pt-1"><form class="atc-new flex items-center gap-1.5 px-1.5 py-1">
-                      <input type="text" class="atc-new-name flex-1 rounded-md border border-border-soft bg-bg px-2 py-1 text-xs text-text placeholder:text-muted focus:border-accent focus:outline-none" placeholder="＋ New cookbook…" maxlength="80"/>
+                      <input type="text" class="atc-new-name flex-1 rounded-md border border-border-soft bg-bg px-2 py-1 text-xs text-text placeholder:text-muted focus:border-accent focus:outline-none" placeholder="＋ New bundle…" maxlength="80"/>
                       <button type="submit" class="atc-new-btn rounded-md bg-accent text-bg text-xs font-semibold px-2.5 py-1 hover:opacity-90 transition">Add</button>
                     </form></div>
                   </div>
@@ -685,7 +685,7 @@ for (const s of skills) {
     });
 
     // Restore the at-rest superset (default server-rendered cards) and re-wire
-    // their Add-to-cookbook pickers. Called when the search query is cleared.
+    // their Add-to-bundle pickers. Called when the search query is cleared.
     function restoreDefaultCommunity() {
       if (!communityGrid) return;
       communityGrid.innerHTML = defaultCommunity;
@@ -723,16 +723,16 @@ for (const s of skills) {
       const picker = installable
         ? '<div class="atc-wrap relative inline-block mt-3" data-atc-root>' +
             '<button type="button" class="atc-btn inline-flex items-center gap-1.5 rounded-lg border border-border-soft text-text hover:border-accent hover:text-accent transition font-semibold px-3 py-1.5 text-xs" data-atc-slug="' + escHtml(s.slug) + '" data-atc-external="' + escHtml(s.source) + '" aria-haspopup="true" aria-expanded="false">' +
-              '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg><span class="atc-label">Add to cookbook</span>' +
+              '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg><span class="atc-label">Add to bundle</span>' +
               '<svg width="10" height="10" viewBox="0 0 12 12" fill="none" class="atc-caret transition-transform" aria-hidden="true"><path d="M3 4.5 6 7.5 9 4.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></button>' +
             '<div class="atc-menu hidden absolute right-0 z-30 mt-1 w-64 rounded-xl border border-border bg-bg-card shadow-xl p-1.5" role="menu">' +
               '<div class="atc-list flex flex-col gap-0.5 max-h-56 overflow-y-auto"></div>' +
-              '<div class="atc-loading px-3 py-2 text-xs text-muted">Loading your cookbooks…</div>' +
+              '<div class="atc-loading px-3 py-2 text-xs text-muted">Loading your bundles…</div>' +
               '<div class="atc-signin hidden px-3 py-3 text-xs text-muted"><a href="/signup" class="text-accent hover:underline font-semibold">Sign in</a> to save skills to a cookbook.</div>' +
-              '<div class="atc-empty hidden px-3 py-2 text-xs text-muted">No cookbooks yet — create one below.</div>' +
+              '<div class="atc-empty hidden px-3 py-2 text-xs text-muted">No bundles yet — create one below.</div>' +
               '<div class="atc-cap hidden px-3 py-2 text-xs text-amber-300">Skill cap reached. <a href="/pricing" class="text-accent hover:underline">Upgrade</a>.</div>' +
               '<div class="border-t border-border-soft mt-1 pt-1"><form class="atc-new flex items-center gap-1.5 px-1.5 py-1">' +
-                '<input type="text" class="atc-new-name flex-1 rounded-md border border-border-soft bg-bg px-2 py-1 text-xs text-text placeholder:text-muted focus:border-accent focus:outline-none" placeholder="＋ New cookbook…" maxlength="80"/>' +
+                '<input type="text" class="atc-new-name flex-1 rounded-md border border-border-soft bg-bg px-2 py-1 text-xs text-text placeholder:text-muted focus:border-accent focus:outline-none" placeholder="＋ New bundle…" maxlength="80"/>' +
                 '<button type="submit" class="atc-new-btn rounded-md bg-accent text-bg text-xs font-semibold px-2.5 py-1 hover:opacity-90 transition">Add</button>' +
               '</form></div></div></div>'
         : '';

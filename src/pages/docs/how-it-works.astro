@@ -131,11 +131,11 @@ anonymous telemetry ping (optional)`}</code></pre>
         <li>
           <strong>Fleet keys (Operator+ tier):</strong> issue a <code>rec_fleet_*</code> key
           scoped to a specific cookbook. Each agent presents the fleet key; the API enforces the
-          cookbook's skill allowlist. See <a href="/docs/fleet">Fleet guide</a>.
+          bundle's skill allowlist. See <a href="/docs/fleet">Fleet guide</a>.
         </li>
       </ul>
       <p>
-        Skills installed from a cookbook are version-pinned. The cookbook owner controls when
+        Skills installed from a bundle are version-pinned. The bundle owner controls when
         to advance the pin — agents do not auto-upgrade outside of an explicit sync call.
       </p>
 

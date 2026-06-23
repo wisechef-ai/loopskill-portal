@@ -1,7 +1,7 @@
 ---
 // /composer — portal_0610 J2: the hero authed surface (L3).
 // Multi-select basket over the UNIFIED catalog (curated + federation). Search
-// once, add N skills to a working cookbook, reorder, flip visibility inline,
+// once, add N skills to a working bundle, reorder, flip visibility inline,
 // tier-ghost gated skills (L4), per-skill version-pin (curated-only, L5), and a
 // live output panel that emits the share link + per-skill install lines.
 //
@@ -16,11 +16,11 @@ import AppShell from '../layouts/AppShell.astro';
     <header class="mb-6 flex items-end justify-between gap-4 flex-wrap">
       <div>
         <h1 class="text-2xl font-semibold tracking-tight">Composer</h1>
-        <p class="text-sm text-muted mt-1">Search the catalog, multi-select, order, share. Compose a cookbook in under a minute.</p>
+        <p class="text-sm text-muted mt-1">Search the catalog, multi-select, order, share. Compose a bundle in under a minute.</p>
       </div>
       <div class="flex items-center gap-2">
-        <select id="composer-cookbook" class="px-3 py-2 rounded-lg bg-bg-card border border-border text-sm text-text focus:outline-none focus:border-accent max-w-[16rem]">
-          <option value="">＋ New cookbook…</option>
+        <select id="composer-bundle" class="px-3 py-2 rounded-lg bg-bg-card border border-border text-sm text-text focus:outline-none focus:border-accent max-w-[16rem]">
+          <option value="">＋ New bundle…</option>
         </select>
       </div>
     </header>
@@ -67,10 +67,10 @@ import AppShell from '../layouts/AppShell.astro';
         <!-- Live output panel: share link + install lines -->
         <div class="bg-bg-card border border-border rounded-2xl p-5" id="output-panel">
           <h2 class="text-sm font-semibold uppercase tracking-widest text-muted-soft mb-3">Output</h2>
-          <div id="output-empty" class="text-xs text-muted py-2">Compose a cookbook to get its share link + install lines.</div>
+          <div id="output-empty" class="text-xs text-muted py-2">Compose a bundle to get its share link + install lines.</div>
           <div id="output-body" class="hidden flex-col gap-3">
             <div>
-              <div class="text-[10px] uppercase tracking-wider text-muted-soft mb-1">Share link (whole cookbook)</div>
+              <div class="text-[10px] uppercase tracking-wider text-muted-soft mb-1">Share link (whole bundle)</div>
               <div class="flex items-center gap-1.5">
                 <code id="out-share" class="font-mono text-[11px] bg-bg-elev border border-border rounded px-2 py-1.5 flex-1 break-all"></code>
                 <button data-copy="out-share" class="copy-btn px-2 py-1.5 rounded bg-accent text-bg text-[11px] font-semibold shrink-0">Copy</button>
@@ -133,7 +133,7 @@ import AppShell from '../layouts/AppShell.astro';
       setTimeout(() => { el!.style.transition = 'opacity .4s'; el!.style.opacity = '0'; }, 2600);
     }
 
-    // ── load me (tier) + cookbooks dropdown ────────────────────────────
+    // ── load me (tier) + bundles dropdown ────────────────────────────
     async function boot() {
       try { const r = await api('/api/auth/me'); if (r.ok) { const u = await r.json();
         const t = (u.subscription_tier || 'free').toLowerCase();
@@ -141,9 +141,9 @@ import AppShell from '../layouts/AppShell.astro';
         callerTier = active ? t : 'free';
       } } catch {}
 
-      const sel = $('composer-cookbook') as HTMLSelectElement;
+      const sel = $('composer-bundle') as HTMLSelectElement;
       try { const r = await api('/api/cookbooks'); if (r.ok) { const d = await r.json();
-        const cbs = (d.cookbooks || d.items || d || []);
+        const cbs = (d.bundles || d.items || d || []);
         cbs.forEach((cb: any) => { const o = document.createElement('option'); o.value = cb.id; o.textContent = cb.name; sel.appendChild(o); });
       } } catch {}
 
@@ -246,13 +246,13 @@ import AppShell from '../layouts/AppShell.astro';
       }
     }
 
-    // ── ensure a cookbook exists (create on first add if "new") ─────────
+    // ── ensure a bundle exists (create on first add if "new") ─────────
     async function ensureCookbook(): Promise<string | null> {
       if (currentCookbookId) return currentCookbookId;
-      const sel = $('composer-cookbook') as HTMLSelectElement;
+      const sel = $('composer-bundle') as HTMLSelectElement;
       if (sel.value) { currentCookbookId = sel.value; return currentCookbookId; }
-      // create a new cookbook
-      const name = `Composer cookbook ${new Date().toISOString().slice(0,10)}`;
+      // create a new bundle
+      const name = `Composer bundle ${new Date().toISOString().slice(0,10)}`;
       try {
         const r = await api('/api/cookbooks', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ name }) });
         if (r.status === 401) { toast('Sign in to compose.', 'error'); return null; }
@@ -300,8 +300,8 @@ import AppShell from '../layouts/AppShell.astro';
       wall.style.opacity = '0';
       wall.style.transition = 'max-height 320ms ease, opacity 280ms ease';
       wall.innerHTML = `
-        <p class="text-xs font-semibold text-text">Cookbook is full on your tier.</p>
-        <p class="text-xs text-muted leading-relaxed">Pro+ raises the cap (up to 200 cookbooks), unlocks client deployment and the private org catalog.</p>
+        <p class="text-xs font-semibold text-text">Bundle is full on your tier.</p>
+        <p class="text-xs text-muted leading-relaxed">Pro+ raises the cap (up to 200 bundles), unlocks client deployment and the private org catalog.</p>
         <div class="flex items-center gap-2">
           <button id="upgrade-wall-go" class="px-3 py-1.5 rounded-lg bg-accent text-bg text-xs font-semibold hover:bg-accent-soft transition">Upgrade to Pro+ — $100/mo</button>
           <button id="upgrade-wall-dismiss" class="text-xs text-muted-soft hover:text-text transition">Not now</button>
@@ -360,12 +360,12 @@ import AppShell from '../layouts/AppShell.astro';
       let slug = currentCookbookId;
       try { const r = await api(`/api/cookbooks/${currentCookbookId}`); if (r.ok) { const d = await r.json(); if (d.slug) slug = d.slug; } } catch {}
       const shareUrl = currentVisibility === 'public'
-        ? `${location.origin}/cookbooks/p?slug=${encodeURIComponent(String(slug))}`
+        ? `${location.origin}/bundles/p?slug=${encodeURIComponent(String(slug))}`
         : `recipes_cookbook_install(cookbook_id="${currentCookbookId}")`;
       ($('out-share') as HTMLElement).textContent = shareUrl;
       // per-skill install lines, in basket order
       const lines = basket.map(s => s.__community
-        ? `# ${s.slug} (community · ${s.source}) — install via cookbook`
+        ? `# ${s.slug} (community · ${s.source}) — install via bundle`
         : `recipes_install(slug="${s.slug}")`).join('\n');
       ($('out-lines') as HTMLElement).textContent = lines;
     }
@@ -398,8 +398,8 @@ import AppShell from '../layouts/AppShell.astro';
       searchTimer = window.setTimeout(async () => { await loadCatalog(q); renderResults(); }, 300);
     });
 
-    // cookbook selector change → switch working cookbook + load its basket
-    ($('composer-cookbook') as HTMLSelectElement).addEventListener('change', async (e) => {
+    // bundle selector change → switch working bundle + load its basket
+    ($('composer-bundle') as HTMLSelectElement).addEventListener('change', async (e) => {
       const id = (e.target as HTMLSelectElement).value;
       currentCookbookId = id || null;
       basket = [];

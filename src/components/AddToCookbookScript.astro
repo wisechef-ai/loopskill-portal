@@ -39,22 +39,22 @@ const API_BASE = import.meta.env.PUBLIC_RECIPES_API_BASE || 'https://recipes.wis
       toastTimer = setTimeout(() => { el.style.transition = 'opacity .4s'; el.style.opacity = '0'; }, 3200);
     }
 
-    // ── cookbooks cache (fetched once per page, refreshed after create) ──
-    let cookbooks = null;     // null = not loaded; [] = loaded-empty; array = loaded
+    // ── bundles cache (fetched once per page, refreshed after create) ──
+    let bundles = null;     // null = not loaded; [] = loaded-empty; array = loaded
     let authState = 'unknown'; // 'ok' | 'anon'
     async function loadCookbooks(force) {
-      if (cookbooks !== null && !force) return cookbooks;
+      if (bundles !== null && !force) return bundles;
       let res;
       try {
         res = await fetch(API_BASE + '/api/cookbooks', { headers: authHeaders(), credentials: 'include' });
       } catch (e) { authState = 'unknown'; return null; }
-      if (res.status === 401) { authState = 'anon'; cookbooks = []; return []; }
+      if (res.status === 401) { authState = 'anon'; bundles = []; return []; }
       if (!res.ok) { authState = 'unknown'; return null; }
       authState = 'ok';
       let data;
       try { data = await res.json(); } catch (e) { return null; }
       cookbooks = Array.isArray(data) ? data : (data.cookbooks || data.items || []);
-      return cookbooks;
+      return bundles;
     }
 
     function esc(s) {
@@ -106,8 +106,8 @@ const API_BASE = import.meta.env.PUBLIC_RECIPES_API_BASE || 'https://recipes.wis
         });
       } catch (e) { toast('Network error — try again.', 'error'); return; }
       if (res.status === 401) { toast('Sign in to create a cookbook.', 'error'); return; }
-      if (res.status === 403) { toast('Cookbook cap reached — upgrade for more.', 'error'); return; }
-      if (res.status !== 201 && res.status !== 200) { toast('Could not create cookbook (HTTP ' + res.status + ').', 'error'); return; }
+      if (res.status === 403) { toast('Bundle cap reached — upgrade for more.', 'error'); return; }
+      if (res.status !== 201 && res.status !== 200) { toast('Could not create bundle (HTTP ' + res.status + ').', 'error'); return; }
       let cb; try { cb = await res.json(); } catch (e) { toast('Malformed response.', 'error'); return; }
       await loadCookbooks(true);
       await addSkill(root, cb.id, cb.name || name);
@@ -124,13 +124,13 @@ const API_BASE = import.meta.env.PUBLIC_RECIPES_API_BASE || 'https://recipes.wis
       list.innerHTML = '';
 
       if (authState === 'anon') { signin.classList.remove('hidden'); return; }
-      if (!cookbooks || cookbooks.length === 0) { empty.classList.remove('hidden'); return; }
+      if (!bundles || bundles.length === 0) { empty.classList.remove('hidden'); return; }
 
-      cookbooks.forEach(function (cb) {
+      bundles.forEach(function (cb) {
         const item = document.createElement('button');
         item.type = 'button';
         item.className = 'atc-item w-full text-left rounded-md px-3 py-1.5 text-xs text-text hover:bg-accent/10 hover:text-accent transition truncate';
-        item.textContent = cb.name || 'Untitled cookbook';
+        item.textContent = cb.name || 'Untitled bundle';
         item.addEventListener('click', function () { addSkill(root, cb.id, cb.name || 'cookbook'); });
         list.appendChild(item);
       });

@@ -1,7 +1,7 @@
 ---
-// /library — portal_0610 J1: "Your Library" = your cookbooks (made + saved).
+// /library — portal_0610 J1: "Your Library" = your bundles (made + saved).
 // Re-homed from the old billing/API-keys page (now /account). This is the
-// retention surface (Spotify's "Your Library"): the cookbooks you authored and
+// retention surface (Spotify's "Your Library"): the bundles you authored and
 // the ones you saved/cloned, plus your installed skills. D2 lean: made + saved.
 import AppShell from '../layouts/AppShell.astro';
 ---
@@ -17,11 +17,11 @@ import AppShell from '../layouts/AppShell.astro';
       </a>
     </header>
 
-    <!-- Cookbooks -->
+    <!-- Bundles -->
     <div class="mb-12">
       <h2 class="text-sm font-semibold uppercase tracking-widest text-muted-soft mb-3">Bundles</h2>
-      <div id="library-cookbooks" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        <div class="col-span-full text-sm text-muted py-8 text-center" id="library-cookbooks-loading">Loading…</div>
+      <div id="library-bundles" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div class="col-span-full text-sm text-muted py-8 text-center" id="library-bundles-loading">Loading…</div>
       </div>
     </div>
 
@@ -48,8 +48,8 @@ import AppShell from '../layouts/AppShell.astro';
 
       // Cookbooks (made + saved). /api/cookbooks returns the caller's owned set;
       // saved/cloned land here too once the save action ships (D2).
-      const wrap = document.getElementById('library-cookbooks');
-      const loading = document.getElementById('library-cookbooks-loading');
+      const wrap = document.getElementById('library-bundles');
+      const loading = document.getElementById('library-bundles-loading');
       const data = await fetchJson('/api/cookbooks');
       const cbooks = (data && data.cookbooks) || [];
       loading?.remove();
@@ -57,7 +57,7 @@ import AppShell from '../layouts/AppShell.astro';
         if (!cbooks.length) {
           wrap.innerHTML = `<a href="/composer" class="col-span-full flex flex-col items-center justify-center gap-2 py-12 rounded-2xl border border-dashed border-border hover:border-accent/50 transition text-center">
             <span class="text-3xl text-muted-soft">+</span>
-            <span class="text-sm text-text font-medium">Compose your first cookbook</span>
+            <span class="text-sm text-text font-medium">Compose your first bundle</span>
             <span class="text-xs text-muted">Multi-select skills from the catalog, set visibility, share one link.</span>
           </a>`;
         } else {

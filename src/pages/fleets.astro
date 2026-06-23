@@ -2,8 +2,8 @@
 // /fleets — portal_0610 J3: the Fleets management surface (L2 / PM3 — a
 // first-class rail item, not buried under /account). Drives the HTTP fleet API
 // (J3 backend): GET /api/fleets, POST /api/fleets, POST .../subscribe,
-// POST .../sync. A fleet keeps a set of agents on the same cookbooks; subscribe
-// a cookbook on a channel (stable/canary/frozen), sync once, every agent
+// POST .../sync. A fleet keeps a set of agents on the same bundles; subscribe
+// a bundle on a channel (stable/canary/frozen), sync once, every agent
 // converges. The fleet key is shown ONCE on create (rec_fleet_…).
 import AppShell from '../layouts/AppShell.astro';
 ---
@@ -12,7 +12,7 @@ import AppShell from '../layouts/AppShell.astro';
     <header class="mb-8 flex items-end justify-between gap-4 flex-wrap">
       <div>
         <h1 class="text-2xl font-semibold tracking-tight">Fleets</h1>
-        <p class="text-sm text-muted mt-1">Your team's agents, one cookbook, one sync. Subscribe a cookbook on a channel, sync once — every agent converges.</p>
+        <p class="text-sm text-muted mt-1">Your team's agents, one bundle, one sync. Subscribe a bundle on a channel, sync once — every agent converges.</p>
       </div>
       <button id="new-fleet-btn" class="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-accent text-bg text-sm font-semibold hover:bg-accent-soft transition shrink-0">
         + New fleet
@@ -63,7 +63,7 @@ import AppShell from '../layouts/AppShell.astro';
     const esc = (s: any) => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'} as any)[c]);
 
     const CHANNELS = ['stable', 'canary', 'frozen'];
-    let cookbooks: any[] = [];
+    let bundles: any[] = [];
 
     function toast(msg: string, kind?: string) {
       let el = document.getElementById('fl-toast');
@@ -76,7 +76,7 @@ import AppShell from '../layouts/AppShell.astro';
       setTimeout(() => { el!.style.transition = 'opacity .4s'; el!.style.opacity = '0'; }, 2800);
     }
 
-    function cookbookName(id: string) { const cb = cookbooks.find(c => c.id === id); return cb ? cb.name : id.slice(0, 8) + '…'; }
+    function cookbookName(id: string) { const cb = bundles.find(c => c.id === id); return cb ? cb.name : id.slice(0, 8) + '…'; }
 
     function fleetCard(f: any): string {
       const subs = f.subscriptions || [];
@@ -85,8 +85,8 @@ import AppShell from '../layouts/AppShell.astro';
             <span class="text-text truncate">${esc(cookbookName(s.cookbook_id))}</span>
             <span class="text-[10px] uppercase tracking-wide px-1.5 py-0.5 rounded-full border border-accent/30 text-accent">${esc(s.channel)}</span>
           </div>`).join('')
-        : '<p class="text-xs text-muted-soft px-1 py-2">No cookbooks subscribed yet.</p>';
-      const cbOptions = cookbooks.map(c => `<option value="${esc(c.id)}">${esc(c.name)}</option>`).join('');
+        : '<p class="text-xs text-muted-soft px-1 py-2">No bundles subscribed yet.</p>';
+      const cbOptions = bundles.map(c => `<option value="${esc(c.id)}">${esc(c.name)}</option>`).join('');
       const chOptions = CHANNELS.map(c => `<option value="${c}">${c}</option>`).join('');
       return `<div class="bg-bg-card border border-border rounded-2xl p-5" data-fleet="${esc(f.fleet_id)}">
         <div class="flex items-center justify-between gap-3 mb-3">
@@ -96,7 +96,7 @@ import AppShell from '../layouts/AppShell.astro';
         <div class="flex flex-col gap-1.5 mb-3">${subsHtml}</div>
         <form class="fleet-sub-form flex items-center gap-1.5 pt-3 border-t border-border-soft" data-fleet="${esc(f.fleet_id)}">
           <select class="sub-cb flex-1 px-2 py-1.5 text-xs bg-bg-elev border border-border rounded-lg text-text focus:outline-none focus:border-accent">
-            <option value="">Subscribe a cookbook…</option>${cbOptions}
+            <option value="">Subscribe a bundle…</option>${cbOptions}
           </select>
           <select class="sub-ch px-2 py-1.5 text-xs bg-bg-elev border border-border rounded-lg text-text focus:outline-none focus:border-accent">${chOptions}</select>
           <button type="submit" class="px-3 py-1.5 rounded-lg bg-accent text-bg text-xs font-semibold hover:bg-accent-soft transition">Add</button>
@@ -119,7 +119,7 @@ import AppShell from '../layouts/AppShell.astro';
       if (!fleets.length) {
         wrap.innerHTML = `<div class="flex flex-col items-center justify-center gap-3 py-16 rounded-2xl border border-dashed border-border text-center">
           <span class="text-sm text-text font-medium">No fleets yet</span>
-          <span class="text-xs text-muted max-w-sm">Create a fleet, subscribe a cookbook on a channel (stable / canary / frozen), and sync — every agent on the fleet key converges to the same skills.</span>
+          <span class="text-xs text-muted max-w-sm">Create a fleet, subscribe a bundle on a channel (stable / canary / frozen), and sync — every agent on the fleet key converges to the same skills.</span>
           <button id="empty-new-fleet" class="text-xs text-accent hover:opacity-80 mt-1">+ Create your first fleet</button>
         </div>`;
         document.getElementById('empty-new-fleet')?.addEventListener('click', openModal);
@@ -136,7 +136,7 @@ import AppShell from '../layouts/AppShell.astro';
           const fid = form.dataset.fleet!;
           const cb = (form.querySelector('.sub-cb') as HTMLSelectElement).value;
           const ch = (form.querySelector('.sub-ch') as HTMLSelectElement).value;
-          if (!cb) { toast('Pick a cookbook first.', 'error'); return; }
+          if (!cb) { toast('Pick a bundle first.', 'error'); return; }
           const r = await api(`/api/fleets/${fid}/subscribe`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ cookbook_id: cb, channel: ch }) });
           if (r.status === 201 || r.status === 200) { toast('Subscribed.'); await load(); }
           else if (r.status === 422) { toast('Invalid channel or cookbook.', 'error'); }

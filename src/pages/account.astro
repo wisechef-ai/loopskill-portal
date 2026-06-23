@@ -71,13 +71,13 @@ import Icon from '../components/Icon.astro';
           </div>
         </div>
 
-        <!-- API Keys card — Phase C per-cookbook key table -->
+        <!-- API Keys card — Phase C per-bundle key table -->
         <div class="md:col-span-2 bg-bg-card border border-border rounded-2xl p-6">
-          <!-- quality_1705 Phase E — tier-aware cookbook subtitle (per plan §3 step 2) -->
+          <!-- quality_1705 Phase E — tier-aware bundle subtitle (per plan §3 step 2) -->
           <div id="cookbook-tier-subtitle" class="hidden mb-4 pb-4 border-b border-border-soft">
             <div class="flex items-center gap-2 mb-1">
               <Icon name="box" size={14} class="text-accent" />
-              <h3 class="text-sm font-semibold tracking-tight">Your cookbooks</h3>
+              <h3 class="text-sm font-semibold tracking-tight">Your bundles</h3>
             </div>
             <p id="cookbook-tier-subtitle-text" class="text-xs text-muted leading-relaxed"></p>
           </div>
@@ -97,7 +97,7 @@ import Icon from '../components/Icon.astro';
               <thead>
                 <tr class="border-b border-border">
                   <th class="text-left py-2 px-3 text-muted-soft font-medium">Label</th>
-                  <th class="text-left py-2 px-3 text-muted-soft font-medium hidden sm:table-cell">Cookbook</th>
+                  <th class="text-left py-2 px-3 text-muted-soft font-medium hidden sm:table-cell">Bundle</th>
                   <th class="text-left py-2 px-3 text-muted-soft font-medium">Prefix</th>
                   <th class="text-left py-2 px-3 text-muted-soft font-medium hidden md:table-cell">Installs (total / 7d)</th>
                   <th class="text-left py-2 px-3 text-muted-soft font-medium hidden lg:table-cell">Created</th>
@@ -144,22 +144,22 @@ import Icon from '../components/Icon.astro';
                 placeholder="e.g. ACME client, data-pipeline, personal"
                 class="w-full px-3 py-2 text-sm bg-bg-elev border border-border rounded-lg text-text placeholder:text-muted focus:outline-none focus:border-accent"
               />
-              <!-- quality_1705 Phase E — Pro+ hint for client-named cookbooks -->
+              <!-- quality_1705 Phase E — Pro+ hint for client-named bundles -->
               <p id="modal-label-pro-plus-hint" class="hidden text-[10px] text-muted-soft">
-                Pro+ tip: name this after the client whose fleet you'll deploy to (e.g. <code class="text-accent">acme-corp-cookbook</code>) so install metrics stay scoped per-client.
+                Pro+ tip: name this after the client whose fleet you'll deploy to (e.g. <code class="text-accent">acme-corp-bundle</code>) so install metrics stay scoped per-client.
               </p>
             </div>
 
             <div class="flex flex-col gap-1.5">
-              <label for="modal-cookbook" class="text-xs text-muted font-medium">Cookbook (optional)</label>
+              <label for="modal-bundle" class="text-xs text-muted font-medium">Bundle (optional)</label>
               <select
-                id="modal-cookbook"
+                id="modal-bundle"
                 class="w-full px-3 py-2 text-sm bg-bg-elev border border-border rounded-lg text-text focus:outline-none focus:border-accent"
               >
-                <option value="">Personal key (no cookbook)</option>
+                <option value="">Personal key (no bundle)</option>
                 <!-- Populated by JS -->
               </select>
-              <p class="text-[10px] text-muted-soft">Scoping a key to a cookbook lets you see per-client install counts.</p>
+              <p class="text-[10px] text-muted-soft">Scoping a key to a bundle lets you see per-client install counts.</p>
             </div>
 
             <div id="modal-error" class="hidden text-xs text-red-400 bg-red-500/10 border border-red-500/30 rounded-lg p-3"></div>
@@ -205,7 +205,7 @@ import Icon from '../components/Icon.astro';
           </div>
         </div>
 
-        <!-- Your cookbooks + Installed skills moved to /library (Your Library) — portal_0610 J1. -->
+        <!-- Your bundles + Installed skills moved to /library (Your Library) — portal_0610 J1. -->
       </div>
 
       <!-- Footer actions -->
@@ -220,7 +220,7 @@ import Icon from '../components/Icon.astro';
 <script>
   // ────────────────────────────────────────────────────────────────────
   // /library hydration — vanilla JS, no framework
-  // Phase C: per-cookbook key table, modal, install counts
+  // Phase C: per-bundle key table, modal, install counts
   // ────────────────────────────────────────────────────────────────────
   type User = { id: string; display_name?: string; email?: string; avatar_url?: string;
                  subscription_tier?: string | null; subscription_status?: string | null;
@@ -324,7 +324,7 @@ import Icon from '../components/Icon.astro';
     const note = $('key-tier-note');
     if (note) note.classList.remove('hidden');
 
-    // quality_1705 Phase E — show tier-appropriate cookbook subtitle
+    // quality_1705 Phase E — show tier-appropriate bundle subtitle
     // loopclose_3005 Phase X — cap numbers come from billing.cookbook_limit
     // (SSOT: config/tiers.yaml via /api/billing/me), never a hardcoded literal.
     const cookbookSubtitle = document.getElementById('cookbook-tier-subtitle');
@@ -334,17 +334,17 @@ import Icon from '../components/Icon.astro';
       const isPro = ['pro', 'cook'].includes(tier);
       const cap = typeof billing.cookbook_limit === 'number' ? billing.cookbook_limit : null;
       if (isProPlus) {
-        const capPhrase = cap !== null ? `up to ${cap} cookbooks` : 'multiple cookbooks';
+        const capPhrase = cap !== null ? `up to ${cap} bundles` : 'multiple bundles';
         cookbookSubtitleText.textContent =
-          `You have ${capPhrase} available. Each can be named after a client (e.g. acme-corp-cookbook) and deployed to their agent fleet. Use cookbook scoping below to map each API key to a client.`;
+          `You have ${capPhrase} available. Each can be named after a client (e.g. acme-corp-bundle) and deployed to their agent fleet. Use bundle scoping below to map each API key to a client.`;
         cookbookSubtitle.classList.remove('hidden');
         // Show the Pro+ client-naming hint in the create-key modal
         const proPlusHint = document.getElementById('modal-label-pro-plus-hint');
         if (proPlusHint) proPlusHint.classList.remove('hidden');
       } else if (isPro) {
-        const capPhrase = cap !== null ? `up to ${cap} cookbooks` : 'your personal cookbooks';
+        const capPhrase = cap !== null ? `up to ${cap} bundles` : 'your personal bundles';
         cookbookSubtitleText.textContent =
-          `You have ${capPhrase}. Use them to bundle your private skills and sync them across your agent fleet. Upgrade to Pro+ for many more client-named cookbooks.`;
+          `You have ${capPhrase}. Use them to bundle your private skills and sync them across your agent fleet. Upgrade to Pro+ for many more client-named bundles.`;
         cookbookSubtitle.classList.remove('hidden');
       }
     }
@@ -399,12 +399,12 @@ import Icon from '../components/Icon.astro';
     renderKeyTable(data.keys);
   }
 
-  // ── Cookbooks — populate modal dropdown + the visible cookbooks list ───
+  // ── Bundles — populate modal dropdown + the visible bundles list ───
   async function loadCookbooks(): Promise<void> {
     const data = await fetchJson<{ cookbooks: CookbookItem[] }>('/api/cookbooks');
-    if (!data?.cookbooks) return;
+    if (!data?.bundles) return;
     _cookbooks = data.cookbooks;
-    const sel = $<HTMLSelectElement>('modal-cookbook');
+    const sel = $<HTMLSelectElement>('modal-bundle');
     if (sel) {
       data.cookbooks.forEach(cb => {
         const opt = document.createElement('option');
@@ -414,8 +414,8 @@ import Icon from '../components/Icon.astro';
       });
     }
 
-    // loopclose_3005 Phase E — render a linked list of cookbooks so a user can
-    // open /cookbooks/view?id=<id> and see the skills inside, zero-CLI.
+    // loopclose_3005 Phase E — render a linked list of bundles so a user can
+    // open /bundles/view?id=<id> and see the skills inside, zero-CLI.
     const list = $('cookbooks-list');
     const empty = $('cookbooks-empty');
     if (list && data.cookbooks.length) {
@@ -423,7 +423,7 @@ import Icon from '../components/Icon.astro';
       list.innerHTML = '';
       data.cookbooks.forEach(cb => {
         const a = document.createElement('a');
-        a.href = `/cookbooks/view?id=${encodeURIComponent(cb.id)}`;
+        a.href = `/bundles/view?id=${encodeURIComponent(cb.id)}`;
         a.className = 'flex items-center justify-between gap-3 px-4 py-3 rounded-xl bg-bg-elev border border-border-soft hover:border-accent/40 transition mb-2';
         const left = document.createElement('span');
         left.className = 'font-medium text-text';
@@ -447,7 +447,7 @@ import Icon from '../components/Icon.astro';
   function closeModal(): void {
     $('new-key-modal').classList.add('hidden');
     ($('modal-label') as HTMLInputElement).value = '';
-    ($('modal-cookbook') as HTMLSelectElement).value = '';
+    ($('modal-bundle') as HTMLSelectElement).value = '';
     $('modal-error').classList.add('hidden');
   }
 
@@ -462,7 +462,7 @@ import Icon from '../components/Icon.astro';
 
   $('modal-submit-btn')?.addEventListener('click', async () => {
     const labelInput = $<HTMLInputElement>('modal-label');
-    const cookbookSel = $<HTMLSelectElement>('modal-cookbook');
+    const cookbookSel = $<HTMLSelectElement>('modal-bundle');
     const errorDiv = $('modal-error');
     const submitBtn = $<HTMLButtonElement>('modal-submit-btn');
 

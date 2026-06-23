@@ -2,7 +2,7 @@
 // AppShell.astro — THE one chrome for recipes.wisechef.ai (onechrome_0611).
 //
 // portal_0610 J1 shipped this as the authed "Garden" shell (left rail: Home ·
-// Search · Your Library · Fleets · Delivery + live cookbook list).
+// Search · Your Library · Fleets · Delivery + live bundle list).
 // onechrome_0611 P0 adds the `mode` contract so the SAME chrome serves the
 // whole site:
 //
@@ -14,7 +14,7 @@
 //   mode="public" — public-browse surfaces (marketplace, pricing, docs,
 //     legal…). NO anon bounce, NO gate splash (anon-first static render).
 //     The rail renders sign-in CTAs by default; if /api/auth/me resolves a
-//     session, JS swaps in the live member rail (cookbooks + account footer).
+//     session, JS swaps in the live member rail (bundles + account footer).
 //     Member-only nav stays VISIBLE for discoverability — anon clicks land
 //     on /signin?next=<target> via the member-nav links' normal hrefs
 //     (AppShell member pages bounce, preserving intent).
@@ -147,7 +147,7 @@ const navItems = [
 
         <!-- ── Unified search (onechrome_0611 P4): ONE box, TWO result groups —
              "In Marketplace" (live /api/skills/search) + "In Your Cookbooks"
-             (client match on the member's cookbook names). Kills "am I
+             (client match on the member's bundle names). Kills "am I
              searching the store or my stuff?". Esc or blur closes. -->
         <div class="px-3 pt-3 relative" id="shell-search-wrap">
           <div class="relative">
@@ -156,7 +156,7 @@ const navItems = [
               <path d="M8.5 14a5.5 5.5 0 100-11 5.5 5.5 0 000 11zM17 17l-3.5-3.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
             </svg>
             <input id="shell-search" type="search" placeholder="Search skills…" autocomplete="off"
-                   aria-label="Search skills and your cookbooks"
+                   aria-label="Search skills and your bundles"
                    class="w-full pl-9 pr-3 py-2 rounded-lg bg-bg-card border border-border text-sm text-text placeholder:text-muted-soft focus:outline-none focus:border-accent transition" />
           </div>
           <div id="shell-search-results"
@@ -177,15 +177,15 @@ const navItems = [
           ))}
         </nav>
 
-        <!-- Rail body: anon CTA (public default) ⇄ live cookbook list (member). -->
+        <!-- Rail body: anon CTA (public default) ⇄ live bundle list (member). -->
         {isPublic && (
           <div class="px-3 pb-4 flex-1 min-h-0" data-shell-anon>
             <div class="mx-3 rounded-xl border border-border bg-bg-card/50 p-4 flex flex-col gap-2.5">
-              <span class="text-[10px] uppercase tracking-widest text-muted-soft">Your cookbooks</span>
-              <p class="text-xs text-muted leading-relaxed">Sign in to bundle skills into cookbooks and sync them to your whole fleet.</p>
+              <span class="text-[10px] uppercase tracking-widest text-muted-soft">Your bundles</span>
+              <p class="text-xs text-muted leading-relaxed">Sign in to bundle skills into bundles and sync them to your whole fleet.</p>
               <a href="/signin" data-signin-next
                  class="inline-flex items-center justify-center px-3 py-1.5 rounded-lg bg-accent text-bg text-xs font-semibold hover:bg-accent-soft transition">
-                Sign in to build cookbooks
+                Sign in to build bundles
               </a>
               <a href="/pricing" class="text-center text-[11px] text-muted-soft hover:text-accent transition">View plans — Pro $20 · Pro+ $100</a>
             </div>
@@ -193,11 +193,11 @@ const navItems = [
         )}
         <div class={`px-3 pb-4 flex-1 min-h-0 ${isPublic ? 'hidden' : ''}`} data-shell-member>
           <div class="flex items-center justify-between px-3 mb-1.5">
-            <span class="text-[10px] uppercase tracking-widest text-muted-soft">Your cookbooks</span>
-            <a href="/composer" class="text-muted-soft hover:text-accent text-base leading-none" title="New cookbook" aria-label="New cookbook">+</a>
+            <span class="text-[10px] uppercase tracking-widest text-muted-soft">Your bundles</span>
+            <a href="/composer" class="text-muted-soft hover:text-accent text-base leading-none" title="New bundle" aria-label="New bundle">+</a>
           </div>
-          <div id="rail-cookbooks" class="flex flex-col gap-0.5">
-            <p id="rail-cookbooks-empty" class="px-3 py-2 text-xs text-muted-soft">No cookbooks yet.</p>
+          <div id="rail-bundles" class="flex flex-col gap-0.5">
+            <p id="rail-bundles-empty" class="px-3 py-2 text-xs text-muted-soft">No bundles yet.</p>
           </div>
         </div>
 
@@ -324,7 +324,7 @@ const navItems = [
         const paidActive = ['active', 'trialing', 'past_due'].includes(status);
         if (planEl) planEl.textContent = (paidActive && tier !== 'free') ? tier.replace('_', '+') : 'free';
 
-        // Live cookbook rail
+        // Live bundle rail
         let userCookbooks: any[] = [];
         try {
           const cbRes = await fetch('/api/cookbooks', { credentials: 'include' });
@@ -332,8 +332,8 @@ const navItems = [
             const data = await cbRes.json();
             const cbooks = (data && data.cookbooks) || [];
             userCookbooks = cbooks;
-            const wrap = document.getElementById('rail-cookbooks');
-            const empty = document.getElementById('rail-cookbooks-empty');
+            const wrap = document.getElementById('rail-bundles');
+            const empty = document.getElementById('rail-bundles-empty');
             if (wrap && cbooks.length) {
               empty?.remove();
               wrap.innerHTML = cbooks.map((cb: any) =>
@@ -342,7 +342,7 @@ const navItems = [
             }
           }
         } catch { /* rail is best-effort */ }
-        // Expose for the unified-search "In Your Cookbooks" group.
+        // Expose for the unified-search "In Your Bundles" group.
         (window as any).__shellCookbooks = userCookbooks;
 
         // ── Ambient fleet status (P4) — honest numbers only, hidden when zero.
@@ -354,7 +354,7 @@ const navItems = [
             const el = document.getElementById('rail-fleet-status');
             if (el && (fleets.length || userCookbooks.length)) {
               const bits: string[] = [];
-              if (userCookbooks.length) bits.push(`${userCookbooks.length} cookbook${userCookbooks.length === 1 ? '' : 's'}`);
+              if (userCookbooks.length) bits.push(`${userCookbooks.length} bundle${userCookbooks.length === 1 ? '' : 's'}`);
               if (fleets.length) bits.push(`${fleets.length} fleet${fleets.length === 1 ? '' : 's'} syncing`);
               el.textContent = bits.join(' · ');
               el.classList.remove('hidden');
@@ -387,7 +387,7 @@ const navItems = [
                     </a>
                     <a href="/composer" class="group flex flex-col gap-1 rounded-xl border border-border-soft bg-bg/40 p-3 hover:border-accent/50 transition">
                       <span class="text-muted-soft text-xs">2</span>
-                      <span class="font-semibold text-text group-hover:text-accent transition">Add to a cookbook</span>
+                      <span class="font-semibold text-text group-hover:text-accent transition">Add to a bundle</span>
                       <span class="text-xs text-muted">Bundle what you need.</span>
                     </a>
                     <a href="/fleets" class="group flex flex-col gap-1 rounded-xl border border-border-soft bg-bg/40 p-3 hover:border-accent/50 transition">
@@ -436,7 +436,7 @@ const navItems = [
 
         const close = () => { panel.classList.add('hidden'); panel.innerHTML = ''; };
 
-        const render = (q: string, skills: any[], cookbooks: any[]) => {
+        const render = (q: string, skills: any[], bundles: any[]) => {
           const mk = skills.slice(0, 6).map((s: any) =>
             `<a href="/skills/${encodeURIComponent(s.slug)}" class="flex items-start gap-2.5 px-4 py-2.5 hover:bg-bg-card transition">
                <span class="flex flex-col min-w-0">
@@ -444,14 +444,14 @@ const navItems = [
                  <span class="text-xs text-muted truncate">${esc((s.description || '').slice(0, 90))}</span>
                </span>
              </a>`).join('');
-          const cb = cookbooks.slice(0, 4).map((c: any) =>
+          const cb = bundles.slice(0, 4).map((c: any) =>
             `<a href="/cookbooks/view?id=${encodeURIComponent(c.id)}" class="flex items-center gap-2.5 px-4 py-2.5 hover:bg-bg-card transition">
                <span class="text-sm text-text truncate">${esc(c.name || 'Untitled')}</span>
              </a>`).join('');
           panel.innerHTML =
             `<div class="px-4 pt-3 pb-1 text-[10px] uppercase tracking-widest text-muted-soft">In Marketplace</div>` +
             (mk || `<p class="px-4 py-2.5 text-xs text-muted-soft">No catalog matches.</p>`) +
-            (cb ? `<div class="px-4 pt-3 pb-1 text-[10px] uppercase tracking-widest text-muted-soft border-t border-border-soft mt-1">In Your Cookbooks</div>${cb}` : '') +
+            (cb ? `<div class="px-4 pt-3 pb-1 text-[10px] uppercase tracking-widest text-muted-soft border-t border-border-soft mt-1">In Your Bundles</div>${cb}` : '') +
             `<a href="/skills?q=${encodeURIComponent(q)}" class="block px-4 py-2.5 text-xs text-accent hover:bg-bg-card transition border-t border-border-soft">See all results →</a>`;
           panel.classList.remove('hidden');
         };
@@ -462,7 +462,7 @@ const navItems = [
           try {
             const r = await fetch(`/api/skills/search?q=${encodeURIComponent(q)}&page_size=6`, { credentials: 'include' });
             if (r.ok) { const d = await r.json(); skills = (d && (d.results || d.items)) || []; }
-          } catch { /* offline → cookbook group still renders */ }
+          } catch { /* offline → bundle group still renders */ }
           if (mySeq !== seq) return; // stale response
           const ql = q.toLowerCase();
           const cbs = (((window as any).__shellCookbooks) || []).filter((c: any) =>

@@ -55,12 +55,12 @@ import CrossSell from '../../components/CrossSell.astro';
           </tr>
           <tr>
             <td><code>cbt_</code></td>
-            <td>Cookbook-scoped token — read-only access to a specific cookbook's skills</td>
+            <td>Bundle-scoped token — read-only access to a specific bundle's skills</td>
             <td><code>recipes share create</code> CLI or share_token MCP tool</td>
           </tr>
           <tr>
             <td><code>rec_fleet_</code></td>
-            <td>Fleet key — cookbook-scoped, multi-agent, Operator+ tier required</td>
+            <td>Fleet key — bundle-scoped, multi-agent, Operator+ tier required</td>
             <td>Dashboard → Fleet → New fleet key</td>
           </tr>
           <tr>
@@ -83,7 +83,7 @@ import CrossSell from '../../components/CrossSell.astro';
         <li><strong>free</strong> — available to all API key holders, including free-tier accounts</li>
         <li><strong>cook</strong> — requires Pro subscription ($20/mo)</li>
         <li><strong>operator</strong> — requires Pro+ subscription ($100/mo)</li>
-        <li><strong>pro_plus</strong> — Pro+ features: pre-built cookbook push, fleet keys</li>
+        <li><strong>pro_plus</strong> — Pro+ features: pre-built bundle push, fleet keys</li>
       </ol>
       <p>
         The <code>GET /api/skills/access</code> endpoint provides a pre-flight check: pass a

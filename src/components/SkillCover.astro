@@ -28,7 +28,7 @@ const HUES: Record<string, [string, string]> = {
   data: grad_palette[4], planning: grad_palette[4],
   productivity: grad_palette[5], automation: grad_palette[5],
 };
-// Deterministic slug→hue fallback when category is unknown/unmapped (cookbooks,
+// Deterministic slug→hue fallback when category is unknown/unmapped (bundles,
 // uncategorized skills): hash the slug to a palette index so cards still vary
 // instead of all collapsing to one color.
 function hashIdx(s: string, n: number): number {

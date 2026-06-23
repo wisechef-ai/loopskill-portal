@@ -3,21 +3,21 @@ import AppShell from '../../layouts/AppShell.astro';
 import CrossSell from '../../components/CrossSell.astro';
 ---
 <AppShell mode="public" title="Fleet guide — LoopSkill Docs"
-     description="Create a fleet, subscribe cookbooks, distribute fleet keys, and keep multiple agents in sync. Operator+ tier required.">
+     description="Create a fleet, subscribe bundles, distribute fleet keys, and keep multiple agents in sync. Operator+ tier required.">
   <section class="max-w-3xl mx-auto px-6 pt-16 pb-12">
     <p class="eyebrow mb-2">Documentation · Fleet</p>
     <h1 class="text-4xl font-semibold tracking-tight mb-6">Fleet: multi-agent skill sync.</h1>
     <div class="prose">
       <p>
         A <strong>fleet</strong> is a named group of agents that all share the same cookbook.
-        You create the fleet once, subscribe one or more cookbooks to it, distribute the fleet
+        You create the fleet once, subscribe one or more bundles to it, distribute the fleet
         key to each agent, and from then on all agents stay in sync with a single
         <code>recipes_fleet_sync</code> call.
       </p>
       <p>
         <strong>Tier requirement:</strong> Fleet features require a Pro+ subscription ($100/mo)
         or higher. Fleet keys (<code>rec_fleet_*</code>) are separate from standard API keys and
-        are scoped to specific cookbooks.
+        are scoped to specific bundles.
       </p>
 
       <h2>Concepts</h2>
@@ -28,12 +28,12 @@ import CrossSell from '../../components/CrossSell.astro';
           Fleet key format: <code>rec_fleet_&lt;8hex&gt;_&lt;32hex&gt;</code>.
         </li>
         <li>
-          <strong>Subscription</strong> — links a fleet to a cookbook on a channel
+          <strong>Subscription</strong> — links a fleet to a bundle on a channel
           (<code>stable</code> or <code>latest</code>). Created by calling
           <code>recipes_fleet_subscribe</code>.
         </li>
         <li>
-          <strong>Sync</strong> — updates all agents in the fleet to the subscribed cookbook's
+          <strong>Sync</strong> — updates all agents in the fleet to the subscribed bundle's
           current pinned versions. Called per-agent via <code>recipes_fleet_sync</code>.
         </li>
         <li>
@@ -43,9 +43,9 @@ import CrossSell from '../../components/CrossSell.astro';
         </li>
       </ul>
 
-      <h2>Step 1 — Create a cookbook</h2>
+      <h2>Step 1 — Create a bundle</h2>
       <p>
-        Fleets sync from cookbooks. Create one first if you don't have one:
+        Fleets sync from bundles. Create one first if you don't have one:
       </p>
       <pre><code>{`// Via MCP (from your agent):
 recipes_list_cookbook({})   // list existing cookbooks
@@ -53,10 +53,10 @@ recipes_list_cookbook({})   // list existing cookbooks
 // Via API:
 curl -X POST -H "x-api-key: $RECIPES_API_KEY" \\
   -H "Content-Type: application/json" \\
-  -d '{"name": "Production Fleet Cookbook"}' \\
+  -d '{"name": "Production Fleet Bundle"}' \\
   https://recipes.wisechef.ai/api/cookbooks`}</code></pre>
       <p>
-        Add skills to the cookbook via the dashboard or the
+        Add skills to the bundle via the dashboard or the
         <code>POST /api/cookbooks/{`{id}`}/skills</code> endpoint.
         Each skill is pinned at the current latest version when added.
       </p>
@@ -77,19 +77,19 @@ curl -X POST -H "x-api-key: $RECIPES_API_KEY" \\
         The server stores only a sha256 hash of the key — there is no way to recover it.
       </p>
 
-      <h2>Step 3 — Subscribe a cookbook to the fleet</h2>
+      <h2>Step 3 — Subscribe a bundle to the fleet</h2>
       <pre><code>{`recipes_fleet_subscribe({
   fleet_id: "uuid...",
   cookbook_id: "uuid...",
   channel: "stable"   // "stable" (default) or "latest"
 })`}</code></pre>
       <p>
-        The <code>channel</code> controls which cookbook skills the fleet syncs:
+        The <code>channel</code> controls which bundle skills the fleet syncs:
       </p>
       <ul>
         <li><strong>stable</strong> — syncs only the pinned, reviewed versions in the cookbook.</li>
         <li><strong>latest</strong> — syncs to the most recently published version of each skill,
-            even if the cookbook pin hasn't been updated. Use with care in production.</li>
+            even if the bundle pin hasn't been updated. Use with care in production.</li>
       </ul>
 
       <h2>Step 4 — Distribute the fleet key</h2>
@@ -98,8 +98,8 @@ curl -X POST -H "x-api-key: $RECIPES_API_KEY" \\
       </p>
       <pre><code>export RECIPES_API_KEY=rec_fleet_a1b2c3d4_e5f6...</code></pre>
       <p>
-        Fleet keys are cookbook-scoped. An agent using a fleet key can only install skills that
-        are in the fleet's subscribed cookbooks — it cannot browse or install from the general catalog.
+        Fleet keys are bundle-scoped. An agent using a fleet key can only install skills that
+        are in the fleet's subscribed bundles — it cannot browse or install from the general catalog.
         This is the security boundary that makes fleet keys safe to distribute broadly.
       </p>
       <p>Distribute via your preferred secret management approach:</p>
@@ -167,8 +167,8 @@ recipes sync`}</code></pre>
           or a key leaks. Create a new fleet (or contact support to re-key an existing one).
         </li>
         <li>
-          <strong>Cookbook-scoped.</strong> A fleet key cannot install skills outside its
-          subscribed cookbooks. This bounds the blast radius of a compromised key.
+          <strong>Bundle-scoped.</strong> A fleet key cannot install skills outside its
+          subscribed bundles. This bounds the blast radius of a compromised key.
         </li>
         <li>
           <strong>No catalog browsing.</strong> Agents with fleet keys cannot call
@@ -180,7 +180,7 @@ recipes sync`}</code></pre>
       <h2>Related docs</h2>
       <ul>
         <li><a href="/docs/security">Security model</a> — rec_fleet key auth details</li>
-        <li><a href="/docs/api-reference">API reference</a> — cookbook endpoints</li>
+        <li><a href="/docs/api-reference">API reference</a> — bundle endpoints</li>
         <li><a href="/integrations">Integrations</a> — per-agent MCP config</li>
       </ul>
     </div>

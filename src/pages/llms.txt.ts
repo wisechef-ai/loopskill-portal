@@ -8,7 +8,7 @@
 // (build-time fetch of /api/marketing/snapshot + /api/skills/search, both
 // public/no-key) so it can never drift from the real catalog. If the API is
 // unreachable at build time, a hard fallback keeps the file claim-accurate
-// for the current two-free-seed positioning (super-memory + recipes-cookbook-reconcile free; rest Pro).
+// for the current two-free-seed positioning (super-memory + recipes-bundle-reconcile free; rest Pro).
 //
 // Static endpoint — emits dist/llms.txt at build time. No deps.
 import type { APIRoute } from 'astro';
@@ -106,19 +106,19 @@ export const GET: APIRoute = async () => {
     : '- [super-memory](' +
       SITE +
       '/skills/super-memory): free — a one-command installer for a full agent memory stack (knowledge graph + vector recall + nightly ingest). Install it to see how LoopSkill works.\n' +
-      '- [recipes-cookbook-reconcile](' +
+      '- [recipes-bundle-reconcile](' +
       SITE +
-      '/skills/recipes-cookbook-reconcile): free — sync and reconcile your LoopSkill cookbooks across agents and environments.';
+      '/skills/recipes-bundle-reconcile): free — sync and reconcile your LoopSkill bundles across agents and environments.';
 
   // Free-skill intro copy — names the free skills explicitly so agent-buyers
   // see what's free without clicking through. Dynamic so it tracks DB counts.
   // free===1: "One skill is free (super-memory)"
-  // free===2: "2 skills are free (super-memory, recipes-cookbook-reconcile)"
+  // free===2: "2 skills are free (super-memory, recipes-bundle-reconcile)"
   // free>2:   "{N} skills are free" (generic — update the list when new free skills land)
   const freeIntro = free === 1
     ? 'One skill is free (super-memory)'
     : free === 2
-      ? '2 skills are free (super-memory, recipes-cookbook-reconcile)'
+      ? '2 skills are free (super-memory, recipes-bundle-reconcile)'
       : `${free} skills are free`;
 
   // Featured = a representative spread of paid skills (super-memory already
@@ -149,7 +149,7 @@ export const GET: APIRoute = async () => {
     ? `
 
 ## Beyond the curated catalog — the superset
-LoopSkill is a superset of the public agent-skill ecosystem, not just its ${total} curated skills. The federation layer indexes **${fedHeadline}** community skills across ${fedSources} sources (every skill the Hermes Skills Hub lists, plus GitHub provider taps — Anthropic, OpenAI, Hugging Face, NVIDIA, gstack, Superpowers — and aggregators like skills.sh and ClawHub). Counts are honest and never conflated: **${fedIndexed.toLocaleString()} indexed**, **${fedInstallable.toLocaleString()} installable** today (redistributable-licensed skills install straight from origin into a cookbook; supply-chain-unvetted or source-available ones deep-link to origin and are never rehosted).
+LoopSkill is a superset of the public agent-skill ecosystem, not just its ${total} curated skills. The federation layer indexes **${fedHeadline}** community skills across ${fedSources} sources (every skill the Hermes Skills Hub lists, plus GitHub provider taps — Anthropic, OpenAI, Hugging Face, NVIDIA, gstack, Superpowers — and aggregators like skills.sh and ClawHub). Counts are honest and never conflated: **${fedIndexed.toLocaleString()} indexed**, **${fedInstallable.toLocaleString()} installable** today (redistributable-licensed skills install straight from origin into a bundle; supply-chain-unvetted or source-available ones deep-link to origin and are never rehosted).
 - Browse/search the superset (no key): \`GET ${SITE}/api/skills/external?sources=<comma-separated>\`
 - Provider facets: \`github-anthropic\`, \`github-openai\`, \`github-huggingface\`, \`github-nvidia\`, \`github-gstack\`, \`github-superpowers\`; aggregators: \`hermes-hub\`, \`skills-sh\`, \`clawhub\`, \`lobehub\`, \`browse-sh\`, \`well-known\`
 - Install a redistributable external skill (real SKILL.md from origin): \`GET ${SITE}/api/skills/external/{source}/{slug}/install\`
@@ -174,9 +174,9 @@ Or hit the public REST API directly (no key for read/search):
 ${freeLine}
 
 ## Pricing
-- Free: ${free === 1 ? 'super-memory only' : `${free} skills (super-memory + recipes-cookbook-reconcile)`} (MIT-licensed, no account needed to browse).
-- Pro — $20/mo: every paid skill in the catalog (${pro} today, growing weekly), up to 10 cookbooks + fleet sync, cross-vendor install, per-key visibility.
-- Pro+ — $100/mo: everything in Pro plus up to 200 cookbooks, deploy pre-built cookbooks to clients' agents, private org catalog.
+- Free: ${free === 1 ? 'super-memory only' : `${free} skills (super-memory + recipes-bundle-reconcile)`} (MIT-licensed, no account needed to browse).
+- Pro — $20/mo: every paid skill in the catalog (${pro} today, growing weekly), up to 10 bundles + fleet sync, cross-vendor install, per-key visibility.
+- Pro+ — $100/mo: everything in Pro plus up to 200 bundles, deploy pre-built bundles to clients' agents, private org catalog.
 - Pricing page: ${SITE}/pricing
 
 ## Featured skills

@@ -1,19 +1,19 @@
 ---
-// spotify_0608 Ph F — PUBLIC cookbook page: /cookbooks/p/<slug>
+// spotify_0608 Ph F — PUBLIC bundle page: /bundles/p/<slug>
 //
 // The growth artifact (GTM build-plan mod #1). Anyone — no auth — can open a
-// public cookbook by its slug, see the skills it composes, and get the ONE
+// public bundle by its slug, see the skills it composes, and get the ONE
 // copy-paste MCP line that installs the whole stack. This is the entire
 // top-of-funnel: a builder lands here from a shared link, hands the one-liner
 // to their agent, and the agent composes the stack in one call.
 //
 // Data source: GET /api/cookbooks/public/{slug} (Ph B, anonymous, returns the
 // card + ordered skills + clone_line + ?ref attribution). 404 unless the
-// cookbook's visibility='public'.
+// bundle's visibility='public'.
 //
 // Static Astro can't pre-render per-slug routes, so the page lives at
-// /cookbooks/p/?slug=<slug>; a Caddy rewrite (/cookbooks/p/<slug> →
-// /cookbooks/p/?slug=<slug>) gives the clean shareable URL in prod. The client
+// /bundles/p/?slug=<slug>; a Caddy rewrite (/bundles/p/<slug> →
+// /bundles/p/?slug=<slug>) gives the clean shareable URL in prod. The client
 // also resolves the slug from the trailing path segment as a fallback.
 
 import AppShell from "../../layouts/AppShell.astro";
@@ -30,16 +30,16 @@ const API_BASE = import.meta.env.PUBLIC_RECIPES_API_BASE || "https://recipes.wis
     <a href="/cookbooks" class="text-xs text-muted hover:text-accent transition inline-flex items-center gap-1.5 mb-6">← Discover cookbooks</a>
 
     <!-- States -->
-    <section id="state-loading" class="text-muted text-sm py-10">Loading cookbook…</section>
+    <section id="state-loading" class="text-muted text-sm py-10">Loading bundle…</section>
 
     <section id="state-notfound" hidden class="bg-bg-card border border-border rounded-2xl p-8 text-center">
-      <h1 class="text-2xl font-semibold mb-2">Cookbook not found</h1>
-      <p class="text-sm text-muted mb-5">This cookbook doesn't exist or isn't public.</p>
+      <h1 class="text-2xl font-semibold mb-2">Bundle not found</h1>
+      <p class="text-sm text-muted mb-5">This bundle doesn't exist or isn't public.</p>
       <a href="/cookbooks" class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-accent text-bg font-semibold text-sm hover:bg-accent-soft transition">Browse public cookbooks</a>
     </section>
 
     <section id="state-error" hidden class="bg-bg-card border border-red-500/40 rounded-2xl p-6">
-      <h2 class="text-lg font-semibold mb-2">Couldn't load cookbook</h2>
+      <h2 class="text-lg font-semibold mb-2">Couldn't load bundle</h2>
       <p id="error-detail" class="text-sm text-muted"></p>
     </section>
 
@@ -47,10 +47,10 @@ const API_BASE = import.meta.env.PUBLIC_RECIPES_API_BASE || "https://recipes.wis
     <div id="content" hidden>
       <header class="flex flex-col gap-3 mb-8">
         <div class="flex items-center gap-2">
-          <span class="badge badge-public">Public cookbook</span>
+          <span class="badge badge-public">Public bundle</span>
           <span id="cb-by" class="text-xs text-muted-soft"></span>
         </div>
-        <h1 id="cb-name" class="text-3xl md:text-4xl font-semibold tracking-tight">Cookbook</h1>
+        <h1 id="cb-name" class="text-3xl md:text-4xl font-semibold tracking-tight">Bundle</h1>
         <p id="cb-desc" class="text-muted leading-relaxed"></p>
         <div id="cb-stats" class="text-sm text-muted-soft flex items-center gap-4 flex-wrap"></div>
       </header>
@@ -83,16 +83,16 @@ const API_BASE = import.meta.env.PUBLIC_RECIPES_API_BASE || "https://recipes.wis
             <button id="copy-wk-btn" class="absolute top-3 right-3 px-2.5 py-1 rounded-md bg-bg-elev border border-border text-xs text-muted hover:text-cool hover:border-cool/40 transition" type="button">Copy</button>
           </div>
           <p class="text-xs text-muted-soft mt-3">
-            Standards-based install via the open <a href="https://agentskills.io/specification" class="text-cool hover:underline" target="_blank" rel="noopener">agentskills.io</a> <code>.well-known/skills</code> convention — the whole cookbook lands as native skills in your agent. Free skills install verbatim; paid skills ship a locked pointer until you install with a LoopSkill key.
+            Standards-based install via the open <a href="https://agentskills.io/specification" class="text-cool hover:underline" target="_blank" rel="noopener">agentskills.io</a> <code>.well-known/skills</code> convention — the whole bundle lands as native skills in your agent. Free skills install verbatim; paid skills ship a locked pointer until you install with a LoopSkill key.
           </p>
         </div>
       </section>
 
       <!-- Skill list -->
       <section>
-        <h2 class="text-sm font-medium text-muted-soft uppercase tracking-wide mb-3">Skills in this cookbook</h2>
+        <h2 class="text-sm font-medium text-muted-soft uppercase tracking-wide mb-3">Skills in this bundle</h2>
         <div id="cb-empty" hidden class="bg-bg-card border border-border rounded-2xl p-8 text-center text-sm text-muted">
-          This cookbook has no skills yet.
+          This bundle has no skills yet.
         </div>
         <ul id="skills-list" class="flex flex-col gap-2"></ul>
       </section>
@@ -100,7 +100,7 @@ const API_BASE = import.meta.env.PUBLIC_RECIPES_API_BASE || "https://recipes.wis
       <!-- CTA footer -->
       <section class="mt-12 bg-bg-card border border-border rounded-2xl p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
-          <p class="font-semibold mb-1">Build your own cookbook</p>
+          <p class="font-semibold mb-1">Build your own bundle</p>
           <p class="text-sm text-muted">Compose a security-vetted skill stack and share it as one link.</p>
         </div>
         <a href="/pricing" class="shrink-0 inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-accent text-bg font-semibold text-sm hover:bg-accent-soft transition">Get started</a>
@@ -157,8 +157,8 @@ const API_BASE = import.meta.env.PUBLIC_RECIPES_API_BASE || "https://recipes.wis
     hide("state-loading");
     show("content");
 
-    document.title = (cb.name || "Cookbook") + " — LoopSkill";
-    $("cb-name").textContent = cb.name || "Cookbook";
+    document.title = (cb.name || "Bundle") + " — LoopSkill";
+    $("cb-name").textContent = cb.name || "Bundle";
     if (cb.description) $("cb-desc").textContent = cb.description;
     if (cb.ref) $("cb-by").textContent = "shared by a creator on LoopSkill";
 

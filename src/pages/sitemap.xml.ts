@@ -18,7 +18,7 @@ import { fetchApi } from '../lib/api';
 const SITE = 'https://recipes.wisechef.ai';
 
 // Public, indexable top-level routes. Auth'd / per-user surfaces
-// (dashboard, signin, signup, referrals, cookbooks/view) are intentionally
+// (dashboard, signin, signup, referrals, bundles/view) are intentionally
 // excluded — they carry no public SEO value and are Disallow'd in robots.txt.
 const STATIC_ROUTES: { path: string; priority: string; changefreq: string }[] = [
   { path: '/', priority: '1.0', changefreq: 'daily' },
