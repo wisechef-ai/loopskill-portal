@@ -14,7 +14,7 @@ import AppShell from '../layouts/AppShell.astro';
       </div>
       <div class="flex gap-2">
         <a href="/composer" class="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-accent text-bg text-sm font-semibold hover:bg-accent-soft transition">
-          + Compose a cookbook
+          + Compose a bundle
         </a>
         <a href="/fleets" class="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg border border-border hover:border-accent text-text text-sm font-medium transition">
           Your fleets
@@ -25,7 +25,7 @@ import AppShell from '../layouts/AppShell.astro';
     <!-- Your cookbooks -->
     <div class="mb-10">
       <div class="flex items-center justify-between mb-3">
-        <h2 class="text-sm font-semibold uppercase tracking-widest text-muted-soft">Your cookbooks</h2>
+        <h2 class="text-sm font-semibold uppercase tracking-widest text-muted-soft">Your bundles</h2>
         <a href="/library" class="text-xs text-accent hover:opacity-80">View library →</a>
       </div>
       <div id="home-cookbooks" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -47,7 +47,7 @@ import AppShell from '../layouts/AppShell.astro';
     <!-- Discover public cookbooks — the shareable playlists others published -->
     <div class="mb-10">
       <div class="flex items-center justify-between mb-3">
-        <h2 class="text-sm font-semibold uppercase tracking-widest text-muted-soft">Discover cookbooks</h2>
+        <h2 class="text-sm font-semibold uppercase tracking-widest text-muted-soft">Discover bundles</h2>
         <a href="/cookbooks" class="text-xs text-accent hover:opacity-80">Browse all →</a>
       </div>
       <p class="text-xs text-muted mb-4">Public, ranked skill bundles you can clone in one line — then subscribe to your fleet.</p>
@@ -78,7 +78,7 @@ import AppShell from '../layouts/AppShell.astro';
         if (!cbooks.length) {
           cbWrap.innerHTML = `<a href="/composer" class="col-span-full flex flex-col items-center justify-center gap-2 py-10 rounded-2xl border border-dashed border-border hover:border-accent/50 transition text-center">
             <span class="text-3xl text-muted-soft">+</span>
-            <span class="text-sm text-text font-medium">Compose your first cookbook</span>
+            <span class="text-sm text-text font-medium">Compose your first bundle</span>
             <span class="text-xs text-muted">Search the catalog, multi-select skills, share one link.</span>
           </a>`;
         } else {
@@ -99,7 +99,7 @@ import AppShell from '../layouts/AppShell.astro';
         if (!fleets.length) {
           flWrap.innerHTML = `<a href="/fleets" class="col-span-full flex flex-col items-center justify-center gap-2 py-8 rounded-2xl border border-dashed border-border hover:border-accent/50 transition text-center">
             <span class="text-sm text-text font-medium">Create a fleet</span>
-            <span class="text-xs text-muted">Your team's agents, one cookbook, one sync.</span>
+            <span class="text-xs text-muted">Your team's agents, one bundle, one sync.</span>
           </a>`;
         } else {
           flWrap.innerHTML = fleets.map((f: any) => `
@@ -116,7 +116,7 @@ import AppShell from '../layouts/AppShell.astro';
       if (dWrap) {
         if (!discover.length) {
           dWrap.innerHTML = `<a href="/cookbooks" class="col-span-full flex flex-col items-center justify-center gap-2 py-8 rounded-2xl border border-dashed border-border hover:border-accent/50 transition text-center">
-            <span class="text-sm text-text font-medium">Browse public cookbooks</span>
+            <span class="text-sm text-text font-medium">Browse public bundles</span>
             <span class="text-xs text-muted">Curated skill bundles, ranked by installs.</span>
           </a>`;
         } else {
@@ -129,7 +129,7 @@ import AppShell from '../layouts/AppShell.astro';
               <span class="font-semibold text-text truncate">${(cb.name || 'Untitled')}</span>
               <span class="text-xs text-muted line-clamp-2">${(cb.description || 'No description')}</span>
               <span class="text-[11px] text-muted-soft mt-1">${n} ${inst} ${verified}</span>
-              <span class="text-xs text-accent mt-1">View cookbook →</span>
+              <span class="text-xs text-accent mt-1">View bundle →</span>
             </a>`;
           }).join('');
         }

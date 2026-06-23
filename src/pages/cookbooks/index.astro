@@ -17,16 +17,16 @@ const API_BASE = import.meta.env.PUBLIC_RECIPES_API_BASE || "https://recipes.wis
 ---
 
 <AppShell mode="public"
-  title="Discover cookbooks — LoopSkill"
-  description="Browse public, security-vetted skill stacks for AI agents. Compose any cookbook into your agent with one MCP line."
+  title="Discover bundles — LoopSkill"
+  description="Browse public, security-vetted skill stacks for AI agents. Compose any bundle into your agent with one MCP line."
   pageType="website"
 >
   <main class="cb-discover max-w-4xl mx-auto px-6 pt-12 pb-20">
     <header class="flex flex-col gap-3 mb-8">
-      <p class="eyebrow">Cookbooks</p>
-      <h1 class="text-4xl md:text-5xl font-semibold tracking-tight">Discover cookbooks</h1>
+      <p class="eyebrow">Bundles</p>
+      <h1 class="text-4xl md:text-5xl font-semibold tracking-tight">Discover bundles</h1>
       <p class="text-lg text-muted leading-relaxed max-w-2xl">
-        Curated, security-vetted skill stacks for AI agents. Open any cookbook and
+        Curated, security-vetted skill stacks for AI agents. Open any bundle and
         compose the whole thing into your agent with one MCP line — no account
         needed to install free skills.
       </p>
@@ -38,16 +38,16 @@ const API_BASE = import.meta.env.PUBLIC_RECIPES_API_BASE || "https://recipes.wis
       <button id="sort-newest" class="cb-tab px-3 py-1.5 rounded-lg text-sm font-medium" type="button">Newest</button>
     </div>
 
-    <section id="state-loading" class="text-muted text-sm py-10">Loading cookbooks…</section>
+    <section id="state-loading" class="text-muted text-sm py-10">Loading bundles…</section>
 
     <section id="state-empty" hidden class="bg-bg-card border border-border rounded-2xl p-8 text-center">
-      <h2 class="text-lg font-semibold mb-2">No public cookbooks yet</h2>
+      <h2 class="text-lg font-semibold mb-2">No public bundles yet</h2>
       <p class="text-sm text-muted mb-5">Be the first to publish one — compose a skill stack and share it as a link.</p>
       <a href="/pricing" class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-accent text-bg font-semibold text-sm hover:bg-accent-soft transition">Get started</a>
     </section>
 
     <section id="state-error" hidden class="bg-bg-card border border-red-500/40 rounded-2xl p-6">
-      <h2 class="text-lg font-semibold mb-2">Couldn't load cookbooks</h2>
+      <h2 class="text-lg font-semibold mb-2">Couldn't load bundles</h2>
       <p id="error-detail" class="text-sm text-muted"></p>
     </section>
 

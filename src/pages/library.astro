@@ -10,16 +10,16 @@ import AppShell from '../layouts/AppShell.astro';
     <header class="mb-8 flex items-end justify-between gap-4 flex-wrap">
       <div>
         <h1 class="text-2xl font-semibold tracking-tight">Your Library</h1>
-        <p class="text-sm text-muted mt-1">Cookbooks you've made and saved, and the skills you run.</p>
+        <p class="text-sm text-muted mt-1">Bundles you've made and saved, and the skills you run.</p>
       </div>
       <a href="/composer" class="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-accent text-bg text-sm font-semibold hover:bg-accent-soft transition">
-        + Compose a cookbook
+        + Compose a bundle
       </a>
     </header>
 
     <!-- Cookbooks -->
     <div class="mb-12">
-      <h2 class="text-sm font-semibold uppercase tracking-widest text-muted-soft mb-3">Cookbooks</h2>
+      <h2 class="text-sm font-semibold uppercase tracking-widest text-muted-soft mb-3">Bundles</h2>
       <div id="library-cookbooks" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         <div class="col-span-full text-sm text-muted py-8 text-center" id="library-cookbooks-loading">Loading…</div>
       </div>
