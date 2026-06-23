@@ -41,7 +41,7 @@ function normalizeCarouselEntry(e: any) {
     const trimmed = description.slice(0, 80).trimEnd();
     tagline = description.length > 80 ? `${trimmed}…` : trimmed;
   } else {
-    tagline = "Today's spotlight from the Recipes carousel";
+    tagline = "Today's spotlight from the LoopSkill carousel";
   }
   // Role ladder (pick_1605 Phase B): explicit non-empty role → "Today's Pick".
   const rawRole: string = (e?.role ?? '').toString().trim();
@@ -281,7 +281,7 @@ const trackAccents: Record<string, { badge: string; dot: string; label: string }
 
 const howItWorks = [
   { num: '01', title: 'You describe the goal', body: 'Plain language, in your existing AI agent. No searches, no docs, no copy-paste.', icon: 'lightning' },
-  { num: '02', title: 'Recipes finds the skill', body: 'The meta-skill makes your agent aware of every Recipes skill. It picks the perfect match.', icon: 'search' },
+  { num: '02', title: 'LoopSkill finds the skill', body: 'The meta-skill makes your agent aware of every LoopSkill skill. It picks the perfect match.', icon: 'search' },
   { num: '03', title: 'Installs locally in seconds', body: 'Skill files written to your machine. Your credentials, your data, your control.', icon: 'box' },
   { num: '04', title: 'Results delivered', body: 'A report. A scrape. A calendar. A patch. Done — and ready to ship.', icon: 'check' },
 ];
@@ -310,7 +310,7 @@ const verticals = [
 ---
 <AppShell
   mode="public"
-  title="Recipes — The recipe book for AI agents"
+  title="LoopSkill — The recipe book for AI agents"
   description="Production-grade skills for AI agents. Client reporting, code writing, web scraping, SEO audits, content calendars, proposals — installed by your agent in seconds. From $20/mo. By WiseChef."
 >
   <script is:inline>
@@ -384,7 +384,7 @@ const verticals = [
         {/* Demoted: the direct install command an agent copies. Not the centerpiece — the rails are. */}
         <details class="w-full max-w-xl mt-8 group">
           <summary class="list-none cursor-pointer text-xs text-muted-soft hover:text-accent transition text-center">
-            Install Recipes into your agent → <span class="underline underline-offset-2">copy the command</span>
+            Install LoopSkill into your agent → <span class="underline underline-offset-2">copy the command</span>
           </summary>
           <div class="mt-3"><InstallWidget skillCount={liveSkillCount} /></div>
         </details>
@@ -511,7 +511,7 @@ const verticals = [
         <div class="flex flex-col gap-5">
           <p class="eyebrow text-accent">How it works</p>
           <h2 class="text-3xl md:text-5xl font-bold tracking-tight" style="letter-spacing: -0.03em;">Your agent already does this — it just doesn't know about us yet.</h2>
-          <p class="text-muted text-lg leading-relaxed">Recipes is a single Markdown file. Drop it into your agent's skills directory. From then on your agent searches 84,000+ skills across 13 registries, installs the right one locally, bundles your picks into a cookbook, and syncs that cookbook to every agent in your fleet — versioned, signed, auto-rolled-back.</p>
+          <p class="text-muted text-lg leading-relaxed">LoopSkill is a single Markdown file. Drop it into your agent's skills directory. From then on your agent searches 84,000+ skills across 13 registries, installs the right one locally, bundles your picks into a cookbook, and syncs that cookbook to every agent in your fleet — versioned, signed, auto-rolled-back.</p>
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">
             {howItWorks.map(s => (
               <div class="flex flex-col gap-2 p-4 bg-bg-card/50 border border-border-soft rounded-xl hover:border-border transition">
@@ -542,7 +542,7 @@ const verticals = [
             <div class="text-text mb-3">install the recipes skill from recipes.wisechef.ai</div>
             <div class="text-accent">$ agent</div>
             <div class="text-muted mb-1">→ Fetching SKILL.md · wiring MCP (search · install · cookbooks · fleet)</div>
-            <div class="text-muted mb-3">✓ Recipes installed. <span class="text-text">84,000+ skills</span> across 13 registries — searchable now.</div>
+            <div class="text-muted mb-3">✓ LoopSkill installed. <span class="text-text">84,000+ skills</span> across 13 registries — searchable now.</div>
             <div class="text-success">$ you</div>
             <div class="text-text mb-3">build my agents a memory + scraping stack and keep them all in sync</div>
             <div class="text-accent">$ agent</div>
@@ -615,7 +615,7 @@ const verticals = [
         <div class="max-w-xl">
           <p class="eyebrow text-accent">Today's 7</p>
           <h2 class="text-3xl md:text-5xl font-bold tracking-tight mt-2" style="letter-spacing: -0.03em;">A new skill, every<br/>5 AM London time.</h2>
-          <p class="text-muted mt-3 text-lg">The carousel is how Recipes keeps the catalog honest. Each card runs against incumbent skills for 7 days. Telemetry decides what graduates to core.</p>
+          <p class="text-muted mt-3 text-lg">The carousel is how LoopSkill keeps the catalog honest. Each card runs against incumbent skills for 7 days. Telemetry decides what graduates to core.</p>
         </div>
         <a href="/carousel" class="text-sm text-accent hover:opacity-80 inline-flex items-center gap-1.5 shrink-0">
           See today's lineup <Icon name="arrow-right" size={11} />
@@ -772,5 +772,5 @@ const verticals = [
     </div>
   </section>
 
-  <CrossSell variant="banner" title="Need it run for you?" body="WiseChef Framework gives you a managed AI employee — same skills as Recipes, but operated end-to-end. From €199/month." />
+  <CrossSell variant="banner" title="Need it run for you?" body="WiseChef Framework gives you a managed AI employee — same skills as LoopSkill, but operated end-to-end. From €199/month." />
 </AppShell>

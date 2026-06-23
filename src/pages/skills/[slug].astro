@@ -138,7 +138,7 @@ const display = {
   title: skill?.title || f.title || (slug as string).replace(/-/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase()),
   tagline,
   tier: skill?.tier || f.tier || 'pro',
-  description: skill?.description || f.description || 'A Recipes skill.',
+  description: skill?.description || f.description || 'A LoopSkill skill.',
   install_count: skill?.install_count_total ?? skill?.install_count ?? 0,
   install_count_7d: skill?.install_count_7d ?? 0,
   rating: skill?.rating ?? null,
@@ -216,7 +216,7 @@ const skillSchema = {
 };
 ---
 
-<AppShell title={`${display.title} — Recipes`} description={display.description} mode="public" active="search">
+<AppShell title={`${display.title} — LoopSkill`} description={display.description} mode="public" active="search">
   <Fragment slot="head">
     <script type="application/ld+json" set:html={JSON.stringify(skillSchema)}></script>
   </Fragment>
@@ -373,7 +373,7 @@ const skillSchema = {
                 <code class="text-xs bg-[#0d0d0d] border border-border rounded-lg px-2.5 py-1 text-accent-soft font-mono">{env}</code>
               ))}
             </div>
-            <p class="text-xs text-muted-soft mt-3">These stay on your machine. Recipes never sees them.</p>
+            <p class="text-xs text-muted-soft mt-3">These stay on your machine. LoopSkill never sees them.</p>
           </section>
         )}
 

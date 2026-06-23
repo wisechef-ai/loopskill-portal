@@ -22,7 +22,7 @@ const API_BASE = import.meta.env.PUBLIC_RECIPES_API_BASE || "https://recipes.wis
 ---
 
 <AppShell mode="public"
-  title="Cookbook — Recipes"
+  title="Cookbook — LoopSkill"
   description="A public, security-vetted skill stack for AI agents. Compose the whole cookbook into your agent with one MCP line."
   pageType="product"
 >
@@ -83,7 +83,7 @@ const API_BASE = import.meta.env.PUBLIC_RECIPES_API_BASE || "https://recipes.wis
             <button id="copy-wk-btn" class="absolute top-3 right-3 px-2.5 py-1 rounded-md bg-bg-elev border border-border text-xs text-muted hover:text-cool hover:border-cool/40 transition" type="button">Copy</button>
           </div>
           <p class="text-xs text-muted-soft mt-3">
-            Standards-based install via the open <a href="https://agentskills.io/specification" class="text-cool hover:underline" target="_blank" rel="noopener">agentskills.io</a> <code>.well-known/skills</code> convention — the whole cookbook lands as native skills in your agent. Free skills install verbatim; paid skills ship a locked pointer until you install with a Recipes key.
+            Standards-based install via the open <a href="https://agentskills.io/specification" class="text-cool hover:underline" target="_blank" rel="noopener">agentskills.io</a> <code>.well-known/skills</code> convention — the whole cookbook lands as native skills in your agent. Free skills install verbatim; paid skills ship a locked pointer until you install with a LoopSkill key.
           </p>
         </div>
       </section>
@@ -157,10 +157,10 @@ const API_BASE = import.meta.env.PUBLIC_RECIPES_API_BASE || "https://recipes.wis
     hide("state-loading");
     show("content");
 
-    document.title = (cb.name || "Cookbook") + " — Recipes";
+    document.title = (cb.name || "Cookbook") + " — LoopSkill";
     $("cb-name").textContent = cb.name || "Cookbook";
     if (cb.description) $("cb-desc").textContent = cb.description;
-    if (cb.ref) $("cb-by").textContent = "shared by a creator on Recipes";
+    if (cb.ref) $("cb-by").textContent = "shared by a creator on LoopSkill";
 
     const skills = cb.skills || [];
     const parts = [`${skills.length} skill${skills.length === 1 ? "" : "s"}`];

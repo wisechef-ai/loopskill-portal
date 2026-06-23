@@ -3,14 +3,14 @@ import AppShell from '../layouts/AppShell.astro';
 const lastUpdated = '2026-05-03';
 ---
 
-<AppShell mode="public" title="Privacy — Recipes by WiseChef" description="What we collect, what we do not collect, and why our heartbeat is mathematically anonymous.">
+<AppShell mode="public" title="Privacy — LoopSkill" description="What we collect, what we do not collect, and why our heartbeat is mathematically anonymous.">
   <main class="prose">
     <h1>Privacy</h1>
     <p><em>Last updated: {lastUpdated}</em></p>
 
     <h2>The 30-second version</h2>
     <ul>
-      <li>We collect <strong>only a randomly-generated salt + day-of-last-seen</strong> from installed Recipes clients.</li>
+      <li>We collect <strong>only a randomly-generated salt + day-of-last-seen</strong> from installed LoopSkill clients.</li>
       <li>We <strong>cannot identify individual users</strong> from heartbeat data — this is a <em>mathematical guarantee</em> built into the schema, not a policy promise.</li>
       <li>You can disable telemetry entirely with <code>RECIPES_TELEMETRY=off</code> — there is no fallback channel.</li>
       <li>Account data (email, GitHub/Google ID, Stripe customer ID) is collected only when you explicitly create an account or subscribe.</li>
@@ -45,7 +45,7 @@ const lastUpdated = '2026-05-03';
     <p>Heartbeat rows are deleted after 90 days by a weekly cron job. Aggregate weekly counts (e.g. &quot;week of 2026-W18 had N active devices&quot;) are kept indefinitely.</p>
 
     <h2>Opting out</h2>
-    <p>Set the environment variable on your machine before running any Recipes command:</p>
+    <p>Set the environment variable on your machine before running any LoopSkill command:</p>
     <pre><code>export RECIPES_TELEMETRY=off</code></pre>
     <p>Accepted disable values (case-insensitive): <code>off</code>, <code>0</code>, <code>false</code>, <code>no</code>, <code>disable</code>, <code>disabled</code>. With this set, the heartbeat client short-circuits before any network call. We test this with mocked HTTP transports to assert <em>zero</em> outbound traffic.</p>
 

@@ -1,5 +1,5 @@
 /**
- * Build-time helper for fetching the Recipes API with retry-and-backoff.
+ * Build-time helper for fetching the LoopSkill API with retry-and-backoff.
  *
  * Why this exists: during `astro build`, every page that calls the API does
  * so in parallel within a few hundred milliseconds. The API's rate limiter

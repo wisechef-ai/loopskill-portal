@@ -3,8 +3,8 @@ import AppShell from '../../layouts/AppShell.astro';
 ---
 
 <AppShell mode="public"
-  title="API keys — Recipes Docs"
-  description="How Recipes API keys work: the rec_live_ prefix, x-api-key header, per-cookbook scoping (Pro+), rotation, and install-count visibility."
+  title="API keys — LoopSkill Docs"
+  description="How LoopSkill API keys work: the rec_live_ prefix, x-api-key header, per-cookbook scoping (Pro+), rotation, and install-count visibility."
 >
   <section class="max-w-3xl mx-auto px-6 pt-16 pb-24">
     <p class="eyebrow mb-3">Docs · API Keys</p>
@@ -12,7 +12,7 @@ import AppShell from '../../layouts/AppShell.astro';
       API keys
     </h1>
     <p class="text-muted text-lg leading-relaxed mb-12">
-      Every request to the Recipes API — installs, manifest fetches, cookbook syncs — is
+      Every request to the LoopSkill API — installs, manifest fetches, cookbook syncs — is
       authenticated with an API key. Here's how keys work, how to use them, and how to rotate
       them safely.
     </p>
@@ -20,7 +20,7 @@ import AppShell from '../../layouts/AppShell.astro';
     <!-- How keys work -->
     <h2 class="text-xl font-semibold text-text mb-4">How keys work</h2>
     <p class="text-muted mb-4">
-      Recipes API keys use the prefix <code class="text-xs bg-bg-elev rounded px-1">rec_live_</code>
+      LoopSkill API keys use the prefix <code class="text-xs bg-bg-elev rounded px-1">rec_live_</code>
       followed by a random 32-character string. Pass them in the
       <code class="text-xs bg-bg-elev rounded px-1">x-api-key</code> request header:
     </p>

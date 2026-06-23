@@ -2,14 +2,14 @@
 import AppShell from '../../layouts/AppShell.astro';
 ---
 
-<AppShell mode="public" title="Adding a new agent runtime — Recipes Docs"
-      description="Install the Recipes meta-skill on Hermes, Claude Code, Claude Desktop, Codex, Cursor, Cline, Continue.dev, Zed, OpenClaw, or any custom agent.">
+<AppShell mode="public" title="Adding a new agent runtime — LoopSkill Docs"
+      description="Install the LoopSkill meta-skill on Hermes, Claude Code, Claude Desktop, Codex, Cursor, Cline, Continue.dev, Zed, OpenClaw, or any custom agent.">
   <section class="max-w-3xl mx-auto px-6 pt-16 pb-12">
     <p class="eyebrow mb-2">Documentation · Integrations</p>
-    <h1 class="text-4xl font-semibold tracking-tight mb-6">Adding Recipes to your agent</h1>
+    <h1 class="text-4xl font-semibold tracking-tight mb-6">Adding LoopSkill to your agent</h1>
     <div class="prose">
       <p>
-        Recipes supports 10 agent runtimes out of the box. Pick your runtime below for the
+        LoopSkill supports 10 agent runtimes out of the box. Pick your runtime below for the
         exact install command and config snippet. All paths need your
         <code>RECIPES_API_KEY</code> environment variable set.
         See <a href="/docs/getting-started">Getting started</a> for key setup.
@@ -29,7 +29,7 @@ import AppShell from '../../layouts/AppShell.astro';
       <h3>Hermes</h3>
       <p>Hermes reads skills from <code>~/.hermes/skills/</code>. After install, the
       <code>recipes_search</code>, <code>recipes_install</code>, and <code>recipes_sync</code>
-      MCP tools are available automatically via the Recipes MCP server bundled in the skill.</p>
+      MCP tools are available automatically via the LoopSkill MCP server bundled in the skill.</p>
       <pre><code>mkdir -p ~/.hermes/skills/recipes
 curl -sL https://recipes.wisechef.ai/skill \
      -o ~/.hermes/skills/recipes/SKILL.md
@@ -81,7 +81,7 @@ export RECIPES_API_KEY=rec_xx...</code></pre>
     }
   }
 }`}</code></pre>
-      <p>Restart Claude Desktop. The Recipes tools appear in the tool picker.</p>
+      <p>Restart Claude Desktop. The LoopSkill tools appear in the tool picker.</p>
 
       <h3>Cursor</h3>
       <p>Open Cursor Settings → MCP → Add Server, or edit <code>.cursor/mcp.json</code>:</p>
@@ -143,7 +143,7 @@ export RECIPES_API_KEY=rec_xx...</code></pre>
       <!-- ─────────────── REST (any agent) ─────────────── -->
       <h2>Any agent (REST API)</h2>
       <p>
-        If your agent can make HTTP requests, you can use the Recipes REST API directly.
+        If your agent can make HTTP requests, you can use the LoopSkill REST API directly.
         No MCP server required.
       </p>
       <pre><code>{`# Search

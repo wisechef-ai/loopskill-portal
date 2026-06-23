@@ -2,7 +2,7 @@
 import AuthEdge from '../../layouts/AuthEdge.astro';
 ---
 
-<AuthEdge title="Welcome to Recipes — Subscription confirmed" description="Your Recipes subscription is now active.">
+<AuthEdge title="Welcome to LoopSkill — Subscription confirmed" description="Your LoopSkill subscription is now active.">
   <section class="max-w-2xl mx-auto px-6 pt-20 pb-16">
     <div id="success-state" class="hidden">
       <div class="text-center mb-8">
@@ -11,8 +11,8 @@ import AuthEdge from '../../layouts/AuthEdge.astro';
             <path d="M9 16L14 21L23 12" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" class="text-accent"/>
           </svg>
         </div>
-        <h1 class="text-3xl font-semibold tracking-tight">🎉 Welcome to <span id="tier-label" class="text-accent">Recipes</span></h1>
-        <p class="text-muted mt-2 text-sm">Your subscription is active. Time to make Recipes useful.</p>
+        <h1 class="text-3xl font-semibold tracking-tight">🎉 Welcome to <span id="tier-label" class="text-accent">LoopSkill</span></h1>
+        <p class="text-muted mt-2 text-sm">Your subscription is active. Time to make LoopSkill useful.</p>
       </div>
 
       <div class="bg-bg-card border border-border rounded-2xl p-6 space-y-4">
@@ -80,7 +80,7 @@ import AuthEdge from '../../layouts/AuthEdge.astro';
       const billing = await checkBilling();
       if (billing && (billing.subscription_status === 'active' || billing.subscription_status === 'trialing')) {
         const tier = billing.subscription_tier || '';
-        $('tier-label').textContent = TIER_LABELS[tier] || 'Recipes';
+        $('tier-label').textContent = TIER_LABELS[tier] || 'LoopSkill';
         $('checking-state').classList.add('hidden');
         $('success-state').classList.remove('hidden');
         return;

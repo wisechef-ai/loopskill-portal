@@ -2,14 +2,14 @@
 import AppShell from '../../layouts/AppShell.astro';
 import CrossSell from '../../components/CrossSell.astro';
 ---
-<AppShell mode="public" title="How it works — Recipes Docs"
+<AppShell mode="public" title="How it works — LoopSkill Docs"
      description="The three-level progressive skill loading model, lifecycle, telemetry opt-out, and multi-agent considerations.">
   <section class="max-w-3xl mx-auto px-6 pt-16 pb-12">
     <p class="eyebrow mb-2">Documentation · How it works</p>
     <h1 class="text-4xl font-semibold tracking-tight mb-6">The three-level skill loading model.</h1>
     <div class="prose">
       <p>
-        Recipes ships on top of <a href="https://docs.anthropic.com/en/docs/agents/claude-code/skills">Anthropic's Agent Skills standard</a>.
+        LoopSkill ships on top of <a href="https://docs.anthropic.com/en/docs/agents/claude-code/skills">Anthropic's Agent Skills standard</a>.
         We didn't invent the format — we operate the marketplace on top of it.
       </p>
 
@@ -84,7 +84,7 @@ anonymous telemetry ping (optional)`}</code></pre>
       <ul>
         <li>
           <strong>Credentials never leave your machine.</strong> Skills hit third-party APIs
-          directly using your env vars. Recipes only serves text files; it never proxies
+          directly using your env vars. LoopSkill only serves text files; it never proxies
           your API calls.
         </li>
         <li>
@@ -100,7 +100,7 @@ anonymous telemetry ping (optional)`}</code></pre>
         </li>
         <li>
           <strong>You can delete any skill</strong> by removing its directory. No account-level lock-in.
-          <code>_meta.json</code> is the only file Recipes writes outside the skill directory.
+          <code>_meta.json</code> is the only file LoopSkill writes outside the skill directory.
         </li>
       </ul>
 
@@ -119,7 +119,7 @@ anonymous telemetry ping (optional)`}</code></pre>
 
       <h2>Multi-agent considerations</h2>
       <p>
-        Recipes is fleet-native. If you run multiple agents (e.g. Hermes on your laptop +
+        LoopSkill is fleet-native. If you run multiple agents (e.g. Hermes on your laptop +
         a headless Codex on a CI server), you have two options:
       </p>
       <ul>

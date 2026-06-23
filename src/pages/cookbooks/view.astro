@@ -21,7 +21,7 @@ const API_BASE = import.meta.env.PUBLIC_RECIPES_API_BASE || "https://recipes.wis
 ---
 
 <AppShell mode="public"
-  title="Cookbook — Recipes"
+  title="Cookbook — LoopSkill"
   description="View the skills in your cookbook: list and graph views, with tailored-vs-catalog and pinned badges."
 >
   <main class="cb-view max-w-5xl mx-auto px-6 pt-12 pb-16">
@@ -39,7 +39,7 @@ const API_BASE = import.meta.env.PUBLIC_RECIPES_API_BASE || "https://recipes.wis
 
     <section id="state-no-key" hidden class="bg-bg-card border border-border rounded-2xl p-6">
       <h2 class="text-lg font-semibold mb-2">Connect your API key</h2>
-      <p class="text-sm text-muted mb-4">This page reads your cookbook over the API. Generate or paste a Recipes API key to continue.</p>
+      <p class="text-sm text-muted mb-4">This page reads your cookbook over the API. Generate or paste a LoopSkill API key to continue.</p>
       <a href="/library" class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-accent text-bg font-semibold text-sm hover:bg-accent-soft transition">Go to Library</a>
     </section>
 
@@ -195,7 +195,7 @@ const API_BASE = import.meta.env.PUBLIC_RECIPES_API_BASE || "https://recipes.wis
 
     // Auth resolution: portal/OAuth users carry a wr_jwt cookie (sent via
     // credentials:"include"); agents/power-users may instead have pasted a
-    // Recipes API key into localStorage. Send whichever is present — the API
+    // LoopSkill API key into localStorage. Send whichever is present — the API
     // honours both (cookie auth added in livefix_0601). No localStorage key is
     // NOT a dead end: the cookie alone authenticates a logged-in browser user.
     const headers = {};

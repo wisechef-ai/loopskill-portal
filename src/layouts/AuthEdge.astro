@@ -13,11 +13,11 @@ interface Props {
 }
 
 const {
-  title = 'Recipes',
-  description = 'Recipes by WiseChef — the skill marketplace for AI agents.',
+  title = 'LoopSkill',
+  description = 'LoopSkill — the skill marketplace for AI agents.',
 } = Astro.props;
 
-const ogTitle = title.includes('Recipes') ? title : `${title} | Recipes`;
+const ogTitle = title.includes('LoopSkill') ? title : `${title} | LoopSkill`;
 const canonicalURL = new URL(Astro.url.pathname, 'https://recipes.wisechef.ai');
 ---
 <!doctype html>
@@ -38,7 +38,7 @@ const canonicalURL = new URL(Astro.url.pathname, 'https://recipes.wisechef.ai');
         <span class="relative flex items-center justify-center w-9 h-9 rounded-lg bg-gradient-to-br from-accent/15 to-cool/10 border border-accent/40 group-hover:border-accent/70 transition">
           <img src="/brand/mark-96.png?v=2" alt="" width="28" height="28" class="select-none" />
         </span>
-        <span class="text-base font-semibold tracking-tight group-hover:text-accent transition">Recipes</span>
+        <span class="text-base font-semibold tracking-tight group-hover:text-accent transition">LoopSkill</span>
       </a>
     </header>
     <main class="flex-1 flex flex-col">

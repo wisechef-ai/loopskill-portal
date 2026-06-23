@@ -2,14 +2,14 @@
 import AppShell from '../../layouts/AppShell.astro';
 import CrossSell from '../../components/CrossSell.astro';
 ---
-<AppShell mode="public" title="Creator workflow — Recipes Docs"
+<AppShell mode="public" title="Creator workflow — LoopSkill Docs"
      description="End-to-end guide for skill creators: signup, develop SKILL.md locally, submit via recipes_publish_request, pass review, get published, earn revenue.">
   <section class="max-w-3xl mx-auto px-6 pt-16 pb-12">
     <p class="eyebrow mb-2">Documentation · Creator workflow</p>
     <h1 class="text-4xl font-semibold tracking-tight mb-6">Creator workflow — ship a skill and earn.</h1>
     <div class="prose">
       <p>
-        The Recipes creator program lets any developer publish skills to the marketplace
+        The LoopSkill creator program lets any developer publish skills to the marketplace
         and earn a share of subscription revenue. This guide walks through the full journey —
         from signup to first payout — in the order you'll actually do it.
       </p>
@@ -17,7 +17,7 @@ import CrossSell from '../../components/CrossSell.astro';
       <div class="not-prose mb-6 rounded-2xl border border-accent/40 bg-accent/5 p-5">
         <p class="text-xs uppercase tracking-wider text-accent font-semibold mb-2">Prerequisites</p>
         <ul class="text-sm text-muted space-y-1 mt-2">
-          <li>A Recipes account (free to create, no subscription required to submit)</li>
+          <li>A LoopSkill account (free to create, no subscription required to submit)</li>
           <li>A skill idea that solves a real, recurring workflow problem</li>
           <li>A machine to test on (Linux or macOS; Windows WSL2 works)</li>
         </ul>
@@ -123,7 +123,7 @@ cp -r ~/skills/my-skill ~/.claude/skills/my-skill
         Once your skill works locally, submit it from your agent conversation:
       </p>
       <pre><code>{`// Ask your agent:
-"Submit my skill at ~/skills/my-skill/ to the Recipes marketplace"
+"Submit my skill at ~/skills/my-skill/ to the LoopSkill marketplace"
 
 // The agent reads the directory and calls:
 recipes_publish_request({

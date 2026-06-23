@@ -1,8 +1,8 @@
 ---
 // InstallWidget — agent-install dialogue block.
-// Recipes is installed by telling your agent to fetch the skill via MCP —
+// LoopSkill is installed by telling your agent to fetch the skill via MCP —
 // NOT via npm/pip/curl (no such package exists). This block shows the actual
-// first-contact motion: paste one phrase to your agent, it installs Recipes.
+// first-contact motion: paste one phrase to your agent, it installs LoopSkill.
 // Inspired by the larrybrain.com / AgentPact /skill install pattern.
 
 interface Props {
@@ -45,9 +45,9 @@ const installPhrase = 'Install the recipes skill from recipes.wisechef.ai/skill 
 
     <div class="text-accent">$ agent</div>
     <div class="text-muted mb-1">→ Fetching SKILL.md from recipes.wisechef.ai/skill</div>
-    <div class="text-muted mb-1">→ Wiring Recipes MCP — search · install · cookbooks · fleet</div>
+    <div class="text-muted mb-1">→ Wiring LoopSkill MCP — search · install · cookbooks · fleet</div>
     <div class="text-success font-semibold">
-      ✓ Recipes installed. Searching <span class="text-text">84,000+ skills across 13 registries</span> — ready.
+      ✓ LoopSkill installed. Searching <span class="text-text">84,000+ skills across 13 registries</span> — ready.
     </div>
     <div class="text-muted mt-2 mb-3">Just tell me what you need.</div>
 

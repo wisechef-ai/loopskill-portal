@@ -8,7 +8,7 @@ const description = 'Two-minute survey for solo AI operators and integrators. We
   <main class="max-w-2xl mx-auto px-6 py-16 md:py-24">
     <header class="mb-10">
       <a href="/" class="text-xs text-muted hover:text-text transition inline-flex items-center gap-1.5 mb-6">
-        <span aria-hidden="true">←</span> Recipes
+        <span aria-hidden="true">←</span> LoopSkill
       </a>
       <h1 class="text-3xl md:text-4xl font-bold tracking-tight leading-tight mb-4">
         Would you deploy your AI agent stack to 20 small businesses for <span class="text-accent">$100/mo</span>?
@@ -137,7 +137,7 @@ const description = 'Two-minute survey for solo AI operators and integrators. We
             status.classList.remove('text-muted');
             status.classList.add('text-text');
             status.innerHTML = '<strong class="text-accent">Thanks.</strong> That\u2019s exactly the signal we needed. ' +
-              '<a href="/" class="underline hover:text-accent transition">Back to Recipes</a>.';
+              '<a href="/" class="underline hover:text-accent transition">Back to LoopSkill</a>.';
           } else {
             var msg = 'Something went wrong (HTTP ' + resp.status + '). Try again in a moment.';
             try { var j = await resp.json(); if (j && j.detail) msg = 'Validation: ' + JSON.stringify(j.detail); } catch (_) {}

@@ -2,14 +2,14 @@
 import AppShell from '../../layouts/AppShell.astro';
 import CrossSell from '../../components/CrossSell.astro';
 ---
-<AppShell mode="public" title="Publishing a skill — Recipes Docs"
+<AppShell mode="public" title="Publishing a skill — LoopSkill Docs"
      description="How to publish a skill to the Recipes marketplace using the MCP-first path via recipes_publish_request.">
   <section class="max-w-3xl mx-auto px-6 pt-16 pb-12">
     <p class="eyebrow mb-2">Documentation · Publishing</p>
     <h1 class="text-4xl font-semibold tracking-tight mb-6">Publishing a skill.</h1>
     <div class="prose">
       <p>
-        Recipes is an open marketplace. Any developer can submit a skill for review.
+        LoopSkill is an open marketplace. Any developer can submit a skill for review.
         The canonical publish path is MCP-first — your agent calls <code>recipes_publish_request</code>
         from within a conversation. A CLI fallback is also available.
       </p>
@@ -58,7 +58,7 @@ templates/        ← optional: config snippets, scaffolds`}</code></pre>
       <h3>Step 2: Call recipes_publish_request</h3>
       <p>From inside your agent conversation (e.g. Claude Code, Hermes):</p>
       <pre><code>{`// Tell your agent:
-"Submit my skill at ./skills/my-skill/ to the Recipes marketplace"
+"Submit my skill at ./skills/my-skill/ to the LoopSkill marketplace"
 
 // The agent calls:
 recipes_publish_request({

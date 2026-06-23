@@ -1,5 +1,5 @@
 // GEO surface (geoseed_0601): robots.txt was a 404 before this.
-// Recipes is a marketplace whose BUYERS are AI agents, so we explicitly
+// LoopSkill is a marketplace whose BUYERS are AI agents, so we explicitly
 // welcome AI/LLM crawlers and point them at the sitemap + llms.txt manifest.
 // Static endpoint — emits dist/robots.txt at build time. No deps.
 import type { APIRoute } from 'astro';

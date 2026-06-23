@@ -44,7 +44,7 @@ interface Props {
 }
 
 const {
-  title = 'Recipes',
+  title = 'LoopSkill',
   description = 'Your agent-environment library — compose once, reproduce across every agent, sync your whole fleet.',
   active = '',
   mode = 'member',
@@ -53,15 +53,15 @@ const {
 } = Astro.props;
 
 const isPublic = mode === 'public';
-const siteURL = 'https://recipes.wisechef.ai';
+const siteURL = 'https://loopskill.io';
 const canonicalURL = new URL(Astro.url.pathname, siteURL);
-const ogTitle = title.includes('Recipes') ? title : `${title} | Recipes`;
+const ogTitle = title.includes('LoopSkill') ? title : `${title} | LoopSkill`;
 
 const orgSchema = {
   '@context': 'https://schema.org',
   '@type': 'Organization',
-  name: 'Recipes',
-  alternateName: 'Recipes by WiseChef',
+  name: 'LoopSkill',
+  alternateName: 'LoopSkill',
   url: siteURL,
   logo: `${siteURL}/favicon.svg`,
   description,
@@ -95,7 +95,7 @@ const navItems = [
     <meta property="og:url" content={canonicalURL} />
     <meta property="og:title" content={ogTitle} />
     <meta property="og:description" content={description} />
-    <meta property="og:site_name" content="Recipes by WiseChef" />
+    <meta property="og:site_name" content="LoopSkill" />
     <meta property="og:image" content={ogImage} />
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content={ogTitle} />
@@ -142,7 +142,7 @@ const navItems = [
           <span class="relative flex items-center justify-center w-9 h-9 rounded-lg bg-gradient-to-br from-accent/15 to-cool/10 border border-accent/40 group-hover:border-accent/70 transition">
             <img src="/brand/mark-96.png?v=2" alt="" width="28" height="28" class="select-none" />
           </span>
-          <span class="text-base font-semibold tracking-tight group-hover:text-accent transition">Recipes</span>
+          <span class="text-base font-semibold tracking-tight group-hover:text-accent transition">LoopSkill</span>
         </a>
 
         <!-- ── Unified search (onechrome_0611 P4): ONE box, TWO result groups —
@@ -237,7 +237,7 @@ const navItems = [
         <header class="md:hidden sticky top-0 z-40 flex items-center justify-between gap-3 h-14 px-4 border-b border-border bg-bg/85 backdrop-blur-md">
           <a href={isPublic ? '/' : '/home'} class="flex items-center gap-2 font-semibold">
             <img src="/brand/mark-96.png?v=2" alt="" width="26" height="26" />
-            <span>Recipes</span>
+            <span>LoopSkill</span>
           </a>
           <details class="relative" id="appshell-mobile-menu">
             <summary class="list-none cursor-pointer p-2 text-muted hover:text-text" aria-label="Menu">

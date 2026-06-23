@@ -2,8 +2,8 @@
 import AppShell from '../../layouts/AppShell.astro';
 import CrossSell from '../../components/CrossSell.astro';
 ---
-<AppShell mode="public" title="Getting started — Recipes Docs"
-     description="Install Recipes on Hermes, Claude Code, Claude Desktop, Codex, or Cursor in under 5 minutes.">
+<AppShell mode="public" title="Getting started — LoopSkill Docs"
+     description="Install LoopSkill on Hermes, Claude Code, Claude Desktop, Codex, or Cursor in under 5 minutes.">
   <section class="max-w-3xl mx-auto px-6 pt-16 pb-12">
     <p class="eyebrow mb-2">Documentation · Getting started</p>
     <h1 class="text-4xl font-semibold tracking-tight mb-6">From zero to skill-aware in 60 seconds.</h1>
@@ -22,7 +22,7 @@ import CrossSell from '../../components/CrossSell.astro';
 
       <h2>Prerequisites</h2>
       <ul>
-        <li>A Recipes API key — free for free-tier skills, Pro ($20/mo) for the full library.</li>
+        <li>A LoopSkill API key — free for free-tier skills, Pro ($20/mo) for the full library.</li>
         <li>One of the supported agent runtimes below.</li>
         <li>Your key exported: <code>export RECIPES_API_KEY=rec_xx...</code></li>
       </ul>
@@ -55,7 +55,7 @@ curl -sL https://recipes.wisechef.ai/skill \
 
       <h3>Claude Desktop (MCP)</h3>
       <p>
-        Claude Desktop uses the Model Context Protocol. Add the Recipes MCP server to your
+        Claude Desktop uses the Model Context Protocol. Add the LoopSkill MCP server to your
         <code>claude_desktop_config.json</code>:
       </p>
       <pre><code>{`{
@@ -68,7 +68,7 @@ curl -sL https://recipes.wisechef.ai/skill \
   }
 }`}</code></pre>
       <p>
-        After saving, restart Claude Desktop. You'll see the Recipes tools (search, install, sync)
+        After saving, restart Claude Desktop. You'll see the LoopSkill tools (search, install, sync)
         available in the tool picker. See <a href="/docs/mcp">MCP setup</a> for full details.
       </p>
 
@@ -85,9 +85,9 @@ curl -sL https://recipes.wisechef.ai/skill \
         Once the meta-skill is installed, your agent can search the catalog. Try asking:
       </p>
       <ul>
-        <li>"Search Recipes for an SEO audit skill"</li>
-        <li>"What Recipes skills exist for client reporting?"</li>
-        <li>"Find a Recipes skill that generates content calendars"</li>
+        <li>"Search LoopSkill for an SEO audit skill"</li>
+        <li>"What LoopSkill skills exist for client reporting?"</li>
+        <li>"Find a LoopSkill skill that generates content calendars"</li>
       </ul>
       <p>
         Under the hood, the agent calls <code>GET /api/skills/search?q=...</code> and ranks results
@@ -99,8 +99,8 @@ curl -sL https://recipes.wisechef.ai/skill \
         Tell your agent to install a skill. Example:
       </p>
       <ul>
-        <li>"Install the <code>super-memory</code> skill from Recipes"</li>
-        <li>"Install the best SEO audit skill from Recipes"</li>
+        <li>"Install the <code>super-memory</code> skill from LoopSkill"</li>
+        <li>"Install the best SEO audit skill from LoopSkill"</li>
       </ul>
       <p>
         The agent calls <code>GET /api/skills/install?slug=super-memory&amp;mode=files</code>,
@@ -118,7 +118,7 @@ curl -sL https://recipes.wisechef.ai/skill \
       </p>
       <pre><code>recipes sync</code></pre>
       <p>
-        Or use the MCP tool: ask your agent "sync my Recipes skills to latest".
+        Or use the MCP tool: ask your agent "sync my LoopSkill skills to latest".
         The <code>recipes_sync</code> MCP tool updates all installed skills in your cookbook.
       </p>
 
