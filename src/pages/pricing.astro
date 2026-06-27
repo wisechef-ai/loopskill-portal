@@ -1,91 +1,79 @@
 ---
 import AppShell from '../layouts/AppShell.astro';
 import CrossSell from '../components/CrossSell.astro';
-import EarningsCalculator from '../components/EarningsCalculator.astro';
 
 const tiers = [
   {
+    name: 'Free',
+    price: '0',
+    cadence: 'forever',
+    currency: '$',
+    tagline: 'Self-host it. Keep it.',
+    headline: 'The whole platform is open source. Run the registry yourself, browse every loop, install skills, run loops locally under enforced bounds. No card. Nothing phones home.',
+    badgeClass: 'badge-free',
+    cta: 'Start free',
+    ctaAuthed: 'You\'re on Free',
+    ctaHref: '/signin?next=/library',
+    ctaTier: 'free',
+    accent: false,
+    features: [
+      'Self-host the full open-source registry (MPL-2.0)',
+      'Browse + run every public loop — objective pass/fail under enforced bounds',
+      'Install community skills, local-first — runs on your hardware',
+      'Cross-vendor: works on Codex, Claude, OpenClaw, Cursor, Hermes',
+      'Daily 7-card carousel',
+    ],
+  },
+  {
     name: 'Pro',
-    price: '20',
+    price: '9.95',
     cadence: 'per month',
     currency: '$',
-    tagline: '1 seat. Every paid skill. Local-first.',
-    headline: 'Single seat. Browse and install every paid skill in the catalog. Bundles (private skill bundles) for your own use. Cross-vendor: same skill works on Claude Code, Cursor, Windsurf, Cline, OpenClaw, Hermes. Cancel anytime — installed skills keep working.',
+    tagline: 'We host it for you.',
+    headline: 'Same open-source platform — you just don\'t run it yourself. Hosted registry, managed runner capacity, auto-updated catalog, ed25519-signed skill delivery. Pro is convenience, never a feature gate: every capability exists in the free self-host.',
     badgeClass: 'badge-pro',
-    cta: 'Start Pro — $20/mo',
+    cta: 'Start Pro — $9.95/mo',
     ctaAuthed: 'Switch to Pro',
     ctaHref: '/signin?next=/api/checkout/pro',
     ctaTier: 'pro',
     accent: true,
     features: [
-      'Every paid skill in the catalog — cross-vendor (Claude Code, Cursor, Cline, OpenClaw, Hermes)',
-      'Personal bundle — bundle your favourite skills, synced across your machines',
-      'Auto-update channel — patched skills delivered the day they ship, ed25519-signed',
-      'Zero-to-productive transfer — new agent? Tell it "install the recipes skill" → full library in 60 seconds',
-      '50% recurring rev share on every Pro/Pro+ user you refer',
-    ],
-    notFor: 'Not for: deploying skills to client agents you operate (use Pro+).',
-  },
-  {
-    name: 'Pro+',
-    price: '100',
-    cadence: 'per month',
-    currency: '$',
-    tagline: 'Up to 200 bundles. Resell at any rate.',
-    headline: 'Pro, plus up to 200 bundles — push your private bundles straight into agents you operate for clients. Resell skills at YOUR price (we keep zero). Private org-only catalog for skills you don\'t want public. 60-min onboarding for the first deployment.',
-    badgeClass: 'badge-pro-plus',
-    cta: 'Start Pro+ — $100/mo',
-    ctaAuthed: 'Upgrade to Pro+',
-    ctaHref: '/signin?next=/api/checkout/pro_plus',
-    ctaTier: 'pro_plus',
-    accent: false,
-    moneyBack: '14-day money-back',
-    features: [
-      'Everything in Pro',
-      'Up to 200 bundles — deploy bundles into agents you operate for clients',
-      'Resell at YOUR rate — bill clients $300/mo, we still charge you $100',
-      'Private org catalog — internal-only skills, never public',
-      '60-min onboarding call + priority 24h skill review',
+      'Fully managed registry + runner — zero ops, nothing to deploy',
+      'Hosted loop runs — press run in the browser, no local sandbox setup',
+      'Auto-update channel — patched skills the day they ship, ed25519-signed',
+      'Zero-to-productive transfer — new agent? "install the loopskill skill" → full library in 60 seconds',
+      'Cancel anytime — self-host the same thing for free, your installs keep working',
     ],
     notFor: null,
   },
 ];
 
-// Free tier removed from /pricing rev 7.2.4 (Adam directive 2026-05-10).
-// Free skills (super-memory, MIT) remain available — see /skills and the
-// homepage catch-skill flow. They are simply not sold as a "tier" here.
-// Removing Free clarifies the value prop: Pro vs Pro+ is the real decision.
-
 const faqs = [
   {
-    q: 'Can I white-label Pro+ for my clients? Will they see LoopSkill branding?',
-    a: 'No LoopSkill branding appears in your client\'s agent runtime. Pro+ pushes your bundles (private skill bundles) into the agents you operate for clients — the skills run locally on the client\'s machine or yours, no cloud round-trip. Your client sees your agent doing your work; they don\'t see us. You bill them at YOUR rate ($300/mo, $500/mo, whatever your contract says) — we still charge YOU $100/mo flat. Whatever margin you set is yours.',
+    q: 'Is LoopSkill really open source? What\'s the catch?',
+    a: 'Yes — the whole platform is MPL-2.0. You can self-host the registry, the runner, and the catalog on your own hardware for free, forever. Pro ($9.95/mo) is hosted convenience: we run it so you don\'t have to. There is no feature locked behind Pro that the free self-host doesn\'t have. The paid tier funds the hosting and ongoing work; it is never a gate.',
   },
   {
-    q: 'Does my install stop working if I cancel Pro+?',
-    a: 'No. The skills you have already installed keep running on your machine — they live locally, not in our cloud. Cancellation only stops auto-improvement updates and access to new catalog content. You can re-subscribe later and pick up exactly where you left off.',
-  },
-  {
-    q: 'What if I switch from Pro+ to Pro?',
-    a: 'Use the in-app downgrade button (or hit POST /api/subscriptions/downgrade). Stripe applies prorated credit for the unused portion of Pro+ to your next Pro invoice — no money lost, no surprise charge. Your private catalog and onboarding artefacts stay accessible until the end of the billing period.',
+    q: 'Does my install stop working if I cancel Pro?',
+    a: 'No. The skills you have already installed keep running on your machine — they live locally, not in our cloud. Cancelling only stops the hosted convenience (managed runner, auto-update channel). You can switch to the free self-host and keep everything, or re-subscribe later and pick up where you left off.',
   },
   {
     q: 'Is this a real subscription or one-time?',
     a: 'Real monthly subscription handled by Stripe. EU pricing includes Stripe Tax / VAT MOSS. Receipts come from Stripe — we never custody your money.',
   },
   {
-    q: 'Why $20 / $100 and not less?',
-    a: '$20 covers operating one engineer\'s ongoing work on the catalog. $100 covers the 20-endpoint client deployment surface, the white-glove onboarding, and the priority skill review. The price funds the work; lower numbers fund nothing.',
+    q: 'Why $9.95 and not free for everyone?',
+    a: 'It already is free for everyone who self-hosts — that\'s the open-core deal. $9.95/mo covers the hosted registry, managed runner capacity, and ongoing catalog work for people who would rather not run infrastructure. The price funds the hosting; self-hosters pay nothing.',
   },
 ];
 ---
 
-<AppShell title="Pricing — LoopSkill" description="Free, Pro $20/mo (1 seat, 10 bundles), Pro+ $100/mo (200 bundles). Cross-vendor catalog of agent skills. Cancel anytime, your installed skills keep working." mode="public">
+<AppShell title="Pricing — LoopSkill" description="Open source and free to self-host (MPL-2.0). Pro $9.95/mo for the fully-hosted registry + managed runner. Run vetted agent loops with objective pass/fail. Cancel anytime, your installs keep working." mode="public">
   <section class="max-w-6xl mx-auto px-6 pt-16 pb-12">
     <div class="text-center max-w-2xl mx-auto flex flex-col gap-3 mb-14">
       <p class="eyebrow">Pricing</p>
-      <h1 class="text-4xl md:text-5xl font-semibold tracking-tight">Bring your agent. We bring the skills.</h1>
-      <p class="text-muted">Start with Pro when you start deploying to your clients or running multi-agent fleets, pick Pro+. In 95% of cases Pro is what you need.</p>
+      <h1 class="text-4xl md:text-5xl font-semibold tracking-tight">Open source. Free to run yourself.</h1>
+      <p class="text-muted">The whole platform is MPL-2.0 — self-host it for nothing. Pro is hosted convenience: we run the registry and the runner so you don't have to. Never a feature gate.</p>
     </div>
 
     <div class="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto">
@@ -162,18 +150,6 @@ const faqs = [
           </details>
         ))}
       </div>
-    </div>
-  </section>
-
-  <!-- ── Earnings widget: below FAQ ── -->
-  <section class="border-t border-border">
-    <div class="max-w-5xl mx-auto px-6 py-20">
-      <div class="flex flex-col gap-3 mb-10 text-center items-center">
-        <p class="eyebrow">For creators &amp; operators</p>
-        <h2 class="text-3xl md:text-4xl font-semibold tracking-tight">See what you'll earn referring LoopSkill →</h2>
-        <p class="text-muted max-w-lg">50% recurring rev share on every Pro and Pro+ subscriber you refer. Bundle deployments add up fast.</p>
-      </div>
-      <EarningsCalculator />
     </div>
   </section>
 

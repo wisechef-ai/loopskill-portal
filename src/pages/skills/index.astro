@@ -163,8 +163,8 @@ function canonicalTier(t: string | null | undefined): string {
 
 const TIER_LABEL: Record<string, string> = {
   free: 'Free',
-  pro: 'Pro · $20/mo',
-  pro_plus: 'Pro+ · $100/mo',
+  pro: 'Pro · $9.95/mo',
+  pro_plus: 'Pro+ (legacy)',
 };
 const tierCount: Record<string, number> = {};
 for (const s of skills) {
@@ -203,7 +203,7 @@ for (const s of skills) {
       <div class="flex flex-col gap-2">
         <p class="eyebrow">Catalog</p>
         <h1 class="text-4xl md:text-5xl font-semibold tracking-tight" id="skills-heading">{total} curated skills + the whole ecosystem.</h1>
-        <p class="text-muted">Production-grade skills for AI integrators, solo operators, and agent fleets. Free skills to start. Pro tier $20/mo (1 seat) unlocks the full library; Pro+ $100/mo gives you up to 200 bundles, fleet-wide bundle sync, and the framework installer.</p>
+        <p class="text-muted">Production-grade skills for AI integrators, solo operators, and agent fleets. Free to self-host the whole platform (MPL-2.0). Pro ($9.95/mo) is the fully-hosted registry + managed runner — convenience, never a feature gate.</p>
         {fetchError && <p class="text-xs text-muted-soft">(showing seed data — API: {fetchError})</p>}
         {/* fedui_0604 Unit B + rail-rework: dual count made prominent — the 84k+
             community number is the product's biggest differentiator; show it as

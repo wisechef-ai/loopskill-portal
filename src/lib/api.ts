@@ -14,7 +14,10 @@
  *   if (data.error) { ...fall back... }
  */
 
-const API_BASE = 'https://recipes.wisechef.ai';
+const API_BASE =
+  (typeof import.meta !== 'undefined'
+    ? (import.meta as any).env?.PUBLIC_RECIPES_API_BASE
+    : undefined) || 'https://recipes.wisechef.ai';
 
 export interface ApiResult<T> {
   ok: boolean;

@@ -1,0 +1,291 @@
+---
+// loopskill_portal_0627 — Loop DETAIL + the "Run this loop" hero interaction.
+//
+// Static Astro can't pre-render per-slug routes, so this single page resolves
+// ?slug=<slug> client-side (same pattern as /cookbooks/view). It:
+//   1. fetches GET /api/loops/{slug} (public) → renders the vetted contract
+//   2. exposes "▶ Run this loop" → POST /api/loops/{slug}/run (auth required)
+//      → renders objective passed:true/false + confinement + duration + output
+//   3. shows live ratings and (for signed-in users) a rate control
+//
+// AUTH-AWARE (AGENTS.md trap classes): running + rating need a user/master key.
+// Both the signed-in and anonymous states are rendered in static HTML; client
+// JS resolves /api/auth/me and swaps via classList + inline style (never a
+// build-time ternary). Anonymous visitors still get the full read-only detail.
+
+import AppShell from "../../layouts/AppShell.astro";
+
+const API_BASE = import.meta.env.PUBLIC_RECIPES_API_BASE || "https://recipes.wisechef.ai";
+---
+
+<AppShell mode="public"
+  title="Run this loop — LoopSkill"
+  description="Run a vetted agent loop under enforced safety bounds and get an objective pass/fail."
+  pageType="website"
+>
+  <main class="lp-detail max-w-3xl mx-auto px-6 pt-10 pb-24">
+    <a href="/loops" class="text-sm text-muted hover:text-text">← All loops</a>
+
+    <section id="state-loading" class="text-muted text-sm py-12">Loading loop…</section>
+
+    <section id="state-error" hidden class="bg-bg-card border border-red-500/40 rounded-2xl p-6 mt-6">
+      <h2 class="text-lg font-semibold mb-2">Couldn't load this loop</h2>
+      <p id="error-detail" class="text-sm text-muted"></p>
+    </section>
+
+    <article id="loop-body" hidden class="mt-6">
+      <header class="flex flex-col gap-3 mb-6">
+        <h1 id="lp-title" class="text-4xl font-semibold tracking-tight"></h1>
+        <p id="lp-desc" class="text-lg text-muted leading-relaxed"></p>
+        <div id="lp-social" class="text-sm text-muted-soft flex items-center gap-4"></div>
+      </header>
+
+      <!-- The vetted, safety-bounded contract — visible BEFORE you run it. -->
+      <section class="bg-bg-card border border-border rounded-2xl p-5 mb-6">
+        <h2 class="text-sm font-semibold uppercase tracking-wide text-muted mb-3">Safety contract</h2>
+        <dl id="lp-contract" class="grid grid-cols-2 sm:grid-cols-3 gap-y-3 gap-x-4 text-sm"></dl>
+        <details class="mt-4">
+          <summary class="text-sm text-muted cursor-pointer hover:text-text">Success condition & verification</summary>
+          <p id="lp-success" class="text-sm text-text mt-2"></p>
+          <pre id="lp-verify" class="text-xs bg-[#0d0d0d] border border-border rounded-lg p-3 overflow-x-auto mt-2 whitespace-pre-wrap"></pre>
+        </details>
+      </section>
+
+      <!-- THE HERO: run this loop -->
+      <section class="bg-bg-card border border-accent/40 rounded-2xl p-5 mb-6">
+        <div class="flex items-center justify-between gap-3 mb-3">
+          <h2 class="text-lg font-semibold">Run this loop</h2>
+          <span class="lp-chip" id="lp-mode-chip">verify mode</span>
+        </div>
+        <p class="text-sm text-muted mb-4">
+          Executes the loop's published verification under enforced confinement and
+          returns an objective pass / fail. Your server environment is never inherited.
+        </p>
+
+        <!-- signed-in: can run -->
+        <div id="run-authed" class="hidden">
+          <button id="run-btn" type="button"
+            class="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-accent text-bg font-semibold text-sm hover:bg-accent-soft transition disabled:opacity-50">
+            ▶ Run this loop
+          </button>
+        </div>
+
+        <!-- anonymous: must sign in -->
+        <div id="run-anon" class="hidden">
+          <a id="run-signin" href="/signin"
+            class="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg border border-accent text-accent font-semibold text-sm hover:bg-accent hover:text-bg transition">
+            Sign in to run
+          </a>
+          <p class="text-xs text-muted-soft mt-2">Browsing is free. Running a loop needs a key so runs are attributable.</p>
+        </div>
+
+        <!-- result -->
+        <div id="run-result" hidden class="mt-5">
+          <div id="run-verdict" class="flex items-center gap-3 mb-3"></div>
+          <dl id="run-meta" class="grid grid-cols-2 sm:grid-cols-4 gap-y-2 gap-x-4 text-sm mb-3"></dl>
+          <details id="run-output-wrap" class="mt-2">
+            <summary class="text-sm text-muted cursor-pointer hover:text-text">Output</summary>
+            <pre id="run-stdout" class="text-xs bg-[#0d0d0d] border border-border rounded-lg p-3 overflow-x-auto mt-2 whitespace-pre-wrap"></pre>
+            <pre id="run-stderr" class="text-xs bg-[#0d0d0d] border border-red-500/30 rounded-lg p-3 overflow-x-auto mt-2 whitespace-pre-wrap"></pre>
+          </details>
+        </div>
+      </section>
+
+      <!-- ratings -->
+      <section class="bg-bg-card border border-border rounded-2xl p-5">
+        <div class="flex items-center justify-between gap-3">
+          <h2 class="text-sm font-semibold uppercase tracking-wide text-muted">Rating</h2>
+          <span id="rate-summary" class="text-sm text-muted"></span>
+        </div>
+        <div id="rate-authed" class="hidden mt-3">
+          <div id="rate-stars" class="flex items-center gap-1" aria-label="Rate this loop"></div>
+          <p id="rate-status" class="text-xs text-muted-soft mt-2"></p>
+        </div>
+      </section>
+    </article>
+  </main>
+</AppShell>
+
+<style>
+  .lp-chip { display:inline-flex; align-items:center; gap:.25rem; font-size:11px; padding:.15rem .5rem; border-radius:.4rem; background:var(--bg-elev,#1b1f27); border:1px solid var(--border,#2a2f3a); color:var(--muted,#9aa3b2); }
+  .verdict-pass { background:rgba(34,197,94,.12); border:1px solid rgba(34,197,94,.5); color:#4ade80; }
+  .verdict-fail { background:rgba(239,68,68,.12); border:1px solid rgba(239,68,68,.5); color:#f87171; }
+  .verdict-badge { display:inline-flex; align-items:center; gap:.4rem; font-weight:700; font-size:14px; padding:.4rem .8rem; border-radius:.5rem; }
+  .rate-star { cursor:pointer; font-size:22px; line-height:1; color:var(--border,#2a2f3a); transition:color .1s; background:none; border:none; padding:0 1px; }
+  .rate-star.on { color:var(--accent,#f5a623); }
+  .rate-star:hover { color:var(--accent-soft,#fbbf24); }
+</style>
+
+<script define:vars={{ API_BASE }}>
+  const $ = (id) => document.getElementById(id);
+  const show = (id) => { const e = $(id); if (e) { e.hidden = false; } };
+  const hide = (id) => { const e = $(id); if (e) { e.hidden = true; } };
+  const setFlex = (id, on) => { const e = $(id); if (!e) return; e.classList.toggle("hidden", !on); e.style.display = on ? "block" : "none"; };
+
+  const slug = new URLSearchParams(location.search).get("slug");
+
+  function fail(detail) {
+    hide("state-loading"); hide("loop-body");
+    const d = $("error-detail"); if (d) d.textContent = detail || "";
+    show("state-error");
+  }
+
+  function dt(dl, term, val) {
+    const dt = document.createElement("dt"); dt.className = "text-muted-soft text-xs"; dt.textContent = term;
+    const dd = document.createElement("dd"); dd.className = "text-text font-medium"; dd.textContent = val;
+    dl.appendChild(dt); dl.appendChild(dd);
+  }
+
+  function ratingText(avg, count) {
+    if (!count) return "Not yet rated";
+    return `★ ${Number(avg || 0).toFixed(1)} · ${count} rating${count === 1 ? "" : "s"}`;
+  }
+
+  let loop = null;
+
+  async function load() {
+    if (!slug) { fail("No loop specified."); return; }
+    let res;
+    try { res = await fetch(`${API_BASE}/api/loops/${encodeURIComponent(slug)}`); }
+    catch (e) { fail("Network error: " + (e && e.message ? e.message : e)); return; }
+    if (res.status === 404) { fail("This loop doesn't exist."); return; }
+    if (!res.ok) { fail(`API returned ${res.status}.`); return; }
+    try { loop = await res.json(); } catch { fail("Malformed API response."); return; }
+    renderLoop();
+  }
+
+  function renderLoop() {
+    hide("state-loading");
+    $("lp-title").textContent = loop.title || loop.slug;
+    $("lp-desc").textContent = loop.description || "";
+
+    const social = $("lp-social");
+    social.innerHTML = "";
+    const r = document.createElement("span"); r.textContent = `${loop.run_count || 0} run${loop.run_count === 1 ? "" : "s"}`;
+    const rate = document.createElement("span"); rate.textContent = ratingText(loop.rating_avg, loop.rating_count);
+    social.appendChild(r); social.appendChild(rate);
+    if (loop.creator_handle) { const c = document.createElement("span"); c.textContent = `by @${loop.creator_handle}`; social.appendChild(c); }
+
+    const c = $("lp-contract"); c.innerHTML = "";
+    dt(c, "Max turns", String(loop.max_turns ?? 25));
+    dt(c, "Budget", loop.budget_usd != null ? `$${loop.budget_usd}` : "—");
+    const tools = Array.isArray(loop.tool_allowlist) ? loop.tool_allowlist : [];
+    dt(c, "Tools", tools.length ? tools.join(", ") : "none");
+    dt(c, "Tier", loop.tier || "free");
+    dt(c, "License", loop.license || "—");
+    dt(c, "Version", loop.latest_version || "—");
+
+    $("lp-success").textContent = loop.success_condition || "—";
+    $("lp-verify").textContent = loop.verification_script || "(not disclosed)";
+
+    $("rate-summary").textContent = ratingText(loop.rating_avg, loop.rating_count);
+
+    resolveAuth();
+  }
+
+  async function resolveAuth() {
+    let me = null;
+    try {
+      const res = await fetch(`${API_BASE}/api/auth/me`, { credentials: "include" });
+      if (res.ok) me = await res.json();
+    } catch { /* anonymous */ }
+    const authed = !!(me && (me.id || me.user_id || me.subscription_tier));
+    setFlex("run-authed", authed);
+    setFlex("run-anon", !authed);
+    setFlex("rate-authed", authed);
+    if (authed) { wireRun(); wireRate(me); }
+  }
+
+  function wireRun() {
+    const btn = $("run-btn");
+    if (!btn) return;
+    btn.addEventListener("click", async () => {
+      btn.disabled = true; btn.textContent = "Running…";
+      hide("run-result");
+      let res, out;
+      try {
+        res = await fetch(`${API_BASE}/api/loops/${encodeURIComponent(slug)}/run`, {
+          method: "POST", credentials: "include",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ mode: "verify" }),
+        });
+      } catch (e) {
+        renderRunError("Network error: " + (e && e.message ? e.message : e)); btn.disabled = false; btn.textContent = "▶ Run this loop"; return;
+      }
+      if (res.status === 401) { renderRunError("Your session expired — sign in again to run."); btn.disabled = false; btn.textContent = "▶ Run this loop"; return; }
+      if (res.status === 501) { renderRunError("Agent mode isn't available yet (verify mode only)."); btn.disabled = false; btn.textContent = "▶ Run this loop"; return; }
+      try { out = await res.json(); } catch { renderRunError("Malformed run response."); btn.disabled = false; btn.textContent = "▶ Run this loop"; return; }
+      if (!res.ok) { renderRunError(out && out.detail ? out.detail : `Run failed (${res.status}).`); btn.disabled = false; btn.textContent = "▶ Run this loop"; return; }
+      renderRun(out);
+      btn.disabled = false; btn.textContent = "▶ Run again";
+    });
+  }
+
+  function renderRunError(msg) {
+    show("run-result");
+    const v = $("run-verdict"); v.innerHTML = "";
+    const badge = document.createElement("span"); badge.className = "verdict-badge verdict-fail"; badge.textContent = "⚠ " + msg;
+    v.appendChild(badge);
+    $("run-meta").innerHTML = ""; hide("run-output-wrap");
+  }
+
+  function renderRun(out) {
+    show("run-result");
+    const v = $("run-verdict"); v.innerHTML = "";
+    const badge = document.createElement("span");
+    badge.className = "verdict-badge " + (out.passed ? "verdict-pass" : "verdict-fail");
+    badge.textContent = out.passed ? "✓ PASSED" : "✗ FAILED";
+    v.appendChild(badge);
+
+    const m = $("run-meta"); m.innerHTML = "";
+    dt(m, "Confinement", out.confinement || "—");
+    dt(m, "Duration", out.duration_seconds != null ? `${(out.duration_seconds * 1000).toFixed(0)} ms` : "—");
+    dt(m, "Exit code", String(out.exit_code ?? "—"));
+    dt(m, "Timed out", out.timed_out ? "yes" : "no");
+
+    const so = $("run-stdout"); so.textContent = out.stdout || "(no stdout)";
+    const se = $("run-stderr"); se.textContent = out.stderr ? out.stderr : "";
+    se.style.display = out.stderr ? "block" : "none";
+    show("run-output-wrap");
+
+    // run_count just climbed — reflect it optimistically
+    loop.run_count = (loop.run_count || 0) + 1;
+    const r = $("lp-social").firstChild; if (r) r.textContent = `${loop.run_count} run${loop.run_count === 1 ? "" : "s"}`;
+  }
+
+  function wireRate(me) {
+    const wrap = $("rate-stars"); if (!wrap) return;
+    wrap.innerHTML = "";
+    const mine = (me && (me.your_rating || me.rating)) || 0;
+    let current = mine;
+    const paint = (n) => Array.from(wrap.children).forEach((b, i) => b.classList.toggle("on", i < n));
+    for (let i = 1; i <= 5; i++) {
+      const b = document.createElement("button");
+      b.className = "rate-star"; b.type = "button"; b.textContent = "★"; b.setAttribute("aria-label", `${i} star${i === 1 ? "" : "s"}`);
+      b.addEventListener("mouseenter", () => paint(i));
+      b.addEventListener("mouseleave", () => paint(current));
+      b.addEventListener("click", () => submitRate(i));
+      wrap.appendChild(b);
+    }
+    paint(current);
+
+    async function submitRate(n) {
+      $("rate-status").textContent = "Saving…";
+      let res, out;
+      try {
+        res = await fetch(`${API_BASE}/api/loops/${encodeURIComponent(slug)}/rate`, {
+          method: "POST", credentials: "include",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ rating: n }),
+        });
+      } catch (e) { $("rate-status").textContent = "Network error."; return; }
+      if (!res.ok) { $("rate-status").textContent = res.status === 401 ? "Sign in again to rate." : `Couldn't save (${res.status}).`; return; }
+      try { out = await res.json(); } catch { $("rate-status").textContent = "Saved."; return; }
+      current = out.your_rating || n; paint(current);
+      $("rate-status").textContent = "Thanks — your rating is in.";
+      $("rate-summary").textContent = ratingText(out.rating_avg, out.rating_count);
+    }
+  }
+
+  load();
+</script>

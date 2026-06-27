@@ -29,10 +29,8 @@
 // Public mode also carries the marketing-chrome responsibilities Base.astro
 // used to own (Base retires in P3): canonical + OG/twitter tags, schema.org
 // Organization JSON-LD, the WIS-660 ?ref= referral-cookie script, and the
-// IntentSurvey exit modal. Member mode keeps robots=noindex.
 import '../styles/global.css';
 import Footer from '../components/Footer.astro';
-import IntentSurvey from '../components/IntentSurvey.astro';
 
 interface Props {
   title?: string;
@@ -74,6 +72,7 @@ const orgSchema = {
 
 const navItems = [
   { id: 'home',    href: '/home',    label: 'Home',         icon: 'M3 9.5L10 3l7 6.5M5 8.5V16h10V8.5' },
+  { id: 'loops',   href: '/loops',   label: 'Run a loop',   icon: 'M4 10a6 6 0 1011-3.5M15 3v4h-4' },
   { id: 'search',  href: '/skills',  label: 'Search',       icon: 'M8.5 14a5.5 5.5 0 100-11 5.5 5.5 0 000 11zM17 17l-3.5-3.5' },
   { id: 'library', href: '/library', label: 'Your Library', icon: 'M4 4h4v12H4zM10 4h2v12h-2zM14.5 4.2l3 .8-2.5 11.6-3-.8z' },
   { id: 'fleets',  href: '/fleets',  label: 'Fleets',       icon: 'M3 5h6v5H3zM11 5h6v5h-6zM7 13h6v4H7z' },
@@ -187,7 +186,7 @@ const navItems = [
                  class="inline-flex items-center justify-center px-3 py-1.5 rounded-lg bg-accent text-bg text-xs font-semibold hover:bg-accent-soft transition">
                 Sign in to build bundles
               </a>
-              <a href="/pricing" class="text-center text-[11px] text-muted-soft hover:text-accent transition">View plans — Pro $20 · Pro+ $100</a>
+              <a href="/pricing" class="text-center text-[11px] text-muted-soft hover:text-accent transition">Free to self-host · Pro $9.95/mo hosted</a>
             </div>
           </div>
         )}
@@ -265,7 +264,9 @@ const navItems = [
       </div>
     </div>
 
-    {isPublic && <IntentSurvey />}
+    {/* loopskill_portal_0627: IntentSurvey removed — it was a Recipes-specific
+        $100/mo "Operator/Pro+ bundle" demand-validation modal that rendered on
+        every public page; off-brand for LoopSkill's open-core Free + Pro story. */}
 
     <script>
       // AppShell hydration — mode-aware auth gate + rail population.

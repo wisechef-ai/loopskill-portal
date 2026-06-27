@@ -6,7 +6,6 @@ import AgentLogos from '../components/AgentLogos.astro';
 import NeuronAnimation from '../components/NeuronAnimation.astro';
 import InstallWidget from '../components/InstallWidget.astro';
 import SkillCover from '../components/SkillCover.astro';
-import EarningsCalculator from '../components/EarningsCalculator.astro';
 import { fetchApi } from '../lib/api';
 
 // Phase I: Carousel fetch moved to client-side (WIS-2005/I).
@@ -713,18 +712,18 @@ const verticals = [
 
   <section class="border-t border-border">
     <div class="max-w-5xl mx-auto px-6 py-20">
-      <div class="flex flex-col gap-3 mb-10">
+      <div class="flex flex-col gap-3 mb-8">
         <p class="eyebrow text-accent">For creators &amp; operators</p>
         <h2 class="text-3xl md:text-4xl font-bold tracking-tight" style="letter-spacing:-0.03em;">
-          Build skills. Sell them. Keep 100%.
+          Publish a loop. The whole world can run it.
         </h2>
         <p class="text-muted text-lg max-w-xl leading-relaxed">
-          Publish skills to the marketplace, earn 50% recurring rev share on every referral,
-          or deploy bundle fleets to clients with Pro+.
+          LoopSkill is open source (MPL-2.0). Publish a vetted, runnable loop to the
+          registry and anyone can run it under enforced bounds and rate it — earn 50%
+          recurring rev share on every Pro referral.
         </p>
       </div>
-      <EarningsCalculator />
-      <div class="mt-6 text-center">
+      <div class="mt-2">
         <a href="/creators" class="text-sm text-accent hover:opacity-80 inline-flex items-center gap-1.5 transition font-semibold">
           Learn about the creator program <Icon name="arrow-right" size={13} />
         </a>
