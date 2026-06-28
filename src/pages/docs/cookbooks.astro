@@ -4,7 +4,7 @@ import AppShell from '../../layouts/AppShell.astro';
 
 <AppShell mode="public"
   title="Bundles — LoopSkill Docs"
-  description="What a bundle is, public vs private, personal vs Pro+ org-scoped, and pre-built skill bundles for client agents."
+  description="What a bundle is, public vs private, personal vs Pro org-scoped, and pre-built skill bundles for client agents."
 >
   <section class="max-w-3xl mx-auto px-6 pt-16 pb-24">
     <p class="eyebrow mb-3">Docs · Bundles</p>
@@ -24,7 +24,7 @@ import AppShell from '../../layouts/AppShell.astro';
     </h1>
     <p class="text-muted text-lg leading-relaxed mb-12">
       A bundle is a named, versioned bundle of skills — like a playlist, but for your agent.
-      Bundle the skills your team uses every day, share them across machines, and (on Pro+)
+      Bundle the skills your team uses every day, share them across machines, and (on Pro)
       push them straight into clients' agents.
     </p>
 
@@ -37,7 +37,7 @@ import AppShell from '../../layouts/AppShell.astro';
     </p>
     <p class="text-muted mb-10">
       You create and manage bundles from the <a href="/library" class="text-accent hover:opacity-80 underline">/library</a>
-      dashboard. Pro accounts get 10 bundles. Pro+ accounts get up to 200.
+      dashboard. Free accounts get 1 bundle. Pro accounts get unlimited bundles.
     </p>
 
     <!-- Public vs Private -->
@@ -54,22 +54,22 @@ import AppShell from '../../layouts/AppShell.astro';
     </div>
 
     <!-- Personal vs org-scoped -->
-    <h2 class="text-xl font-semibold text-text mb-4">Personal vs org-scoped (Pro+)</h2>
+    <h2 class="text-xl font-semibold text-text mb-4">Personal vs org-scoped (Pro)</h2>
     <p class="text-muted mb-4">
       <strong class="text-text">Personal bundles</strong> belong to your account and sync to
       the machines where you run agents with your API key.
     </p>
     <p class="text-muted mb-10">
-      <strong class="text-text">Org-scoped bundles</strong> (Pro+) belong to your Pro+ account
+      <strong class="text-text">Org-scoped bundles</strong> (Pro) belong to your Pro account
       and can be deployed to agents you operate for clients. Each deployment gets its own
       bundle-scoped API key so the client's agent can only access the skills you chose —
       nothing else in your private catalog.
     </p>
 
     <!-- Pre-built catalogs for clients -->
-    <h2 class="text-xl font-semibold text-text mb-4">Pre-built catalogs for clients (Pro+)</h2>
+    <h2 class="text-xl font-semibold text-text mb-4">Pre-built catalogs for clients (Pro)</h2>
     <p class="text-muted mb-4">
-      The canonical use case for Pro+ bundles: you operate AI agents for clients. Instead of
+      The canonical use case for Pro bundles: you operate AI agents for clients. Instead of
       manually installing skills on each client's machine, you:
     </p>
     <ol class="flex flex-col gap-3 mb-10 text-sm text-muted list-none">
@@ -79,7 +79,7 @@ import AppShell from '../../layouts/AppShell.astro';
       </li>
       <li class="flex gap-3">
         <span class="flex-none w-6 h-6 rounded-full bg-accent/10 text-accent text-xs font-bold flex items-center justify-center">2</span>
-        <span>Assign a dedicated API key scoped to that cookbook.</span>
+        <span>Assign a dedicated API key scoped to that bundle.</span>
       </li>
       <li class="flex gap-3">
         <span class="flex-none w-6 h-6 rounded-full bg-accent/10 text-accent text-xs font-bold flex items-center justify-center">3</span>

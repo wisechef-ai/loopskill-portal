@@ -11,7 +11,7 @@ import Icon from '../../components/Icon.astro';
       LoopSkill works two ways: as an <strong class="text-text">MCP server</strong> your agent connects to,
       or as a plain Markdown <strong class="text-text">meta-skill</strong> any agent can read.
       <strong class="text-text">Free skills install with no API key.</strong>
-      Pro and Pro+ skills require a key from your <a href="/library" class="text-accent hover:underline">library</a>.
+      Pro skills require a key from your <a href="/library" class="text-accent hover:underline">library</a>.
     </p>
 
     <!-- MCP path — recommended -->
@@ -34,24 +34,24 @@ import Icon from '../../components/Icon.astro';
       <p class="text-xs text-muted-soft uppercase tracking-wider font-semibold mb-2">Claude Desktop / Cursor / Cline</p>
       <pre class="text-xs bg-[#0d0d0d] border border-border rounded-lg p-4 overflow-x-auto mb-4"><code>{`{
   "mcpServers": {
-    "recipes": {
-      "url": "https://recipes.wisechef.ai/api/mcp/sse"
+    "loopskill": {
+      "url": "https://app.loopskill.io/api/mcp/sse"
     }
   }
 }`}</code></pre>
 
-      <p class="text-xs text-muted-soft uppercase tracking-wider font-semibold mb-2 mt-5">Unlock Pro & Pro+ skills (optional)</p>
+      <p class="text-xs text-muted-soft uppercase tracking-wider font-semibold mb-2 mt-5">Unlock Pro skills (optional)</p>
       <pre class="text-xs bg-[#0d0d0d] border border-border rounded-lg p-4 overflow-x-auto mb-3"><code>{`{
   "mcpServers": {
-    "recipes": {
-      "url": "https://recipes.wisechef.ai/api/mcp/sse",
+    "loopskill": {
+      "url": "https://app.loopskill.io/api/mcp/sse",
       "headers": { "x-api-key": "rec_live_…" }
     }
   }
 }`}</code></pre>
       <p class="text-xs text-muted-soft leading-relaxed">
         Get your key from <a href="/library" class="text-accent hover:underline">your library</a> after subscribing.
-        Free skills install whether the header is present or not — the key only gates Pro/Pro+ catalog access.
+        Free skills install whether the header is present or not — the key only gates Pro catalog access.
       </p>
       <div class="mt-4 pt-4 border-t border-border-soft">
         <a href="/docs/mcp" class="text-xs text-accent hover:underline inline-flex items-center gap-1">
@@ -69,12 +69,12 @@ import Icon from '../../components/Icon.astro';
       </p>
 
       <p class="text-xs text-muted-soft uppercase tracking-wider font-semibold mb-2">Claude Code</p>
-      <pre class="text-xs bg-[#0d0d0d] border border-border rounded-lg p-4 overflow-x-auto mb-4"><code>mkdir -p ~/.claude/skills/recipes
-curl -sL https://recipes.wisechef.ai/skill -o ~/.claude/skills/recipes/SKILL.md</code></pre>
+      <pre class="text-xs bg-[#0d0d0d] border border-border rounded-lg p-4 overflow-x-auto mb-4"><code>mkdir -p ~/.claude/skills/loopskill
+curl -sL https://app.loopskill.io/skill -o ~/.claude/skills/loopskill/SKILL.md</code></pre>
 
       <p class="text-xs text-muted-soft uppercase tracking-wider font-semibold mb-2">Hermes / Codex / OpenClaw</p>
-      <pre class="text-xs bg-[#0d0d0d] border border-border rounded-lg p-4 overflow-x-auto mb-4"><code>mkdir -p ~/.hermes/skills/recipes  # or ~/.codex/skills, ~/.openclaw/skills
-curl -sL https://recipes.wisechef.ai/skill -o ~/.hermes/skills/recipes/SKILL.md</code></pre>
+      <pre class="text-xs bg-[#0d0d0d] border border-border rounded-lg p-4 overflow-x-auto mb-4"><code>mkdir -p ~/.hermes/skills/loopskill  # or ~/.codex/skills, ~/.openclaw/skills
+curl -sL https://app.loopskill.io/skill -o ~/.hermes/skills/loopskill/SKILL.md</code></pre>
 
       <p class="text-sm text-muted leading-relaxed">
         Then in any session ask: <em class="text-text">"read the recipes skill and follow it. List free skills."</em>
@@ -88,20 +88,20 @@ curl -sL https://recipes.wisechef.ai/skill -o ~/.hermes/skills/recipes/SKILL.md<
       <h2 class="text-xl font-semibold tracking-tight mb-3">curl works too</h2>
 
       <p class="text-xs text-muted-soft uppercase tracking-wider font-semibold mb-2">Browse free skills (no auth)</p>
-      <pre class="text-xs bg-[#0d0d0d] border border-border rounded-lg p-4 overflow-x-auto mb-4"><code>curl -sS "https://recipes.wisechef.ai/api/skills/search?tier=free&page_size=50"</code></pre>
+      <pre class="text-xs bg-[#0d0d0d] border border-border rounded-lg p-4 overflow-x-auto mb-4"><code>curl -sS "https://app.loopskill.io/api/skills/search?tier=free&page_size=50"</code></pre>
 
       <p class="text-xs text-muted-soft uppercase tracking-wider font-semibold mb-2">Install a free skill (no auth)</p>
-      <pre class="text-xs bg-[#0d0d0d] border border-border rounded-lg p-4 overflow-x-auto mb-4"><code>curl -sS "https://recipes.wisechef.ai/api/skills/install?slug=client-reporter"</code></pre>
+      <pre class="text-xs bg-[#0d0d0d] border border-border rounded-lg p-4 overflow-x-auto mb-4"><code>curl -sS "https://app.loopskill.io/api/skills/install?slug=client-reporter"</code></pre>
 
       <p class="text-xs text-muted-soft uppercase tracking-wider font-semibold mb-2">Install a Pro skill (requires key)</p>
       <pre class="text-xs bg-[#0d0d0d] border border-border rounded-lg p-4 overflow-x-auto"><code>curl -sS -H "x-api-key: rec_live_…" \
-  "https://recipes.wisechef.ai/api/skills/install?slug=super-memory"</code></pre>
+  "https://app.loopskill.io/api/skills/install?slug=super-memory"</code></pre>
     </div>
 
     <!-- Verify -->
     <div class="bg-bg-card border border-border rounded-2xl p-6">
       <p class="eyebrow mb-3">Verify the install</p>
-      <pre class="text-xs bg-[#0d0d0d] border border-border rounded-lg p-4 overflow-x-auto mb-3"><code>curl https://recipes.wisechef.ai/api/healthz</code></pre>
+      <pre class="text-xs bg-[#0d0d0d] border border-border rounded-lg p-4 overflow-x-auto mb-3"><code>curl https://app.loopskill.io/api/healthz</code></pre>
       <p class="text-xs text-muted-soft leading-relaxed">
         Should return <code class="text-text">{`{"status":"ok"}`}</code>. If your agent connected via MCP, ask it: <em class="text-text">"call recipes_search with query=test and show me the top 3 results."</em>
       </p>

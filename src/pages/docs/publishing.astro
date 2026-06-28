@@ -3,7 +3,7 @@ import AppShell from '../../layouts/AppShell.astro';
 import CrossSell from '../../components/CrossSell.astro';
 ---
 <AppShell mode="public" title="Publishing a skill — LoopSkill Docs"
-     description="How to publish a skill to the Recipes marketplace using the MCP-first path via recipes_publish_request.">
+     description="How to publish a skill to the LoopSkill marketplace using the MCP-first path via recipes_publish_request.">
   <section class="max-w-3xl mx-auto px-6 pt-16 pb-12">
     <p class="eyebrow mb-2">Documentation · Publishing</p>
     <h1 class="text-4xl font-semibold tracking-tight mb-6">Publishing a skill.</h1>
@@ -75,7 +75,7 @@ recipes_publish_request({
   "request_id": "uuid...",
   "slug": "my-skill",
   "status": "pending_review",
-  "issue_url": "https://github.com/wisechef-ai/recipes-api/issues/NNN",
+  "issue_url": "https://github.com/wisechef-ai/loopskill-api/issues/NNN",
   "sha256": "abc123...",
   "warnings": []   // or [{severity: "low", message: "..."}]
 }`}</code></pre>
@@ -90,7 +90,7 @@ recipes_publish_request({
       <h3>Step 3: GitHub review</h3>
       <p>
         The <code>issue_url</code> in the response links to a GitHub issue in the
-        <code>wisechef-ai/recipes-api</code> repo. A WiseChef team member reviews:
+        <code>wisechef-ai/loopskill-api</code> repo. A WiseChef team member reviews:
       </p>
       <ol>
         <li>Does the skill do what it says?</li>
@@ -106,12 +106,12 @@ recipes_publish_request({
 
       <h3>Step 4: Signed and published</h3>
       <p>
-        Once approved, a WiseChef team member closes the issue with the
+        Once approved, a LoopSkill team member closes the issue with the
         <code>approved-publish</code> label. An automation job:
       </p>
       <ol>
         <li>Builds the final tarball from the approved submission</li>
-        <li>Signs with the WiseChef ed25519 publish key</li>
+        <li>Signs with the LoopSkill ed25519 publish key</li>
         <li>Uploads to the CDN</li>
         <li>Creates the skill row in the catalog database</li>
         <li>Sends you a confirmation email with the published URL</li>
@@ -122,7 +122,7 @@ recipes_publish_request({
         If you prefer a terminal workflow, the <code>recipes</code> CLI (Phase F) supports the
         same flow:
       </p>
-      <pre><code>recipes publish --slug my-skill --dir ./skills/my-skill/</code></pre>
+      <pre><code>loopskill publish --slug my-skill --dir ./skills/my-skill/</code></pre>
       <p>
         This packs the directory into a tarball, runs the local quality gate, and posts to
         <code>POST /api/publish/request</code>. The response is the same as the MCP tool.
@@ -134,7 +134,7 @@ recipes_publish_request({
         <li><strong>HIGH (blocks submission):</strong>
           <code>curl | bash</code> pipelines, hardcoded <code>$HOME</code> or username paths,
           binary executables in the tarball, path traversal in filenames, credential patterns
-          (AWS keys, GitHub tokens, etc.), internal WiseChef infra references.
+          (AWS keys, GitHub tokens, etc.), internal LoopSkill infra references.
         </li>
         <li><strong>MEDIUM (warns, allows submission):</strong>
           External links not on the allowlist, use of <code>sudo</code>,
@@ -153,11 +153,11 @@ recipes_publish_request({
           Good for open-source skills you want maximum adoption on. MIT or Apache-2.0 license preferred.
         </li>
         <li>
-          <strong>cook</strong> — available to Pro subscribers ($20/mo). This is the sweet spot
+          <strong>cook</strong> — available to Pro subscribers ($9.95/mo). This is the sweet spot
           for polished, maintained skills. Most catalog skills are cook-tier.
         </li>
         <li>
-          <strong>operator</strong> — available to Pro+ subscribers ($100/mo). For enterprise
+          <strong>operator</strong> — available to Pro subscribers. For advanced
           skills: fleet-specific tooling, high-compute workflows, bespoke integrations.
         </li>
       </ul>

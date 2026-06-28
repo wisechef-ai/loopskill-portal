@@ -4,7 +4,7 @@ import AppShell from '../../layouts/AppShell.astro';
 
 <AppShell mode="public"
   title="Client deployment — LoopSkill Docs"
-  description="How Pro+ customers push bundles to client agents: create bundle, assign endpoint API key, client installs meta-skill, bundle auto-syncs."
+  description="How Pro customers push bundles to client agents: create bundle, assign endpoint API key, client installs meta-skill, bundle auto-syncs."
 >
   <section class="max-w-3xl mx-auto px-6 pt-16 pb-24">
     <p class="eyebrow mb-3">Docs · Deployment</p>
@@ -23,7 +23,7 @@ import AppShell from '../../layouts/AppShell.astro';
       Deploying bundles to client agents
     </h1>
     <p class="text-muted text-lg leading-relaxed mb-12">
-      Pro+ lets you push a pre-built skill bundle — a bundle — straight into an agent you
+      Pro lets you push a pre-built skill bundle straight into an agent you
       operate for a client. One install command. Stays in sync. No LoopSkill branding on the
       client side unless you want it.
     </p>
@@ -33,7 +33,7 @@ import AppShell from '../../layouts/AppShell.astro';
     <ul class="flex flex-col gap-2 text-sm text-muted mb-10">
       <li class="flex items-start gap-2">
         <svg width="16" height="16" viewBox="0 0 16 16" fill="none" class="text-success mt-0.5 shrink-0"><path d="M3 8.5L6 11.5L13 4.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
-        <span>An active <strong class="text-text">Pro+</strong> subscription</span>
+        <span>An active <strong class="text-text">Pro</strong> subscription</span>
       </li>
       <li class="flex items-start gap-2">
         <svg width="16" height="16" viewBox="0 0 16 16" fill="none" class="text-success mt-0.5 shrink-0"><path d="M3 8.5L6 11.5L13 4.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
@@ -41,7 +41,7 @@ import AppShell from '../../layouts/AppShell.astro';
       </li>
       <li class="flex items-start gap-2">
         <svg width="16" height="16" viewBox="0 0 16 16" fill="none" class="text-success mt-0.5 shrink-0"><path d="M3 8.5L6 11.5L13 4.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
-        <span>An available API key slot (Pro+ includes 20 keys)</span>
+        <span>An available API key slot</span>
       </li>
       <li class="flex items-start gap-2">
         <svg width="16" height="16" viewBox="0 0 16 16" fill="none" class="text-success mt-0.5 shrink-0"><path d="M3 8.5L6 11.5L13 4.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
@@ -86,7 +86,7 @@ import AppShell from '../../layouts/AppShell.astro';
             <code class="text-xs bg-bg-elev rounded px-1">acme-client-prod</code>.
           </p>
           <p class="text-sm text-muted">
-            This key will only serve skills in this cookbook. Even if someone guesses or leaks the
+            This key will only serve skills in this bundle. Even if someone guesses or leaks the
             key, they can't access your other skills or other bundles.
           </p>
         </div>
@@ -104,8 +104,8 @@ import AppShell from '../../layouts/AppShell.astro';
             the bundle-scoped key pre-filled:
           </p>
           <pre class="bg-[#0d0d0d] border border-border rounded-xl p-4 text-sm text-text overflow-x-auto"><code>RECIPES_API_KEY=rec_live_cbk_... \
-  curl -sL https://recipes.wisechef.ai/skill \
-  -o ~/.claude/skills/recipes/SKILL.md</code></pre>
+  curl -sL https://app.loopskill.io/skill \
+  -o ~/.claude/skills/loopskill/SKILL.md</code></pre>
           <p class="text-sm text-muted mt-3">
             Your client runs this once in their agent's environment. No other configuration needed.
           </p>
@@ -137,7 +137,7 @@ import AppShell from '../../layouts/AppShell.astro';
       within one poll cycle — there is no push command, no client-side action required.
     </p>
     <p class="text-muted mb-10">
-      If you want to roll back, pin the previous version in the cookbook. The agents revert on
+      If you want to roll back, pin the previous version in the bundle. The agents revert on
       the next sync.
     </p>
 
@@ -157,7 +157,7 @@ import AppShell from '../../layouts/AppShell.astro';
       </li>
       <li class="flex items-start gap-2">
         <svg width="16" height="16" viewBox="0 0 16 16" fill="none" class="text-success mt-0.5 shrink-0"><path d="M3 8.5L6 11.5L13 4.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
-        <span>You bill your client at your rate. LoopSkill charges you $100/mo flat for Pro+, regardless of how many clients or how much they use.</span>
+        <span>You bill your client at your rate. LoopSkill charges you $9.95/mo for Pro, regardless of how many agents you operate.</span>
       </li>
     </ul>
 

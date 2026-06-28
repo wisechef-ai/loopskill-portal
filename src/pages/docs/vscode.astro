@@ -32,7 +32,7 @@ import AppShell from '../../layouts/AppShell.astro';
     &#123;
       "name": "recipes",
       "command": "python",
-      "args": ["/absolute/path/to/recipes-mcp/recipes_mcp_server.py"],
+      "args": ["/absolute/path/to/loopskill-mcp/loopskill_mcp_server.py"],
       "env": &#123; "RECIPES_API_KEY": "rec_live_your_key_here" &#125;
     &#125;
   ]
@@ -56,9 +56,9 @@ import AppShell from '../../layouts/AppShell.astro';
     </p>
     <pre class="bg-[#0d0d0d] border border-border rounded-xl p-4 text-sm text-text overflow-x-auto mb-5"><code>&#123;
   "mcpServers": &#123;
-    "recipes": &#123;
+    "loopskill": &#123;
       "command": "python",
-      "args": ["/absolute/path/to/recipes-mcp/recipes_mcp_server.py"],
+      "args": ["/absolute/path/to/loopskill-mcp/loopskill_mcp_server.py"],
       "env": &#123;
         "RECIPES_API_KEY": "rec_live_your_key_here"
       &#125;
@@ -75,7 +75,7 @@ import AppShell from '../../layouts/AppShell.astro';
     <h2 class="text-xl font-semibold text-text mb-2">Path C — Claude Code CLI in VS Code terminal</h2>
     <p class="text-muted mb-5">
       If you run <a href="https://claude-code.nousresearch.com/docs" class="text-accent hover:opacity-80 underline" target="_blank" rel="noopener">Claude Code</a>
-      inside VS Code's integrated terminal, the <code class="text-xs bg-bg-elev rounded px-1">install the recipes skill</code>
+      inside VS Code's integrated terminal, the <code class="text-xs bg-bg-elev rounded px-1">install the loopskill skill</code>
       flow works exactly the same as in any other terminal — no MCP server config needed.
     </p>
 
@@ -97,14 +97,14 @@ import AppShell from '../../layouts/AppShell.astro';
         <span class="flex-none w-6 h-6 rounded-full bg-accent/10 text-accent text-xs font-bold flex items-center justify-center mt-0.5">3</span>
         <div>
           <p>Install the LoopSkill meta-skill once per agent directory:</p>
-          <pre class="bg-[#0d0d0d] border border-border rounded-lg p-3 text-xs text-text overflow-x-auto mt-2"><code>curl -sL https://recipes.wisechef.ai/skill -o ~/.claude/skills/recipes/SKILL.md</code></pre>
+          <pre class="bg-[#0d0d0d] border border-border rounded-lg p-3 text-xs text-text overflow-x-auto mt-2"><code>curl -sL https://app.loopskill.io/skill -o ~/.claude/skills/loopskill/SKILL.md</code></pre>
         </div>
       </li>
       <li class="flex gap-3">
         <span class="flex-none w-6 h-6 rounded-full bg-accent/10 text-accent text-xs font-bold flex items-center justify-center mt-0.5">4</span>
         <div>
           <p>Your agent now has marketplace awareness. Ask it to search or install any skill:</p>
-          <pre class="bg-[#0d0d0d] border border-border rounded-lg p-3 text-xs text-text overflow-x-auto mt-2"><code>Search the recipes marketplace for an SEO audit skill and install it.</code></pre>
+          <pre class="bg-[#0d0d0d] border border-border rounded-lg p-3 text-xs text-text overflow-x-auto mt-2"><code>Search the LoopSkill marketplace for an SEO audit skill and install it.</code></pre>
         </div>
       </li>
     </ol>

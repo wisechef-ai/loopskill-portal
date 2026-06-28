@@ -21,7 +21,7 @@ const searchResponseEx = `{
 const installResponseEx = `{
   "slug": "super-memory",
   "version": "1.4.2",
-  "tarball_url": "https://cdn.wisechef.ai/skills/super-memory-1.4.2.tar.gz?token=...",
+  "tarball_url": "https://cdn.loopskill.io/skills/super-memory-1.4.2.tar.gz?token=...",
   "manifest": {
     "files": [
       {"path": "SKILL.md", "sha256": "abc123..."},
@@ -65,7 +65,7 @@ const telemetryBodyEx = `{
     <p class="eyebrow mb-2">Documentation · API reference</p>
     <h1 class="text-4xl font-semibold tracking-tight mb-6">API reference.</h1>
     <div class="prose">
-      <p>Base URL: <code>https://recipes.wisechef.ai/api</code></p>
+      <p>Base URL: <code>https://app.loopskill.io/api</code></p>
       <p>
         Auth: <code>x-api-key: rec_xx...</code> header. All install and write endpoints require
         a valid API key. Read-only endpoints (search, skill detail, carousel) are public.
@@ -81,7 +81,7 @@ const telemetryBodyEx = `{
 
       <h3>GET /api/skills/search</h3>
       <p>Public. Full-text search across the skill catalog.</p>
-      <pre><code>curl "https://recipes.wisechef.ai/api/skills/search?q=seo+audit&page_size=10"</code></pre>
+      <pre><code>curl "https://app.loopskill.io/api/skills/search?q=seo+audit&page_size=10"</code></pre>
       <p><strong>Query params:</strong></p>
       <ul>
         <li><code>q</code> — full-text on title + description (optional)</li>
@@ -97,7 +97,7 @@ const telemetryBodyEx = `{
 
       <h3>GET /api/skills/&#123;slug&#125;</h3>
       <p>Public. Skill detail — full description, screenshots, version, install count.</p>
-      <pre><code>curl "https://recipes.wisechef.ai/api/skills/super-memory"</code></pre>
+      <pre><code>curl "https://app.loopskill.io/api/skills/super-memory"</code></pre>
       <p><strong>Response:</strong> SkillDetailOut — same fields as summary plus <code>version</code>,
       <code>screenshots</code>, <code>changelog</code>, <code>external_resources</code>.</p>
       <p><strong>Errors:</strong> <code>404</code> if slug not found.</p>
@@ -105,7 +105,7 @@ const telemetryBodyEx = `{
       <h3>GET /api/skills/install</h3>
       <p>Auth required (every install needs a key — including free-tier skills).</p>
       <pre><code>curl -H "x-api-key: $RECIPES_API_KEY" \
-  "https://recipes.wisechef.ai/api/skills/install?slug=super-memory&mode=files"</code></pre>
+  "https://app.loopskill.io/api/skills/install?slug=super-memory&mode=files"</code></pre>
       <p><strong>Query params:</strong></p>
       <ul>
         <li><code>slug</code> — skill slug (required)</li>
@@ -120,7 +120,7 @@ const telemetryBodyEx = `{
       <h3>GET /api/skills/access</h3>
       <p>Auth required. Pre-flight check before install — confirms tier without consuming an install slot.</p>
       <pre><code>curl -H "x-api-key: $RECIPES_API_KEY" \
-  "https://recipes.wisechef.ai/api/skills/access?slug=seo-audit-engine"</code></pre>
+  "https://app.loopskill.io/api/skills/access?slug=seo-audit-engine"</code></pre>
       <p><strong>Response — access granted:</strong></p>
       <pre><code set:text={accessGrantedEx}></code></pre>
       <p><strong>Response — access denied:</strong></p>
@@ -128,7 +128,7 @@ const telemetryBodyEx = `{
 
       <h3>GET /api/skills/trending</h3>
       <p>Public. Returns trending skills by install velocity.</p>
-      <pre><code>curl "https://recipes.wisechef.ai/api/skills/trending?period=week&limit=10"</code></pre>
+      <pre><code>curl "https://app.loopskill.io/api/skills/trending?period=week&limit=10"</code></pre>
       <p><strong>Query params:</strong> <code>period</code> (week | month), <code>limit</code> (1–50).</p>
 
       <!-- ────────────────────────────────── CAROUSEL ── -->
@@ -136,13 +136,13 @@ const telemetryBodyEx = `{
 
       <h3>GET /api/carousel/today</h3>
       <p>Public. Returns today's 7 active carousel entries (refreshed daily at 05:00 London).</p>
-      <pre><code>curl "https://recipes.wisechef.ai/api/carousel/today"</code></pre>
+      <pre><code>curl "https://app.loopskill.io/api/carousel/today"</code></pre>
       <p><strong>Response 200:</strong></p>
       <pre><code set:text={carouselResponseEx}></code></pre>
 
       <h3>GET /api/carousel/&#123;YYYY-MM-DD&#125;</h3>
       <p>Public. Historical carousel for a specific date. Permalinkable.</p>
-      <pre><code>curl "https://recipes.wisechef.ai/api/carousel/2026-05-01"</code></pre>
+      <pre><code>curl "https://app.loopskill.io/api/carousel/2026-05-01"</code></pre>
       <p><strong>Errors:</strong> <code>404</code> if no carousel exists for that date.</p>
 
       <!-- ────────────────────────────────── COOKBOOKS ── -->
@@ -150,11 +150,11 @@ const telemetryBodyEx = `{
       <p>All bundle endpoints require auth (<code>x-api-key</code> header).</p>
 
       <h3>POST /api/cookbooks</h3>
-      <p>Create a new cookbook.</p>
+      <p>Create a new bundle.</p>
       <pre><code>curl -X POST -H "x-api-key: $RECIPES_API_KEY" \
   -H "Content-Type: application/json" \
   -d '&#123;"name": "My Team Bundle"&#125;' \
-  https://recipes.wisechef.ai/api/cookbooks</code></pre>
+  https://app.loopskill.io/api/cookbooks</code></pre>
       <p><strong>Response:</strong> <code>201</code> with bundle object including <code>id</code>.</p>
 
       <h3>GET /api/cookbooks</h3>
@@ -168,13 +168,13 @@ const telemetryBodyEx = `{
       <pre><code>curl -X POST -H "x-api-key: $RECIPES_API_KEY" \
   -H "Content-Type: application/json" \
   -d '&#123;"slug": "seo-audit-engine"&#125;' \
-  "https://recipes.wisechef.ai/api/cookbooks/UUID/skills"</code></pre>
+  "https://app.loopskill.io/api/cookbooks/UUID/skills"</code></pre>
 
       <h3>DELETE /api/cookbooks/&#123;cookbook_id&#125;/skills/&#123;slug&#125;</h3>
-      <p>Remove a skill from a cookbook.</p>
+      <p>Remove a skill from a bundle.</p>
 
       <h3>GET /api/cookbooks/&#123;cookbook_id&#125;/sync</h3>
-      <p>Get the latest-version diff for all skills in the cookbook.</p>
+      <p>Get the latest-version diff for all skills in the bundle.</p>
 
       <h3>GET /api/cookbooks/&#123;cookbook_id&#125;/manifest</h3>
       <p>Get the full skill manifest (slugs + pinned versions + checksums).</p>
@@ -187,7 +187,7 @@ const telemetryBodyEx = `{
       <pre><code>curl -X POST -H "Authorization: Bearer $JWT" \
   -H "Content-Type: application/json" \
   -d '&#123;"name": "CI server"&#125;' \
-  https://recipes.wisechef.ai/api-keys</code></pre>
+  https://app.loopskill.io/api-keys</code></pre>
       <p><strong>Response:</strong> <code>201</code> — key shown once, store securely.</p>
       <pre><code set:text={apiKeyResponseEx}></code></pre>
 
@@ -233,7 +233,7 @@ const telemetryBodyEx = `{
       <h2>OpenAPI spec</h2>
       <p>
         The full OpenAPI 3.1 spec is available at
-        <a href="/openapi.json"><code>https://recipes.wisechef.ai/openapi.json</code></a>
+        <a href="/openapi.json"><code>https://app.loopskill.io/openapi.json</code></a>
         and is regenerated on each API deploy. Import it into Postman, Insomnia, or use
         it to generate typed client SDKs.
       </p>

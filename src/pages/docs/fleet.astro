@@ -3,20 +3,19 @@ import AppShell from '../../layouts/AppShell.astro';
 import CrossSell from '../../components/CrossSell.astro';
 ---
 <AppShell mode="public" title="Fleet guide — LoopSkill Docs"
-     description="Create a fleet, subscribe bundles, distribute fleet keys, and keep multiple agents in sync. Operator+ tier required.">
+     description="Create a fleet, subscribe bundles, distribute fleet keys, and keep multiple agents in sync. Pro tier required.">
   <section class="max-w-3xl mx-auto px-6 pt-16 pb-12">
     <p class="eyebrow mb-2">Documentation · Fleet</p>
     <h1 class="text-4xl font-semibold tracking-tight mb-6">Fleet: multi-agent skill sync.</h1>
     <div class="prose">
       <p>
-        A <strong>fleet</strong> is a named group of agents that all share the same cookbook.
+        A <strong>fleet</strong> is a named group of agents that all share the same bundle.
         You create the fleet once, subscribe one or more bundles to it, distribute the fleet
         key to each agent, and from then on all agents stay in sync with a single
         <code>recipes_fleet_sync</code> call.
       </p>
       <p>
-        <strong>Tier requirement:</strong> Fleet features require a Pro+ subscription ($100/mo)
-        or higher. Fleet keys (<code>rec_fleet_*</code>) are separate from standard API keys and
+        <strong>Tier requirement:</strong> Fleet features require a Pro subscription ($9.95/mo). Fleet keys (<code>rec_fleet_*</code>) are separate from standard API keys and
         are scoped to specific bundles.
       </p>
 
@@ -54,7 +53,7 @@ recipes_list_cookbook({})   // list existing cookbooks
 curl -X POST -H "x-api-key: $RECIPES_API_KEY" \\
   -H "Content-Type: application/json" \\
   -d '{"name": "Production Fleet Bundle"}' \\
-  https://recipes.wisechef.ai/api/cookbooks`}</code></pre>
+  https://app.loopskill.io/api/cookbooks`}</code></pre>
       <p>
         Add skills to the bundle via the dashboard or the
         <code>POST /api/cookbooks/{`{id}`}/skills</code> endpoint.
@@ -87,7 +86,7 @@ curl -X POST -H "x-api-key: $RECIPES_API_KEY" \\
         The <code>channel</code> controls which bundle skills the fleet syncs:
       </p>
       <ul>
-        <li><strong>stable</strong> — syncs only the pinned, reviewed versions in the cookbook.</li>
+        <li><strong>stable</strong> — syncs only the pinned, reviewed versions in the bundle.</li>
         <li><strong>latest</strong> — syncs to the most recently published version of each skill,
             even if the bundle pin hasn't been updated. Use with care in production.</li>
       </ul>
@@ -118,7 +117,7 @@ curl -X POST -H "x-api-key: $RECIPES_API_KEY" \\
 recipes_fleet_sync({ fleet_id: "uuid...", dry_run: false })
 
 // Via CLI:
-recipes sync`}</code></pre>
+loopskill sync`}</code></pre>
       <p>The sync response shows what changed:</p>
       <pre><code>{`{
   "fleet_id": "uuid...",
@@ -158,7 +157,7 @@ recipes sync`}</code></pre>
         systemd timer:
       </p>
       <pre><code>{`# crontab entry (runs at 05:30 UTC, 30 min after carousel refresh)
-30 5 * * * RECIPES_API_KEY=rec_fleet_... recipes sync >> /var/log/recipes-sync.log 2>&1`}</code></pre>
+30 5 * * * RECIPES_API_KEY=rec_fleet_... loopskill sync >> /var/log/recipes-sync.log 2>&1`}</code></pre>
 
       <h2>Security considerations</h2>
       <ul>

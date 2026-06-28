@@ -165,7 +165,15 @@ export function FileBrowser({
     setError(null);
     try {
       const res = await fetch(`/api/skills/${slug}/files`, { credentials: 'include' });
-      if (!res.ok) throw new Error(`API ${res.status}`);
+      if (!res.ok) {
+        // 404 = no tarball uploaded yet, 403 = Pro-gated listing.
+        // Both are expected for seed/free skills — signal graceful hide instead of showing an error.
+        if (res.status === 404 || res.status === 403) {
+          onFilesLoaded?.(-1);
+          return;
+        }
+        throw new Error(`API ${res.status}`);
+      }
       const json: FilesResponse = await res.json();
       setData(json);
       onFilesLoaded?.(json.total_files);

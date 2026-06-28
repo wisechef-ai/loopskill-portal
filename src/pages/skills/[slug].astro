@@ -1,6 +1,5 @@
 ---
 import AppShell from '../../layouts/AppShell.astro';
-import CrossSell from '../../components/CrossSell.astro';
 import Icon from '../../components/Icon.astro';
 import AuditRow from '../../components/AuditRow.astro';
 import TrustPills from '../../components/TrustPills.astro';
@@ -492,14 +491,6 @@ const skillSchema = {
             </a>
           </div>
         )}
-
-        <div class="bg-bg-card border border-border rounded-2xl p-5">
-          <p class="eyebrow mb-3">Want it run for you?</p>
-          <p class="text-xs text-muted leading-relaxed mb-3">WiseChef Framework operates this skill end-to-end as a managed AI employee.</p>
-          <a href="https://wisechef.ai/framework" class="text-xs text-accent hover:opacity-80 inline-flex items-center gap-1.5">
-            See WiseChef <Icon name="arrow-right" size={11} />
-          </a>
-        </div>
 
         {externalResources.length > 0 && (
           <div class="bg-bg-card border border-border rounded-2xl p-5">

@@ -52,6 +52,7 @@ export function FileRenderer({ slug, path }: FileRendererProps) {
   const [isBinary, setIsBinary] = useState(false);
   const [binaryBytes, setBinaryBytes] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  const [unavailable, setUnavailable] = useState(false);
   const [loading, setLoading] = useState(true);
 
   const fetchFile = useCallback(async () => {
@@ -60,13 +61,20 @@ export function FileRenderer({ slug, path }: FileRendererProps) {
     setError(null);
     setContent(null);
     setIsBinary(false);
+    setUnavailable(false);
     try {
       const res = await fetch(
         `/api/skills/${slug}/file?path=${encodeURIComponent(path)}`,
         { credentials: 'include' },
       );
       if (!res.ok) {
-        throw new Error(`API ${res.status}${res.status === 403 ? ' — Pro subscription required' : ''}`);
+        // 403 (Pro-gated) and 404 (no tarball) are expected for seed skills.
+        // Show a calm inline note instead of a scary error.
+        if (res.status === 403 || res.status === 404) {
+          setUnavailable(true);
+          return;
+        }
+        throw new Error(`API ${res.status}`);
       }
 
       // The API returns either plain text or a JSON envelope for binary
@@ -109,6 +117,13 @@ export function FileRenderer({ slug, path }: FileRendererProps) {
         <div className="h-4 rounded bg-bg-elev w-2/3" />
         <div className="h-4 rounded bg-bg-elev w-full" />
       </div>
+    );
+  }
+
+  // ── Unavailable state (403/404 — expected for seed/Pro-gated skills) ─────
+  if (unavailable) {
+    return (
+      <p className="p-5 text-xs text-muted-soft">File preview available after install.</p>
     );
   }
 

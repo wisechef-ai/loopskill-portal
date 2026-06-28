@@ -116,8 +116,19 @@ export function AuditBars({
   const tests = testsPct(unhappyPaths);
   const freshness = freshnessPct(lastVerifiedAt);
 
-  // If all zero, show a note rather than empty bars
+  // If all metrics are at their zero/floor values (audit not yet populated),
+  // show a calm neutral state instead of alarming 0% bars.
   const allZero = sec === 0 && docs === 10 && tests === 0 && freshness === 0;
+  if (allZero) {
+    return (
+      <p className="text-xs text-muted-soft">
+        Audit pending.{' '}
+        <a href="/security" className="text-accent hover:underline">
+          How we audit →
+        </a>
+      </p>
+    );
+  }
 
   return (
     <div className="flex flex-col gap-2">
@@ -130,11 +141,6 @@ export function AuditBars({
           <a href={sourceUrl} target="_blank" rel="noopener noreferrer" className="text-accent hover:underline truncate block">
             ↗ Source audited
           </a>
-        </p>
-      )}
-      {allZero && (
-        <p className="text-[10px] text-muted-soft">
-          Audit metadata not yet populated. <a href="/security" className="text-accent hover:underline">How we audit →</a>
         </p>
       )}
     </div>

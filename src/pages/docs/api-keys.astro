@@ -4,7 +4,7 @@ import AppShell from '../../layouts/AppShell.astro';
 
 <AppShell mode="public"
   title="API keys — LoopSkill Docs"
-  description="How LoopSkill API keys work: the rec_live_ prefix, x-api-key header, per-bundle scoping (Pro+), rotation, and install-count visibility."
+  description="How LoopSkill API keys work: the rec_live_ prefix, x-api-key header, per-bundle scoping, rotation, and install-count visibility."
 >
   <section class="max-w-3xl mx-auto px-6 pt-16 pb-24">
     <p class="eyebrow mb-3">Docs · API Keys</p>
@@ -24,23 +24,22 @@ import AppShell from '../../layouts/AppShell.astro';
       followed by a random 32-character string. Pass them in the
       <code class="text-xs bg-bg-elev rounded px-1">x-api-key</code> request header:
     </p>
-    <pre class="bg-[#0d0d0d] border border-border rounded-xl p-4 text-sm text-text overflow-x-auto mb-6"><code>curl https://recipes.wisechef.ai/api/skills/search \
+    <pre class="bg-[#0d0d0d] border border-border rounded-xl p-4 text-sm text-text overflow-x-auto mb-6"><code>curl https://app.loopskill.io/api/skills/search \
   -H "x-api-key: rec_live_your_key_here"</code></pre>
     <p class="text-muted mb-10">
       The key encodes your subscription tier. Free keys can browse and install free skills.
-      Pro keys unlock the full paid catalog. Pro+ keys additionally enable bundle sync and
-      client deployment endpoints.
+      Pro keys unlock the full paid catalog, bundle sync, and client deployment endpoints.
     </p>
 
     <!-- Per-bundle scoping -->
-    <h2 class="text-xl font-semibold text-text mb-4">Per-bundle scoping <span class="text-xs text-muted-soft font-normal">(Pro+)</span></h2>
+    <h2 class="text-xl font-semibold text-text mb-4">Per-bundle scoping <span class="text-xs text-muted-soft font-normal">(Pro)</span></h2>
     <div class="bg-yellow-500/10 border border-yellow-500/40 rounded p-4 mb-6">
       <p class="text-sm text-yellow-200">
         <strong>Coming with bundle deployment, Q2 2026.</strong> Per-bundle scoped keys are part of the Phase C release. The description below documents the intended behavior so you can plan integrations.
       </p>
     </div>
     <p class="text-muted mb-4">
-      Pro+ accounts get up to 20 API keys. Each key can be <strong class="text-text">scoped to a single bundle</strong> —
+      Pro accounts can create multiple API keys. Each key can be <strong class="text-text">scoped to a single bundle</strong> —
       meaning it will only serve the skills in that bundle and reject requests for anything else.
       This is how you safely hand a key to a client's agent without giving it access to your
       entire private catalog.
@@ -56,7 +55,7 @@ import AppShell from '../../layouts/AppShell.astro';
       </li>
       <li class="flex items-start gap-2">
         <svg width="16" height="16" viewBox="0 0 16 16" fill="none" class="text-success mt-0.5 shrink-0"><path d="M3 8.5L6 11.5L13 4.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
-        <span>Pro accounts: 1 key total (not bundle-scoped). Upgrade to Pro+ for multi-key scoping.</span>
+        <span>Free accounts: 1 key total (not bundle-scoped). Upgrade to Pro for multi-key bundle scoping.</span>
       </li>
     </ul>
 

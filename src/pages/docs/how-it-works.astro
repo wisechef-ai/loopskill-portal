@@ -113,7 +113,7 @@ anonymous telemetry ping (optional)`}</code></pre>
       <p>To opt out entirely, set the environment variable before starting your agent:</p>
       <pre><code>export RECIPES_TELEMETRY=off</code></pre>
       <p>
-        Operator+ subscribers can opt into pseudonymous payload sampling to improve their
+        Pro subscribers can opt into pseudonymous payload sampling to improve their
         own skills — this is off by default and requires explicit consent in the dashboard.
       </p>
 
@@ -125,12 +125,12 @@ anonymous telemetry ping (optional)`}</code></pre>
       <ul>
         <li>
           <strong>Bundle sync (Pro tier):</strong> create a bundle in the dashboard,
-          add skills to it, then call <code>recipes_sync</code> (MCP) or <code>recipes sync</code>
+          add skills to it, then call <code>recipes_sync</code> (MCP) or <code>loopskill sync</code>
           (CLI) on each host. All agents stay on the same pinned versions.
         </li>
         <li>
-          <strong>Fleet keys (Operator+ tier):</strong> issue a <code>rec_fleet_*</code> key
-          scoped to a specific cookbook. Each agent presents the fleet key; the API enforces the
+          <strong>Fleet keys (Pro tier):</strong> issue a <code>rec_fleet_*</code> key
+          scoped to a specific bundle. Each agent presents the fleet key; the API enforces the
           bundle's skill allowlist. See <a href="/docs/fleet">Fleet guide</a>.
         </li>
       </ul>

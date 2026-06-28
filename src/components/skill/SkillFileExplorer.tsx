@@ -42,16 +42,34 @@ export function SkillFileExplorer({
    */
   const [multiFile, setMultiFile] = useState<boolean | null>(null);
 
+  /**
+   * unavailable: set to true when /files returns 404 or 403.
+   * Hides the explorer entirely and shows a calm fallback message.
+   */
+  const [unavailable, setUnavailable] = useState(false);
+
   // Reset to default file when slug changes
   useEffect(() => {
     setSelectedPath(defaultPath);
     setMultiFile(null);
+    setUnavailable(false);
   }, [slug, defaultPath]);
 
-  // Called by FileBrowser once files are fetched
+  // Called by FileBrowser once files are fetched (or when unavailable: count = -1)
   const handleFilesLoaded = (count: number) => {
+    if (count < 0) {
+      setUnavailable(true);
+      return;
+    }
     setMultiFile(count > 1);
   };
+
+  // Graceful empty state when files listing is unavailable (404/403)
+  if (unavailable) {
+    return (
+      <p className="p-5 text-xs text-muted-soft">File preview available after install.</p>
+    );
+  }
 
   // Show sidebar unless we've confirmed it's single-file mode
   const showSidebar = multiFile !== false;

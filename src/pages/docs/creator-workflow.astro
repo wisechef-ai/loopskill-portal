@@ -26,7 +26,7 @@ import CrossSell from '../../components/CrossSell.astro';
       <!-- ──── STEP 1 ──── -->
       <h2>Step 1 — Signup and get your API key</h2>
       <p>
-        <a href="/signin?mode=signup">Create an account</a> at recipes.wisechef.ai.
+        <a href="/signin?mode=signup">Create an account</a> at app.loopskill.io.
         Then, from the dashboard → API Keys → New key, create a <code>rec_</code> key.
       </p>
       <pre><code>export RECIPES_API_KEY=rec_xx...   # add to your ~/.bashrc or .zshrc</code></pre>
@@ -140,7 +140,7 @@ recipes_publish_request({
   "request_id": "uuid...",
   "slug": "my-skill",
   "status": "pending_review",
-  "issue_url": "https://github.com/wisechef-ai/recipes-api/issues/NNN",
+  "issue_url": "https://github.com/wisechef-ai/loopskill-api/issues/NNN",
   "sha256": "abc123...",
   "warnings": []
 }`}</code></pre>
@@ -152,7 +152,7 @@ recipes_publish_request({
       <!-- ──── STEP 6 ──── -->
       <h2>Step 6 — Respond to review feedback</h2>
       <p>
-        A WiseChef team member will review your skill on GitHub. Common feedback:
+        A LoopSkill team member will review your skill on GitHub. Common feedback:
       </p>
       <ul>
         <li>
@@ -186,7 +186,7 @@ recipes_publish_request({
       </p>
       <ol>
         <li>The tarball is built from your approved submission</li>
-        <li>Signed with the WiseChef ed25519 key</li>
+        <li>Signed with the LoopSkill ed25519 key</li>
         <li>Uploaded to the CDN</li>
         <li>Your skill appears in search results</li>
         <li>You receive a confirmation email with the catalog URL</li>
@@ -206,7 +206,7 @@ recipes_publish_request({
       </p>
       <p>
         Users on a Pro subscription who have your skill in a bundle will see the update
-        the next time they run <code>recipes_sync</code> or <code>recipes sync</code>.
+        the next time they run <code>recipes_sync</code> or <code>loopskill sync</code>.
       </p>
 
       <!-- ──── EARNINGS ──── -->

@@ -30,51 +30,51 @@ import AppShell from '../../layouts/AppShell.astro';
       <p>Hermes reads skills from <code>~/.hermes/skills/</code>. After install, the
       <code>recipes_search</code>, <code>recipes_install</code>, and <code>recipes_sync</code>
       MCP tools are available automatically via the LoopSkill MCP server bundled in the skill.</p>
-      <pre><code>mkdir -p ~/.hermes/skills/recipes
-curl -sL https://recipes.wisechef.ai/skill \
-     -o ~/.hermes/skills/recipes/SKILL.md
+      <pre><code>mkdir -p ~/.hermes/skills/loopskill
+curl -sL https://app.loopskill.io/skill \
+     -o ~/.hermes/skills/loopskill/SKILL.md
 export RECIPES_API_KEY=rec_xx...</code></pre>
 
       <h3>Claude Code</h3>
       <p>Claude Code reads skills from <code>~/.claude/skills/</code>:</p>
-      <pre><code>mkdir -p ~/.claude/skills/recipes
-curl -sL https://recipes.wisechef.ai/skill \
-     -o ~/.claude/skills/recipes/SKILL.md
+      <pre><code>mkdir -p ~/.claude/skills/loopskill
+curl -sL https://app.loopskill.io/skill \
+     -o ~/.claude/skills/loopskill/SKILL.md
 export RECIPES_API_KEY=rec_xx...</code></pre>
 
       <h3>OpenClaw</h3>
       <p>OpenClaw mounts the same skill directory layout as Claude Code. Drop the meta-skill in once;
       every spawned agent inherits it:</p>
-      <pre><code>mkdir -p ~/.openclaw/skills/recipes
-curl -sL https://recipes.wisechef.ai/skill \
-     -o ~/.openclaw/skills/recipes/SKILL.md
+      <pre><code>mkdir -p ~/.openclaw/skills/loopskill
+curl -sL https://app.loopskill.io/skill \
+     -o ~/.openclaw/skills/loopskill/SKILL.md
 export RECIPES_API_KEY=rec_xx...</code></pre>
 
       <h3>Codex CLI</h3>
       <p>OpenAI Codex CLI uses the same format:</p>
-      <pre><code>mkdir -p ~/.codex/skills/recipes
-curl -sL https://recipes.wisechef.ai/skill \
-     -o ~/.codex/skills/recipes/SKILL.md
+      <pre><code>mkdir -p ~/.codex/skills/loopskill
+curl -sL https://app.loopskill.io/skill \
+     -o ~/.codex/skills/loopskill/SKILL.md
 export RECIPES_API_KEY=rec_xx...</code></pre>
 
       <!-- ─────────────── MCP (config snippet) ─────────────── -->
       <h2>MCP server integrations</h2>
       <p>
         These runtimes use the <a href="https://modelcontextprotocol.io">Model Context Protocol</a>.
-        Install the Recipes MCP server once; your agent gets <code>recipes_search</code>,
-        <code>recipes_install</code>, <code>recipes_sync</code>, and all other Recipes tools.
+        Install the LoopSkill MCP server once; your agent gets <code>recipes_search</code>,
+        <code>recipes_install</code>, <code>recipes_sync</code>, and all other LoopSkill tools.
       </p>
       <p>Install the MCP server:</p>
-      <pre><code>pip install recipes-mcp   # or: uvx recipes-mcp (no install, runs directly)</code></pre>
+      <pre><code>pip install loopskill-mcp   # or: uvx loopskill-mcp (no install, runs directly)</code></pre>
 
       <h3>Claude Desktop</h3>
       <p>Edit <code>~/Library/Application Support/Claude/claude_desktop_config.json</code>
       (macOS) or <code>%APPDATA%\Claude\claude_desktop_config.json</code> (Windows):</p>
       <pre><code>{`{
   "mcpServers": {
-    "recipes": {
+    "loopskill": {
       "command": "uvx",
-      "args": ["recipes-mcp"],
+      "args": ["loopskill-mcp"],
       "env": {
         "RECIPES_API_KEY": "rec_xx..."
       }
@@ -87,9 +87,9 @@ export RECIPES_API_KEY=rec_xx...</code></pre>
       <p>Open Cursor Settings → MCP → Add Server, or edit <code>.cursor/mcp.json</code>:</p>
       <pre><code>{`{
   "mcpServers": {
-    "recipes": {
+    "loopskill": {
       "command": "uvx",
-      "args": ["recipes-mcp"],
+      "args": ["loopskill-mcp"],
       "env": { "RECIPES_API_KEY": "rec_xx..." }
     }
   }
@@ -99,9 +99,9 @@ export RECIPES_API_KEY=rec_xx...</code></pre>
       <p>In VS Code, open Cline settings → MCP Servers → Edit JSON:</p>
       <pre><code>{`{
   "mcpServers": {
-    "recipes": {
+    "loopskill": {
       "command": "uvx",
-      "args": ["recipes-mcp"],
+      "args": ["loopskill-mcp"],
       "env": { "RECIPES_API_KEY": "rec_xx..." }
     }
   }
@@ -118,7 +118,7 @@ export RECIPES_API_KEY=rec_xx...</code></pre>
         "transport": {
           "type": "stdio",
           "command": "uvx",
-          "args": ["recipes-mcp"],
+          "args": ["loopskill-mcp"],
           "env": { "RECIPES_API_KEY": "rec_xx..." }
         }
       }
@@ -130,10 +130,10 @@ export RECIPES_API_KEY=rec_xx...</code></pre>
       <p>Edit <code>~/.config/zed/settings.json</code>:</p>
       <pre><code>{`{
   "context_servers": {
-    "recipes": {
+    "loopskill": {
       "command": {
         "path": "uvx",
-        "args": ["recipes-mcp"],
+        "args": ["loopskill-mcp"],
         "env": { "RECIPES_API_KEY": "rec_xx..." }
       }
     }
@@ -148,11 +148,11 @@ export RECIPES_API_KEY=rec_xx...</code></pre>
       </p>
       <pre><code>{`# Search
 curl -H "x-api-key: $RECIPES_API_KEY" \
-  "https://recipes.wisechef.ai/api/skills/search?q=seo"
+  "https://app.loopskill.io/api/skills/search?q=seo"
 
 # Install (get signed tarball URL)
 curl -H "x-api-key: $RECIPES_API_KEY" \
-  "https://recipes.wisechef.ai/api/skills/install?slug=super-memory&mode=files"`}</code></pre>
+  "https://app.loopskill.io/api/skills/install?slug=super-memory&mode=files"`}</code></pre>
       <p>See <a href="/docs/api-reference">API reference</a> for full endpoint docs.</p>
 
       <!-- ─────────────── TROUBLESHOOTING ─────────────── -->

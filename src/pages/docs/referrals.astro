@@ -4,7 +4,7 @@ import AppShell from '../../layouts/AppShell.astro';
 
 <AppShell mode="public"
   title="Referral program — LoopSkill Docs"
-  description="Earn 50% recurring revenue share on every Pro and Pro+ subscriber you bring to LoopSkill. Monthly payouts via Stripe Connect."
+  description="Earn 50% recurring revenue share on every Pro subscriber you bring to LoopSkill. Monthly payouts via Stripe Connect."
 >
   <section class="max-w-3xl mx-auto px-6 pt-16 pb-24">
     <p class="eyebrow mb-3">Docs · Referrals</p>
@@ -19,22 +19,16 @@ import AppShell from '../../layouts/AppShell.astro';
     <!-- How it works -->
     <h2 class="text-xl font-semibold text-text mb-4">How the rev-share works</h2>
     <p class="text-muted mb-4">
-      When someone subscribes to Pro ($20/mo) or Pro+ ($100/mo) using your referral link, you earn
-      50% of every invoice they pay — month after month. If they upgrade from Pro to Pro+, your
-      earnings scale up automatically. If they downgrade, earnings scale down to match their
-      actual paid amount.
+      When someone subscribes to Pro ($9.95/mo) using your referral link, you earn
+      50% of every invoice they pay — month after month.
     </p>
     <div class="bg-bg-card border border-border rounded-2xl p-6 mb-10 grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
       <div>
         <p class="text-muted-soft uppercase text-[10px] tracking-widest font-semibold mb-1">Pro referral</p>
-        <p class="text-2xl font-semibold text-text">$10<span class="text-base font-normal text-muted">/mo</span></p>
-        <p class="text-muted mt-1">50% of $20/mo, every month they stay</p>
+        <p class="text-2xl font-semibold text-text">$4.98<span class="text-base font-normal text-muted">/mo</span></p>
+        <p class="text-muted mt-1">50% of $9.95/mo, every month they stay</p>
       </div>
-      <div>
-        <p class="text-muted-soft uppercase text-[10px] tracking-widest font-semibold mb-1">Pro+ referral</p>
-        <p class="text-2xl font-semibold text-text">$50<span class="text-base font-normal text-muted">/mo</span></p>
-        <p class="text-muted mt-1">50% of $100/mo, every month they stay</p>
-      </div>
+
     </div>
 
     <!-- Finding your code -->
@@ -45,7 +39,7 @@ import AppShell from '../../layouts/AppShell.astro';
       <code class="text-xs bg-bg-elev rounded px-1">ref_abc123</code>.
       Click "Copy link" to get your shareable URL:
     </p>
-    <pre class="bg-[#0d0d0d] border border-border rounded-xl p-4 text-sm text-text overflow-x-auto mb-10"><code>https://recipes.wisechef.ai/pricing?ref=abc123</code></pre>
+    <pre class="bg-[#0d0d0d] border border-border rounded-xl p-4 text-sm text-text overflow-x-auto mb-10"><code>https://app.loopskill.io/pricing?ref=abc123</code></pre>
 
     <!-- How earnings are tracked -->
     <h2 class="text-xl font-semibold text-text mb-4">How earnings are tracked</h2>
@@ -101,7 +95,7 @@ import AppShell from '../../layouts/AppShell.astro';
           </svg>
         </summary>
         <p class="text-sm text-muted leading-relaxed mt-3">
-          Earnings scale with their actual paid amount. If a Pro+ referral downgrades to Pro, your monthly earning on that referral drops from $50 to $10 starting the next billing cycle. Upgrades work in reverse — earnings go up immediately.
+          Earnings scale with their actual paid amount. If a referred customer cancels, earnings stop. If they resubscribe, earnings resume the following billing cycle.
         </p>
       </details>
 

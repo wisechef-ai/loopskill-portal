@@ -12,7 +12,7 @@ import CrossSell from '../../components/CrossSell.astro';
       <div class="not-prose mb-6 rounded-2xl border border-accent/40 bg-accent/5 p-5">
         <p class="text-xs uppercase tracking-wider text-accent font-semibold mb-2">The agent-first workflow</p>
         <p class="text-base text-text leading-relaxed font-medium">
-          Tell your agent: <em>"install the relevant Recipes skills from recipes.wisechef.ai"</em>.
+          Tell your agent: <em>"install the relevant skills from app.loopskill.io"</em>.
         </p>
         <p class="text-sm text-muted mt-2 leading-relaxed">
           The agent handles the rest via MCP — it searches the catalog, picks the best-scored skill
@@ -22,7 +22,8 @@ import CrossSell from '../../components/CrossSell.astro';
 
       <h2>Prerequisites</h2>
       <ul>
-        <li>A LoopSkill API key — free for free-tier skills, Pro ($20/mo) for the full library.</li>
+        <li>A LoopSkill API key — free for free-tier skills, Pro ($9.95/mo) for the full library.</li>
+
         <li>One of the supported agent runtimes below.</li>
         <li>Your key exported: <code>export RECIPES_API_KEY=rec_xx...</code></li>
       </ul>
@@ -37,21 +38,21 @@ import CrossSell from '../../components/CrossSell.astro';
 
       <h3>Hermes (native)</h3>
       <p>Hermes auto-discovers SKILL.md files under <code>~/.hermes/skills/</code>:</p>
-      <pre><code>mkdir -p ~/.hermes/skills/recipes
-curl -sL https://recipes.wisechef.ai/skill \
-     -o ~/.hermes/skills/recipes/SKILL.md</code></pre>
+      <pre><code>mkdir -p ~/.hermes/skills/loopskill
+curl -sL https://app.loopskill.io/skill \
+     -o ~/.hermes/skills/loopskill/SKILL.md</code></pre>
 
       <h3>Claude Code (native)</h3>
       <p>Claude Code reads skills from <code>~/.claude/skills/</code>:</p>
-      <pre><code>mkdir -p ~/.claude/skills/recipes
-curl -sL https://recipes.wisechef.ai/skill \
-     -o ~/.claude/skills/recipes/SKILL.md</code></pre>
+      <pre><code>mkdir -p ~/.claude/skills/loopskill
+curl -sL https://app.loopskill.io/skill \
+     -o ~/.claude/skills/loopskill/SKILL.md</code></pre>
 
       <h3>Codex CLI (native)</h3>
       <p>OpenAI Codex CLI uses the same skill directory layout:</p>
-      <pre><code>mkdir -p ~/.codex/skills/recipes
-curl -sL https://recipes.wisechef.ai/skill \
-     -o ~/.codex/skills/recipes/SKILL.md</code></pre>
+      <pre><code>mkdir -p ~/.codex/skills/loopskill
+curl -sL https://app.loopskill.io/skill \
+     -o ~/.codex/skills/loopskill/SKILL.md</code></pre>
 
       <h3>Claude Desktop (MCP)</h3>
       <p>
@@ -60,9 +61,9 @@ curl -sL https://recipes.wisechef.ai/skill \
       </p>
       <pre><code>{`{
   "mcpServers": {
-    "recipes": {
+    "loopskill": {
       "command": "uvx",
-      "args": ["recipes-mcp"],
+      "args": ["loopskill-mcp"],
       "env": { "RECIPES_API_KEY": "rec_xx..." }
     }
   }
@@ -76,7 +77,7 @@ curl -sL https://recipes.wisechef.ai/skill \
       <p>Open Cursor Settings → MCP → Add Server:</p>
       <pre><code>{`{
   "name": "recipes",
-  "command": "uvx recipes-mcp",
+  "command": "uvx loopskill-mcp",
   "env": { "RECIPES_API_KEY": "rec_xx..." }
 }`}</code></pre>
 
@@ -116,7 +117,7 @@ curl -sL https://recipes.wisechef.ai/skill \
       <p>
         Skills are versioned. Run sync periodically to pull patch updates:
       </p>
-      <pre><code>recipes sync</code></pre>
+      <pre><code>loopskill sync</code></pre>
       <p>
         Or use the MCP tool: ask your agent "sync my LoopSkill skills to latest".
         The <code>recipes_sync</code> MCP tool updates all installed skills in your bundle.
@@ -136,9 +137,7 @@ curl -sL https://recipes.wisechef.ai/skill \
       <h2>Pricing</h2>
       <ul>
         <li><strong>Free:</strong> API key, catalog access, all free-tier skills (including super-memory).</li>
-        <li><strong>Pro ($20/mo):</strong> full library, up to 10 bundles, fleet support.</li>
-        <li><strong>Pro+ ($100/mo):</strong> up to 200 bundles, pre-built client deployments,
-            priority support, private org catalog.</li>
+        <li><strong>Pro ($9.95/mo):</strong> full library, bundles, fleet support, client deployment, priority support.</li>
       </ul>
 
       <h2>Next steps</h2>
