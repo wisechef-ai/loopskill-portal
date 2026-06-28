@@ -26,7 +26,7 @@
     <div class="aurora-blob aurora-blob-warm"></div>
   </div>
 
-  <canvas id="living-recipe-canvas" class="absolute inset-0 w-full h-full block"></canvas>
+  <canvas id="living-loop-canvas" class="absolute inset-0 w-full h-full block"></canvas>
 
   <div class="film-grain absolute inset-0"></div>
 
@@ -114,7 +114,7 @@
   };
 
   (() => {
-    const canvas = document.getElementById('living-recipe-canvas') as HTMLCanvasElement | null;
+    const canvas = document.getElementById('living-loop-canvas') as HTMLCanvasElement | null;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
