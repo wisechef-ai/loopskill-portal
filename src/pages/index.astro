@@ -286,16 +286,16 @@ const howItWorks = [
 ];
 
 const stats = [
-  { num: '84,000+', label: 'Skills across 13 federated registries' },
+  { num: '80,000+', label: 'Skills across federated registries' },
   { num: `${liveSkillCount}`, label: 'Curated & signed in our catalog' },
-  { num: 'stable · canary · frozen', label: 'Fleet channels with auto-rollback' },
+  { num: 'pass / fail', label: 'Every loop run, objective + bounded' },
 ];
 
 const heroPillars = [
-  { title: 'Fleet-wide sync', body: 'Same bundle on every machine. Versioned. Signed. No cloud round-trip at run time.', icon: 'box' },
-  { title: 'MCP-native', body: 'Dedicated tools. Your agent searches, installs, and reports back from inside its own conversation.', icon: 'lightning' },
-  { title: 'Curated weekly', body: 'Small catalog, slow cadence, audited every push. We pick predictability over surface area.', icon: 'check' },
-  { title: 'Client-ready (Pro+)', body: "Pre-build a cookbook. Push it to your client's agent. They install one meta-skill; your work flows in.", icon: 'calendar' },
+  { title: 'Runnable + verified', body: 'Every loop runs under enforced bounds and returns an objective pass/fail. Proof, not a prompt.', icon: 'lightning' },
+  { title: 'MCP-native', body: 'Dedicated tools. Your agent runs loops, searches, and installs from inside its own conversation.', icon: 'box' },
+  { title: 'Open source', body: 'MPL-2.0. Self-host the whole registry for free. Pro is hosted convenience, never a feature gate.', icon: 'check' },
+  { title: 'Curated + signed', body: 'Small trusted core, audited every push, ed25519-signed delivery — inside the 80k-skill universe.', icon: 'calendar' },
 ];
 
 const verticals = [
@@ -518,7 +518,7 @@ const verticals = [
         <div class="flex flex-col gap-5">
           <p class="eyebrow text-accent">How it works</p>
           <h2 class="text-3xl md:text-5xl font-bold tracking-tight" style="letter-spacing: -0.03em;">Your agent already does this — it just doesn't know about us yet.</h2>
-          <p class="text-muted text-lg leading-relaxed">LoopSkill is a single Markdown file. Drop it into your agent's skills directory. From then on your agent searches 84,000+ skills across 13 registries, installs the right one locally, bundles your picks into a bundle, and syncs that bundle to every agent in your fleet — versioned, signed, auto-rolled-back.</p>
+          <p class="text-muted text-lg leading-relaxed">LoopSkill is a single Markdown file. Drop it into your agent's skills directory. From then on your agent can run vetted loops (objective pass/fail under enforced bounds), search 80,000+ skills across federated registries, install the right one locally, and group your picks into a shareable bundle — versioned, signed, auto-rolled-back.</p>
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">
             {howItWorks.map(s => (
               <div class="flex flex-col gap-2 p-4 bg-bg-card/50 border border-border-soft rounded-xl hover:border-border transition">
@@ -546,10 +546,10 @@ const verticals = [
           </div>
           <div class="p-5 font-mono text-xs leading-relaxed">
             <div class="text-success">$ you</div>
-            <div class="text-text mb-3">install the recipes skill from recipes.wisechef.ai</div>
+            <div class="text-text mb-3">install the loopskill skill from app.loopskill.io</div>
             <div class="text-accent">$ agent</div>
-            <div class="text-muted mb-1">→ Fetching SKILL.md · wiring MCP (search · install · bundles · fleet)</div>
-            <div class="text-muted mb-3">✓ LoopSkill installed. <span class="text-text">84,000+ skills</span> across 13 registries — searchable now.</div>
+            <div class="text-muted mb-1">→ Fetching SKILL.md · wiring MCP (run loops · search · install · bundles)</div>
+            <div class="text-muted mb-3">✓ LoopSkill installed. <span class="text-text">Runnable registry + 80,000+ skills</span> — ready.</div>
             <div class="text-success">$ you</div>
             <div class="text-text mb-3">build my agents a memory + scraping stack and keep them all in sync</div>
             <div class="text-accent">$ agent</div>
@@ -573,7 +573,7 @@ const verticals = [
       <div class="flex flex-col gap-3 mb-12 max-w-2xl">
         <p class="eyebrow text-accent">Skill spotlight</p>
         <h2 class="text-3xl md:text-5xl font-bold tracking-tight" style="letter-spacing: -0.03em;">These are not prompts.<br/>They are <span class="text-accent">products</span>.</h2>
-        <p class="text-muted text-lg">Our 72 curated skills are signed, audited, and fleet-ready — the trusted core inside the 84,000-skill universe. Every one replaces a SaaS subscription or a freelancer hour, run locally by your agent. New: <a href="/skills/larry" class="text-accent hover:opacity-80 underline-offset-2 hover:underline">Larry</a> — autonomous TikTok slideshow marketing, ported from the LarryBrain reference and audited through our discipline-lint and leak-audit gates.</p>
+        <p class="text-muted text-lg">Our 72 curated skills are signed, audited, and ready — the trusted core inside the 80,000-skill universe. Every one replaces a SaaS subscription or a freelancer hour, run locally by your agent. New: <a href="/skills/larry" class="text-accent hover:opacity-80 underline-offset-2 hover:underline">Larry</a> — autonomous TikTok slideshow marketing, ported from the LarryBrain reference and audited through our discipline-lint and leak-audit gates.</p>
       </div>
       <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
         {spotlight.map(s => {

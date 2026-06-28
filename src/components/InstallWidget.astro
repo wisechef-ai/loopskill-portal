@@ -13,7 +13,7 @@ const { skillCount } = Astro.props;
 const countLabel = skillCount && skillCount > 0 ? `${skillCount}+ skills` : 'the full catalog';
 
 // The single phrase the user pastes into their agent. This IS the install.
-const installPhrase = 'Install the recipes skill from recipes.wisechef.ai/skill please';
+const installPhrase = 'Install the loopskill skill from app.loopskill.io/skill please';
 ---
 
 <div
@@ -44,22 +44,21 @@ const installPhrase = 'Install the recipes skill from recipes.wisechef.ai/skill 
     <div class="text-text mb-3" data-command>{installPhrase}</div>
 
     <div class="text-accent">$ agent</div>
-    <div class="text-muted mb-1">→ Fetching SKILL.md from recipes.wisechef.ai/skill</div>
-    <div class="text-muted mb-1">→ Wiring LoopSkill MCP — search · install · bundles · fleet</div>
+    <div class="text-muted mb-1">→ Fetching SKILL.md from app.loopskill.io/skill</div>
+    <div class="text-muted mb-1">→ Wiring LoopSkill MCP — run loops · search · install · bundles</div>
     <div class="text-success font-semibold">
-      ✓ LoopSkill installed. Searching <span class="text-text">84,000+ skills across 13 registries</span> — ready.
+      ✓ LoopSkill installed. The runnable registry + <span class="text-text">80,000+ skills</span> — ready.
     </div>
     <div class="text-muted mt-2 mb-3">Just tell me what you need.</div>
 
     <div class="text-success">$ you</div>
-    <div class="text-text mb-3">Find a web scraper and sync it to my fleet</div>
+    <div class="text-text mb-3">Run the secret-scan loop on my repo before I push</div>
 
     <div class="text-accent">$ agent</div>
-    <div class="text-muted mb-1">→ Searching ClawHub + skills.sh + curated catalog</div>
-    <div class="text-muted mb-1">→ Found 12 scrapers. Top match: <span class="text-text">web-scraper-pro</span></div>
-    <div class="text-muted mb-1">→ Added to "My Stack" bundle</div>
+    <div class="text-muted mb-1">→ Running secret-scan-loop under enforced bounds (bounded confinement)</div>
+    <div class="text-muted mb-1">→ Scanned working tree · exit 0 · no leaked credentials found</div>
     <div class="text-success font-semibold">
-      ✓ Subscribed to fleet (stable channel). 3 agents reconciled. Auto-rollback armed.
+      ✓ Loop passed in 1.2s. Safe to push. Verdict logged to the registry.
     </div>
   </div>
 

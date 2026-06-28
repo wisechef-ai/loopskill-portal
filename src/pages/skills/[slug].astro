@@ -189,7 +189,7 @@ const externalResources: Array<{ slug?: string; url: string; relation?: string; 
 // a zero-install UserInteractionCount into search-engine markup.
 // aggregateRating is intentionally omitted — there is no review/rating source
 // and fabricating one would violate schema.org guidelines and risk penalties.
-const siteURL = 'https://recipes.wisechef.ai';
+const siteURL = 'https://app.loopskill.io';
 const skillSchema = {
   '@context': 'https://schema.org',
   '@type': 'SoftwareApplication',
@@ -319,7 +319,7 @@ const skillSchema = {
             <p class="eyebrow">Install in your agent</p>
           </div>
           <div class="font-mono text-xs text-muted leading-relaxed mb-3">
-            <span class="text-success">→</span> First time? Tell your agent: <span class="text-accent">"install the recipes skill from recipes.wisechef.ai/skill"</span> — then the lines below add this skill.
+            <span class="text-success">→</span> First time? Tell your agent: <span class="text-accent">"install the loopskill skill from app.loopskill.io/skill"</span> — then the lines below add this skill.
           </div>
           {/* portal_0610 J5 — omnipresent ?ref-attributed quick-install (real motions only). */}
           <QuickInstall kind="skill" slug={display.slug} ref="skill-page" />
@@ -353,7 +353,7 @@ const skillSchema = {
                 <code class="font-mono text-xs bg-bg-elev border border-border rounded px-3 py-2 flex-1">export RECIPES_API_KEY=<span data-key-prefix>rec_live_…</span></code>
                 <a href="/library" class="text-xs text-accent hover:opacity-80 underline shrink-0">Get key →</a>
               </div>
-              <code class="block font-mono text-xs bg-bg-elev border border-border rounded px-3 py-2">recipes install <span data-skill-slug-display>{display.slug}</span></code>
+              <code class="block font-mono text-xs bg-bg-elev border border-border rounded px-3 py-2">loopskill install <span data-skill-slug-display>{display.slug}</span></code>
             </div>
             <p class="text-[11px] text-muted-soft mt-3">First time? <a href="/library" class="text-accent hover:opacity-80 underline">Generate your API key</a> on the Library page.</p>
           </div>
