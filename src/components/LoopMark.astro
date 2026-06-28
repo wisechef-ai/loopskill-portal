@@ -1,0 +1,26 @@
+---
+// LoopSkill brand mark — a continuous loop (cycle/recursion) with an integrated
+// play triangle at the loop head, signalling a RUNNABLE loop. Vector, crisp at
+// any size, gradient amber→cyan to match the brand. Replaces the legacy chef-hat
+// raster (mark-*.png) from the Recipes brand. loopskill_portal_0627.
+interface Props { size?: number; class?: string; }
+const { size = 28, class: cls = '' } = Astro.props;
+// Unique gradient id per render so multiple marks on one page don't collide.
+const gid = 'lsk-grad-' + Math.random().toString(36).slice(2, 8);
+---
+<svg width={size} height={size} viewBox="0 0 32 32" fill="none" class={cls}
+     xmlns="http://www.w3.org/2000/svg" aria-hidden="true" role="img">
+  <defs>
+    <linearGradient id={gid} x1="4" y1="6" x2="28" y2="26" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#f5a623"/>
+      <stop offset="1" stop-color="#3bd4c0"/>
+    </linearGradient>
+  </defs>
+  <!-- open loop: a near-full circle with a gap at top-right, arrowhead implying motion -->
+  <path d="M22.5 7.6 A11 11 0 1 0 27 16"
+        stroke={`url(#${gid})`} stroke-width="2.4" stroke-linecap="round" fill="none"/>
+  <!-- loop-head arrow (motion / re-run) -->
+  <path d="M21.3 4.2 L23.4 8.0 L19.2 8.4 Z" fill={`url(#${gid})`}/>
+  <!-- play triangle at the centre: this loop RUNS -->
+  <path d="M13 11.5 L21 16 L13 20.5 Z" fill={`url(#${gid})`} opacity="0.92"/>
+</svg>

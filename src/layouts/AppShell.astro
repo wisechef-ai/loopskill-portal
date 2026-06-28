@@ -31,6 +31,7 @@
 // Organization JSON-LD, the WIS-660 ?ref= referral-cookie script, and the
 import '../styles/global.css';
 import Footer from '../components/Footer.astro';
+import LoopMark from '../components/LoopMark.astro';
 
 interface Props {
   title?: string;
@@ -139,7 +140,7 @@ const navItems = [
              aria-label="App navigation">
         <a href={isPublic ? '/' : '/home'} class="flex items-center gap-2.5 px-5 h-16 shrink-0 border-b border-border group">
           <span class="relative flex items-center justify-center w-9 h-9 rounded-lg bg-gradient-to-br from-accent/15 to-cool/10 border border-accent/40 group-hover:border-accent/70 transition">
-            <img src="/brand/mark-96.png?v=2" alt="" width="28" height="28" class="select-none" />
+            <LoopMark size={28} class="select-none" />
           </span>
           <span class="text-base font-semibold tracking-tight group-hover:text-accent transition">LoopSkill</span>
         </a>
@@ -235,7 +236,7 @@ const navItems = [
         <!-- Mobile top bar (rail collapses on small screens) -->
         <header class="md:hidden sticky top-0 z-40 flex items-center justify-between gap-3 h-14 px-4 border-b border-border bg-bg/85 backdrop-blur-md">
           <a href={isPublic ? '/' : '/home'} class="flex items-center gap-2 font-semibold">
-            <img src="/brand/mark-96.png?v=2" alt="" width="26" height="26" />
+            <LoopMark size={26} />
             <span>LoopSkill</span>
           </a>
           <details class="relative" id="appshell-mobile-menu">

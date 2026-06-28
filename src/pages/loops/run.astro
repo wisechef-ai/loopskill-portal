@@ -131,9 +131,14 @@ const API_BASE = import.meta.env.PUBLIC_RECIPES_API_BASE || "https://recipes.wis
   }
 
   function dt(dl, term, val) {
-    const dt = document.createElement("dt"); dt.className = "text-muted-soft text-xs"; dt.textContent = term;
-    const dd = document.createElement("dd"); dd.className = "text-text font-medium"; dd.textContent = val;
-    dl.appendChild(dt); dl.appendChild(dd);
+    // One grid cell per pair: label stacked over value. Appending dt+dd as
+    // separate grid children mis-columns them (label/value interleave) — wrap.
+    const cell = document.createElement("div");
+    cell.className = "flex flex-col gap-0.5";
+    const t = document.createElement("dt"); t.className = "text-muted-soft text-xs"; t.textContent = term;
+    const d = document.createElement("dd"); d.className = "text-text font-medium"; d.textContent = val;
+    cell.appendChild(t); cell.appendChild(d);
+    dl.appendChild(cell);
   }
 
   function ratingText(avg, count) {
@@ -156,6 +161,7 @@ const API_BASE = import.meta.env.PUBLIC_RECIPES_API_BASE || "https://recipes.wis
 
   function renderLoop() {
     hide("state-loading");
+    show("loop-body");
     $("lp-title").textContent = loop.title || loop.slug;
     $("lp-desc").textContent = loop.description || "";
 

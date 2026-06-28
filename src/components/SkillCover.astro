@@ -38,9 +38,23 @@ function hashIdx(s: string, n: number): number {
 }
 const grad = HUES[cat] || grad_palette[hashIdx(slug, grad_palette.length)];
 // Monogram: first letter of the TITLE (Spotify-style), fallback slug. Varies per card.
-const mono = ((title || slug).trim()[0] || 'R').toUpperCase();
+const mono = ((title || slug).trim()[0] || 'L').toUpperCase();
 const isPro = tier && tier !== 'free';
 const isExt = !!source;
+
+// Badge label normalization (loopskill_portal_0627): the rename + open-core
+// repricing mean raw tier slugs must render as human labels — cookbook→BUNDLE,
+// pro_plus→legacy PRO+, etc. Never surface the raw underscore slug on a card.
+const TIER_BADGE: Record<string, string> = {
+  cookbook: 'BUNDLE',
+  bundle: 'BUNDLE',
+  pro_plus: 'PRO+',
+  operator: 'PRO+',
+  studio: 'PRO+',
+  cook: 'PRO',
+  pro: 'PRO',
+};
+const tierLabel = isPro ? (TIER_BADGE[(tier || '').toLowerCase()] || (tier || 'pro').toUpperCase()) : 'FREE';
 
 // Per-category watermark glyph paths (stroke icons, 24×24 viewBox).
 // Keyed by the same `cat` string used for HUES above.
@@ -73,7 +87,7 @@ const glyph: string = GLYPHS[cat] ?? 'M12 2l9 5v10l-9 5-9-5V7z';
   </svg>
   <span class="sc-mono" aria-hidden="true">{mono}</span>
   <div class="sc-badges">
-    {isPro && <span class="sc-tier">{(tier || 'pro').toUpperCase()}</span>}
+    {isPro && <span class="sc-tier">{tierLabel}</span>}
     {isExt && <span class="sc-src">{source}</span>}
     {!isPro && <span class="sc-tier sc-free">FREE</span>}
   </div>

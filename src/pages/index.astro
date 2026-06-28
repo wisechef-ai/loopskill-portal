@@ -310,7 +310,7 @@ const verticals = [
 <AppShell
   mode="public"
   title="LoopSkill — The registry for AI agents"
-  description="Production-grade skills for AI agents. Client reporting, code writing, web scraping, SEO audits, content calendars, proposals — installed by your agent in seconds. From $20/mo. By WiseChef."
+  description="LoopSkill is the open-source registry of vetted, runnable agent loops. Press run and get an objective pass/fail under enforced safety bounds. Free to self-host, Pro $9.95/mo hosted. By WiseChef."
 >
   <script is:inline>
     // onechrome_0611 seam #1: returning members land on THEIR home, not marketing.
@@ -327,17 +327,25 @@ const verticals = [
 
     <div class="max-w-6xl mx-auto px-6 pt-20 md:pt-28 pb-16 relative w-full">
       <div class="flex flex-col items-center text-center gap-6 max-w-3xl mx-auto">
-        <a href="/cookbooks" class="group inline-flex items-center gap-2 px-3 py-1 rounded-full border border-accent/40 text-xs text-accent hover:text-text hover:border-accent/60 transition backdrop-blur-sm bg-accent/5">
+        <a href="/loops" class="group inline-flex items-center gap-2 px-3 py-1 rounded-full border border-accent/40 text-xs text-accent hover:text-text hover:border-accent/60 transition backdrop-blur-sm bg-accent/5">
           <span class="w-1.5 h-1.5 rounded-full bg-accent animate-pulse"></span>
-          84,000+ skills · 13 registries · one fleet sync
+          Vetted, runnable agent loops · objective pass/fail
           <Icon name="arrow-right" size={11} class="opacity-70 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all" />
         </a>
         <h1 class="text-5xl md:text-7xl font-bold tracking-tighter leading-[1.02]" style="letter-spacing: -0.04em;">
-          One cookbook. Your whole fleet.<br/><span class="text-gradient hero-glow">Always current.</span>
+          Run a loop.<br/><span class="text-gradient hero-glow">Get a verdict.</span>
         </h1>
         <p class="text-lg md:text-xl text-muted leading-relaxed max-w-2xl">
-          Search <strong class="text-text font-semibold">84,000+ skills across 13 registries</strong>. Bundle into a bundle, sync your fleet — every agent stays current.
+          LoopSkill is the registry of <strong class="text-text font-semibold">vetted, runnable agent loops</strong>. Press run, and it executes under enforced safety bounds and returns an objective <span class="text-accent font-semibold">pass / fail</span> — the proof no skill marketplace gives you.
         </p>
+        <div class="flex items-center gap-3 mt-1">
+          <a href="/loops" class="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-accent text-bg font-semibold text-sm hover:bg-accent-soft transition">
+            ▶ Browse the runnable registry
+          </a>
+          <a href="/docs" class="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg border border-border text-text font-semibold text-sm hover:border-accent transition">
+            Self-host it (open source)
+          </a>
+        </div>
 
         {/* ── Content rails (Spotify-shelf): the product you can SEE ── */}
         {popularSkills.length > 0 && (
@@ -369,10 +377,10 @@ const verticals = [
             <div class="flex gap-3 overflow-x-auto pb-2 -mx-1 px-1 snap-x">
               {publicCookbooks.map(cb => (
                 <a href={`/bundles/p/${cb.slug}`} class="skill-rail-card group shrink-0 w-[140px] sm:w-[160px] snap-start">
-                  <SkillCover slug={cb.slug!} title={cb.name} category={(cb.theme as any) || 'general'} tier="cookbook" />
+                  <SkillCover slug={cb.slug!} title={cb.name} category={(cb.theme as any) || 'general'} tier="bundle" />
                   <div class="mt-2 px-0.5">
                     <p class="text-sm font-semibold text-text group-hover:text-accent transition truncate">{cb.name || 'Untitled'}</p>
-                    <p class="text-[11px] text-muted-soft truncate">{cb.skill_count != null ? `${cb.skill_count} skill${cb.skill_count === 1 ? '' : 's'}` : 'cookbook'}</p>
+                    <p class="text-[11px] text-muted-soft truncate">{cb.skill_count != null ? `${cb.skill_count} skill${cb.skill_count === 1 ? '' : 's'}` : 'bundle'}</p>
                   </div>
                 </a>
               ))}
