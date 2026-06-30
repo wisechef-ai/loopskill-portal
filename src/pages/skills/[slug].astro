@@ -133,9 +133,56 @@ const fallbackBySlug: Record<string, any> = {
 const tagline = skill?.tagline || fallbackBySlug[slug as string]?.tagline || '';
 const f = fallbackBySlug[slug as string] || {};
 
+// Display-name overrides for known acronyms and product names that slug-based
+// title-case gets wrong (e.g. "comfyui" → "Comfyui" but should be "ComfyUI").
+// Source of truth: the API's skill.title field; this map only fires when the
+// API returns the raw slug as-is (no display name patched on the server yet).
+const SLUG_DISPLAY_NAMES: Record<string, string> = {
+  'comfyui': 'ComfyUI',
+  'llama-cpp': 'llama.cpp',
+  'mcp-builder': 'MCP Builder',
+  'gh-fix-ci': 'gh Fix CI',
+  'gitnexus': 'GitNexus',
+  'ascii-video': 'ASCII Video',
+  'local-tts-kokoro': 'Local TTS (Kokoro)',
+  'ollama-low-vram-model-pick': 'Ollama Low-VRAM Model Picker',
+  'summarize-cli': 'Summarize CLI',
+  'hub-search-hermes': 'Hub Search (Hermes)',
+  'hub-search-openclaw': 'Hub Search (OpenClaw)',
+  'hub-search-codex': 'Hub Search (Codex)',
+  'hub-search-claude-code': 'Hub Search (Claude Code)',
+  'vision-driven-svg-iteration': 'Vision-Driven SVG Iteration',
+  'stripe-sdk-15-webhook-compat': 'Stripe SDK 15 Webhook Compat',
+  'llm-wiki-hermes': 'LLM Wiki (Hermes)',
+  'understand-anything-hermes': 'Understand Anything (Hermes)',
+  'obsidian-livesync-bridge': 'Obsidian LiveSync Bridge',
+  'scrapling-official': 'Scrapling (Official)',
+  'hostinger-dns-api': 'Hostinger DNS API',
+  'hyperframes-video': 'HyperFrames Video',
+  'hyperframes-invitation-card': 'HyperFrames Invitation Card',
+  'caddy-multipage-static-deploy': 'Caddy Multi-Page Static Deploy',
+  'recipes-cookbook-reconcile': 'Recipes Cookbook Reconcile',
+  'framework-v0': 'Framework v0',
+};
+
+/** Apply display-name override when title looks like raw slug titlecase */
+function resolveSkillTitle(rawTitle: string, rawSlug: string): string {
+  // If API returned a real display name (contains mixed case, spaces, etc.
+  // that differ from slug-based titlecase), trust it.
+  const slugTitlecase = rawSlug.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+  if (rawTitle && rawTitle !== slugTitlecase && rawTitle.toLowerCase() !== rawSlug) {
+    return rawTitle;
+  }
+  // Fall back to override map, then slugTitlecase
+  return SLUG_DISPLAY_NAMES[rawSlug] ?? rawTitle ?? slugTitlecase;
+}
+
 const display = {
   slug,
-  title: skill?.title || f.title || (slug as string).replace(/-/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase()),
+  title: resolveSkillTitle(
+    skill?.title || f.title || (slug as string).replace(/-/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase()),
+    slug as string,
+  ),
   tagline,
   tier: skill?.tier || f.tier || 'pro',
   description: skill?.description || f.description || 'A Recipes skill.',
