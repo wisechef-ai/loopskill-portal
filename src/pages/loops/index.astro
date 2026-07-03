@@ -63,6 +63,7 @@ const API_BASE = import.meta.env.PUBLIC_RECIPES_API_BASE || "https://app.loopski
   .lp-card:hover { border-color: var(--accent, #f5a623); transform: translateY(-1px); }
   .lp-chip { display: inline-flex; align-items: center; gap: .25rem; font-size: 11px; padding: .15rem .5rem; border-radius: .4rem; background: var(--bg-elev, #1b1f27); border: 1px solid var(--border, #2a2f3a); color: var(--muted, #9aa3b2); }
   .lp-run { display:inline-flex; align-items:center; gap:.35rem; font-size:12px; font-weight:600; color: var(--accent, #f5a623); }
+  .lp-social-proof { display:inline-flex; align-items:center; gap:.2rem; font-size:11px; font-weight:600; padding:.2rem .55rem; border-radius:.4rem; background: var(--accent, #f5a623); color: var(--bg, #0f1115); }
 </style>
 
 <script define:vars={{ API_BASE }}>
@@ -152,15 +153,29 @@ const API_BASE = import.meta.env.PUBLIC_RECIPES_API_BASE || "https://app.loopski
       if (lp.tier) chips.appendChild(mk(lp.tier));
       a.appendChild(chips);
 
+      // Social-proof badges: show real usage prominently, HIDE the zero-state.
+      // The cold-start objection ("is anything here actually used?") is best
+      // answered by surfacing run_count>0 as a badge, not by rendering "0 runs"
+      // on 7/9 cards (which screams dead catalog). hello-world (4 runs, rated)
+      // and secret-scan (4 runs) are the proof — make them pop.
       const meta = document.createElement("div");
-      meta.className = "text-[11px] text-muted-soft mt-1 flex items-center gap-3";
-      const runs = document.createElement("span");
-      runs.textContent = `${lp.run_count || 0} run${lp.run_count === 1 ? "" : "s"}`;
-      meta.appendChild(runs);
-      const rating = document.createElement("span");
-      rating.textContent = star(lp.rating_avg, lp.rating_count);
-      meta.appendChild(rating);
-      a.appendChild(meta);
+      meta.className = "flex items-center gap-2 flex-wrap mt-1";
+      const rc = lp.run_count || 0;
+      const rcount = lp.rating_count || 0;
+      if (rc > 0) {
+        const runBadge = document.createElement("span");
+        runBadge.className = "lp-social-proof";
+        runBadge.textContent = `▶ ${rc} run${rc === 1 ? "" : "s"}`;
+        meta.appendChild(runBadge);
+      }
+      if (rcount > 0) {
+        const starBadge = document.createElement("span");
+        starBadge.className = "lp-social-proof";
+        const a = Number(lp.rating_avg || 0).toFixed(1);
+        starBadge.textContent = `★ ${a}`;
+        meta.appendChild(starBadge);
+      }
+      if (meta.children.length > 0) a.appendChild(meta);
 
       grid.appendChild(a);
     }
