@@ -333,5 +333,77 @@ fi
 
 echo "All Spotify-IA kill-tests passed (rail link count, redirect stubs, skill detail pages)."
 echo ""
+
+# ─────────────────────────────────────────────────────────────────────────
+# Fleet-autopilot messaging kill-tests (feat/lead-with-fleet-autopilot-loop)
+#
+# Council-gated (codex gpt-5.5, GO-WITH-CONDITIONS). The product leads with
+# autonomous fleet-scheduled loops, not the hosted "Run" button. These
+# build-checkable assertions enforce that the messaging contract cannot
+# regress back to the manual-clicking model.
+# ─────────────────────────────────────────────────────────────────────────
+
+msg_failures=0
+fail_msg() {
+  echo "MSG-FAIL: $1"
+  msg_failures=$((msg_failures + 1))
+}
+
+# (j) Loop detail page must NOT lead with "Run this loop" as the primary CTA.
+#     The hosted run is demoted to "Test hosted run" (secondary). The primary
+#     surface is now the "Schedule & fleet" section + "Copy loop manifest" CTA.
+loop_detail="$DIST_DIR/loops/run/index.html"
+if [ -f "$loop_detail" ]; then
+  if grep -q 'Run this loop' "$loop_detail"; then
+    fail_msg "$loop_detail still contains 'Run this loop' — the hosted run must be demoted to 'Test hosted run' (council KT1)"
+  fi
+  if ! grep -q 'Copy loop manifest' "$loop_detail"; then
+    fail_msg "$loop_detail missing 'Copy loop manifest' CTA — the primary action must be schedule-oriented (council KT1)"
+  fi
+  if ! grep -q 'Test hosted run' "$loop_detail"; then
+    fail_msg "$loop_detail missing 'Test hosted run' — the hosted run button must exist but as secondary (council KT1)"
+  fi
+else
+  fail_msg "$loop_detail is MISSING — cannot verify fleet-autopilot messaging"
+fi
+
+# (k) Homepage hero must lead with autonomous fleet scheduling, not "Run a loop"
+home_hero="$DIST_DIR/index.html"
+if [ -f "$home_hero" ]; then
+  if ! grep -q 'Schedule a loop' "$home_hero"; then
+    fail_msg "$home_hero hero does not lead with 'Schedule a loop' — must not regress to 'Run a loop' (council KT3)"
+  fi
+  if ! grep -qi 'autonomous' "$home_hero"; then
+    fail_msg "$home_hero hero missing 'autonomous' framing (council KT3)"
+  fi
+else
+  fail_msg "$home_hero is MISSING — cannot verify hero messaging"
+fi
+
+# (l) Docs how-it-works must name both loop modes + include the worked example
+docs_how="$DIST_DIR/docs/how-it-works/index.html"
+if [ -f "$docs_how" ]; then
+  if ! grep -qi 'autonomous fleet schedule' "$docs_how"; then
+    fail_msg "$docs_how missing 'autonomous fleet schedule' mode (council KT5)"
+  fi
+  if ! grep -qi 'hosted test run' "$docs_how"; then
+    fail_msg "$docs_how missing 'hosted test run' mode (council KT5)"
+  fi
+  if ! grep -qiE 'repo-steward-loop|repo-autopilot' "$docs_how"; then
+    fail_msg "$docs_how missing repo-autopilot worked example (council KT7)"
+  fi
+else
+  fail_msg "$docs_how is MISSING — cannot verify docs messaging"
+fi
+
+if [ "$msg_failures" -gt 0 ]; then
+  echo ""
+  echo "BLOCKED: $msg_failures fleet-autopilot messaging kill-test(s) failed. Deploy aborted."
+  echo "See feat/lead-with-fleet-autopilot-loop PR (council report) for context."
+  exit 1
+fi
+
+echo "All fleet-autopilot messaging kill-tests passed."
+echo ""
 echo "Safe to deploy."
 exit 0
