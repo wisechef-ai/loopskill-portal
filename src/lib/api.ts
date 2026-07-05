@@ -17,7 +17,7 @@
 const API_BASE =
   (typeof import.meta !== 'undefined'
     ? (import.meta as any).env?.PUBLIC_RECIPES_API_BASE
-    : undefined) || 'https://recipes.wisechef.ai';
+    : undefined) || 'https://app.loopskill.io';
 
 export interface ApiResult<T> {
   ok: boolean;

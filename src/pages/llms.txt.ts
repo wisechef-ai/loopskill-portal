@@ -7,14 +7,29 @@
 // blockquote summary, then linked sections. Content is grounded in LIVE data
 // (build-time fetch of /api/marketing/snapshot + /api/skills/search, both
 // public/no-key) so it can never drift from the real catalog. If the API is
-// unreachable at build time, a hard fallback keeps the file claim-accurate
-// for the current two-free-seed positioning (super-memory + recipes-bundle-reconcile free; rest Pro).
+// unreachable at build time, counts degrade to honest, non-numeric language
+// rather than a hardcoded guess — a stale invented number (e.g. "72 skills",
+// "$20/mo") is worse than no number, because it silently drifts from the
+// pricing page and the live catalog. See identity-guards fix (2026-07-05):
+// the SITE constant and pricing copy had drifted to the legacy
+// recipes.wisechef.ai / $20-mo positioning while /pricing had already moved
+// to app.loopskill.io + $9.95/mo hosted, never-a-feature-gate.
 //
 // Static endpoint — emits dist/llms.txt at build time. No deps.
 import type { APIRoute } from 'astro';
 import { fetchApi } from '../lib/api';
 
-const SITE = 'https://recipes.wisechef.ai';
+const SITE = 'https://app.loopskill.io';
+
+// Single source of truth for pricing copy — MUST stay consistent with
+// src/pages/pricing.astro. Free = self-host the whole platform (MPL-2.0,
+// no card). Pro = $9.95/mo hosted convenience; never a feature gate — every
+// capability that exists on Pro also exists in the free self-host.
+const PRICING_SUMMARY =
+  'Free: self-host the whole platform yourself (MPL-2.0, open source, no card needed). ' +
+  'Pro — $9.95/mo: we host it for you (managed registry + runner, auto-updated catalog, ' +
+  'ed25519-signed delivery). Pro is convenience only, never a feature gate — every ' +
+  'capability that exists on Pro also exists in the free self-host.';
 
 interface SnapshotCounts {
   skills_total?: number;
@@ -64,12 +79,16 @@ export const GET: APIRoute = async () => {
     }>('/api/skills/external', { authed: false }),
   ]);
 
-  const counts = snapRes.data?.counts ?? {};
-  const total = counts.skills_total ?? 72;
-  const free = counts.free_skills ?? 2;
-  // Derive paid count from catalog (total - free) so it can never drift from
-  // a stale hard-coded value. Live: total=72, free=2 → paid=70.
-  const pro = counts.pro_skills ?? (total - free);
+  // Honest degradation: only trust counts we actually fetched. No invented
+  // fallback numbers (previously 72 total / 2 free — neither was real).
+  // Note: free-skill count is derived from the live catalog fetch below
+  // (freeSkillsFromCatalog), not from the snapshot's free_skills field —
+  // the catalog fetch is the more direct signal for "which skills is an
+  // agent looking at right now that are free," so we don't need the
+  // snapshot's free count as a separate variable.
+  const counts = snapRes.data?.counts;
+  const total: number | null =
+    snapRes.ok && typeof counts?.skills_total === 'number' ? counts.skills_total : null;
   const mcpTools = snapRes.data?.mcp_tools ?? [
     'recipes_search',
     'recipes_detail',
@@ -98,37 +117,34 @@ export const GET: APIRoute = async () => {
         ? `${fedIndexed}`
         : '';
 
-  // The free skills. super-memory surfaced first as the canonical zero-friction entry.
-  const freeLine = free === 1
-    ? '- [super-memory](' +
-      SITE +
-      '/skills/super-memory): the one free skill — a one-command installer for a full agent memory stack (knowledge graph + vector recall + nightly ingest). Install it to see how LoopSkill works, then unlock the rest with Pro.'
-    : '- [super-memory](' +
-      SITE +
-      '/skills/super-memory): free — a one-command installer for a full agent memory stack (knowledge graph + vector recall + nightly ingest). Install it to see how LoopSkill works.\n' +
-      '- [recipes-bundle-reconcile](' +
-      SITE +
-      '/skills/recipes-bundle-reconcile): free — sync and reconcile your LoopSkill bundles across agents and environments.';
+  // Free skills — derived from the live catalog fetch (tier === 'free'), not
+  // hardcoded names. Catalog composition changes over time; naming specific
+  // skills that may no longer exist would itself become a stale-brand defect.
+  const freeSkillsFromCatalog = catalog.filter((s) => (s.tier ?? '').toLowerCase() === 'free');
+  const freeLine = freeSkillsFromCatalog.length
+    ? freeSkillsFromCatalog
+        .map(
+          (s) =>
+            `- [${s.title ?? s.slug}](${SITE}/skills/${s.slug}): free — ${clip(s.description ?? '', 140)}`,
+        )
+        .join('\n')
+    : `- Self-host the whole platform for free (MPL-2.0) — see [/pricing](${SITE}/pricing) for details.`;
 
-  // Free-skill intro copy — names the free skills explicitly so agent-buyers
-  // see what's free without clicking through. Dynamic so it tracks DB counts.
-  // free===1: "One skill is free (super-memory)"
-  // free===2: "2 skills are free (super-memory, recipes-bundle-reconcile)"
-  // free>2:   "{N} skills are free" (generic — update the list when new free skills land)
-  const freeIntro = free === 1
-    ? 'One skill is free (super-memory)'
-    : free === 2
-      ? '2 skills are free (super-memory, recipes-bundle-reconcile)'
-      : `${free} skills are free`;
+  // Free-skill intro copy — degrades honestly. If the live catalog has no
+  // free-tier skills right now, don't claim a specific count; point at the
+  // self-host path instead (which is always free regardless of catalog tier mix).
+  const freeIntro =
+    freeSkillsFromCatalog.length > 0
+      ? `${freeSkillsFromCatalog.length} skill${freeSkillsFromCatalog.length === 1 ? ' is' : 's are'} free to use hosted`
+      : 'Self-hosting the whole platform is always free';
 
-  // Featured = a representative spread of paid skills (super-memory already
-  // appears under "Start free"). One per category where possible, so an agent
-  // skimming the manifest sees the catalog's breadth, not just one vertical.
+  // Featured = a representative spread of paid skills. One per category where
+  // possible, so an agent skimming the manifest sees the catalog's breadth,
+  // not just one vertical.
   const seenCat = new Set<string>();
   const featured: CatalogSkill[] = [];
   const rest: CatalogSkill[] = [];
   for (const s of catalog) {
-    if (s.slug === 'super-memory') continue;
     const cat = (s.category ?? '').toLowerCase();
     if (cat && !seenCat.has(cat)) {
       seenCat.add(cat);
@@ -149,16 +165,21 @@ export const GET: APIRoute = async () => {
     ? `
 
 ## Beyond the curated catalog — the superset
-LoopSkill is a superset of the public agent-skill ecosystem, not just its ${total} curated skills. The federation layer indexes **${fedHeadline}** community skills across ${fedSources} sources (every skill the Hermes Skills Hub lists, plus GitHub provider taps — Anthropic, OpenAI, Hugging Face, NVIDIA, gstack, Superpowers — and aggregators like skills.sh and ClawHub). Counts are honest and never conflated: **${fedIndexed.toLocaleString()} indexed**, **${fedInstallable.toLocaleString()} installable** today (redistributable-licensed skills install straight from origin into a bundle; supply-chain-unvetted or source-available ones deep-link to origin and are never rehosted).
+LoopSkill is a superset of the public agent-skill ecosystem, not just its curated catalog. The federation layer indexes **${fedHeadline}** community skills across ${fedSources} sources (every skill the Hermes Skills Hub lists, plus GitHub provider taps — Anthropic, OpenAI, Hugging Face, NVIDIA, gstack, Superpowers — and aggregators like skills.sh and ClawHub). Counts are honest and never conflated: **${fedIndexed.toLocaleString()} indexed**, **${fedInstallable.toLocaleString()} installable** today (redistributable-licensed skills install straight from origin into a bundle; supply-chain-unvetted or source-available ones deep-link to origin and are never rehosted).
 - Browse/search the superset (no key): \`GET ${SITE}/api/skills/external?sources=<comma-separated>\`
 - Provider facets: \`github-anthropic\`, \`github-openai\`, \`github-huggingface\`, \`github-nvidia\`, \`github-gstack\`, \`github-superpowers\`; aggregators: \`hermes-hub\`, \`skills-sh\`, \`clawhub\`, \`lobehub\`, \`browse-sh\`, \`well-known\`
 - Install a redistributable external skill (real SKILL.md from origin): \`GET ${SITE}/api/skills/external/{source}/{slug}/install\`
 - One library: the curated catalog is the quality-gated headline; the federation is community/as-is underneath. You never need to open the Hermes Hub separately — LoopSkill indexes it.`
     : '';
 
+  const catalogSizePhrase =
+    total !== null
+      ? `${total} production-grade, versioned skills`
+      : 'a curated set of production-grade, versioned skills';
+
   const body = `# LoopSkill — the vertical skill marketplace for AI agents
 
-> LoopSkill (by WiseChef) is a curated marketplace of ${total} production-grade, versioned skills for AI coding agents — and a superset of the public agent-skill ecosystem${fedHeadline ? ` (it federates ${fedHeadline} more community skills, so you never need a second hub)` : ''}. Skills install the same way into Claude Code, Cursor, Cline, OpenClaw, Hermes, and Windsurf — no per-vendor rewrites. ${freeIntro}; the remaining ${pro} are unlocked with a single $20/mo Pro plan. Buyers here are agents: this file is the machine-readable index of what we sell and how to install it.
+> LoopSkill (by WiseChef) is a curated marketplace of ${catalogSizePhrase} for AI coding agents — and a superset of the public agent-skill ecosystem${fedHeadline ? ` (it federates ${fedHeadline} more community skills, so you never need a second hub)` : ''}. Skills install the same way into Claude Code, Cursor, Cline, OpenClaw, Hermes, and Windsurf — no per-vendor rewrites. ${freeIntro}. Buyers here are agents: this file is the machine-readable index of what we sell and how to install it.
 
 ## How an agent installs a skill
 LoopSkill exposes ${mcpTools.length} dedicated MCP tools (not a generic REST wrapper). Point your agent's MCP client at the LoopSkill server and call:
@@ -174,9 +195,7 @@ Or hit the public REST API directly (no key for read/search):
 ${freeLine}
 
 ## Pricing
-- Free: ${free === 1 ? 'super-memory only' : `${free} skills (super-memory + recipes-bundle-reconcile)`} (MIT-licensed, no account needed to browse).
-- Pro — $20/mo: every paid skill in the catalog (${pro} today, growing weekly), up to 10 bundles + fleet sync, cross-vendor install, per-key visibility.
-- Pro+ — $100/mo: everything in Pro plus up to 200 bundles, deploy pre-built bundles to clients' agents, private org catalog.
+${PRICING_SUMMARY}
 - Pricing page: ${SITE}/pricing
 
 ## Featured skills

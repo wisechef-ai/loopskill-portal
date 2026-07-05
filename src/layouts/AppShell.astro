@@ -1,5 +1,5 @@
 ---
-// AppShell.astro — THE one chrome for recipes.wisechef.ai (onechrome_0611).
+// AppShell.astro — THE one chrome for app.loopskill.io (onechrome_0611).
 //
 // portal_0610 J1 shipped this as the authed "Garden" shell (left rail: Home ·
 // Search · Your Library · Fleets · Delivery + live bundle list).
@@ -52,7 +52,11 @@ const {
 } = Astro.props;
 
 const isPublic = mode === 'public';
-const siteURL = 'https://loopskill.io';
+// identity-guards fix (2026-07-05): canonical MUST match where content
+// actually lives. Content is served from app.loopskill.io; the apex
+// loopskill.io serves ONLY a root page (every other path 404s there), so
+// canonicaling to the apex told Google to index dead URLs.
+const siteURL = 'https://app.loopskill.io';
 const canonicalURL = new URL(Astro.url.pathname, siteURL);
 const ogTitle = title.includes('LoopSkill') ? title : `${title} | LoopSkill`;
 

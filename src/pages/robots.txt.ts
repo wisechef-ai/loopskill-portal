@@ -4,9 +4,9 @@
 // Static endpoint — emits dist/robots.txt at build time. No deps.
 import type { APIRoute } from 'astro';
 
-const SITE = 'https://recipes.wisechef.ai';
+const SITE = 'https://app.loopskill.io';
 
-const body = `# recipes.wisechef.ai — the vertical skill marketplace for AI agents
+const body = `# app.loopskill.io — LoopSkill, the vertical skill marketplace for AI agents
 # Agents and their crawlers are first-class visitors here. Index freely.
 
 User-agent: *

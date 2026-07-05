@@ -6,7 +6,7 @@
 # recipes-installer/install-fleet.sh; the /fleet route 302-redirects there.
 #
 # Operators normally run:
-#   curl -fsSL recipes.wisechef.ai/fleet | bash
+#   curl -fsSL app.loopskill.io/fleet | bash
 #
 # This fallback is a thin bootstrap: it fetches the canonical script from
 # the recipes-skill GitHub repo and execs it with the same args. That keeps

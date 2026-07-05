@@ -15,7 +15,7 @@ import type { APIRoute } from 'astro';
 import { getCollection } from 'astro:content';
 import { fetchApi } from '../lib/api';
 
-const SITE = 'https://recipes.wisechef.ai';
+const SITE = 'https://app.loopskill.io';
 
 // Public, indexable top-level routes. Auth'd / per-user surfaces
 // (dashboard, signin, signup, referrals, bundles/view) are intentionally
