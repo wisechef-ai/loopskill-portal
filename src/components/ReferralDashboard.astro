@@ -21,7 +21,7 @@ interface Props {
 const { user } = Astro.props;
 const referralCode = user.referral_code ?? '';
 const referralLink = referralCode
-  ? `https://recipes.wisechef.ai/?ref=${referralCode}`
+  ? `https://app.loopskill.io/?ref=${referralCode}`
   : '';
 const clickCount      = user.click_count      ?? 0;
 const conversionCount = user.conversion_count ?? 0;

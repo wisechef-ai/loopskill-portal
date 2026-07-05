@@ -64,13 +64,13 @@ import Icon from '../components/Icon.astro';
         <span class="text-[10px] uppercase tracking-wider px-2.5 py-1 rounded-full border border-border text-muted-soft">Pro</span>
       </div>
 
-      <!-- Mock skill list -->
+      <!-- Mock skill list (illustrative UI preview — not real catalog data) -->
       <div class="flex flex-col gap-2">
         {[
-          { name: 'Client Reporter', status: 'installed', category: 'marketing' },
-          { name: 'Web Scraper Pro', status: 'installed', category: 'web-scraping' },
-          { name: 'SEO Audit Engine', status: 'customized', category: 'marketing' },
-          { name: 'Standup Bot', status: 'hidden', category: 'ops' },
+          { name: 'Example: Client Reporter', status: 'installed', category: 'marketing' },
+          { name: 'Example: Data Extractor', status: 'installed', category: 'web-scraping' },
+          { name: 'Example: SEO Audit Engine', status: 'customized', category: 'marketing' },
+          { name: 'Example: Standup Bot', status: 'hidden', category: 'ops' },
         ].map(item => (
           <div class="flex items-center justify-between gap-3 px-4 py-3 rounded-xl bg-bg-elev border border-border-soft">
             <div class="flex items-center gap-3">
@@ -99,7 +99,7 @@ import Icon from '../components/Icon.astro';
         href="/pricing"
         class="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg bg-accent text-bg font-semibold text-sm hover:bg-accent-soft transition glow-amber"
       >
-        Start Pro — $20/mo
+        Start Pro — $9.95/mo
       </a>
       <a href="/skills" class="text-sm text-muted hover:text-accent transition inline-flex items-center gap-1.5">
         Browse the catalog <Icon name="arrow-right" size={12} />

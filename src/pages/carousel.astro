@@ -5,7 +5,7 @@ import CrossSell from '../components/CrossSell.astro';
 let entries: any[] = [];
 let fetchError: string | null = null;
 try {
-  const res = await fetch('https://recipes.wisechef.ai/api/carousel/today', {
+  const res = await fetch('https://app.loopskill.io/api/carousel/today', {
     headers: { 'x-api-key': import.meta.env.RECIPES_API_KEY || 'rec_dev_internal' }
   });
   if (res.ok) {

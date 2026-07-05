@@ -69,7 +69,7 @@ const API_BASE = import.meta.env.PUBLIC_RECIPES_API_BASE || "https://app.loopski
           <button id="copy-btn" class="absolute top-3 right-3 px-2.5 py-1 rounded-md bg-bg-elev border border-border text-xs text-muted hover:text-accent hover:border-accent/40 transition" type="button">Copy</button>
         </div>
         <p class="text-xs text-muted-soft mt-3">
-          Your agent runs this over MCP (StreamableHTTP at <code>recipes.wisechef.ai/api/mcp/http</code>) and pulls every skill below in a single call. No account required to install free skills.
+          Your agent runs this over MCP (StreamableHTTP at <code>app.loopskill.io/api/mcp/http</code>) and pulls every skill below in a single call. No account required to install free skills.
         </p>
 
         <!-- Native skill-bundle install (agentskills.io / .well-known) -->
@@ -79,7 +79,7 @@ const API_BASE = import.meta.env.PUBLIC_RECIPES_API_BASE || "https://app.loopski
             <span class="text-[11px] text-muted-soft">Hermes · Claude Code · any agentskills.io agent</span>
           </div>
           <div class="relative">
-            <pre class="bg-[#0d0d0d] border border-border rounded-xl p-4 pr-12 text-sm text-cool overflow-x-auto"><code id="wellknown-line">Install the agentskills.io skill bundle from recipes.wisechef.ai/api/cookbooks/public/…</code></pre>
+            <pre class="bg-[#0d0d0d] border border-border rounded-xl p-4 pr-12 text-sm text-cool overflow-x-auto"><code id="wellknown-line">Install the agentskills.io skill bundle from app.loopskill.io/api/cookbooks/public/…</code></pre>
             <button id="copy-wk-btn" class="absolute top-3 right-3 px-2.5 py-1 rounded-md bg-bg-elev border border-border text-xs text-muted hover:text-cool hover:border-cool/40 transition" type="button">Copy</button>
           </div>
           <p class="text-xs text-muted-soft mt-3">
@@ -186,7 +186,7 @@ const API_BASE = import.meta.env.PUBLIC_RECIPES_API_BASE || "https://app.loopski
     // Open-standard bundle install (agentskills.io). Plain-English, cross-vendor —
     // no leaked "well-known:" token, no vendor-locked CLI. Any agentskills.io-aware
     // agent resolves the /.well-known/skills bundle from this base URL.
-    const wkLine = `Install the agentskills.io skill bundle from recipes.wisechef.ai/api/cookbooks/public/${cb.slug}`;
+    const wkLine = `Install the agentskills.io skill bundle from app.loopskill.io/api/cookbooks/public/${cb.slug}`;
     const wkEl = $("wellknown-line");
     if (wkEl) wkEl.textContent = wkLine;
     const copyWkBtn = $("copy-wk-btn");

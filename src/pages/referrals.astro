@@ -78,7 +78,7 @@ import ReferralPitch from '../components/ReferralPitch.astro';
       if (!r.ok) return;
       const stats: ReferralStats = await r.json();
       const code = stats.referral_code ?? '';
-      const link = code ? `https://recipes.wisechef.ai/?ref=${code}` : '';
+      const link = code ? `https://app.loopskill.io/?ref=${code}` : '';
 
       const codeEl = $('referral-code-display');
       const linkEl = $('referral-link-display');

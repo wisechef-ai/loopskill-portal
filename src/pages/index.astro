@@ -106,10 +106,13 @@ try {
   }
 } catch {}
 
-// Cook-tier strip — gated public skills, surfaces what a $20/mo subscription unlocks.
-// Live filter on tier=cook AND is_public=true. Fallback list keeps the strip non-empty
-// even if the API is rate-limited at build time. larry is pinned so RCP-5's flagship
-// install always appears.
+// Cook-tier strip — gated public skills, surfaces what Pro unlocks.
+// Live filter on tier=cook AND is_public=true. identity-guards fix
+// (2026-07-05): the hardcoded fallback list below was FICTIONAL —
+// install_count_total: 0 on every row, several slugs unverifiable against
+// the live catalog. An honest empty/omitted state beats invented entries:
+// if the fetch fails or returns nothing, cookSkills simply stays empty and
+// downstream consumers (cookStrip) render nothing rather than fiction.
 type CookSkill = { slug: string; title: string; description?: string | null; tagline?: string | null; install_count_total?: number; install_count?: number; category?: string | null };
 let cookSkills: CookSkill[] = [];
 try {
@@ -118,18 +121,8 @@ try {
     cookSkills = result.data.results;
   }
 } catch {}
-const cookFallback: CookSkill[] = [
-  { slug: 'larry', title: 'Larry', tagline: 'Autonomous TikTok slideshow marketing', description: 'Onboarding, AI image gen, Postiz posting, daily analytics feedback loop.', category: 'marketing', install_count_total: 0 },
-  { slug: 'summarize-cli', title: 'Summarize CLI', tagline: 'Summarize URLs, PDFs, transcripts', description: 'Summarize any content from your terminal.', category: 'general', install_count_total: 0 },
-  { slug: 'frontend-design', title: 'Frontend Design', tagline: 'React/Next.js/Tailwind frontend conventions', description: 'Production-grade frontend design guidelines.', category: 'code', install_count_total: 0 },
-  { slug: 'pr-draft', title: 'PR Draft', tagline: 'Structured PRs from git diffs', description: 'Generate PR descriptions from git diffs using LLM.', category: 'code', install_count_total: 0 },
-  // 2026-06-07 claim-grounding pass: removed nano-banana-pro (404) and grok-search (404).
-  // Replaced with verified-real slugs from the live catalog.
-  { slug: 'web-scraper-pro', title: 'Web Scraper Pro', tagline: 'Stealth scraping for JS-heavy pages', description: 'Headless scraping with Cloudflare bypass, structured output, and auto-retry.', category: 'web-scraping', install_count_total: 0 },
-  { slug: 'ascii-video', title: 'ASCII Video', tagline: 'Convert video to high-res ASCII art', description: 'Render any video as animated ASCII — local, no API spend.', category: 'creative', install_count_total: 0 },
-];
-if (cookSkills.length === 0) cookSkills = cookFallback;
-// Pin larry first; sort the rest by install_count desc so the most-used cook skills surface.
+// Pin larry first (when present); sort the rest by install_count desc so the
+// most-used cook skills surface. No fictional fallback — empty stays empty.
 const installCount = (s: CookSkill) => s.install_count_total ?? s.install_count ?? 0;
 const larryRow = cookSkills.find(s => s.slug === 'larry');
 const restCook = cookSkills.filter(s => s.slug !== 'larry').sort((a, b) => installCount(b) - installCount(a));
@@ -137,35 +130,29 @@ const cookStrip: CookSkill[] = (larryRow ? [larryRow, ...restCook] : restCook).s
 
 // Spotlight — Pro skill highlights in the hero grid.
 // Phase H (recipes_2005): replaced hardcoded array with live API fetch to eliminate
-// the web-scraper-pro 404. spotlightFallback is used when the API is unreachable at build time.
+// the web-scraper-pro 404. identity-guards fix (2026-07-05): the "spotlightFallback"
+// hardcoded array this used to fall back to was itself fictional/unverifiable
+// against the live catalog and was rendered with real-looking PRO/PRO+ tier
+// badges — indistinguishable from genuine catalog data to a visitor. Removed:
+// when the API is unreachable at build time, spotlight (and everything derived
+// from it) is simply empty and the section is omitted — never invented.
 type SpotlightSkill = { slug: string; title?: string; name?: string; tier?: string; tagline?: string; description?: string; badge?: string | null; icon?: string; category?: string };
-const spotlightFallback: SpotlightSkill[] = [
-  { slug: 'super-memory', name: 'Super Memory', tier: 'free', tagline: 'Open-source agent memory in 60 seconds',
-    description: 'Cognee + Postgres + pgvector wired together. MIT-licensed. The pro_open gateway — install free, then upgrade for the rest of the catalog.', badge: 'MIT · Free forever', icon: 'box' },
-  { slug: 'seo-audit-engine', name: 'SEO Audit Engine', tier: 'pro', tagline: 'Replaces SEMrush spot audits',
-    description: 'Full technical + content SEO audit. Lighthouse + Screaming Frog + competitor gap analysis. Client-ready PDF in 3 minutes.', badge: null, icon: 'document' },
-  { slug: 'proposal-builder', name: 'Proposal Builder', tier: 'pro', tagline: 'Replaces Bonsai · PandaDoc',
-    description: 'Discovery call transcript → branded SOW with scope, pricing tiers, case-study inserts. Converts at 40% above average.', badge: null, icon: 'calendar' },
-  { slug: 'mcp-builder', name: 'MCP Builder', tier: 'pro', tagline: 'Build and publish MCP servers fast',
-    description: 'Scaffold, test, and publish Model Context Protocol servers. Full test harness included.', badge: null, icon: 'lightning' },
-];
 let spotlight: SpotlightSkill[] = [];
 try {
-  const result = await fetchApi<{ results: SpotlightSkill[] }>('/api/skills/search?tier=pro&is_public=true&page_size=4&sort=install_count_desc');
+  const result = await fetchApi<{ results: SpotlightSkill[] }>('/api/skills/search?tier=pro&is_public=true&page_size=4');
   if (result.ok && result.data?.results) spotlight = result.data.results;
-} catch {} // Rationale: offline build or API down — spotlightFallback keeps the hero non-empty
-if (spotlight.length === 0) spotlight = spotlightFallback;
+} catch {} // Rationale: offline build or API down — section below is omitted, no invented fallback
 
 // ─── Popular-skills rail (content-led hero, Spotify-shelf style) ────────────
-// Build-time fetch: mixed tiers, sorted by install_count. Falls back to the
-// spotlight set so the rail is never empty on an offline build.
+// Build-time fetch: mixed tiers, sorted by install_count. When the fetch
+// fails/returns empty, popularSkills stays empty and the whole rail section
+// is omitted (gated by `popularSkills.length > 0` below) — no invented cards.
 type RailSkill = { slug: string; title?: string; name?: string; description?: string; category?: string; tier?: string; install_count_total?: number };
 let popularSkills: RailSkill[] = [];
 try {
   const result = await fetchApi<{ results: RailSkill[] }>('/api/skills/search?limit=12');
   if (result.ok && result.data?.results) popularSkills = result.data.results;
-} catch {} // Rationale: offline build — spotlight fallback keeps the rail non-empty
-if (popularSkills.length === 0) popularSkills = spotlight.map(s => ({ slug: s.slug, title: s.title, name: s.name, category: s.category, tier: s.tier }));
+} catch {}
 
 // ─── Public-bundles rail (the shareable playlists) ───────────────────────
 // GET /api/cookbooks/discover is public + ranked by real installs.
@@ -568,12 +555,13 @@ const verticals = [
     </div>
   </section>
 
+  {spotlight.length > 0 && (
   <section class="border-t border-border bg-bg-card/30">
     <div class="max-w-6xl mx-auto px-6 py-24">
       <div class="flex flex-col gap-3 mb-12 max-w-2xl">
         <p class="eyebrow text-accent">Skill spotlight</p>
         <h2 class="text-3xl md:text-5xl font-bold tracking-tight" style="letter-spacing: -0.03em;">These are not prompts.<br/>They are <span class="text-accent">products</span>.</h2>
-        <p class="text-muted text-lg">Our 72 curated skills are signed, audited, and ready — the trusted core inside the 80,000-skill universe. Every one replaces a SaaS subscription or a freelancer hour, run locally by your agent. New: <a href="/skills/larry" class="text-accent hover:opacity-80 underline-offset-2 hover:underline">Larry</a> — autonomous TikTok slideshow marketing, ported from the LarryBrain reference and audited through our discipline-lint and leak-audit gates.</p>
+        <p class="text-muted text-lg">Our curated skills are signed, audited, and ready — the trusted core inside the 80,000-skill universe. Every one replaces a SaaS subscription or a freelancer hour, run locally by your agent.</p>
       </div>
       <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
         {spotlight.map(s => {
@@ -608,6 +596,7 @@ const verticals = [
       </div>
     </div>
   </section>
+  )}
 
   {/* rev 7.2.5: Cook-tier strip section removed — overlapped with the
       "Skill spotlight" section above. Larry's "new" mention lives in
