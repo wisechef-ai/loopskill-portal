@@ -20,11 +20,18 @@ const SITE = 'https://app.loopskill.io';
 // Public, indexable top-level routes. Auth'd / per-user surfaces
 // (dashboard, signin, signup, referrals, bundles/view) are intentionally
 // excluded — they carry no public SEO value and are Disallow'd in robots.txt.
+//
+// feat/spotify-ia (council report §9): removed the dead aggregator routes
+// /skills and /bundles (now thin client-side redirect stubs to /browse —
+// see src/pages/skills/index.astro, src/pages/bundles/index.astro; real
+// Caddy 301s land in PR 2). Added /browse and /home, the new canonical
+// destinations. /skills/<slug> detail pages remain indexed via
+// fetchAllSkillSlugs() below — unaffected by this change (council §8 SEO).
 const STATIC_ROUTES: { path: string; priority: string; changefreq: string }[] = [
   { path: '/', priority: '1.0', changefreq: 'daily' },
-  { path: '/skills', priority: '0.9', changefreq: 'daily' },
+  { path: '/home', priority: '0.9', changefreq: 'daily' },
+  { path: '/browse', priority: '0.9', changefreq: 'daily' },
   { path: '/pricing', priority: '0.9', changefreq: 'weekly' },
-  { path: '/bundles', priority: '0.8', changefreq: 'daily' },
   { path: '/docs', priority: '0.8', changefreq: 'weekly' },
   { path: '/blog', priority: '0.7', changefreq: 'weekly' },
   { path: '/compatibility', priority: '0.7', changefreq: 'weekly' },

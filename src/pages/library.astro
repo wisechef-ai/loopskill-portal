@@ -1,96 +1,905 @@
 ---
-// /library — portal_0610 J1: "Your Library" = your bundles (made + saved).
-// Re-homed from the old billing/API-keys page (now /account). This is the
-// retention surface (Spotify's "Your Library"): the bundles you authored and
-// the ones you saved/cloned, plus your installed skills. D2 lean: made + saved.
+// /library — Spotify-model IA (feat/spotify-ia, council report §4).
+// Tabs: Library (default) / Fleets / Delivery, via ?tab=.
+// "+ New bundle" is the primary action top-right of the Library tab; it
+// opens the composer flow INLINE (this page, panel toggled by ?new=bundle)
+// rather than navigating to a standalone /composer page. /composer itself
+// becomes a thin redirect stub (see composer.astro).
+//
+// Ported logic (verbatim behavior, re-homed):
+//   - Library tab  ← composer.astro (basket, search catalog, visibility,
+//     upgrade wall showUpgradeWall — LIVE POST /api/checkout/pro_plus per
+//     AGENTS.md, never a toast) + the former library.astro bundle grid.
+//   - Fleets tab   ← fleets.astro (fleet CRUD, subscribe, sync, key reveal).
+//   - Delivery tab ← cockpit.astro (deliverables, handoff key mint, feedback
+//     routing).
+//
+// Member-gated (mode='member', the default — AppShell bounces anon visitors
+// to /signin?next=/library, preserving intent).
+//
+// First-login empty state (council §4): ONE panel — "Build your first
+// bundle" with Find/Bundle/Sync steps — shown ONLY when the member has ZERO
+// bundles AND ZERO fleets. This replaces the AppShell's removed global
+// onboarding pane (see AppShell.astro script — the pane injection was
+// deleted there; this is its sole surviving instance, scoped to /library).
 import AppShell from '../layouts/AppShell.astro';
 ---
 <AppShell title="Your Library — LoopSkill" active="library">
-  <section class="max-w-6xl mx-auto px-6 py-10">
-    <header class="mb-8 flex items-end justify-between gap-4 flex-wrap">
-      <div>
-        <h1 class="text-2xl font-semibold tracking-tight">Your Library</h1>
-        <p class="text-sm text-muted mt-1">Bundles you've made and saved, and the skills you run.</p>
+  <main class="ls-page max-w-6xl mx-auto pb-24">
+    <!-- Tabs -->
+    <div class="mb-6">
+      <div class="seg-tabs" role="tablist" aria-label="Library sections" id="lib-tabs">
+        <button type="button" role="tab" class="seg-tab" data-tab="library">Library</button>
+        <button type="button" role="tab" class="seg-tab" data-tab="fleets">Fleets</button>
+        <button type="button" role="tab" class="seg-tab" data-tab="delivery">Delivery</button>
       </div>
-      <a href="/composer" class="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-accent text-bg text-sm font-semibold hover:bg-accent-soft transition">
-        + Compose a bundle
-      </a>
-    </header>
+    </div>
 
-    <!-- Bundles -->
-    <div class="mb-12">
-      <h2 class="text-sm font-semibold uppercase tracking-widest text-muted-soft mb-3">Bundles</h2>
-      <div id="library-bundles" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+    <!-- First-login empty state (council §4) — shown only when 0 bundles AND 0 fleets. -->
+    <div id="lib-first-login" hidden class="mb-10 rounded-2xl border border-accent/30 bg-gradient-to-br from-accent/8 to-cool/5 p-6">
+      <h2 class="ls-section-title text-text mb-2">Build your first bundle</h2>
+      <p class="ls-body text-muted mb-4 max-w-xl">Group skills, loops, and personalities into one installable set for your agents.</p>
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-5 max-w-lg">
+        <div class="rounded-xl border border-border-soft bg-bg/40 p-3">
+          <span class="ls-eyebrow2 text-muted-soft block mb-1">Find</span>
+          <span class="ls-body text-text">Search the catalog on Browse.</span>
+        </div>
+        <div class="rounded-xl border border-border-soft bg-bg/40 p-3">
+          <span class="ls-eyebrow2 text-muted-soft block mb-1">Bundle</span>
+          <span class="ls-body text-text">Add skills, order them, name it.</span>
+        </div>
+        <div class="rounded-xl border border-border-soft bg-bg/40 p-3">
+          <span class="ls-eyebrow2 text-muted-soft block mb-1">Sync</span>
+          <span class="ls-body text-text">Subscribe a fleet, every agent converges.</span>
+        </div>
+      </div>
+      <div class="flex items-center gap-2">
+        <button id="lib-first-new-bundle" type="button" class="ls-button px-4 py-2 rounded-lg bg-accent text-bg hover:bg-accent-soft transition">+ New bundle</button>
+        <a href="/browse" class="ls-button px-4 py-2 rounded-lg border border-border hover:border-accent text-text transition">Browse artifacts</a>
+      </div>
+    </div>
+
+    <!-- ══════════════════════ LIBRARY TAB ══════════════════════ -->
+    <section id="tab-panel-library">
+      <header class="mb-6 flex items-end justify-between gap-4 flex-wrap">
+        <h1 class="ls-page-title text-text">Your Library</h1>
+        <button id="lib-new-bundle-btn" type="button" class="ls-button inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-accent text-bg hover:bg-accent-soft transition shrink-0">
+          + New bundle
+        </button>
+      </header>
+
+      <!-- Inline composer panel (ported from composer.astro), toggled by the
+           button above or ?new=bundle. -->
+      <div id="composer-panel" hidden class="mb-10 rounded-2xl border border-border bg-bg-card/40 p-5">
+        <div class="flex items-center justify-between gap-3 mb-4">
+          <h2 class="ls-section-title text-text">New bundle</h2>
+          <div class="flex items-center gap-2">
+            <select id="composer-bundle" class="px-3 py-1.5 rounded-lg bg-bg-card border border-border text-sm text-text focus:outline-none focus:border-accent max-w-[14rem]">
+              <option value="">＋ New bundle…</option>
+            </select>
+            <button id="composer-close" type="button" class="text-muted-soft hover:text-text text-lg leading-none px-1" aria-label="Close composer">✕</button>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-6">
+          <div>
+            <input id="composer-search" type="search" placeholder="Search curated + community skills…"
+                   class="w-full px-4 py-2.5 rounded-lg bg-bg-card border border-border text-sm text-text placeholder:text-muted-soft focus:outline-none focus:border-accent transition mb-3" />
+            <div class="flex flex-wrap gap-2 items-center mb-4" id="composer-zone-facet">
+              <span class="text-[10px] uppercase tracking-wider text-muted-soft">Zone:</span>
+              <button data-zone="all" class="zone-pill text-[11px] px-2.5 py-1 rounded-full border border-accent text-accent bg-accent/10 transition">All</button>
+              <button data-zone="curated" class="zone-pill text-[11px] px-2.5 py-1 rounded-full border border-border text-muted hover:text-text transition">Curated</button>
+              <button data-zone="community" class="zone-pill text-[11px] px-2.5 py-1 rounded-full border border-border text-muted hover:text-text transition">Community</button>
+            </div>
+            <div id="composer-results" class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div class="col-span-full text-sm text-muted py-10 text-center" id="composer-results-loading">Loading the catalog…</div>
+            </div>
+          </div>
+
+          <aside class="flex flex-col gap-4">
+            <div class="bg-bg-card border border-border rounded-2xl p-5">
+              <div class="flex items-center justify-between gap-2 mb-3">
+                <h3 class="text-sm font-semibold uppercase tracking-widest text-muted-soft">Basket</h3>
+                <span id="basket-count" class="text-xs text-muted-soft">0 skills</span>
+              </div>
+              <div id="basket-list" class="flex flex-col gap-1.5">
+                <p id="basket-empty" class="text-xs text-muted py-4 text-center">Add skills from the catalog to start composing.</p>
+              </div>
+              <div class="mt-4 pt-4 border-t border-border-soft flex items-center justify-between gap-2">
+                <span class="text-xs text-muted">Visibility</span>
+                <div class="inline-flex rounded-lg border border-border overflow-hidden text-xs" id="vis-toggle">
+                  <button data-vis="private" class="vis-btn px-3 py-1.5 bg-accent/10 text-accent font-medium">Private</button>
+                  <button data-vis="public" class="vis-btn px-3 py-1.5 text-muted hover:text-text">Public</button>
+                </div>
+              </div>
+            </div>
+
+            <div class="bg-bg-card border border-border rounded-2xl p-5" id="output-panel">
+              <h3 class="text-sm font-semibold uppercase tracking-widest text-muted-soft mb-3">Output</h3>
+              <div id="output-empty" class="text-xs text-muted py-2">Compose a bundle to get its share link + install lines.</div>
+              <div id="output-body" class="hidden flex-col gap-3">
+                <div>
+                  <div class="text-[10px] uppercase tracking-wider text-muted-soft mb-1">Share link (whole bundle)</div>
+                  <div class="flex items-center gap-1.5">
+                    <code id="out-share" class="font-mono text-[11px] bg-bg-elev border border-border rounded px-2 py-1.5 flex-1 break-all"></code>
+                    <button data-copy="out-share" class="copy-btn px-2 py-1.5 rounded bg-accent text-bg text-[11px] font-semibold shrink-0">Copy</button>
+                  </div>
+                </div>
+                <div>
+                  <div class="text-[10px] uppercase tracking-wider text-muted-soft mb-1">Per-skill install lines (in order)</div>
+                  <div class="flex items-center gap-1.5">
+                    <pre id="out-lines" class="font-mono text-[11px] bg-bg-elev border border-border rounded px-2 py-1.5 flex-1 overflow-x-auto whitespace-pre"></pre>
+                    <button data-copy="out-lines" class="copy-btn px-2 py-1.5 rounded bg-accent text-bg text-[11px] font-semibold shrink-0 self-start">Copy</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </aside>
+        </div>
+      </div>
+
+      <!-- Bundles grid -->
+      <div id="library-bundles" class="artifact-grid">
         <div class="col-span-full text-sm text-muted py-8 text-center" id="library-bundles-loading">Loading…</div>
       </div>
-    </div>
+    </section>
 
-    <!-- Installed skills -->
-    <div>
-      <div class="flex items-center justify-between mb-3">
-        <h2 class="text-sm font-semibold uppercase tracking-widest text-muted-soft">Installed skills</h2>
-        <a href="/skills" class="text-xs text-accent hover:opacity-80">Browse catalog →</a>
+    <!-- ══════════════════════ FLEETS TAB ══════════════════════ -->
+    <section id="tab-panel-fleets" hidden>
+      <header class="mb-6 flex items-end justify-between gap-4 flex-wrap">
+        <div>
+          <h1 class="ls-page-title text-text">Fleets</h1>
+          <p class="ls-body text-muted mt-1">Your team's agents, one bundle, one sync.</p>
+        </div>
+        <button id="new-fleet-btn" class="ls-button inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-accent text-bg hover:bg-accent-soft transition shrink-0">
+          + New fleet
+        </button>
+      </header>
+      <div id="fleets-list" class="flex flex-col gap-4">
+        <div class="text-sm text-muted py-8 text-center" id="fleets-loading">Loading…</div>
       </div>
-      <div id="library-skills" class="text-sm">
-        <p class="text-muted py-4" id="library-skills-empty">
-          No skills installed yet. <a href="/skills/super-memory" class="text-accent hover:opacity-80 underline">Install Super Memory</a> — free, the gateway skill.
-        </p>
+    </section>
+
+    <!-- ══════════════════════ DELIVERY TAB ══════════════════════ -->
+    <section id="tab-panel-delivery" hidden>
+      <header class="mb-6">
+        <h1 class="ls-page-title text-text">Delivery</h1>
+        <p class="ls-body text-muted mt-1">Hand a bundle to a client: mint a scoped install key, route their feedback, watch the reach.</p>
+      </header>
+      <div id="cockpit-list" class="flex flex-col gap-5">
+        <div class="text-sm text-muted py-10 text-center" id="cockpit-loading">Loading your deliverables…</div>
+      </div>
+    </section>
+  </main>
+
+  <!-- New-fleet modal (ported from fleets.astro) -->
+  <div id="fleet-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-bg/80 backdrop-blur-sm p-4" role="dialog" aria-modal="true">
+    <div class="bg-bg-card border border-border rounded-2xl p-6 w-full max-w-sm flex flex-col gap-4 shadow-2xl">
+      <div class="flex items-center justify-between gap-3">
+        <h3 class="text-base font-semibold">Create a fleet</h3>
+        <button id="fleet-modal-close" class="text-muted hover:text-text text-lg leading-none" aria-label="Close">✕</button>
+      </div>
+      <input id="fleet-name" type="text" maxlength="120" placeholder="e.g. acme-prod-agents"
+             class="w-full px-3 py-2 text-sm bg-bg-elev border border-border rounded-lg text-text placeholder:text-muted focus:outline-none focus:border-accent" />
+      <div id="fleet-modal-error" class="hidden text-xs text-red-400 bg-red-500/10 border border-red-500/30 rounded-lg p-2"></div>
+      <div class="flex gap-2">
+        <button id="fleet-create-submit" class="flex-1 px-4 py-2 rounded-lg bg-accent text-bg text-sm font-semibold hover:bg-accent-soft transition">Create</button>
+        <button id="fleet-modal-cancel" class="px-4 py-2 rounded-lg border border-border text-text text-sm hover:border-accent transition">Cancel</button>
       </div>
     </div>
-  </section>
+  </div>
 
-  <script>
-    (async () => {
-      const fetchJson = async (u: string) => {
-        try { const r = await fetch(u, { credentials: 'include' }); return r.ok ? await r.json() : null; }
-        catch { return null; }
-      };
+  <!-- Fleet-key reveal (shown once after create) -->
+  <div id="key-reveal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-bg/80 backdrop-blur-sm p-4" role="dialog" aria-modal="true">
+    <div class="bg-bg-card border border-accent/40 rounded-2xl p-6 w-full max-w-md flex flex-col gap-3 shadow-2xl">
+      <h3 class="text-base font-semibold text-accent">⚠ Save this fleet key now</h3>
+      <p class="text-xs text-muted">It will not be shown again. Set it as <code class="text-accent">x-fleet-key</code> in each agent's config to keep them synced.</p>
+      <div class="flex items-center gap-2">
+        <code id="reveal-key" class="font-mono text-xs bg-bg-elev border border-border rounded px-3 py-2 flex-1 break-all"></code>
+        <button id="reveal-copy" class="px-3 py-2 rounded-lg bg-accent text-bg text-xs font-semibold shrink-0">Copy</button>
+      </div>
+      <button id="reveal-done" class="text-xs text-muted hover:text-text underline self-start">I've saved it</button>
+    </div>
+  </div>
 
-      // Cookbooks (made + saved). /api/cookbooks returns the caller's owned set;
-      // saved/cloned land here too once the save action ships (D2).
-      const wrap = document.getElementById('library-bundles');
-      const loading = document.getElementById('library-bundles-loading');
-      const data = await fetchJson('/api/cookbooks');
-      const cbooks = (data && data.cookbooks) || [];
-      loading?.remove();
-      if (wrap) {
-        if (!cbooks.length) {
-          wrap.innerHTML = `<a href="/composer" class="col-span-full flex flex-col items-center justify-center gap-2 py-12 rounded-2xl border border-dashed border-border hover:border-accent/50 transition text-center">
-            <span class="text-3xl text-muted-soft">+</span>
-            <span class="text-sm text-text font-medium">Compose your first bundle</span>
-            <span class="text-xs text-muted">Multi-select skills from the catalog, set visibility, share one link.</span>
-          </a>`;
-        } else {
-          wrap.innerHTML = cbooks.map((cb: any) => {
-            const vis = (cb.visibility || 'private');
-            const visBadge = vis === 'public'
-              ? '<span class="text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded-full border border-accent/40 text-accent">public</span>'
-              : '<span class="text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded-full border border-border text-muted-soft">private</span>';
-            return `<a href="/cookbooks/view?id=${encodeURIComponent(cb.id)}" class="flex flex-col gap-2 p-5 rounded-2xl bg-bg-card border border-border hover:border-accent/40 transition">
-              <span class="flex items-center justify-between gap-2">
-                <span class="font-semibold text-text truncate">${(cb.name || 'Untitled')}</span>
-                ${visBadge}
-              </span>
-              <span class="text-xs text-muted line-clamp-2">${(cb.description || 'No description')}</span>
-              <span class="text-xs text-accent mt-1">Open →</span>
-            </a>`;
-          }).join('');
-        }
-      }
-
-      // Installed skills — best-effort; endpoint may be empty for new users.
-      const skillsWrap = document.getElementById('library-skills');
-      const skillsEmpty = document.getElementById('library-skills-empty');
-      const installed = await fetchJson('/api/skills/installed');
-      const items = (installed && (installed.skills || installed.items)) || [];
-      if (skillsWrap && items.length) {
-        skillsEmpty?.remove();
-        skillsWrap.innerHTML = items.map((s: any) =>
-          `<a href="/skills/${encodeURIComponent(s.slug)}" class="flex items-center justify-between gap-3 px-4 py-3 rounded-xl bg-bg-card border border-border hover:border-accent/40 transition mb-2">
-            <span class="font-medium text-text">${s.slug}</span>
-            <span class="text-xs text-accent">Open →</span>
-          </a>`).join('');
-      }
-    })();
-  </script>
+  <!-- Client handoff key-reveal modal (Delivery tab) -->
+  <div id="tok-reveal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-bg/80 backdrop-blur-sm p-4" role="dialog" aria-modal="true">
+    <div class="bg-bg-card border border-accent/40 rounded-2xl p-6 w-full max-w-md flex flex-col gap-3 shadow-2xl">
+      <h3 class="text-base font-semibold text-accent">⚠ Client handoff key — shown once</h3>
+      <p class="text-xs text-muted">Give this to the client's agent as <code class="text-accent">x-api-key</code>. It installs only this bundle, at the scope you chose. It will not be shown again.</p>
+      <div class="flex items-center gap-2">
+        <code id="tok-key" class="font-mono text-xs bg-bg-elev border border-border rounded px-3 py-2 flex-1 break-all"></code>
+        <button id="tok-copy" class="px-3 py-2 rounded-lg bg-accent text-bg text-xs font-semibold shrink-0">Copy</button>
+      </div>
+      <button id="tok-done" class="text-xs text-muted hover:text-text underline self-start">I've saved it</button>
+    </div>
+  </div>
 </AppShell>
+
+<script>
+  // ── Tab routing (?tab=library|fleets|delivery, default library) ──────────
+  const TABS = ['library', 'fleets', 'delivery'] as const;
+  type Tab = typeof TABS[number];
+  const $ = (id: string) => document.getElementById(id)!;
+
+  function currentTab(): Tab {
+    const t = (new URLSearchParams(location.search).get('tab') || 'library').toLowerCase();
+    return (TABS as readonly string[]).includes(t) ? (t as Tab) : 'library';
+  }
+  function setTab(tab: Tab, push = true) {
+    document.querySelectorAll<HTMLElement>('#lib-tabs .seg-tab').forEach((b) => {
+      const on = b.dataset.tab === tab;
+      b.setAttribute('aria-selected', on ? 'true' : 'false');
+    });
+    (['library', 'fleets', 'delivery'] as Tab[]).forEach((t) => {
+      $(`tab-panel-${t}`).hidden = t !== tab;
+    });
+    if (push) {
+      const p = new URLSearchParams(location.search);
+      if (tab === 'library') p.delete('tab'); else p.set('tab', tab);
+      const qs = p.toString();
+      history.pushState({}, '', qs ? `${location.pathname}?${qs}` : location.pathname);
+    }
+    // Lazy-load each tab's data on first visit.
+    if (tab === 'fleets' && !(window as any).__fleetsLoaded) { (window as any).__fleetsLoaded = true; loadFleets(); }
+    if (tab === 'delivery' && !(window as any).__deliveryLoaded) { (window as any).__deliveryLoaded = true; loadDelivery(); }
+  }
+  document.querySelectorAll<HTMLButtonElement>('#lib-tabs .seg-tab').forEach((b) => {
+    b.addEventListener('click', () => setTab(b.dataset.tab as Tab));
+  });
+
+  const initialTab = currentTab();
+  setTab(initialTab, false);
+
+  // ═══════════════════════ LIBRARY TAB ═══════════════════════════════════
+  async function fetchJson(u: string): Promise<any> {
+    try { const r = await fetch(u, { credentials: 'include' }); return r.ok ? await r.json() : null; } catch { return null; }
+  }
+
+  let libraryBundleCount = 0;
+  let libraryFleetCount = 0;
+  function maybeShowFirstLogin() {
+    const el = $('lib-first-login');
+    el.hidden = !(libraryBundleCount === 0 && libraryFleetCount === 0);
+  }
+
+  async function loadLibraryBundles() {
+    const wrap = $('library-bundles');
+    const data = await fetchJson('/api/cookbooks');
+    const cbooks = (data && data.cookbooks) || [];
+    libraryBundleCount = cbooks.length;
+    maybeShowFirstLogin();
+    if (!cbooks.length) {
+      wrap.innerHTML = `<a href="#" id="lib-empty-new-bundle" class="col-span-full flex flex-col items-center justify-center gap-2 py-12 rounded-2xl border border-dashed border-border hover:border-accent/50 transition text-center">
+        <span class="text-3xl text-muted-soft">+</span>
+        <span class="text-sm text-text font-medium">Compose your first bundle</span>
+        <span class="text-xs text-muted">Multi-select skills from the catalog, set visibility, share one link.</span>
+      </a>`;
+      document.getElementById('lib-empty-new-bundle')?.addEventListener('click', (e) => { e.preventDefault(); openComposer(); });
+      return;
+    }
+    wrap.innerHTML = cbooks.map((cb: any) => {
+      const vis = (cb.visibility || 'private');
+      const visBadge = vis === 'public'
+        ? '<span class="artifact-badge" style="position:static;display:inline-block;background:rgba(255,209,102,0.15);color:#ffd166;">public</span>'
+        : '';
+      return `<a href="/library" class="artifact-card" data-bundle-id="${cb.id}">
+        <span class="artifact-cover" style="background:linear-gradient(135deg, #a06bff 0%, #6d28d9 100%); display:flex; align-items:center; justify-content:center;">
+          ${visBadge}
+        </span>
+        <span class="artifact-title">${(cb.name || 'Untitled').replace(/[&<>]/g, (c: string) => ({'&':'&amp;','<':'&lt;','>':'&gt;'} as any)[c])}</span>
+        <span class="artifact-meta">${vis}</span>
+      </a>`;
+    }).join('');
+  }
+
+  // ── Composer panel open/close ─────────────────────────────────────────
+  let composerBooted = false;
+  function openComposer() {
+    $('composer-panel').hidden = false;
+    if (!composerBooted) { composerBooted = true; bootComposer(); }
+    const p = new URLSearchParams(location.search);
+    p.set('new', 'bundle');
+    history.replaceState({}, '', `${location.pathname}?${p.toString()}`);
+  }
+  function closeComposer() {
+    $('composer-panel').hidden = true;
+    const p = new URLSearchParams(location.search);
+    p.delete('new');
+    const qs = p.toString();
+    history.replaceState({}, '', qs ? `${location.pathname}?${qs}` : location.pathname);
+  }
+  $('lib-new-bundle-btn').addEventListener('click', openComposer);
+  $('lib-first-new-bundle').addEventListener('click', openComposer);
+  $('composer-close').addEventListener('click', closeComposer);
+  if (new URLSearchParams(location.search).get('new') === 'bundle') openComposer();
+
+  // ── Composer logic (ported verbatim from composer.astro) ──────────────
+  type Skill = { slug: string; title: string; description?: string; tier?: string;
+                 source?: string; install_path?: string; license?: string;
+                 redistributable?: boolean; __community?: boolean };
+
+  const API_BASE = (import.meta as any).env?.PUBLIC_RECIPES_API_BASE || 'https://app.loopskill.io';
+  const COMMUNITY_SOURCES = 'hermes-hub,skills-sh,well-known,clawhub,lobehub,browse-sh,github-oss';
+
+  const apiKey = (() => { try { return localStorage.getItem('recipes_api_key'); } catch { return null; } })();
+  const authHeaders = (extra?: any) => { const h = Object.assign({}, extra || {}); if (apiKey) h['x-api-key'] = apiKey; return h; };
+  async function api(path: string, opts: any = {}) {
+    return fetch(API_BASE + path, { credentials: 'include', ...opts, headers: authHeaders(opts.headers) });
+  }
+  function esc(s: any) { return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'} as any)[c]); }
+
+  let callerTier = 'free';
+  const TIER_RANK: Record<string, number> = { free: 1, pro: 2, pro_plus: 3, cook: 2, operator: 3, studio: 3 };
+  function canInstall(skillTier?: string) {
+    return (TIER_RANK[(callerTier || 'free').toLowerCase()] || 1) >= (TIER_RANK[(skillTier || 'free').toLowerCase()] || 1);
+  }
+
+  let activeZone = 'all';
+  let curated: Skill[] = [];
+  let community: Skill[] = [];
+  let basket: Skill[] = [];
+  let currentCookbookId: string | null = null;
+  let currentVisibility = 'private';
+  let searchTimer: number | undefined;
+
+  function toast(msg: string, kind?: string) {
+    let el = document.getElementById('cmp-toast');
+    if (!el) { el = document.createElement('div'); el.id = 'cmp-toast';
+      el.style.cssText = 'position:fixed;bottom:1.25rem;left:50%;transform:translateX(-50%);z-index:80;padding:.6rem 1rem;border-radius:.6rem;font-size:.82rem;font-weight:600;box-shadow:0 6px 24px rgba(0,0,0,.35);';
+      document.body.appendChild(el); }
+    el.style.background = kind === 'error' ? '#7f1d1d' : 'var(--accent,#ffd166)';
+    el.style.color = kind === 'error' ? '#fff' : 'var(--bg,#0a0a0a)';
+    el.textContent = msg; el.style.opacity = '1';
+    setTimeout(() => { el!.style.transition = 'opacity .4s'; el!.style.opacity = '0'; }, 2600);
+  }
+
+  async function bootComposer() {
+    try { const r = await api('/api/auth/me'); if (r.ok) { const u = await r.json();
+      const t = (u.subscription_tier || 'free').toLowerCase();
+      const active = ['active','trialing','past_due'].includes(u.subscription_status || '');
+      callerTier = active ? t : 'free';
+    } } catch {}
+
+    const sel = $('composer-bundle') as HTMLSelectElement;
+    try { const r = await api('/api/cookbooks'); if (r.ok) { const d = await r.json();
+      const cbs = (d.cookbooks || d.bundles || d.items || d || []);
+      cbs.forEach((cb: any) => { const o = document.createElement('option'); o.value = cb.id; o.textContent = cb.name; sel.appendChild(o); });
+    } } catch {}
+
+    await loadCatalog('');
+    renderResults();
+  }
+
+  async function loadCatalog(q: string) {
+    try {
+      const r = await api(`/api/skills/search?page_size=60${q ? '&q=' + encodeURIComponent(q) : ''}`);
+      if (r.ok) { const d = await r.json(); curated = (d.results || []).map((s: any) => ({ ...s, __community: false })); }
+    } catch { curated = []; }
+    if (q.length >= 2 || activeZone === 'community') {
+      try {
+        const r = await api(`/api/skills/external?sources=${COMMUNITY_SOURCES}&limit=24${q ? '&q=' + encodeURIComponent(q) : ''}`);
+        if (r.ok) { const d = await r.json(); community = (d.external || []).map((s: any) => ({ ...s, __community: true, tier: 'free' })); }
+      } catch { community = []; }
+    } else { community = []; }
+  }
+
+  function inBasket(s: Skill) { return basket.some(b => b.slug === s.slug && !!b.__community === !!s.__community); }
+
+  function skillCard(s: Skill): string {
+    const ghost = !s.__community && !canInstall(s.tier);
+    const added = inBasket(s);
+    const tierBadge = s.__community
+      ? '<span class="text-[10px] uppercase tracking-wide text-amber-300/80 bg-amber-500/10 border border-amber-500/25 rounded px-1.5 py-0.5">community</span>'
+      : `<span class="text-[10px] uppercase tracking-wide ${s.tier && s.tier !== 'free' ? 'text-accent bg-accent/10 border-accent/25' : 'text-muted-soft border-border'} border rounded px-1.5 py-0.5">${esc(s.tier || 'free')}</span>`;
+    const btn = ghost
+      ? `<a href="/pricing" class="text-[11px] px-2.5 py-1 rounded-lg border border-accent/40 text-accent hover:bg-accent/10 transition">Unlock with ${esc((s.tier||'pro').replace('_','+'))}</a>`
+      : added
+        ? `<button class="cmp-add text-[11px] px-2.5 py-1 rounded-lg border border-emerald-500/40 text-emerald-400" data-slug="${esc(s.slug)}" data-community="${s.__community?'1':''}" disabled>Added</button>`
+        : `<button class="cmp-add text-[11px] px-2.5 py-1 rounded-lg bg-accent text-bg font-semibold hover:bg-accent-soft transition" data-slug="${esc(s.slug)}" data-community="${s.__community?'1':''}" data-source="${esc(s.source||'')}">+ Add</button>`;
+    return `<div class="rounded-xl border ${ghost ? 'border-border-soft opacity-60' : 'border-border'} bg-bg-card p-4 flex flex-col gap-2" data-zone="${s.__community?'community':'curated'}">
+      <div class="flex items-start justify-between gap-2">
+        <h3 class="text-sm font-semibold text-text leading-tight">${esc(s.title || s.slug)}</h3>
+        ${tierBadge}
+      </div>
+      <p class="text-xs text-muted line-clamp-2 flex-1">${esc(s.description || 'No description.')}</p>
+      <div class="flex items-center justify-between gap-2 pt-1">
+        <span class="text-[10px] text-muted-soft">${s.__community ? esc(s.source || 'community') : 'curated'}</span>
+        ${btn}
+      </div>
+    </div>`;
+  }
+
+  function renderResults() {
+    const wrap = $('composer-results');
+    let items: Skill[] = [];
+    if (activeZone === 'all') items = [...curated, ...community];
+    else if (activeZone === 'curated') items = curated;
+    else items = community;
+    if (!items.length) { wrap.innerHTML = '<div class="col-span-full text-sm text-muted py-10 text-center">No skills match. Try a different search or zone.</div>'; return; }
+    wrap.innerHTML = items.map(skillCard).join('');
+    wrap.querySelectorAll<HTMLButtonElement>('.cmp-add').forEach(b => {
+      b.addEventListener('click', () => {
+        const slug = b.dataset.slug!; const isCommunity = !!b.dataset.community;
+        const pool = isCommunity ? community : curated;
+        const s = pool.find(x => x.slug === slug);
+        if (s) addToBasket(s);
+      });
+    });
+  }
+
+  function renderBasket() {
+    const wrap = $('basket-list'); const empty = $('basket-empty');
+    $('basket-count').textContent = `${basket.length} skill${basket.length === 1 ? '' : 's'}`;
+    if (!basket.length) { wrap.innerHTML = ''; wrap.appendChild(empty); empty.classList.remove('hidden'); return; }
+    empty.classList.add('hidden');
+    wrap.innerHTML = basket.map((s, i) => `
+      <div class="flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-bg-elev border border-border-soft" data-slug="${esc(s.slug)}">
+        <div class="flex flex-col leading-tight min-w-0 flex-1">
+          <span class="text-xs text-text truncate">${esc(s.title || s.slug)}</span>
+          <span class="text-[10px] text-muted-soft">${s.__community ? esc(s.source||'community') : 'curated'}</span>
+        </div>
+        <div class="flex items-center gap-0.5 shrink-0">
+          <button class="bk-up p-1 text-muted-soft hover:text-text ${i === 0 ? 'opacity-30 pointer-events-none' : ''}" data-i="${i}" title="Move up">▲</button>
+          <button class="bk-down p-1 text-muted-soft hover:text-text ${i === basket.length-1 ? 'opacity-30 pointer-events-none' : ''}" data-i="${i}" title="Move down">▼</button>
+          <button class="bk-rm p-1 text-muted-soft hover:text-red-400" data-i="${i}" title="Remove">✕</button>
+        </div>
+      </div>`).join('');
+    wrap.querySelectorAll<HTMLButtonElement>('.bk-up').forEach(b => b.addEventListener('click', () => moveBasket(+b.dataset.i!, -1)));
+    wrap.querySelectorAll<HTMLButtonElement>('.bk-down').forEach(b => b.addEventListener('click', () => moveBasket(+b.dataset.i!, 1)));
+    wrap.querySelectorAll<HTMLButtonElement>('.bk-rm').forEach(b => b.addEventListener('click', () => removeBasket(+b.dataset.i!)));
+  }
+  function moveBasket(i: number, dir: number) {
+    const j = i + dir; if (j < 0 || j >= basket.length) return;
+    [basket[i], basket[j]] = [basket[j], basket[i]];
+    renderBasket(); persistOrder();
+  }
+  async function removeBasket(i: number) {
+    const s = basket[i]; basket.splice(i, 1); renderBasket(); renderResults();
+    if (currentCookbookId && s) {
+      await api(`/api/cookbooks/${currentCookbookId}/skills/${encodeURIComponent(s.slug)}`, { method: 'DELETE' });
+      await refreshOutput();
+    }
+  }
+
+  async function ensureCookbook(): Promise<string | null> {
+    if (currentCookbookId) return currentCookbookId;
+    const sel = $('composer-bundle') as HTMLSelectElement;
+    if (sel.value) { currentCookbookId = sel.value; return currentCookbookId; }
+    const name = `Composer bundle ${new Date().toISOString().slice(0,10)}`;
+    try {
+      const r = await api('/api/cookbooks', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ name }) });
+      if (r.status === 401) { toast('Sign in to compose.', 'error'); return null; }
+      if (!r.ok) { toast('Could not create cookbook.', 'error'); return null; }
+      const cb = await r.json();
+      currentCookbookId = cb.id;
+      const o = document.createElement('option'); o.value = cb.id; o.textContent = cb.name; o.selected = true; sel.appendChild(o);
+      return currentCookbookId;
+    } catch { toast('Network error.', 'error'); return null; }
+  }
+
+  async function addToBasket(s: Skill) {
+    if (inBasket(s)) return;
+    const cbId = await ensureCookbook();
+    if (!cbId) return;
+    const body: any = s.__community ? { slug: s.slug, external_source: s.source } : { slug: s.slug };
+    const r = await api(`/api/cookbooks/${cbId}/skills`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
+    if (r.status === 201 || r.status === 200) {
+      basket.push(s); renderBasket(); renderResults();
+      await persistOrder(); await refreshOutput();
+      toast(`Added ${s.title || s.slug}`);
+      await loadLibraryBundles();
+    } else if (r.status === 403) {
+      const d = await r.json().catch(() => ({}));
+      const reason = (d && d.detail && (d.detail.reason || d.detail)) || '';
+      if (String(reason).includes('cap')) {
+        showUpgradeWall();
+      } else {
+        toast('Not allowed on this tier.', 'error');
+      }
+    } else if (r.status === 401) { toast('Sign in to compose.', 'error'); }
+    else { toast(`Could not add (HTTP ${r.status}).`, 'error'); }
+  }
+
+  // ── Inline upgrade wall (AGENTS.md: LIVE POST /api/checkout/pro_plus,
+  // NEVER a toast or redirect dead-end — slides INTO the basket pane). ────
+  function showUpgradeWall() {
+    if (document.getElementById('upgrade-wall')) return;
+    const basketList = document.getElementById('basket-list');
+    if (!basketList) { toast('Skill cap reached — upgrade to Pro+.', 'error'); return; }
+    const wall = document.createElement('div');
+    wall.id = 'upgrade-wall';
+    wall.className = 'mt-2 rounded-xl border border-accent/40 bg-accent/8 p-4 flex flex-col gap-2.5 overflow-hidden';
+    wall.style.maxHeight = '0';
+    wall.style.opacity = '0';
+    wall.style.transition = 'max-height 320ms ease, opacity 280ms ease';
+    wall.innerHTML = `
+      <p class="text-xs font-semibold text-text">Bundle is full on your tier.</p>
+      <p class="text-xs text-muted leading-relaxed">Pro+ raises the cap (up to 200 bundles), unlocks client deployment and the private org catalog.</p>
+      <div class="flex items-center gap-2">
+        <button id="upgrade-wall-go" class="px-3 py-1.5 rounded-lg bg-accent text-bg text-xs font-semibold hover:bg-accent-soft transition">Upgrade to Pro+ — $100/mo</button>
+        <button id="upgrade-wall-dismiss" class="text-xs text-muted-soft hover:text-text transition">Not now</button>
+      </div>`;
+    basketList.insertAdjacentElement('afterend', wall);
+    requestAnimationFrame(() => { wall.style.maxHeight = '200px'; wall.style.opacity = '1'; });
+    document.getElementById('upgrade-wall-dismiss')?.addEventListener('click', () => {
+      wall.style.maxHeight = '0'; wall.style.opacity = '0';
+      setTimeout(() => wall.remove(), 350);
+    });
+    document.getElementById('upgrade-wall-go')?.addEventListener('click', async () => {
+      const btn = document.getElementById('upgrade-wall-go') as HTMLButtonElement;
+      btn.textContent = 'Loading…'; btn.disabled = true;
+      try {
+        const res = await fetch('/api/checkout/pro_plus', {
+          method: 'POST', credentials: 'include',
+          headers: { 'Content-Type': 'application/json' }, body: '{}',
+        });
+        if (res.ok) { const d = await res.json(); window.location.href = d.url; return; }
+      } catch { /* fall through */ }
+      btn.textContent = 'Upgrade to Pro+ — $100/mo'; btn.disabled = false;
+      toast('Checkout unavailable — try again or use /pricing.', 'error');
+    });
+  }
+
+  async function persistOrder() {
+    if (!currentCookbookId || !basket.length) return;
+    await api(`/api/cookbooks/${currentCookbookId}/reorder`, {
+      method: 'PATCH', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ order: basket.map(s => s.slug) }),
+    }).catch(() => {});
+  }
+
+  document.querySelectorAll<HTMLButtonElement>('.vis-btn').forEach(b => {
+    b.addEventListener('click', async () => {
+      const vis = b.dataset.vis!;
+      currentVisibility = vis;
+      document.querySelectorAll<HTMLButtonElement>('.vis-btn').forEach(x => {
+        const on = x.dataset.vis === vis;
+        x.classList.toggle('bg-accent/10', on); x.classList.toggle('text-accent', on); x.classList.toggle('font-medium', on);
+        x.classList.toggle('text-muted', !on);
+      });
+      if (currentCookbookId) {
+        await api(`/api/cookbooks/${currentCookbookId}/visibility`, { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ visibility: vis }) }).catch(() => {});
+        await refreshOutput();
+      }
+    });
+  });
+
+  async function refreshOutput() {
+    if (!currentCookbookId || !basket.length) { $('output-empty').classList.remove('hidden'); $('output-body').classList.add('hidden'); $('output-body').classList.remove('flex'); return; }
+    $('output-empty').classList.add('hidden'); $('output-body').classList.remove('hidden'); $('output-body').classList.add('flex');
+    let slug = currentCookbookId;
+    try { const r = await api(`/api/cookbooks/${currentCookbookId}`); if (r.ok) { const d = await r.json(); if (d.slug) slug = d.slug; } } catch {}
+    const shareUrl = currentVisibility === 'public'
+      ? `${location.origin}/bundles/p?slug=${encodeURIComponent(String(slug))}`
+      : `recipes_cookbook_install(cookbook_id="${currentCookbookId}")`;
+    ($('out-share') as HTMLElement).textContent = shareUrl;
+    const lines = basket.map(s => s.__community
+      ? `# ${s.slug} (community · ${s.source}) — install via bundle`
+      : `recipes_install(slug="${s.slug}")`).join('\n');
+    ($('out-lines') as HTMLElement).textContent = lines;
+  }
+
+  document.querySelectorAll<HTMLButtonElement>('.copy-btn').forEach(b => {
+    b.addEventListener('click', async () => {
+      const txt = ($(b.dataset.copy!) as HTMLElement).textContent || '';
+      try { await navigator.clipboard.writeText(txt); const o = b.textContent; b.textContent = 'Copied ✓'; setTimeout(() => b.textContent = o, 1500); } catch {}
+    });
+  });
+
+  document.querySelectorAll<HTMLButtonElement>('.zone-pill').forEach(b => {
+    b.addEventListener('click', async () => {
+      activeZone = b.dataset.zone!;
+      document.querySelectorAll<HTMLButtonElement>('.zone-pill').forEach(x => {
+        const on = x.dataset.zone === activeZone;
+        x.classList.toggle('border-accent', on); x.classList.toggle('text-accent', on); x.classList.toggle('bg-accent/10', on);
+        x.classList.toggle('border-border', !on); x.classList.toggle('text-muted', !on);
+      });
+      const q = ($('composer-search') as HTMLInputElement).value.trim();
+      if (activeZone === 'community' && !community.length) { await loadCatalog(q); }
+      renderResults();
+    });
+  });
+  ($('composer-search') as HTMLInputElement).addEventListener('input', (e) => {
+    const q = (e.target as HTMLInputElement).value.trim();
+    if (searchTimer) clearTimeout(searchTimer);
+    searchTimer = window.setTimeout(async () => { await loadCatalog(q); renderResults(); }, 300);
+  });
+
+  ($('composer-bundle') as HTMLSelectElement).addEventListener('change', async (e) => {
+    const id = (e.target as HTMLSelectElement).value;
+    currentCookbookId = id || null;
+    basket = [];
+    if (id) {
+      try { const r = await api(`/api/cookbooks/${id}`); if (r.ok) { const d = await r.json();
+        const sk = (d.skills || []).filter((x: any) => x.source !== 'disabled');
+        basket = sk.map((x: any) => ({ slug: x.slug, title: x.title || x.slug, tier: x.tier, __community: x.source === 'external' }));
+        currentVisibility = d.visibility || 'private';
+      } } catch {}
+    }
+    renderBasket(); renderResults(); await refreshOutput();
+  });
+
+  // ═══════════════════════ FLEETS TAB (ported from fleets.astro) ═════════
+  const CHANNELS = ['stable', 'canary', 'frozen'];
+  let fleetBundles: any[] = [];
+
+  function fleetToast(msg: string, kind?: string) {
+    let el = document.getElementById('fl-toast');
+    if (!el) { el = document.createElement('div'); el.id = 'fl-toast';
+      el.style.cssText = 'position:fixed;bottom:1.25rem;left:50%;transform:translateX(-50%);z-index:90;padding:.6rem 1rem;border-radius:.6rem;font-size:.82rem;font-weight:600;box-shadow:0 6px 24px rgba(0,0,0,.35);';
+      document.body.appendChild(el); }
+    el.style.background = kind === 'error' ? '#7f1d1d' : 'var(--accent,#ffd166)';
+    el.style.color = kind === 'error' ? '#fff' : 'var(--bg,#0a0a0a)';
+    el.textContent = msg; el.style.opacity = '1';
+    setTimeout(() => { el!.style.transition = 'opacity .4s'; el!.style.opacity = '0'; }, 2800);
+  }
+  function fleetCookbookName(id: string) { const cb = fleetBundles.find(c => c.id === id); return cb ? cb.name : id.slice(0, 8) + '…'; }
+
+  function fleetCard(f: any): string {
+    const subs = f.subscriptions || [];
+    const subsHtml = subs.length
+      ? subs.map((s: any) => `<div class="flex items-center justify-between gap-2 px-3 py-2 rounded-lg bg-bg-elev border border-border-soft text-xs">
+          <span class="text-text truncate">${esc(fleetCookbookName(s.cookbook_id))}</span>
+          <span class="text-[10px] uppercase tracking-wide px-1.5 py-0.5 rounded-full border border-accent/30 text-accent">${esc(s.channel)}</span>
+        </div>`).join('')
+      : '<p class="text-xs text-muted-soft px-1 py-2">No bundles subscribed yet.</p>';
+    const cbOptions = fleetBundles.map(c => `<option value="${esc(c.id)}">${esc(c.name)}</option>`).join('');
+    const chOptions = CHANNELS.map(c => `<option value="${c}">${c}</option>`).join('');
+    return `<div class="bg-bg-card border border-border rounded-2xl p-5" data-fleet="${esc(f.fleet_id)}">
+      <div class="flex items-center justify-between gap-3 mb-3">
+        <h2 class="text-lg font-semibold tracking-tight truncate">${esc(f.name)}</h2>
+        <button class="fleet-sync text-xs px-3 py-1.5 rounded-lg border border-border hover:border-accent text-text transition shrink-0" data-fleet="${esc(f.fleet_id)}">Sync ▸</button>
+      </div>
+      <div class="flex flex-col gap-1.5 mb-3">${subsHtml}</div>
+      <form class="fleet-sub-form flex items-center gap-1.5 pt-3 border-t border-border-soft" data-fleet="${esc(f.fleet_id)}">
+        <select class="sub-cb flex-1 px-2 py-1.5 text-xs bg-bg-elev border border-border rounded-lg text-text focus:outline-none focus:border-accent">
+          <option value="">Subscribe a bundle…</option>${cbOptions}
+        </select>
+        <select class="sub-ch px-2 py-1.5 text-xs bg-bg-elev border border-border rounded-lg text-text focus:outline-none focus:border-accent">${chOptions}</select>
+        <button type="submit" class="px-3 py-1.5 rounded-lg bg-accent text-bg text-xs font-semibold hover:bg-accent-soft transition">Add</button>
+      </form>
+      <div class="fleet-sync-out hidden mt-3 text-xs text-muted bg-bg-elev border border-border-soft rounded-lg p-3 font-mono whitespace-pre-wrap"></div>
+    </div>`;
+  }
+
+  async function loadFleetCookbooks() {
+    try { const r = await api('/api/cookbooks'); if (r.ok) { const d = await r.json(); fleetBundles = (d.cookbooks || d.items || d || []); } } catch {}
+  }
+
+  async function loadFleets() {
+    await loadFleetCookbooks();
+    const wrap = $('fleets-list');
+    const r = await api('/api/fleets');
+    if (r.status === 401) { window.location.href = '/signin?next=/library?tab=fleets'; return; }
+    if (!r.ok) { wrap.innerHTML = '<p class="text-sm text-muted py-8 text-center">Could not load fleets.</p>'; return; }
+    const fleets = (await r.json()).fleets || [];
+    libraryFleetCount = fleets.length;
+    maybeShowFirstLogin();
+    if (!fleets.length) {
+      wrap.innerHTML = `<div class="flex flex-col items-center justify-center gap-3 py-16 rounded-2xl border border-dashed border-border text-center">
+        <span class="text-sm text-text font-medium">No fleets syncing yet.</span>
+        <span class="text-xs text-muted max-w-sm">Create a fleet, subscribe a bundle on a channel (stable / canary / frozen), and sync — every agent on the fleet key converges to the same skills.</span>
+        <button id="empty-new-fleet" class="text-xs text-accent hover:opacity-80 mt-1">Connect fleet</button>
+      </div>`;
+      document.getElementById('empty-new-fleet')?.addEventListener('click', openFleetModal);
+      return;
+    }
+    wrap.innerHTML = fleets.map(fleetCard).join('');
+    wireFleetCards();
+  }
+
+  function wireFleetCards() {
+    document.querySelectorAll<HTMLFormElement>('.fleet-sub-form').forEach(form => {
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const fid = form.dataset.fleet!;
+        const cb = (form.querySelector('.sub-cb') as HTMLSelectElement).value;
+        const ch = (form.querySelector('.sub-ch') as HTMLSelectElement).value;
+        if (!cb) { fleetToast('Pick a bundle first.', 'error'); return; }
+        const r = await api(`/api/fleets/${fid}/subscribe`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ cookbook_id: cb, channel: ch }) });
+        if (r.status === 201 || r.status === 200) { fleetToast('Subscribed.'); await loadFleets(); }
+        else if (r.status === 422) { fleetToast('Invalid channel or cookbook.', 'error'); }
+        else if (r.status === 403) { fleetToast('Not your fleet.', 'error'); }
+        else { fleetToast(`Could not subscribe (HTTP ${r.status}).`, 'error'); }
+      });
+    });
+    document.querySelectorAll<HTMLButtonElement>('.fleet-sync').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const fid = btn.dataset.fleet!;
+        const out = btn.closest('[data-fleet]')!.querySelector('.fleet-sync-out') as HTMLElement;
+        btn.textContent = 'Syncing…'; btn.disabled = true;
+        const r = await api(`/api/fleets/${fid}/sync`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ dry_run: false }) });
+        btn.textContent = 'Sync ▸'; btn.disabled = false;
+        if (r.ok) {
+          const d = await r.json();
+          const synced = d.cookbooks_synced || [];
+          out.classList.remove('hidden');
+          out.textContent = synced.length
+            ? synced.map((c: any) => `${fleetCookbookName(c.cookbook_id)}: ${(c.changes || []).length} change(s)${c.applied ? ' ✓ applied' : ''}`).join('\n')
+            : 'Nothing to sync — all agents already converged.';
+          fleetToast('Sync complete.');
+        } else { fleetToast(`Sync failed (HTTP ${r.status}).`, 'error'); }
+      });
+    });
+  }
+
+  function openFleetModal() { $('fleet-modal').classList.remove('hidden'); ($('fleet-name') as HTMLInputElement).focus(); $('fleet-modal-error').classList.add('hidden'); }
+  function closeFleetModal() { $('fleet-modal').classList.add('hidden'); ($('fleet-name') as HTMLInputElement).value = ''; }
+  $('new-fleet-btn').addEventListener('click', openFleetModal);
+  $('fleet-modal-close').addEventListener('click', closeFleetModal);
+  $('fleet-modal-cancel').addEventListener('click', closeFleetModal);
+  $('fleet-modal').addEventListener('click', (e) => { if (e.target === $('fleet-modal')) closeFleetModal(); });
+
+  $('fleet-create-submit').addEventListener('click', async () => {
+    const name = ($('fleet-name') as HTMLInputElement).value.trim();
+    const err = $('fleet-modal-error');
+    if (!name) { err.textContent = 'Name is required.'; err.classList.remove('hidden'); return; }
+    const r = await api('/api/fleets', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ name }) });
+    if (r.status === 201 || r.status === 200) {
+      const d = await r.json();
+      closeFleetModal();
+      ($('reveal-key') as HTMLElement).textContent = d.fleet_key || '(key not returned)';
+      $('key-reveal').classList.remove('hidden');
+      await loadFleets();
+    } else if (r.status === 401) { err.textContent = 'Sign in to create a fleet.'; err.classList.remove('hidden'); }
+    else { err.textContent = `Could not create (HTTP ${r.status}).`; err.classList.remove('hidden'); }
+  });
+
+  $('reveal-copy').addEventListener('click', async () => {
+    try { await navigator.clipboard.writeText(($('reveal-key') as HTMLElement).textContent || ''); const b = $('reveal-copy'); b.textContent = 'Copied ✓'; setTimeout(() => b.textContent = 'Copy', 1500); } catch {}
+  });
+  $('reveal-done').addEventListener('click', () => $('key-reveal').classList.add('hidden'));
+
+  // ═══════════════════════ DELIVERY TAB (ported from cockpit.astro) ══════
+  const fmt = (n: any) => (typeof n === 'number' ? n.toLocaleString() : '—');
+
+  function deliveryToast(msg: string, kind?: string) {
+    let el = document.getElementById('ck-toast');
+    if (!el) { el = document.createElement('div'); el.id = 'ck-toast';
+      el.style.cssText = 'position:fixed;bottom:1.25rem;left:50%;transform:translateX(-50%);z-index:90;padding:.6rem 1rem;border-radius:.6rem;font-size:.82rem;font-weight:600;box-shadow:0 6px 24px rgba(0,0,0,.35);';
+      document.body.appendChild(el); }
+    el.style.background = kind === 'error' ? '#7f1d1d' : 'var(--accent,#ffd166)';
+    el.style.color = kind === 'error' ? '#fff' : 'var(--bg,#0a0a0a)';
+    el.textContent = msg; el.style.opacity = '1';
+    setTimeout(() => { el!.style.transition = 'opacity .4s'; el!.style.opacity = '0'; }, 2800);
+  }
+
+  function deliverableCard(cb: any): string {
+    const sig = cb.signals || {};
+    return `<div class="cockpit-card bg-bg-card border border-border rounded-2xl p-5" data-cb="${esc(cb.id)}">
+      <div class="flex items-center justify-between gap-3 mb-3 flex-wrap">
+        <div>
+          <h2 class="text-lg font-semibold tracking-tight">${esc(cb.name)}</h2>
+          <p class="text-xs text-muted-soft mt-0.5">${fmt(sig.skill_count)} skills · ${fmt(sig.installs_total)} installs · ${fmt(sig.fleet_usage)} fleets</p>
+        </div>
+        <a href="/library" class="text-xs text-accent hover:opacity-80 shrink-0">Open deck →</a>
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 pt-3 border-t border-border-soft">
+        <div>
+          <div class="text-[10px] uppercase tracking-wider text-muted-soft mb-2">Client handoff key</div>
+          <div class="flex items-center gap-1.5">
+            <select class="ck-scope flex-1 px-2 py-1.5 text-xs bg-bg-elev border border-border rounded-lg text-text focus:outline-none focus:border-accent">
+              <option value="install">install (recommended)</option>
+              <option value="read">read-only</option>
+              <option value="edit">edit</option>
+            </select>
+            <button class="ck-mint px-3 py-1.5 rounded-lg bg-accent text-bg text-xs font-semibold hover:bg-accent-soft transition" data-cb="${esc(cb.id)}">Mint key</button>
+          </div>
+          <div class="ck-tokens mt-2 flex flex-col gap-1"></div>
+        </div>
+        <div>
+          <div class="text-[10px] uppercase tracking-wider text-muted-soft mb-2">Feedback routing</div>
+          <div class="ck-fb-current text-xs text-muted mb-2">Loading…</div>
+          <form class="ck-fb-form flex flex-col gap-1.5" data-cb="${esc(cb.id)}">
+            <input type="text" class="ck-fb-repo px-2 py-1.5 text-xs bg-bg-elev border border-border rounded-lg text-text placeholder:text-muted focus:outline-none focus:border-accent" placeholder="client-org/feedback-repo" />
+            <input type="password" class="ck-fb-pat px-2 py-1.5 text-xs bg-bg-elev border border-border rounded-lg text-text placeholder:text-muted focus:outline-none focus:border-accent" placeholder="GitHub PAT (issues:write)" />
+            <div class="flex gap-1.5">
+              <button type="submit" class="flex-1 px-3 py-1.5 rounded-lg bg-accent text-bg text-xs font-semibold hover:bg-accent-soft transition">Bind repo</button>
+              <button type="button" class="ck-fb-clear px-3 py-1.5 rounded-lg border border-border text-text text-xs hover:border-accent transition" data-cb="${esc(cb.id)}">Clear</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>`;
+  }
+
+  async function loadFeedbackConfig(cbId: string, card: HTMLElement) {
+    try {
+      const r = await api(`/api/cookbooks/${cbId}/feedback-config`);
+      if (!r.ok) return;
+      const d = await r.json();
+      const cur = card.querySelector('.ck-fb-current') as HTMLElement;
+      if (cur) {
+        cur.innerHTML = d.feedback_repo
+          ? `→ <span class="text-accent">${esc(d.feedback_repo)}</span>${d.has_credential ? ' (bound)' : ''}`
+          : `→ default (<span class="text-muted-soft">${esc(d.default_repo)}</span>)`;
+      }
+    } catch {}
+  }
+
+  function wireDeliveryCard(card: HTMLElement) {
+    const cbId = card.dataset.cb!;
+    loadFeedbackConfig(cbId, card);
+
+    const mintBtn = card.querySelector('.ck-mint') as HTMLButtonElement;
+    mintBtn?.addEventListener('click', async () => {
+      const scope = (card.querySelector('.ck-scope') as HTMLSelectElement).value;
+      mintBtn.textContent = 'Minting…'; mintBtn.disabled = true;
+      const r = await api(`/api/cookbooks/${cbId}/share-tokens`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ name: `handoff-${scope}`, scope }) });
+      mintBtn.textContent = 'Mint key'; mintBtn.disabled = false;
+      if (r.status === 201 || r.status === 200) {
+        const d = await r.json();
+        const tok = d.token || d.plaintext || d.share_token;
+        if (tok) { ($('tok-key') as HTMLElement).textContent = tok; $('tok-reveal').classList.remove('hidden'); }
+        deliveryToast('Handoff key minted.');
+        loadTokens(cbId, card);
+      } else if (r.status === 403) { deliveryToast('Not your cookbook.', 'error'); }
+      else { deliveryToast(`Mint failed (HTTP ${r.status}).`, 'error'); }
+    });
+
+    const fbForm = card.querySelector('.ck-fb-form') as HTMLFormElement;
+    fbForm?.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const repo = (card.querySelector('.ck-fb-repo') as HTMLInputElement).value.trim();
+      const pat = (card.querySelector('.ck-fb-pat') as HTMLInputElement).value.trim();
+      if (!repo || !pat) { deliveryToast('Repo and PAT required.', 'error'); return; }
+      const r = await api(`/api/cookbooks/${cbId}/feedback-config`, { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ repo, mode: 'pat', pat }) });
+      if (r.ok) { deliveryToast('Feedback bound to ' + repo); (card.querySelector('.ck-fb-pat') as HTMLInputElement).value = ''; loadFeedbackConfig(cbId, card); }
+      else { const d = await r.json().catch(() => ({})); deliveryToast(typeof d.detail === 'string' ? d.detail : 'Bind failed.', 'error'); }
+    });
+
+    const clearBtn = card.querySelector('.ck-fb-clear') as HTMLButtonElement;
+    clearBtn?.addEventListener('click', async () => {
+      const r = await api(`/api/cookbooks/${cbId}/feedback-config`, { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ repo: null }) });
+      if (r.ok) { deliveryToast('Reverted to default routing.'); loadFeedbackConfig(cbId, card); }
+      else { deliveryToast('Clear failed.', 'error'); }
+    });
+  }
+
+  async function loadTokens(cbId: string, card: HTMLElement) {
+    try {
+      const r = await api(`/api/cookbooks/${cbId}/share-tokens`);
+      if (!r.ok) return;
+      const d = await r.json();
+      const toks = (d.tokens || d || []);
+      const wrap = card.querySelector('.ck-tokens') as HTMLElement;
+      if (wrap && Array.isArray(toks)) {
+        wrap.innerHTML = toks.slice(0, 4).map((t: any) =>
+          `<div class="flex items-center justify-between gap-2 text-[11px] text-muted-soft"><span class="font-mono">${esc(t.prefix || t.name || 'token')}…</span><span>${esc(t.scope || '')}</span></div>`
+        ).join('');
+      }
+    } catch {}
+  }
+
+  async function loadDelivery() {
+    const wrap = $('cockpit-list');
+    const r = await api('/api/cookbooks');
+    if (r.status === 401) { window.location.href = '/signin?next=/library?tab=delivery'; return; }
+    let cbs: any[] = [];
+    if (r.ok) { const d = await r.json(); cbs = (d.cookbooks || d.bundles || []); }
+    $('cockpit-loading')?.remove();
+    if (!cbs.length) {
+      wrap.innerHTML = `<div class="flex flex-col items-center gap-3 py-16 rounded-2xl border border-dashed border-border text-center">
+        <span class="text-sm text-text font-medium">No deliveries yet.</span>
+        <span class="text-xs text-muted max-w-sm">Compose a bundle, then come back here to mint a client handoff key and route their feedback to their repo.</span>
+      </div>`;
+      return;
+    }
+    const details = await Promise.all(cbs.map(async (cb: any) => {
+      try { const d = await api(`/api/cookbooks/${cb.id}`); return d.ok ? await d.json() : cb; } catch { return cb; }
+    }));
+    wrap.innerHTML = details.map(deliverableCard).join('');
+    wrap.querySelectorAll<HTMLElement>('.cockpit-card').forEach(card => wireDeliveryCard(card));
+  }
+
+  $('tok-copy').addEventListener('click', async () => {
+    try { await navigator.clipboard.writeText(($('tok-key') as HTMLElement).textContent || ''); const b = $('tok-copy'); b.textContent = 'Copied ✓'; setTimeout(() => b.textContent = 'Copy', 1500); } catch {}
+  });
+  $('tok-done').addEventListener('click', () => $('tok-reveal').classList.add('hidden'));
+
+  // ── boot ──────────────────────────────────────────────────────────────
+  loadLibraryBundles();
+  if (initialTab === 'fleets') { (window as any).__fleetsLoaded = true; loadFleets(); }
+  if (initialTab === 'delivery') { (window as any).__deliveryLoaded = true; loadDelivery(); }
+</script>

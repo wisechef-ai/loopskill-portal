@@ -1,0 +1,41 @@
+---
+// RedirectStub.astro — thin client-side redirect for cut aggregator pages
+// (feat/spotify-ia, council report §5/§6). PR 2 adds the real Caddy 301s;
+// this stub guarantees no visitor ever sees a 404 in between, and keeps
+// working for self-hosters running without our Caddyfile.
+//
+// Contract: meta http-equiv=refresh (works even with JS disabled) + JS
+// location.replace (instant, no flash, doesn't pollute history) + noindex
+// (never let a search engine index a stub as if it were content) + a plain
+// link fallback (belt-and-suspenders for crawlers/no-JS/no-refresh clients).
+interface Props {
+  to: string;       // static target, OR '' when target is computed client-side (preserveQuery)
+  title?: string;
+  preserveQuery?: boolean; // when true, `to` is a path and the current query string is appended client-side
+}
+const { to, title = 'Redirecting…', preserveQuery = false } = Astro.props;
+---
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="robots" content="noindex" />
+    {!preserveQuery && <meta http-equiv="refresh" content={`0; url=${to}`} />}
+    <title>{title} — LoopSkill</title>
+  </head>
+  <body style="background:#0a0a0a;color:#f5f5f5;font-family:Inter,system-ui,sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;">
+    <p>Redirecting… <a id="redirect-fallback" href={to} style="color:#ffd166;">Continue</a></p>
+    <script define:vars={{ to, preserveQuery }}>
+      (function () {
+        var target = to;
+        if (preserveQuery) {
+          var qs = window.location.search; // includes leading '?'
+          target = to + qs;
+          var a = document.getElementById('redirect-fallback');
+          if (a) a.href = target;
+        }
+        window.location.replace(target);
+      })();
+    </script>
+  </body>
+</html>

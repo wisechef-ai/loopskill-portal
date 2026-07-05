@@ -36,7 +36,7 @@ import LoopMark from '../components/LoopMark.astro';
 interface Props {
   title?: string;
   description?: string;
-  active?: 'home' | 'search' | 'library' | 'fleets' | 'cockpit' | 'account' | 'personalities' | '';
+  active?: 'home' | 'browse' | 'search' | 'library' | 'fleets' | 'cockpit' | 'account' | 'personalities' | 'pricing' | '';
   mode?: 'member' | 'public';
   ogImage?: string;
   pageType?: 'website' | 'product' | 'article';
@@ -75,19 +75,12 @@ const orgSchema = {
   },
 };
 
-const navItems = [
-  { id: 'home',    href: '/home',    label: 'Home',          icon: 'M3 9.5L10 3l7 6.5M5 8.5V16h10V8.5' },
-  // ── Discover (the three product objects) ──
-  { id: 'loops',   href: '/loops',   label: 'Loops',         icon: 'M4 10a6 6 0 1011-3.5M15 3v4h-4', group: 'Discover' },
-  { id: 'search',  href: '/skills',  label: 'Skills',        icon: 'M8.5 14a5.5 5.5 0 100-11 5.5 5.5 0 000 11zM17 17l-3.5-3.5', group: 'Discover' },
-  { id: 'bundles', href: '/cookbooks', label: 'Bundles',     icon: 'M4 4h12v4H4zM4 10h12v6H4zM8 13h4', group: 'Discover' },
-  { id: 'personalities', href: '/personalities', label: 'Personalities', icon: 'M10 10a3 3 0 100-6 3 3 0 000 6zM4 17a6 6 0 0112 0', group: 'Discover' },
-  // ── Workspace (your stuff) ──
-  { id: 'library', href: '/library', label: 'Your Library',  icon: 'M4 4h4v12H4zM10 4h2v12h-2zM14.5 4.2l3 .8-2.5 11.6-3-.8z', group: 'Workspace' },
-  { id: 'fleets',  href: '/fleets',  label: 'Fleets',        icon: 'M3 5h6v5H3zM11 5h6v5h-6zM7 13h6v4H7z', group: 'Workspace' },
-  { id: 'cockpit', href: '/cockpit', label: 'Delivery',      icon: 'M3 4h14v3H3zM3 9h14v7H3zM7 12h6', group: 'Workspace' },
-  { id: 'pricing', href: '/pricing', label: 'Pricing',       icon: 'M10 1v18M6 5h6.5a2.5 2.5 0 010 5H6m8 0H7.5a2.5 2.5 0 000 5H14', group: 'Workspace' },
-];
+// Spotify-model IA (feat/spotify-ia, council report §1): exactly three
+// primary rail destinations. Pricing is a smaller pill below, never a
+// primary nav item. Icons: lucide-style, stroke 1.75, size 20 (rendered
+// inline below — no emoji, no per-item color hacks; active/hover state is
+// carried entirely by the shared .rail-link / .rail-active CSS classes in
+// global.css so Home shelves, Browse, and the rail share one visual system).
 ---
 <!doctype html>
 <html lang="en" class="scroll-smooth">
@@ -153,65 +146,94 @@ const navItems = [
           <span class="text-base font-semibold tracking-tight group-hover:text-accent transition">LoopSkill</span>
         </a>
 
-        <!-- ── Unified search (onechrome_0611 P4): ONE box, TWO result groups —
-             "In Marketplace" (live /api/skills/search) + "In Your Cookbooks"
-             (client match on the member's bundle names). Kills "am I
-             searching the store or my stuff?". Esc or blur closes. -->
-        <div class="px-3 pt-3 relative" id="shell-search-wrap">
+        <!-- Rail search (onechrome_0611 P4, retargeted feat/spotify-ia council §8):
+             a thin handoff only — Browse owns search now. No live dropdown here
+             (avoids two competing search concepts); Enter navigates to
+             /browse?q=<value>. -->
+        <div class="px-3 pt-3" id="shell-search-wrap">
           <div class="relative">
             <svg width="14" height="14" viewBox="0 0 20 20" fill="none" aria-hidden="true"
                  class="absolute left-3 top-1/2 -translate-y-1/2 text-muted-soft pointer-events-none">
               <path d="M8.5 14a5.5 5.5 0 100-11 5.5 5.5 0 000 11zM17 17l-3.5-3.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
             </svg>
-            <input id="shell-search" type="search" placeholder="Search skills…" autocomplete="off"
-                   aria-label="Search skills and your bundles"
+            <input id="shell-search" type="search" placeholder="Search…" autocomplete="off"
+                   aria-label="Search loops, skills, bundles, personalities"
                    class="w-full pl-9 pr-3 py-2 rounded-lg bg-bg-card border border-border text-sm text-text placeholder:text-muted-soft focus:outline-none focus:border-accent transition" />
-          </div>
-          <div id="shell-search-results"
-               class="hidden absolute left-3 right-3 top-full mt-1.5 z-[70] bg-bg-elev border border-border rounded-xl shadow-2xl overflow-hidden max-h-[60vh] overflow-y-auto">
           </div>
         </div>
 
-        <nav class="flex flex-col gap-0.5 px-3 py-4" aria-label="Primary">
-          {navItems.map((item, i) => {
-            const prevGroup = i > 0 ? navItems[i - 1].group : undefined;
-            const showHeader = item.group && item.group !== prevGroup;
-            return (
-              <>
-                {showHeader && (
-                  <span class="px-3 pt-3 pb-1 text-[10px] font-semibold uppercase tracking-widest text-muted-soft/70">{item.group}</span>
-                )}
-                <a href={item.href}
-                   class={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition ${active === item.id ? 'bg-accent/12 text-text font-medium' : 'text-muted hover:text-text hover:bg-bg-card'}`}
-                   aria-current={active === item.id ? 'page' : undefined}>
-                  <svg width="18" height="18" viewBox="0 0 20 20" fill="none" aria-hidden="true">
-                    <path d={item.icon} stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-                  </svg>
-                  <span>{item.label}</span>
-                </a>
-              </>
-            );
-          })}
+        <nav class="flex flex-col gap-0.5 px-3 pt-4 pb-2" aria-label="Primary">
+          <a href="/home"
+             class={`rail-link flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition ${active === 'home' ? 'rail-active font-medium' : 'text-muted hover:text-text'}`}
+             aria-current={active === 'home' ? 'page' : undefined}>
+            <svg class="rail-icon shrink-0" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+              <polyline points="9 22 9 12 15 12 15 22"/>
+            </svg>
+            <span>Home</span>
+          </a>
+          <a href="/browse"
+             class={`rail-link flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition ${active === 'browse' ? 'rail-active font-medium' : 'text-muted hover:text-text'}`}
+             aria-current={active === 'browse' ? 'page' : undefined}>
+            <svg class="rail-icon shrink-0" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <circle cx="12" cy="12" r="10"/>
+              <polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88"/>
+            </svg>
+            <span>Browse</span>
+          </a>
+          {/* Your Library — anon signs in (§1: href /signin?next=/library),
+              member goes straight to /library. Both variants exist in static
+              HTML per AGENTS.md Trap C; JS auth swap toggles which is visible. */}
+          {isPublic && (
+            <a href="/signin?next=/library" data-signin-next data-shell-anon
+               class="rail-link flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition text-muted hover:text-text">
+              <svg class="rail-icon shrink-0" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="m16 6 4 14"/><path d="M12 6v14"/><path d="M8 8v12"/><path d="M4 4v16"/>
+              </svg>
+              <span>Your Library</span>
+            </a>
+          )}
+          <a href="/library" data-shell-member
+             class={`rail-link flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition ${isPublic ? 'hidden' : ''} ${active === 'library' ? 'rail-active font-medium' : 'text-muted hover:text-text'}`}
+             aria-current={active === 'library' ? 'page' : undefined}>
+            <svg class="rail-icon shrink-0" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="m16 6 4 14"/><path d="M12 6v14"/><path d="M8 8v12"/><path d="M4 4v16"/>
+            </svg>
+            <span>Your Library</span>
+          </a>
         </nav>
 
-        <!-- Rail body: anon CTA (public default) ⇄ live bundle list (member). -->
+        <!-- Pro pill (§1): one rail pill below primary nav, never a primary
+             nav item, never the primary gold active treatment. -->
+        <div class="px-3 pb-3">
+          <a href="/pricing"
+             class={`flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium transition border ${active === 'pricing' ? 'border-accent text-accent bg-accent/10' : 'border-border text-muted-soft hover:text-text hover:border-border-soft'}`}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+              <path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .962 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.582a.5.5 0 0 1 0 .962L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.962 0z"/>
+            </svg>
+            <span>Pro · $9.95/mo</span>
+          </a>
+        </div>
+
+        <!-- Rail body: anon CTA (public default) ⇄ live bundle list (member).
+             §1: anon body is ONE compact CTA, not a second story. Member body
+             = "Recent bundles" preview, max 5, NO plus button in rail (the
+             compose flow lives inside /library now). -->
         {isPublic && (
           <div class="px-3 pb-4 flex-1 min-h-0" data-shell-anon>
             <div class="mx-3 rounded-xl border border-border bg-bg-card/50 p-4 flex flex-col gap-2.5">
-              <span class="text-[10px] uppercase tracking-widest text-muted-soft">Your bundles</span>
-              <p class="text-xs text-muted leading-relaxed">Sign in to group skills into bundles and sync them across every agent you run.</p>
-              <a href="/signin" data-signin-next
+              <p class="text-xs text-muted leading-relaxed">Save bundles and sync fleets.</p>
+              <a href="/signin?next=/library" data-signin-next
                  class="inline-flex items-center justify-center px-3 py-1.5 rounded-lg bg-accent text-bg text-xs font-semibold hover:bg-accent-soft transition">
-                Sign in to build bundles
+                Sign in
               </a>
-              <a href="/pricing" class="text-center text-[11px] text-muted-soft hover:text-accent transition">Free to self-host · Pro $9.95/mo hosted</a>
+              <a href="/pricing" class="text-center text-[11px] text-muted-soft hover:text-accent transition">Pro $9.95/mo</a>
             </div>
           </div>
         )}
         <div class={`px-3 pb-4 flex-1 min-h-0 ${isPublic ? 'hidden' : ''}`} data-shell-member>
           <div class="flex items-center justify-between px-3 mb-1.5">
-            <span class="text-[10px] uppercase tracking-widest text-muted-soft">Your bundles</span>
-            <a href="/composer" class="text-muted-soft hover:text-accent text-base leading-none" title="New bundle" aria-label="New bundle">+</a>
+            <span class="text-[10px] uppercase tracking-widest text-muted-soft">Recent bundles</span>
           </div>
           <div id="rail-bundles" class="flex flex-col gap-0.5">
             <p id="rail-bundles-empty" class="px-3 py-2 text-xs text-muted-soft">No bundles yet.</p>
@@ -262,9 +284,10 @@ const navItems = [
             </summary>
             <div class="absolute right-0 top-full mt-2 w-52 bg-bg-elev border border-border rounded-xl shadow-xl overflow-hidden z-50">
               <nav class="flex flex-col text-sm">
-                {navItems.map((item) => (
-                  <a href={item.href} class="px-4 py-3 text-muted hover:text-text hover:bg-bg-card transition">{item.label}</a>
-                ))}
+                <a href="/home" class="px-4 py-3 text-muted hover:text-text hover:bg-bg-card transition">Home</a>
+                <a href="/browse" class="px-4 py-3 text-muted hover:text-text hover:bg-bg-card transition">Browse</a>
+                <a href={isPublic ? '/signin?next=/library' : '/library'} data-signin-next={isPublic ? true : undefined} class="px-4 py-3 text-muted hover:text-text hover:bg-bg-card transition">Your Library</a>
+                <a href="/pricing" class="px-4 py-3 text-muted hover:text-text hover:bg-bg-card transition">Pro · $9.95/mo</a>
                 {isPublic && (
                   <a href="/signin" data-signin-next data-shell-anon class="px-4 py-3 text-accent font-medium hover:bg-bg-card transition border-t border-border">Sign in</a>
                 )}
@@ -343,7 +366,7 @@ const navItems = [
         const paidActive = ['active', 'trialing', 'past_due'].includes(status);
         if (planEl) planEl.textContent = (paidActive && tier !== 'free') ? tier.replace('_', '+') : 'free';
 
-        // Live bundle rail
+        // Live bundle rail — "Recent bundles" preview, max 5 (§1: no plus button).
         let userCookbooks: any[] = [];
         try {
           const cbRes = await fetch('/api/cookbooks', { credentials: 'include' });
@@ -355,13 +378,13 @@ const navItems = [
             const empty = document.getElementById('rail-bundles-empty');
             if (wrap && cbooks.length) {
               empty?.remove();
-              wrap.innerHTML = cbooks.map((cb: any) =>
-                `<a href="/cookbooks/view?id=${encodeURIComponent(cb.id)}" class="px-3 py-1.5 rounded-md text-xs text-muted hover:text-text hover:bg-bg-card transition truncate" title="${(cb.name||'').replace(/"/g,'&quot;')}">${cb.name || 'Untitled'}</a>`
+              wrap.innerHTML = cbooks.slice(0, 5).map((cb: any) =>
+                `<a href="/library" class="px-3 py-1.5 rounded-md text-xs text-muted hover:text-text hover:bg-bg-card transition truncate" title="${(cb.name||'').replace(/"/g,'&quot;')}">${cb.name || 'Untitled'}</a>`
               ).join('');
             }
           }
         } catch { /* rail is best-effort */ }
-        // Expose for the unified-search "In Your Bundles" group.
+        // Kept for any surface still reading window.__shellCookbooks.
         (window as any).__shellCookbooks = userCookbooks;
 
         // ── Ambient fleet status (P4) — honest numbers only, hidden when zero.
@@ -382,53 +405,11 @@ const navItems = [
           }
         } catch { /* ambient is best-effort */ }
 
-        // ── First-login onboarding pane (P4) — fires once, localStorage flag.
-        try {
-          const OB_KEY = 'recipes_onboarding_v1';
-          if (!localStorage.getItem(OB_KEY) && !userCookbooks.length) {
-            const main = document.getElementById('app-main');
-            if (main) {
-              const pane = document.createElement('div');
-              pane.id = 'shell-onboarding';
-              pane.className = 'max-w-6xl mx-auto px-6 pt-6';
-              pane.innerHTML = `
-                <div class="relative rounded-2xl border border-accent/30 bg-gradient-to-br from-accent/8 to-cool/5 p-5 md:p-6">
-                  <button type="button" id="shell-onboarding-close" aria-label="Dismiss onboarding"
-                          class="absolute top-3 right-3 p-2 -m-1 text-muted-soft hover:text-text transition">
-                    <svg width="16" height="16" viewBox="0 0 18 18" fill="none" aria-hidden="true"><path d="M4 4L14 14M14 4L4 14" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
-                  </button>
-                  <p class="text-[10px] uppercase tracking-widest text-accent mb-2">Welcome — here's the loop</p>
-                  <div class="grid grid-cols-1 sm:grid-cols-4 gap-3 text-sm">
-                    <a href="/skills" class="group flex flex-col gap-1 rounded-xl border border-border-soft bg-bg/40 p-3 hover:border-accent/50 transition">
-                      <span class="text-muted-soft text-xs">1</span>
-                      <span class="font-semibold text-text group-hover:text-accent transition">Find a skill</span>
-                      <span class="text-xs text-muted">Search the catalog.</span>
-                    </a>
-                    <a href="/composer" class="group flex flex-col gap-1 rounded-xl border border-border-soft bg-bg/40 p-3 hover:border-accent/50 transition">
-                      <span class="text-muted-soft text-xs">2</span>
-                      <span class="font-semibold text-text group-hover:text-accent transition">Add to a bundle</span>
-                      <span class="text-xs text-muted">Bundle what you need.</span>
-                    </a>
-                    <a href="/fleets" class="group flex flex-col gap-1 rounded-xl border border-border-soft bg-bg/40 p-3 hover:border-accent/50 transition">
-                      <span class="text-muted-soft text-xs">3</span>
-                      <span class="font-semibold text-text group-hover:text-accent transition">Deploy to your fleet</span>
-                      <span class="text-xs text-muted">One key, every agent.</span>
-                    </a>
-                    <div class="flex flex-col gap-1 rounded-xl border border-border-soft bg-bg/40 p-3">
-                      <span class="text-muted-soft text-xs">4</span>
-                      <span class="font-semibold text-text">Agents use it</span>
-                      <span class="text-xs text-muted">Synced, signed, auto-updated.</span>
-                    </div>
-                  </div>
-                </div>`;
-              main.prepend(pane);
-              document.getElementById('shell-onboarding-close')?.addEventListener('click', () => {
-                localStorage.setItem(OB_KEY, '1');
-                pane.remove();
-              });
-            }
-          }
-        } catch { /* onboarding is best-effort */ }
+        // ── First-login onboarding pane REMOVED (feat/spotify-ia, council §4):
+        // the global four-step pane fought the new IA by injecting itself
+        // above arbitrary pages. Its replacement is a single panel INSIDE
+        // /library (shown only when the member has zero bundles AND zero
+        // fleets) — see library.astro.
 
         // Sign out — both rail (desktop) and mobile menu, mirrors /account.
         const _logout = async () => {
@@ -441,70 +422,20 @@ const navItems = [
     </script>
 
     <script>
-      // ── Unified search (P4): one box, two result groups. Marketplace via
-      // /api/skills/search (anon-OK), "In Your Cookbooks" from the member's
-      // rail cache (window.__shellCookbooks, empty for anon). Debounced 200ms.
+      // Rail search (feat/spotify-ia, council §8): a thin handoff only.
+      // Browse owns search now — no live dropdown, no second search concept.
+      // Enter navigates to /browse?q=<value>; Esc clears/blurs.
       (() => {
         const input = document.getElementById('shell-search') as HTMLInputElement | null;
-        const panel = document.getElementById('shell-search-results');
-        if (!input || !panel) return;
-
-        const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
-        let timer: ReturnType<typeof setTimeout> | undefined;
-        let seq = 0;
-
-        const close = () => { panel.classList.add('hidden'); panel.innerHTML = ''; };
-
-        const render = (q: string, skills: any[], bundles: any[]) => {
-          const mk = skills.slice(0, 6).map((s: any) =>
-            `<a href="/skills/${encodeURIComponent(s.slug)}" class="flex items-start gap-2.5 px-4 py-2.5 hover:bg-bg-card transition">
-               <span class="flex flex-col min-w-0">
-                 <span class="text-sm text-text truncate">${esc(s.title || s.slug)}</span>
-                 <span class="text-xs text-muted truncate">${esc((s.description || '').slice(0, 90))}</span>
-               </span>
-             </a>`).join('');
-          const cb = bundles.slice(0, 4).map((c: any) =>
-            `<a href="/cookbooks/view?id=${encodeURIComponent(c.id)}" class="flex items-center gap-2.5 px-4 py-2.5 hover:bg-bg-card transition">
-               <span class="text-sm text-text truncate">${esc(c.name || 'Untitled')}</span>
-             </a>`).join('');
-          panel.innerHTML =
-            `<div class="px-4 pt-3 pb-1 text-[10px] uppercase tracking-widest text-muted-soft">In Marketplace</div>` +
-            (mk || `<p class="px-4 py-2.5 text-xs text-muted-soft">No catalog matches.</p>`) +
-            (cb ? `<div class="px-4 pt-3 pb-1 text-[10px] uppercase tracking-widest text-muted-soft border-t border-border-soft mt-1">In Your Bundles</div>${cb}` : '') +
-            `<a href="/skills?q=${encodeURIComponent(q)}" class="block px-4 py-2.5 text-xs text-accent hover:bg-bg-card transition border-t border-border-soft">See all results →</a>`;
-          panel.classList.remove('hidden');
-        };
-
-        const run = async (q: string) => {
-          const mySeq = ++seq;
-          let skills: any[] = [];
-          try {
-            const r = await fetch(`/api/skills/search?q=${encodeURIComponent(q)}&page_size=6`, { credentials: 'include' });
-            if (r.ok) { const d = await r.json(); skills = (d && (d.results || d.items)) || []; }
-          } catch { /* offline → bundle group still renders */ }
-          if (mySeq !== seq) return; // stale response
-          const ql = q.toLowerCase();
-          const cbs = (((window as any).__shellCookbooks) || []).filter((c: any) =>
-            (c.name || '').toLowerCase().includes(ql) || (c.description || '').toLowerCase().includes(ql));
-          render(q, skills, cbs);
-        };
-
-        input.addEventListener('input', () => {
-          const q = input.value.trim();
-          if (timer) clearTimeout(timer);
-          if (q.length < 2) { close(); return; }
-          timer = setTimeout(() => run(q), 200);
-        });
+        if (!input) return;
         input.addEventListener('keydown', (e) => {
-          if (e.key === 'Escape') { close(); input.blur(); }
+          if (e.key === 'Escape') {
+            if (input.value) { input.value = ''; } else { input.blur(); }
+          }
           if (e.key === 'Enter') {
             const q = input.value.trim();
-            if (q) window.location.href = `/skills?q=${encodeURIComponent(q)}`;
+            window.location.href = q ? `/browse?q=${encodeURIComponent(q)}` : '/browse';
           }
-        });
-        document.addEventListener('click', (e) => {
-          const wrap = document.getElementById('shell-search-wrap');
-          if (wrap && !wrap.contains(e.target as Node)) close();
         });
       })();
     </script>

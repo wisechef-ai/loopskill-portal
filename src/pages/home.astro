@@ -1,139 +1,145 @@
 ---
-// /home — portal_0610 J1 authed landing.
-// PM1 guard: members land on THEIR stuff (bundles + fleets + quick actions),
-// NEVER a marketing hero / earnings calculator. The anonymous marketing landing
-// stays at "/".
+// /home — Spotify-model IA (feat/spotify-ia, council report §2).
+// Compact header + real-data shelves ONLY, in fixed order:
+//   1. Popular loops    (GET /api/loops)
+//   2. Curated skills   (GET /api/skills/search)
+//   3. Public bundles   (GET /api/bundles/discover, compat /api/cookbooks/discover)
+//   4. Personalities    (GET /api/personalities)
+// A shelf with zero rows renders NEITHER its cards NOR its header. If every
+// shelf is empty, render one centered empty state with Retry + Browse — never
+// fictional fallback cards (assert-dist guards this).
+//
+// Rail spec (council §1) lists Home as "anon + member" — unlike Library,
+// anonymous visitors must NOT be bounced here. mode="public": no anon
+// bounce, no gate splash; both anon and member subline copy exist in
+// static HTML (AGENTS.md Trap C) and the boot script below swaps the
+// subline once /api/auth/me resolves client-side (Trap B — never a
+// build-time user-data fetch).
 import AppShell from '../layouts/AppShell.astro';
 ---
-<AppShell title="Home — LoopSkill" active="home">
-  <section class="max-w-6xl mx-auto px-6 py-10">
-    <header class="mb-8 flex items-end justify-between gap-4 flex-wrap">
-      <div>
-        <h1 class="text-2xl font-semibold tracking-tight" id="home-greeting">Welcome back</h1>
-        <p class="text-sm text-muted mt-1">Compose once, reproduce across every agent, sync your fleet.</p>
-      </div>
-      <div class="flex gap-2">
-        <a href="/composer" class="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-accent text-bg text-sm font-semibold hover:bg-accent-soft transition">
-          + Compose a bundle
-        </a>
-        <a href="/fleets" class="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg border border-border hover:border-accent text-text text-sm font-medium transition">
-          Your fleets
-        </a>
-      </div>
+<AppShell mode="public" title="Home — LoopSkill" description="Explore runnable AI-agent artifacts — loops, skills, bundles, and personalities." active="home">
+  <main class="ls-page max-w-6xl mx-auto pb-24">
+    <header class="mb-8">
+      <h1 class="ls-page-title text-text">Home</h1>
+      <p class="ls-body text-muted mt-1" id="home-subline">Explore runnable AI-agent artifacts.</p>
     </header>
 
-    <!-- Your bundles -->
-    <div class="mb-10">
-      <div class="flex items-center justify-between mb-3">
-        <h2 class="text-sm font-semibold uppercase tracking-widest text-muted-soft">Your bundles</h2>
-        <a href="/library" class="text-xs text-accent hover:opacity-80">View library →</a>
-      </div>
-      <div id="home-bundles" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        <div class="text-sm text-muted py-8 text-center col-span-full" id="home-bundles-loading">Loading…</div>
-      </div>
-    </div>
+    <div id="home-shelves"></div>
 
-    <!-- Your fleets -->
-    <div class="mb-10">
-      <div class="flex items-center justify-between mb-3">
-        <h2 class="text-sm font-semibold uppercase tracking-widest text-muted-soft">Your fleets</h2>
-        <a href="/fleets" class="text-xs text-accent hover:opacity-80">Manage fleets →</a>
-      </div>
-      <div id="home-fleets" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div class="text-sm text-muted py-8 text-center col-span-full" id="home-fleets-loading">Loading…</div>
+    <!-- All-empty system state (council §2) -->
+    <div id="home-empty-all" hidden class="ls-body text-muted py-20 text-center flex flex-col items-center gap-4">
+      <p>Nothing is available right now.</p>
+      <div class="flex items-center gap-3">
+        <button id="home-retry" type="button" class="ls-button px-4 py-2 rounded-lg bg-accent text-bg hover:bg-accent-soft transition">Retry</button>
+        <a href="/browse" class="ls-button px-4 py-2 rounded-lg border border-border hover:border-accent text-text transition">Browse</a>
       </div>
     </div>
-
-    <!-- Discover public bundles — the shareable playlists others published -->
-    <div class="mb-10">
-      <div class="flex items-center justify-between mb-3">
-        <h2 class="text-sm font-semibold uppercase tracking-widest text-muted-soft">Discover bundles</h2>
-        <a href="/cookbooks" class="text-xs text-accent hover:opacity-80">Browse all →</a>
-      </div>
-      <p class="text-xs text-muted mb-4">Public, ranked skill bundles you can clone in one line — then subscribe to your fleet.</p>
-      <div id="home-discover" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        <div class="text-sm text-muted py-8 text-center col-span-full" id="home-discover-loading">Loading…</div>
-      </div>
-    </div>
-  </section>
-
-  <script>
-    (async () => {
-      const fetchJson = async (u: string) => {
-        try { const r = await fetch(u, { credentials: 'include' }); return r.ok ? await r.json() : null; }
-        catch { return null; }
-      };
-
-      const me = await fetchJson('/api/auth/me');
-      if (me) {
-        const g = document.getElementById('home-greeting');
-        if (g) g.textContent = `Welcome back, ${(me.display_name || me.email || '').split(' ')[0] || ''}`.trim();
-      }
-
-      // Bundles
-      const cbWrap = document.getElementById('home-bundles');
-      const cbData = await fetchJson('/api/cookbooks');
-      const cbooks = (cbData && cbData.bundles) || [];
-      if (cbWrap) {
-        if (!cbooks.length) {
-          cbWrap.innerHTML = `<a href="/composer" class="col-span-full flex flex-col items-center justify-center gap-2 py-10 rounded-2xl border border-dashed border-border hover:border-accent/50 transition text-center">
-            <span class="text-3xl text-muted-soft">+</span>
-            <span class="text-sm text-text font-medium">Compose your first bundle</span>
-            <span class="text-xs text-muted">Search the catalog, multi-select skills, share one link.</span>
-          </a>`;
-        } else {
-          cbWrap.innerHTML = cbooks.map((cb: any) => `
-            <a href="/cookbooks/view?id=${encodeURIComponent(cb.id)}" class="flex flex-col gap-2 p-5 rounded-2xl bg-bg-card border border-border hover:border-accent/40 transition">
-              <span class="font-semibold text-text truncate">${(cb.name || 'Untitled')}</span>
-              <span class="text-xs text-muted line-clamp-2">${(cb.description || 'No description')}</span>
-              <span class="text-xs text-accent mt-1">Open →</span>
-            </a>`).join('');
-        }
-      }
-
-      // Fleets (net-new web surface in J3; degrade gracefully if route absent)
-      const flWrap = document.getElementById('home-fleets');
-      const flData = await fetchJson('/api/fleets');
-      const fleets = (flData && (flData.fleets || flData.items)) || [];
-      if (flWrap) {
-        if (!fleets.length) {
-          flWrap.innerHTML = `<a href="/fleets" class="col-span-full flex flex-col items-center justify-center gap-2 py-8 rounded-2xl border border-dashed border-border hover:border-accent/50 transition text-center">
-            <span class="text-sm text-text font-medium">Create a fleet</span>
-            <span class="text-xs text-muted">Your team's agents, one bundle, one sync.</span>
-          </a>`;
-        } else {
-          flWrap.innerHTML = fleets.map((f: any) => `
-            <a href="/fleets" class="flex items-center justify-between gap-3 p-5 rounded-2xl bg-bg-card border border-border hover:border-accent/40 transition">
-              <span class="font-semibold text-text truncate">${(f.name || 'Fleet')}</span>
-              <span class="text-xs text-accent">Open →</span>
-            </a>`).join('');
-        }
-      }
-      // Discover — public bundles (the shareable playlists). Anon-OK endpoint.
-      const dWrap = document.getElementById('home-discover');
-      const dData = await fetchJson('/api/cookbooks/discover?sort=installs&limit=6');
-      const discover = (dData && (dData.bundles || dData.items)) || [];
-      if (dWrap) {
-        if (!discover.length) {
-          dWrap.innerHTML = `<a href="/cookbooks" class="col-span-full flex flex-col items-center justify-center gap-2 py-8 rounded-2xl border border-dashed border-border hover:border-accent/50 transition text-center">
-            <span class="text-sm text-text font-medium">Browse public bundles</span>
-            <span class="text-xs text-muted">Curated skill bundles, ranked by installs.</span>
-          </a>`;
-        } else {
-          dWrap.innerHTML = discover.map((cb: any) => {
-            const slug = encodeURIComponent(cb.slug || '');
-            const n = cb.skill_count != null ? `${cb.skill_count} skill${cb.skill_count === 1 ? '' : 's'}` : '';
-            const inst = (cb.installs_total || cb.installs_7d) ? `· ${cb.installs_total || cb.installs_7d} installs` : '';
-            const verified = cb.is_verified ? '<span class="text-accent">✓ verified</span>' : '';
-            return `<a href="/cookbooks/p/${slug}" class="flex flex-col gap-2 p-5 rounded-2xl bg-bg-card border border-border hover:border-accent/40 transition">
-              <span class="font-semibold text-text truncate">${(cb.name || 'Untitled')}</span>
-              <span class="text-xs text-muted line-clamp-2">${(cb.description || 'No description')}</span>
-              <span class="text-[11px] text-muted-soft mt-1">${n} ${inst} ${verified}</span>
-              <span class="text-xs text-accent mt-1">View bundle →</span>
-            </a>`;
-          }).join('');
-        }
-      }
-    })();
-  </script>
+  </main>
 </AppShell>
+
+<script>
+  const API_BASE = (import.meta as any).env?.PUBLIC_RECIPES_API_BASE || 'https://app.loopskill.io';
+  const $ = (id: string) => document.getElementById(id)!;
+  const esc = (s: any) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' } as any)[c]);
+
+  const GRAD: [string, string][] = [['#1fb6c0','#0d7d77'],['#a06bff','#6d28d9'],['#c084fc','#7c3aed'],['#ffb446','#c2410c'],['#ff6e50','#b91c1c'],['#34d399','#0f766e'],['#60a5fa','#1d4ed8']];
+  function hashIdx(s: string, n: number): number { let h = 0; for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0; return h % n; }
+
+  type ShelfType = 'loops' | 'skills' | 'bundles' | 'personalities';
+  const BADGE: Record<ShelfType, string> = { loops: 'Loop', skills: 'Skill', bundles: 'Bundle', personalities: 'Personality' };
+
+  function href(type: ShelfType, item: any): string {
+    if (type === 'loops') return `/loops/run?slug=${encodeURIComponent(item.slug)}`;
+    if (type === 'skills') return `/skills/${encodeURIComponent(item.slug)}`;
+    if (type === 'bundles') return `/bundles/p?slug=${encodeURIComponent(item.slug)}`;
+    return '/browse?type=personalities';
+  }
+  function meta(type: ShelfType, item: any): string {
+    if (type === 'loops') { const n = item.run_count || 0; return n > 0 ? `${n} run${n === 1 ? '' : 's'}` : 'Not yet run'; }
+    if (type === 'skills') {
+      const n = item.install_count_total || item.install_count || 0;
+      const cat = item.category || '';
+      if (n > 0 && cat) return `${cat} · ${n.toLocaleString()} installs`;
+      if (n > 0) return `${n.toLocaleString()} installs`;
+      return cat;
+    }
+    if (type === 'bundles') { const n = item.skill_count; return typeof n === 'number' ? `${n} skill${n === 1 ? '' : 's'}` : ''; }
+    if (type === 'personalities') return item.source || item.role || item.category || '';
+    return '';
+  }
+  function cardHTML(type: ShelfType, item: any): string {
+    const grad = GRAD[hashIdx(item.slug || item.title || 'x', GRAD.length)];
+    const mono = ((item.title || item.slug || 'L').trim()[0] || 'L').toUpperCase();
+    const m = meta(type, item);
+    const ariaLabel = `${BADGE[type]}: ${item.title || item.slug}${m ? '. ' + m : ''}`;
+    return `<a href="${esc(href(type, item))}" class="artifact-card" data-artifact-type="${type}" data-artifact-slug="${esc(item.slug)}" aria-label="${esc(ariaLabel)}">
+      <span class="artifact-cover" style="background:linear-gradient(135deg, ${grad[0]} 0%, ${grad[1]} 100%);">
+        <span class="artifact-badge">${BADGE[type]}</span>
+        <span class="artifact-mono" aria-hidden="true">${esc(mono)}</span>
+      </span>
+      <span class="artifact-title">${esc(item.title || item.slug)}</span>
+      ${m ? `<span class="artifact-meta">${esc(m)}</span>` : ''}
+    </a>`;
+  }
+  function shelfHTML(title: string, type: ShelfType, items: any[]): string {
+    // Council §2: a shelf with zero rows does not render — NOT its header either.
+    if (!items.length) return '';
+    return `<section class="ls-section">
+      <div class="flex items-center justify-between ls-section-header">
+        <h2 class="ls-section-title text-text">${esc(title)}</h2>
+        <a href="/browse?type=${type}" class="text-xs text-accent hover:opacity-80 shrink-0">See all →</a>
+      </div>
+      <div class="shelf-row">${items.map((it) => cardHTML(type, it)).join('')}</div>
+    </section>`;
+  }
+
+  async function fetchJson(u: string): Promise<any> {
+    try {
+      const r = await fetch(u, { credentials: 'include' });
+      return r.ok ? await r.json() : null;
+    } catch { return null; }
+  }
+
+  async function loadShelves() {
+    $('home-empty-all').hidden = true;
+    const wrap = $('home-shelves');
+    wrap.innerHTML = `<div class="ls-body text-muted py-12 text-center">Loading…</div>`;
+
+    // Greeting/subline: member vs anon copy, resolved from /api/auth/me
+    // (client-side per AGENTS.md Trap B — never at build time).
+    const me = await fetchJson(`${API_BASE}/api/auth/me`);
+    const subline = $('home-subline');
+    if (subline) subline.textContent = me ? 'Pick up where your agents left off.' : 'Explore runnable AI-agent artifacts.';
+
+    const [loopsData, skillsData, bundlesDataPrimary, bundlesDataCompat, persData] = await Promise.all([
+      fetchJson(`${API_BASE}/api/loops`),
+      fetchJson(`${API_BASE}/api/skills/search?page_size=12`),
+      fetchJson(`${API_BASE}/api/bundles/discover?sort=installs&limit=12`),
+      fetchJson(`${API_BASE}/api/cookbooks/discover?sort=installs&limit=12`),
+      fetchJson(`${API_BASE}/api/personalities`),
+    ]);
+
+    const loops: any[] = loopsData ? (Array.isArray(loopsData) ? loopsData : (loopsData.loops || loopsData.results || [])) : [];
+    const skills: any[] = skillsData ? (skillsData.results || []) : [];
+    const bundles: any[] = (bundlesDataPrimary && (bundlesDataPrimary.cookbooks || bundlesDataPrimary.bundles))
+      || (bundlesDataCompat && (bundlesDataCompat.cookbooks || bundlesDataCompat.bundles))
+      || [];
+    const personalities: any[] = persData ? (Array.isArray(persData) ? persData : (persData.personalities || persData.results || [])) : [];
+
+    const html =
+      shelfHTML('Popular loops', 'loops', loops.slice(0, 12)) +
+      shelfHTML('Curated skills', 'skills', skills.slice(0, 12)) +
+      shelfHTML('Public bundles', 'bundles', bundles.slice(0, 12)) +
+      shelfHTML('Personalities', 'personalities', personalities.slice(0, 12));
+
+    if (!html) {
+      wrap.innerHTML = '';
+      $('home-empty-all').hidden = false;
+    } else {
+      wrap.innerHTML = html;
+    }
+  }
+
+  $('home-retry').addEventListener('click', loadShelves);
+  loadShelves();
+</script>
