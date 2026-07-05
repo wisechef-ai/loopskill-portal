@@ -30,7 +30,7 @@ export async function getStaticPaths() {
   }
 
   // Always include a base set so pages exist even if API is briefly down at build
-  const seedSlugs = ['client-reporter', 'web-scraper-pro', 'email-composer', 'invoice-automator', 'standup-bot', 'gohighlevel-cli', 'onboarding-wizard', 'seo-audit-engine', 'content-calendar', 'proposal-builder', 'cold-outreach', 'whitelabel-dashboard', 'larry'];
+  const seedSlugs = ['super-memory', 'ruthless-mentor', 'plan-for-goal', 'llm-wiki-hermes', 'hub-search-claude-code', 'loopskill', 'client-reporter', 'web-scraper-pro', 'email-composer', 'invoice-automator', 'standup-bot', 'gohighlevel-cli', 'onboarding-wizard', 'seo-audit-engine', 'content-calendar', 'proposal-builder', 'cold-outreach', 'whitelabel-dashboard', 'larry'];
   const seedSkills = seedSlugs.map(s => ({ slug: s, title: s.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) }));
   const all = [...skills];
   for (const s of seedSkills) {
