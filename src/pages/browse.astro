@@ -106,7 +106,16 @@ const API_BASE = import.meta.env.PUBLIC_RECIPES_API_BASE || 'https://app.loopski
     return '/browse?type=personalities'; // personalities have no detail page yet
   }
   function artifactMeta(type, item) {
-    if (type === 'loops') { const n = item.run_count || 0; return n > 0 ? `${n} run${n === 1 ? '' : 's'}` : 'Not yet run'; }
+    if (type === 'loops') {
+      const n = item.run_count || 0;
+      const cadence = item.schedule_cadence || item.cadence || '';
+      const outcome = item.last_outcome || '';
+      const parts = [];
+      if (cadence) parts.push(cadence);
+      parts.push(n > 0 ? `${n} fleet run${n === 1 ? '' : 's'}` : 'not yet deployed');
+      if (outcome) parts.push(outcome);
+      return parts.join(' · ');
+    }
     if (type === 'skills') {
       const n = item.install_count_total || item.install_count || 0;
       const cat = item.category || '';

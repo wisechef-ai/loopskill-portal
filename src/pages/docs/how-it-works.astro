@@ -36,7 +36,73 @@ import CrossSell from '../../components/CrossSell.astro';
         ones it actually uses. <strong>That's the unlock that makes a marketplace possible.</strong>
       </p>
 
-      <h2>The full install lifecycle</h2>
+      <h2 id="how-loops-work">How loops work — two modes, one product</h2>
+      <p>
+        A <strong>loop</strong> is the artifact type that makes LoopSkill different from a
+        skill marketplace. A loop is a script + prompt + cron designed to <strong>auto-execute,
+        watch, improve, and fix things</strong> by an agent — without user interaction. There
+        are two ways a loop runs, and the distinction matters.
+      </p>
+
+      <h3>Primary mode: autonomous fleet schedule</h3>
+      <p>
+        This is the product. You publish or discover a loop, declare it in a bundle, and your
+        agent fleet pulls it via the GitOps reconcile loop. Each agent runs the loop on its own
+        schedule — every 30 minutes, every night at 03:00, on every commit — and reports the
+        outcome (<code>success</code>, <code>reconcile_failed</code>,
+        <code>rolled_back</code>) back to the registry as telemetry. You see drift, cost per
+        accepted change, and recent outcomes on the fleet dashboard. You schedule it once, then
+        watch outcomes instead of babysitting runs.
+      </p>
+
+      <h3>Secondary mode: hosted test run</h3>
+      <p>
+        This is the test bench. The registry's own runner executes the loop's verification
+        <em>once</em>, under enforced bounds (max turns, tool allow-list, budget, timeout), and
+        hands back an objective <code>&#123;"passed": true&#125;</code> or
+        <code>&#123;"passed": false&#125;</code>. It's how you verify the safety envelope before deploying
+        a loop to your fleet, and it's useful for demos. It is <strong>not</strong> the operating
+        model — it's the proof that the operating model is safe.
+      </p>
+
+      <h3>Worked example: the repo-autopilot loop</h3>
+      <p>
+        The canonical loop is <code>repo-steward-loop</code> — published in the LoopSkill
+        registry, and the same loop that powers the <code>loopskill-repo-autopilot</code> cron
+        on this very fleet. Here's what it does on every 30-minute tick:
+      </p>
+      <ol>
+        <li><strong>Pulls state.</strong> A deterministic pre-script scans all configured repos
+            for open PRs, new issues, and red CI on main.</li>
+        <li><strong>If nothing's actionable</strong> → prints <code>NOTHING_TO_DO</code> and the
+            loop exits silently. Zero tokens spent.</li>
+        <li><strong>Dependabot PRs</strong> → checks CI; if green, squash-merges; if red, requests
+            one rebase (never spam).</li>
+        <li><strong>Small well-defined issues</strong> → branches, implements minimally, runs the
+            repo's own checks, opens a PR referencing the issue. Never self-merges non-trivial work.</li>
+        <li><strong>Red CI on main</strong> → reruns flakes; if structural, opens an issue with the
+            log excerpt.</li>
+        <li><strong>Reports outcome</strong> via the sync-report telemetry pipe — one batched POST
+            per cycle with run results, cron health, and cost.</li>
+      </ol>
+      <p>
+        That entire sequence is a <em>single loop</em>. Nobody clicks "Run." The fleet owner
+        scheduled it once on July 5th and hasn't touched it since. The dashboard shows the run
+        count climbing, outcomes passing, and cost-per-accepted-change trending down. That's the
+        product.
+      </p>
+
+      <div class="bg-bg-card border border-border rounded-2xl p-5 my-6">
+        <p class="text-sm text-muted mb-2"><strong class="text-text">Mental model:</strong></p>
+        <ul class="text-sm text-muted space-y-1">
+          <li><strong class="text-text">Skill</strong> = a capability your agent gains.</li>
+          <li><strong class="text-text">Bundle</strong> = a set of skills you deploy together.</li>
+          <li><strong class="text-text">Loop</strong> = an autonomous operation your fleet runs on schedule.</li>
+          <li><strong class="text-text">Hosted run</strong> = a one-off test to prove the loop is safe.</li>
+        </ul>
+      </div>
+
+            <h2>The full install lifecycle</h2>
       <ol>
         <li><strong>You install the meta-skill once.</strong> Permanent client — one file teaches your agent everything.</li>
         <li><strong>You ask for something new</strong> (e.g. "audit this site's SEO").</li>

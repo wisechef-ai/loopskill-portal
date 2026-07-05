@@ -1,10 +1,10 @@
 ---
-// loopskill_portal_0627 — Loop DETAIL + the "Run this loop" hero interaction.
+// Loop DETAIL: schedule/fleet-first, hosted test run demoted to secondary.
 //
 // Static Astro can't pre-render per-slug routes, so this single page resolves
 // ?slug=<slug> client-side (same pattern as /cookbooks/view). It:
 //   1. fetches GET /api/loops/{slug} (public) → renders the vetted contract
-//   2. exposes "▶ Run this loop" → POST /api/loops/{slug}/run (auth required)
+//   2. exposes "Test hosted run" (secondary) → POST /api/loops/{slug}/run (auth required)
 //      → renders objective passed:true/false + confinement + duration + output
 //   3. shows live ratings and (for signed-in users) a rate control
 //
@@ -19,8 +19,8 @@ const API_BASE = import.meta.env.PUBLIC_RECIPES_API_BASE || "https://app.loopski
 ---
 
 <AppShell mode="public"
-  title="Run this loop — LoopSkill"
-  description="Run a vetted agent loop under enforced safety bounds and get an objective pass/fail."
+  title="Loop detail — LoopSkill"
+  description="A vetted agent loop: what it does, its schedule, fleet state, and safety contract. Schedule it on your fleet or run a one-off hosted test."
   pageType="website"
 >
   <main class="lp-detail max-w-3xl mx-auto px-6 pt-10 pb-24">
@@ -51,32 +51,54 @@ const API_BASE = import.meta.env.PUBLIC_RECIPES_API_BASE || "https://app.loopski
         </details>
       </section>
 
-      <!-- THE HERO: run this loop -->
-      <section class="bg-bg-card border border-accent/40 rounded-2xl p-5 mb-6">
+      <!-- PRIMARY: schedule + fleet state — the operating model -->
+      <section class="bg-bg-card border border-accent/30 rounded-2xl p-5 mb-4">
         <div class="flex items-center justify-between gap-3 mb-3">
-          <h2 class="text-lg font-semibold">Run this loop</h2>
-          <span class="lp-chip" id="lp-mode-chip">verify mode</span>
+          <h2 class="text-sm font-semibold uppercase tracking-wide text-muted">Schedule &amp; fleet</h2>
+          <span class="lp-chip" id="lp-schedule-chip">scheduled loop</span>
         </div>
-        <p class="text-sm text-muted mb-4">
-          Executes the loop's published verification under enforced confinement and
-          returns an objective pass / fail. Your server environment is never inherited.
+        <p class="text-sm text-muted mb-4 leading-relaxed">
+          This loop is built to run <strong class="text-text">on cadence inside your agent fleet</strong> —
+          it pulls, executes, reports outcomes (pass/fail/rolled-back) via telemetry, and stays silent
+          when there's nothing to do. You schedule it once, then watch outcomes instead of babysitting runs.
+        </p>
+        <dl id="lp-schedule" class="grid grid-cols-2 sm:grid-cols-4 gap-y-3 gap-x-4 text-sm mb-4"></dl>
+        <div class="flex flex-col sm:flex-row gap-3">
+          <a id="lp-manifest" href="#"
+            class="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-accent text-bg font-semibold text-sm hover:bg-accent-soft transition">
+            Copy loop manifest
+          </a>
+          <a href="/docs/fleet" class="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg border border-border text-text font-semibold text-sm hover:border-accent transition">
+            How fleet scheduling works
+          </a>
+        </div>
+      </section>
+
+      <!-- SECONDARY: hosted test run — the test bench, not the product -->
+      <section class="bg-bg-card border border-border rounded-2xl p-5 mb-6">
+        <div class="flex items-center justify-between gap-3 mb-3">
+          <h2 class="text-sm font-semibold uppercase tracking-wide text-muted">Hosted test run</h2>
+          <span class="lp-chip">one-off · convenience</span>
+        </div>
+        <p class="text-sm text-muted-soft mb-4">
+          Trigger the loop's verification once on the registry runner to confirm it passes
+          under enforced bounds. Useful for testing — but the real product is fleet scheduling above.
         </p>
 
         <!-- signed-in: can run -->
         <div id="run-authed" class="hidden">
           <button id="run-btn" type="button"
-            class="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-accent text-bg font-semibold text-sm hover:bg-accent-soft transition disabled:opacity-50">
-            ▶ Run this loop
+            class="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-border text-text font-medium text-sm hover:border-accent hover:text-accent transition disabled:opacity-50">
+            ▶ Test hosted run
           </button>
         </div>
 
         <!-- anonymous: must sign in -->
         <div id="run-anon" class="hidden">
           <a id="run-signin" href="/signin"
-            class="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg border border-accent text-accent font-semibold text-sm hover:bg-accent hover:text-bg transition">
-            Sign in to run
+            class="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-border text-muted font-medium text-sm hover:border-accent hover:text-accent transition">
+            Sign in to test
           </a>
-          <p class="text-xs text-muted-soft mt-2">Browsing is free. Running a loop needs a key so runs are attributable.</p>
         </div>
 
         <!-- result -->
@@ -186,6 +208,29 @@ const API_BASE = import.meta.env.PUBLIC_RECIPES_API_BASE || "https://app.loopski
 
     $("rate-summary").textContent = ratingText(loop.rating_avg, loop.rating_count);
 
+    // Schedule + fleet metadata (the primary surface)
+    const sched = $("lp-schedule"); sched.innerHTML = "";
+    dt(sched, "Cadence", loop.schedule_cadence || loop.cadence || "on-demand");
+    dt(sched, "Last outcome", loop.last_outcome || "—");
+    const rc = loop.run_count || 0;
+    dt(sched, "Fleet runs", rc > 0 ? `${rc} run${rc === 1 ? "" : "s"}` : "not yet deployed");
+    dt(sched, "Mode", "autonomous fleet schedule");
+
+    // Manifest copy button — copies a cron-ready snippet (no fake install flow)
+    const manifestBtn = $("lp-manifest");
+    if (manifestBtn) {
+      const snippet = `# ${loop.slug} — scheduled fleet loop\n# Add to your agent's cron/scheduler. The loop pulls, runs, reports outcome.\nloopskill loop run ${loop.slug}`;
+      manifestBtn.setAttribute("data-snippet", snippet);
+      manifestBtn.addEventListener("click", (e) => {
+        e.preventDefault();
+        navigator.clipboard.writeText(snippet).then(() => {
+          const orig = manifestBtn.textContent;
+          manifestBtn.textContent = "✓ Copied manifest";
+          setTimeout(() => { manifestBtn.textContent = orig; }, 2000);
+        }).catch(() => {});
+      });
+    }
+
     resolveAuth();
   }
 
@@ -216,14 +261,14 @@ const API_BASE = import.meta.env.PUBLIC_RECIPES_API_BASE || "https://app.loopski
           body: JSON.stringify({ mode: "verify" }),
         });
       } catch (e) {
-        renderRunError("Network error: " + (e && e.message ? e.message : e)); btn.disabled = false; btn.textContent = "▶ Run this loop"; return;
+        renderRunError("Network error: " + (e && e.message ? e.message : e)); btn.disabled = false; btn.textContent = "▶ Test hosted run"; return;
       }
-      if (res.status === 401) { renderRunError("Your session expired — sign in again to run."); btn.disabled = false; btn.textContent = "▶ Run this loop"; return; }
-      if (res.status === 501) { renderRunError("Agent mode isn't available yet (verify mode only)."); btn.disabled = false; btn.textContent = "▶ Run this loop"; return; }
-      try { out = await res.json(); } catch { renderRunError("Malformed run response."); btn.disabled = false; btn.textContent = "▶ Run this loop"; return; }
-      if (!res.ok) { renderRunError(out && out.detail ? out.detail : `Run failed (${res.status}).`); btn.disabled = false; btn.textContent = "▶ Run this loop"; return; }
+      if (res.status === 401) { renderRunError("Your session expired — sign in again to run."); btn.disabled = false; btn.textContent = "▶ Test hosted run"; return; }
+      if (res.status === 501) { renderRunError("Agent mode isn't available yet (verify mode only)."); btn.disabled = false; btn.textContent = "▶ Test hosted run"; return; }
+      try { out = await res.json(); } catch { renderRunError("Malformed run response."); btn.disabled = false; btn.textContent = "▶ Test hosted run"; return; }
+      if (!res.ok) { renderRunError(out && out.detail ? out.detail : `Run failed (${res.status}).`); btn.disabled = false; btn.textContent = "▶ Test hosted run"; return; }
       renderRun(out);
-      btn.disabled = false; btn.textContent = "▶ Run again";
+      btn.disabled = false; btn.textContent = "▶ Run test again";
     });
   }
 
