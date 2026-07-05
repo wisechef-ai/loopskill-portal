@@ -21,9 +21,15 @@ MIN_BYTES=$((5 * 1024))  # 5 KB
 # Pages that MUST be present after every build.
 # These are the aggregator pages that fetch the full catalog at build time
 # and are most vulnerable to API failures silently producing empty output.
+#
+# feat/spotify-ia (council report §10/§12): skills/index.html is now a thin
+# redirect stub (no longer the catalog aggregator) — the load-bearing pages
+# are browse/index.html, home/index.html, and library/index.html.
 CRITICAL_PAGES=(
   "index.html"
-  "skills/index.html"
+  "browse/index.html"
+  "home/index.html"
+  "library/index.html"
 )
 
 failures=0
@@ -161,15 +167,25 @@ FICTIONAL_DESCRIPTIONS=(
   "Headless scraping with Cloudflare bypass, structured output, and auto-retry."
   "Cognee + Postgres + pgvector wired together. MIT-licensed. The pro_open gateway"
 )
-index_html="$DIST_DIR/index.html"
-if [ -f "$index_html" ]; then
-  for desc in "${FICTIONAL_DESCRIPTIONS[@]}"; do
-    if grep -F -n "$desc" "$index_html" >/dev/null 2>&1; then
-      fail_id "$index_html contains fictional hardcoded fallback description '$desc' — offending line(s):"
-      grep -F -n "$desc" "$index_html" | sed 's/^/    /'
-    fi
-  done
-fi
+# feat/spotify-ia (council report §7 kill-test #2 + §10): extend the guard
+# beyond dist/index.html to the two new hero surfaces — Home shelves and
+# Browse are equally vulnerable to fictional fallback data disguised as real
+# catalog cards.
+FICTIONAL_GUARD_PAGES=(
+  "$DIST_DIR/index.html"
+  "$DIST_DIR/home/index.html"
+  "$DIST_DIR/browse/index.html"
+)
+for guard_page in "${FICTIONAL_GUARD_PAGES[@]}"; do
+  if [ -f "$guard_page" ]; then
+    for desc in "${FICTIONAL_DESCRIPTIONS[@]}"; do
+      if grep -F -n "$desc" "$guard_page" >/dev/null 2>&1; then
+        fail_id "$guard_page contains fictional hardcoded fallback description '$desc' — offending line(s):"
+        grep -F -n "$desc" "$guard_page" | sed 's/^/    /'
+      fi
+    done
+  fi
+done
 
 if [ "$id_failures" -gt 0 ]; then
   echo ""
@@ -227,6 +243,95 @@ if [ "$id_failures" -gt 0 ]; then
 fi
 
 echo "All identity guards passed (canonical origin, robots/sitemap/llms domain, no fictional catalog data)."
+echo ""
+
+# ─────────────────────────────────────────────────────────────────────────
+# Spotify-model IA kill-tests (feat/spotify-ia, council report §7/§10)
+#
+# These are the build-checkable subset of the council's 12 kill-tests.
+# Runtime-only checks (kill-tests #1, #6, #7, #8 — empty-shelf behavior,
+# grouped-section caps, keyboard nav) are verified by curling the served
+# dist/ output and are NOT re-implemented here; see the PR body for that
+# evidence. This block covers the three that are cheaply build-checkable:
+#   (g) rail has exactly 3 primary links in dist/home/index.html
+#   (h) redirect stubs exist for every §5 legacy route
+#   (i) dist/skills/<slug>/ detail dirs still exist (§8 SEO — must not be
+#       swept up by the aggregator cut)
+# ─────────────────────────────────────────────────────────────────────────
+
+ia_failures=0
+fail_ia() {
+  echo "IA-FAIL: $1"
+  ia_failures=$((ia_failures + 1))
+}
+
+# (g) Rail has exactly 3 primary nav destinations (Home / Browse / Your
+# Library). We count anchors carrying the shared `rail-link` class emitted
+# by AppShell.astro's primary <nav aria-label="Primary">, then normalize by
+# href so the anon/member dual-render of "Your Library" (one goes to
+# /signin?next=/library, the other to /library — only one is ever visible
+# at a time via [data-shell-anon]/[data-shell-member], but AGENTS.md Trap C
+# requires BOTH to exist in static HTML) counts as ONE destination, not two.
+# The Pro pill and footer/account links intentionally do NOT carry the
+# rail-link class (council §1: Pricing is a smaller pill, never primary nav).
+home_html="$DIST_DIR/home/index.html"
+if [ -f "$home_html" ]; then
+  rail_dest_count=$(grep -oE '<a href="[^"]*"[^>]*class="rail-link[^"]*"' "$home_html" \
+    | grep -oE 'href="[^"]*"' \
+    | sed -E 's#href="/signin\?next=/library"#href="/library"#' \
+    | sort -u | wc -l | tr -d ' ')
+  if [ "$rail_dest_count" -ne 3 ]; then
+    fail_ia "$home_html has $rail_dest_count distinct rail-link primary nav destinations — expected exactly 3 (Home, Browse, Your Library)"
+  else
+    echo "OK:   $home_html has exactly 3 primary rail destinations"
+  fi
+else
+  fail_ia "$home_html is MISSING — cannot verify rail primary-link count"
+fi
+
+# (h) Redirect stubs exist for every §5 legacy route migration target.
+REDIRECT_STUB_PAGES=(
+  "skills/index.html"
+  "loops/index.html"
+  "bundles/index.html"
+  "personalities/index.html"
+  "composer/index.html"
+  "fleets/index.html"
+  "cockpit/index.html"
+  "carousel/index.html"
+  "cookbooks/index.html"
+  "cookbooks/view/index.html"
+  "cookbooks/p/index.html"
+)
+for page in "${REDIRECT_STUB_PAGES[@]}"; do
+  path="$DIST_DIR/$page"
+  if [ ! -f "$path" ]; then
+    fail_ia "$path is MISSING (redirect stub not rendered — a legacy bookmark would 404 until PR 2's Caddy redirects land)"
+  elif ! grep -q 'noindex' "$path"; then
+    fail_ia "$path does not carry robots noindex — a redirect stub must never be indexed as content"
+  else
+    echo "OK:   $path present (redirect stub)"
+  fi
+done
+
+# (i) dist/skills/<slug>/ detail dirs must still exist — the aggregator cut
+# (skills/index.html → redirect stub) must NOT have swept up the per-skill
+# detail pages (council §8 SEO: these must stay live).
+skill_detail_count=$(find "$DIST_DIR/skills" -mindepth 2 -maxdepth 2 -name 'index.html' 2>/dev/null | wc -l | tr -d ' ')
+if [ "$skill_detail_count" -lt 1 ]; then
+  fail_ia "No dist/skills/<slug>/index.html detail pages found — the aggregator cut may have swept up per-skill SEO pages (council §8 forbids this)"
+else
+  echo "OK:   $skill_detail_count dist/skills/<slug>/ detail page(s) present"
+fi
+
+if [ "$ia_failures" -gt 0 ]; then
+  echo ""
+  echo "BLOCKED: $ia_failures Spotify-IA kill-test(s) failed. Deploy aborted."
+  echo "See feat/spotify-ia PR (council report §7/§10) for context."
+  exit 1
+fi
+
+echo "All Spotify-IA kill-tests passed (rail link count, redirect stubs, skill detail pages)."
 echo ""
 echo "Safe to deploy."
 exit 0

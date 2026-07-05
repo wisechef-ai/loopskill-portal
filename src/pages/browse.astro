@@ -1,0 +1,340 @@
+---
+// /browse — search-first unified catalog (feat/spotify-ia, council report §3).
+//
+// Replaces the four scattered aggregator pages (/skills, /loops, /bundles,
+// /personalities) with ONE search-first surface: tabs All/Loops/Skills/
+// Bundles/Personalities via ?type=, live GET /api/search?q= debounced
+// 180-250ms, grouped sections on the All tab (max 6 desktop/4 mobile per
+// group, "See all <type>" preserving q), keyboard nav (/ focus, Esc clear,
+// arrows move tabs), aria-live count announcements.
+//
+// AGENTS.md: NO build-time user-data fetch — this is entirely client-fetched
+// (anonymous, public endpoints only). Static shell renders instantly; JS
+// hydrates results. mode="public" — anon-OK, indexable.
+//
+// Canonical handling (council §8): each tab sets its OWN canonical — either
+// /browse?type=<x> explicitly, or plain /browse for the All tab only. We do
+// NOT collapse every tab to bare /browse (that would tell search engines
+// four different pages are the same page).
+
+import AppShell from '../layouts/AppShell.astro';
+
+const API_BASE = import.meta.env.PUBLIC_RECIPES_API_BASE || 'https://app.loopskill.io';
+// NOTE: this is a static (SSG) page — Astro.request.url carries no query
+// string at build time, so the AppShell-emitted <link rel="canonical"> is
+// always the bare /browse origin for the file dist/browse/index.html. That
+// IS the correct "plain /browse for the All tab" behavior (council §8); the
+// per-tab canonical (/browse?type=X) is set client-side by updateCanonical()
+// below when the visitor switches tabs, since Astro can't fork static output
+// on a query string. We deliberately do NOT emit a second static
+// <link rel="canonical"> here — AppShell already emits exactly one, and
+// scripts/assert-dist.sh's canonical guard expects exactly one per page.
+---
+
+<AppShell mode="public"
+  title="Browse — LoopSkill"
+  description="Search loops, skills, bundles, and personalities in one place. Live results, no account needed."
+  pageType="website"
+  active="browse"
+>
+  <main class="ls-page max-w-6xl mx-auto pb-24">
+    <header class="mb-6">
+      <h1 class="ls-page-title text-text">Browse</h1>
+    </header>
+
+    <!-- Search-first: full-width input is the first control. -->
+    <div class="mb-4">
+      <div class="relative">
+        <svg width="16" height="16" viewBox="0 0 20 20" fill="none" aria-hidden="true"
+             class="absolute left-4 top-1/2 -translate-y-1/2 text-muted-soft pointer-events-none">
+          <path d="M8.5 14a5.5 5.5 0 100-11 5.5 5.5 0 000 11zM17 17l-3.5-3.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+        </svg>
+        <input id="browse-search" type="search" placeholder="Search loops, skills, bundles, personalities"
+               autocomplete="off"
+               class="w-full pl-11 pr-10 py-3 rounded-lg bg-bg-card border border-border text-base text-text placeholder:text-muted-soft focus:outline-none focus:border-accent transition" />
+        <button id="browse-search-clear" type="button" aria-label="Clear search"
+                class="hidden absolute right-3 top-1/2 -translate-y-1/2 text-muted-soft hover:text-text p-1">
+          <svg width="14" height="14" viewBox="0 0 18 18" fill="none" aria-hidden="true"><path d="M4 4L14 14M14 4L4 14" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+        </button>
+      </div>
+      <p id="browse-live-count" class="sr-only" aria-live="polite"></p>
+    </div>
+
+    <!-- Segmented tab bar -->
+    <div class="mb-8">
+      <div class="seg-tabs" role="tablist" aria-label="Filter by type" id="browse-tabs">
+        <button type="button" role="tab" class="seg-tab" data-type="all">All</button>
+        <button type="button" role="tab" class="seg-tab" data-type="loops">Loops</button>
+        <button type="button" role="tab" class="seg-tab" data-type="skills">Skills</button>
+        <button type="button" role="tab" class="seg-tab" data-type="bundles">Bundles</button>
+        <button type="button" role="tab" class="seg-tab" data-type="personalities">Personalities</button>
+      </div>
+    </div>
+
+    <div id="browse-loading" class="ls-body text-muted py-12 text-center">Loading…</div>
+    <div id="browse-error" hidden class="ls-body text-muted py-12 text-center">
+      Couldn't load results. <button id="browse-retry" type="button" class="text-accent hover:underline">Retry</button>
+    </div>
+    <div id="browse-empty" hidden class="ls-body text-muted py-16 text-center"></div>
+    <div id="browse-results"></div>
+  </main>
+</AppShell>
+
+<script define:vars={{ API_BASE }}>
+  const $ = (id) => document.getElementById(id);
+  const TYPES = ['all', 'loops', 'skills', 'bundles', 'personalities'];
+  const TYPE_LABEL = { all: 'All', loops: 'Loops', skills: 'Skills', bundles: 'Bundles', personalities: 'Personalities' };
+  const TYPE_SINGULAR = { loops: 'Loop', skills: 'Skill', bundles: 'Bundle', personalities: 'Personality' };
+  // Fixed group order for the All tab (council §3).
+  const GROUP_ORDER = ['loops', 'skills', 'bundles', 'personalities'];
+  const MAX_DESKTOP = 6;
+  const MAX_MOBILE = 4;
+
+  function isMobile() { return window.innerWidth < 640; }
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
+
+  // ── deterministic gradient (mirrors src/lib/artifactCard.ts — same
+  // ArtifactCard visual system, string-templated here since this is a
+  // define:vars inline script, not a module import). ──
+  const GRAD = [['#1fb6c0','#0d7d77'],['#a06bff','#6d28d9'],['#c084fc','#7c3aed'],['#ffb446','#c2410c'],['#ff6e50','#b91c1c'],['#34d399','#0f766e'],['#60a5fa','#1d4ed8']];
+  function hashIdx(s, n) { let h = 0; for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0; return h % n; }
+
+  function artifactHref(type, item) {
+    if (type === 'loops') return `/loops/run?slug=${encodeURIComponent(item.slug)}`;
+    if (type === 'skills') return `/skills/${encodeURIComponent(item.slug)}`;
+    if (type === 'bundles') return `/bundles/p?slug=${encodeURIComponent(item.slug)}`;
+    return '/browse?type=personalities'; // personalities have no detail page yet
+  }
+  function artifactMeta(type, item) {
+    if (type === 'loops') { const n = item.run_count || 0; return n > 0 ? `${n} run${n === 1 ? '' : 's'}` : 'Not yet run'; }
+    if (type === 'skills') {
+      const n = item.install_count_total || item.install_count || 0;
+      const cat = item.category || '';
+      if (n > 0 && cat) return `${cat} · ${n.toLocaleString()} installs`;
+      if (n > 0) return `${n.toLocaleString()} installs`;
+      return cat;
+    }
+    if (type === 'bundles') { const n = item.skill_count; return typeof n === 'number' ? `${n} skill${n === 1 ? '' : 's'}` : ''; }
+    if (type === 'personalities') return item.source || item.role || item.category || '';
+    return '';
+  }
+  function artifactCardHTML(type, item, mode) {
+    const grad = GRAD[hashIdx(item.slug || item.title || 'x', GRAD.length)];
+    const mono = ((item.title || item.slug || 'L').trim()[0] || 'L').toUpperCase();
+    const meta = artifactMeta(type, item);
+    const desc = mode === 'grid' ? (item.description || '') : '';
+    const ariaLabel = `${TYPE_SINGULAR[type] || 'Item'}: ${item.title || item.slug}${meta ? '. ' + meta : ''}`;
+    return `<a href="${esc(artifactHref(type, item))}" class="artifact-card" data-artifact-type="${type}" data-artifact-slug="${esc(item.slug)}" aria-label="${esc(ariaLabel)}">
+      <span class="artifact-cover" style="background:linear-gradient(135deg, ${grad[0]} 0%, ${grad[1]} 100%);">
+        <span class="artifact-badge">${TYPE_SINGULAR[type] || ''}</span>
+        <span class="artifact-mono" aria-hidden="true">${esc(mono)}</span>
+      </span>
+      <span class="artifact-title">${esc(item.title || item.slug)}</span>
+      ${meta ? `<span class="artifact-meta">${esc(meta)}</span>` : ''}
+      ${desc ? `<span class="artifact-desc">${esc(desc)}</span>` : ''}
+    </a>`;
+  }
+
+  // ── URL state ──────────────────────────────────────────────────────────
+  function currentParams() {
+    const p = new URLSearchParams(location.search);
+    let type = (p.get('type') || 'all').toLowerCase();
+    if (!TYPES.includes(type)) type = 'all';
+    const q = p.get('q') || '';
+    return { type, q };
+  }
+  function pushState(type, q, replace) {
+    const p = new URLSearchParams();
+    if (type && type !== 'all') p.set('type', type);
+    if (q) p.set('q', q);
+    const qs = p.toString();
+    const url = qs ? `${location.pathname}?${qs}` : location.pathname;
+    const fn = replace ? 'replaceState' : 'pushState';
+    history[fn]({}, '', url);
+    updateCanonical(type);
+  }
+  function updateCanonical(type) {
+    let link = document.querySelector('link[rel="canonical"]');
+    if (!link) { link = document.createElement('link'); link.rel = 'canonical'; document.head.appendChild(link); }
+    link.href = type === 'all' ? 'https://app.loopskill.io/browse' : `https://app.loopskill.io/browse?type=${type}`;
+  }
+
+  let state = currentParams();
+  let seq = 0;
+
+  // ── Tabs ───────────────────────────────────────────────────────────────
+  const tabsWrap = $('browse-tabs');
+  const tabButtons = Array.from(tabsWrap.querySelectorAll('.seg-tab'));
+  function syncTabsUI() {
+    tabButtons.forEach((b) => {
+      const on = b.dataset.type === state.type;
+      b.setAttribute('aria-selected', on ? 'true' : 'false');
+      b.setAttribute('tabindex', on ? '0' : '-1');
+    });
+  }
+  tabButtons.forEach((b) => {
+    b.addEventListener('click', () => {
+      if (state.type === b.dataset.type) return;
+      state.type = b.dataset.type;
+      pushState(state.type, state.q);
+      syncTabsUI();
+      load();
+    });
+  });
+  // Arrow-key tab navigation.
+  tabsWrap.addEventListener('keydown', (e) => {
+    if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+    e.preventDefault();
+    const idx = TYPES.indexOf(state.type);
+    const next = e.key === 'ArrowRight' ? (idx + 1) % TYPES.length : (idx - 1 + TYPES.length) % TYPES.length;
+    state.type = TYPES[next];
+    pushState(state.type, state.q);
+    syncTabsUI();
+    tabButtons[next].focus();
+    load();
+  });
+
+  // ── Search input ───────────────────────────────────────────────────────
+  const input = $('browse-search');
+  const clearBtn = $('browse-search-clear');
+  let debounceTimer;
+  input.value = state.q;
+  clearBtn.classList.toggle('hidden', !state.q);
+
+  input.addEventListener('input', () => {
+    const q = input.value.trim();
+    clearBtn.classList.toggle('hidden', !q);
+    state.q = q;
+    pushState(state.type, state.q, true);
+    if (debounceTimer) clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(load, 220); // 180-250ms window
+  });
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      if (input.value) { input.value = ''; input.dispatchEvent(new Event('input')); }
+      else { input.blur(); }
+    }
+  });
+  clearBtn.addEventListener('click', () => {
+    input.value = ''; input.focus();
+    input.dispatchEvent(new Event('input'));
+  });
+
+  // Global "/" focuses search unless another input is focused.
+  document.addEventListener('keydown', (e) => {
+    if (e.key !== '/') return;
+    const el = document.activeElement;
+    const tag = el && el.tagName;
+    if (tag === 'INPUT' || tag === 'TEXTAREA' || (el && el.isContentEditable)) return;
+    e.preventDefault();
+    input.focus();
+  });
+
+  // ── Fetch + render ─────────────────────────────────────────────────────
+  function show(id) { const e = $(id); if (e) e.hidden = false; }
+  function hide(id) { const e = $(id); if (e) e.hidden = true; }
+
+  async function fetchSearch(q) {
+    const url = `${API_BASE}/api/search?q=${encodeURIComponent(q || '')}&limit=50`;
+    const r = await fetch(url);
+    if (!r.ok) throw new Error(`API ${r.status}`);
+    return r.json();
+  }
+  // Empty-query browse defaults per type (council §3): fall back to the
+  // existing per-type endpoints when q is empty.
+  async function fetchBrowseDefaults() {
+    const [loopsR, skillsR, bundlesR, persR] = await Promise.allSettled([
+      fetch(`${API_BASE}/api/loops`).then((r) => (r.ok ? r.json() : null)),
+      fetch(`${API_BASE}/api/skills/search?page_size=24`).then((r) => (r.ok ? r.json() : null)),
+      fetch(`${API_BASE}/api/bundles/discover?sort=installs&limit=24`).then((r) => (r.ok ? r.json() : null)),
+      fetch(`${API_BASE}/api/personalities`).then((r) => (r.ok ? r.json() : null)),
+    ]);
+    const loops = loopsR.status === 'fulfilled' && loopsR.value ? (Array.isArray(loopsR.value) ? loopsR.value : (loopsR.value.loops || loopsR.value.results || [])) : [];
+    const skills = skillsR.status === 'fulfilled' && skillsR.value ? (skillsR.value.results || []) : [];
+    const bundles = bundlesR.status === 'fulfilled' && bundlesR.value ? (bundlesR.value.cookbooks || bundlesR.value.bundles || []) : [];
+    const personalities = persR.status === 'fulfilled' && persR.value ? (Array.isArray(persR.value) ? persR.value : (persR.value.personalities || persR.value.results || [])) : [];
+    return { loops, skills, bundles, personalities };
+  }
+
+  function renderGroup(type, items, mode, seeAllQ) {
+    if (!items.length) return '';
+    const max = isMobile() ? MAX_MOBILE : MAX_DESKTOP;
+    const shown = items.slice(0, max);
+    const label = state.q
+      ? TYPE_LABEL[type]
+      : ({ loops: 'Popular loops', skills: 'Curated skills', bundles: 'Public bundles', personalities: 'Personalities' })[type];
+    const seeAll = items.length > max || mode === 'all'
+      ? `<a href="/browse?type=${type}${seeAllQ ? '&q=' + encodeURIComponent(seeAllQ) : ''}" class="text-xs text-accent hover:opacity-80 shrink-0">See all ${TYPE_LABEL[type].toLowerCase()} →</a>`
+      : '';
+    return `<section class="ls-section">
+      <div class="flex items-center justify-between ls-section-header">
+        <h2 class="ls-section-title text-text">${esc(label)}</h2>
+        ${seeAll}
+      </div>
+      <div class="${mode === 'grid-only' ? 'artifact-grid' : 'shelf-row'}">
+        ${shown.map((it) => artifactCardHTML(type, it, mode === 'grid-only' ? 'grid' : 'shelf')).join('')}
+      </div>
+    </section>`;
+  }
+
+  async function load() {
+    const mySeq = ++seq;
+    hide('browse-error'); hide('browse-empty');
+    show('browse-loading');
+    $('browse-results').innerHTML = '';
+
+    let data;
+    try {
+      data = state.q ? await fetchSearch(state.q) : await fetchBrowseDefaults();
+    } catch (e) {
+      if (mySeq !== seq) return;
+      hide('browse-loading');
+      show('browse-error');
+      return;
+    }
+    if (mySeq !== seq) return;
+    hide('browse-loading');
+
+    const byType = {
+      loops: data.loops || [],
+      skills: data.skills || [],
+      bundles: data.bundles || data.cookbooks || [],
+      personalities: data.personalities || [],
+    };
+
+    const totalCount = Object.values(byType).reduce((a, arr) => a + arr.length, 0);
+    const countMsg = state.q
+      ? `${totalCount} result${totalCount === 1 ? '' : 's'} for "${state.q}"`
+      : `${totalCount} item${totalCount === 1 ? '' : 's'}`;
+    $('browse-live-count').textContent = countMsg;
+
+    const results = $('browse-results');
+
+    if (state.type === 'all') {
+      if (totalCount === 0) {
+        show('browse-empty');
+        $('browse-empty').textContent = state.q ? `No results for "${state.q}"` : 'Nothing is available right now.';
+        return;
+      }
+      results.innerHTML = GROUP_ORDER.map((t) => renderGroup(t, byType[t], 'all', state.q)).join('');
+      return;
+    }
+
+    // Single-type tab → grid of results for that type only.
+    const items = byType[state.type] || [];
+    if (!items.length) {
+      show('browse-empty');
+      $('browse-empty').textContent = state.q ? `No results for "${state.q}"` : 'Nothing is available right now.';
+      return;
+    }
+    const grid = items.map((it) => artifactCardHTML(state.type, it, 'grid')).join('');
+    results.innerHTML = `<div class="artifact-grid">${grid}</div>`;
+  }
+
+  $('browse-retry').addEventListener('click', load);
+
+  syncTabsUI();
+  updateCanonical(state.type);
+  load();
+  window.addEventListener('resize', () => { /* recompute max on next load */ });
+</script>

@@ -116,3 +116,110 @@ body {
 .prose a { color: var(--color-accent); text-decoration: underline; text-underline-offset: 3px; }
 .prose ul li { padding-left: 1.25rem; position: relative; margin-bottom: 0.375rem; }
 .prose ul li::before { content: '—'; position: absolute; left: 0; color: var(--color-muted); }
+
+/* ─────────────────────────────────────────────────────────────────────────
+ * Spotify-model IA — shared type scale, spacing rhythm, ArtifactCard, Shelf,
+ * segmented tabs, rail active-state (feat/spotify-ia, council report §1/§6/§8).
+ * ONE source of truth for these tokens — app surfaces (Home, Browse, Library)
+ * must use these classes rather than ad-hoc Tailwind text sizes so the whole
+ * redesign shares one card system + one type scale (§8 visual-consistency
+ * kill condition).
+ * ───────────────────────────────────────────────────────────────────────── */
+
+/* Type scale (council §6, Inter) */
+.ls-page-title    { font-size: 2rem;    line-height: 2.375rem; font-weight: 750; letter-spacing: 0; }
+.ls-section-title { font-size: 1rem;    line-height: 1.5rem;   font-weight: 700; }
+.ls-card-title    { font-size: 0.875rem; line-height: 1.125rem; font-weight: 700; }
+.ls-body          { font-size: 0.875rem; line-height: 1.375rem; font-weight: 400; }
+.ls-meta          { font-size: 0.75rem;  line-height: 1rem;     font-weight: 500; color: rgba(255,255,255,0.58); }
+.ls-eyebrow2      { font-size: 0.625rem; line-height: 0.75rem;  font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; }
+.ls-button        { font-size: 0.8125rem; line-height: 1.125rem; font-weight: 700; }
+
+/* Spacing rhythm */
+.ls-page { padding-left: 24px; padding-right: 24px; padding-top: 32px; }
+@media (max-width: 640px) { .ls-page { padding-left: 16px; padding-right: 16px; padding-top: 20px; } }
+.ls-section { margin-bottom: 40px; }
+@media (max-width: 640px) { .ls-section { margin-bottom: 32px; } }
+.ls-section-header { margin-bottom: 12px; }
+
+/* ── ArtifactCard — ONE card system shared by Home shelves + Browse grid ── */
+.artifact-card {
+  display: flex; flex-direction: column; width: 176px; flex-shrink: 0;
+  scroll-snap-align: start; text-decoration: none; outline-offset: 3px;
+}
+@media (max-width: 640px) { .artifact-card { width: 148px; } }
+.artifact-card .artifact-cover {
+  position: relative; width: 100%; aspect-ratio: 1/1; border-radius: 8px;
+  background: #161616; border: 1px solid rgba(255,255,255,0.08);
+  overflow: hidden; transition: transform .18s ease, border-color .18s ease, background-color .18s ease;
+}
+.artifact-card:hover .artifact-cover,
+.artifact-card:focus-visible .artifact-cover {
+  transform: translateY(-2px); border-color: rgba(255,209,102,0.4); background-color: #1a1a1a;
+}
+.artifact-card:focus-visible { outline: 2px solid #ffd166; border-radius: 8px; }
+.artifact-card .artifact-title {
+  margin-top: 10px; font-size: 14px; line-height: 18px; font-weight: 700; color: #f5f5f5;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+  transition: color .18s ease;
+}
+.artifact-card:hover .artifact-title,
+.artifact-card:focus-visible .artifact-title { color: #ffd166; }
+.artifact-card .artifact-meta {
+  margin-top: 4px; font-size: 12px; line-height: 16px; font-weight: 500; color: rgba(255,255,255,0.58);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.artifact-card .artifact-desc {
+  margin-top: 4px; font-size: 12px; line-height: 17px; color: rgba(255,255,255,0.42);
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+.artifact-card .artifact-badge {
+  position: absolute; top: 6px; left: 6px; font-size: 10px; line-height: 12px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: .08em; padding: 2px 6px; border-radius: 4px;
+  background: rgba(0,0,0,0.5); color: #fff; backdrop-filter: blur(4px); pointer-events: none;
+}
+.artifact-card .artifact-mono {
+  position: absolute; inset: 0; display: flex; align-items: flex-end; justify-content: flex-start;
+  padding: 0.5rem 0.6rem; font-size: 3.4rem; font-weight: 800; line-height: 0.8;
+  color: rgba(255,255,255,0.92); letter-spacing: -0.02em; text-shadow: 0 2px 10px rgba(0,0,0,0.3);
+  pointer-events: none;
+}
+
+/* Grid variant (Browse) */
+.artifact-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 20px;
+}
+@media (max-width: 640px) { .artifact-grid { gap: 14px; } }
+.artifact-grid .artifact-card { width: auto; max-width: 240px; }
+
+/* Shelf — one consistent horizontal-scroll component */
+.shelf-row {
+  display: flex; gap: 16px; overflow-x: auto; scroll-snap-type: x mandatory;
+  overscroll-behavior-x: contain; scrollbar-width: none; padding-bottom: 2px;
+}
+.shelf-row::-webkit-scrollbar { display: none; }
+@media (max-width: 640px) { .shelf-row { gap: 12px; } }
+
+/* Segmented tab bar (Browse) */
+.seg-tabs {
+  display: inline-flex; height: 36px; border-radius: 999px; background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08); padding: 3px; gap: 2px; overflow-x: auto; scrollbar-width: none;
+}
+.seg-tabs::-webkit-scrollbar { display: none; }
+.seg-tab {
+  display: inline-flex; align-items: center; padding: 0 14px; border-radius: 999px;
+  font-size: 13px; font-weight: 600; color: rgba(255,255,255,0.64); background: transparent;
+  border: none; cursor: pointer; transition: all .15s; white-space: nowrap;
+}
+.seg-tab[aria-selected="true"] { background: rgba(255,209,102,0.12); color: #ffd166; }
+.seg-tab:hover:not([aria-selected="true"]) { color: #f5f5f5; }
+
+/* Rail active state (council §1) */
+.rail-link { position: relative; }
+.rail-link.rail-active { background: rgba(255,209,102,0.12); color: #ffffff; }
+.rail-link.rail-active::before {
+  content: ''; position: absolute; left: 0; top: 6px; bottom: 6px; width: 3px;
+  border-radius: 2px; background: #ffd166;
+}
+.rail-link.rail-active .rail-icon { color: #ffd166; }
+.rail-link:not(.rail-active):hover { background: rgba(255,255,255,0.055); color: #f5f5f5; }
