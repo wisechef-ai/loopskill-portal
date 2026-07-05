@@ -1,0 +1,258 @@
+---
+// P0 fix (2026-07-05, feat/bundles-public-pages) — PUBLIC bundle page: /bundles/p
+//
+// Fixes the P0 defect: the homepage's two bundle cards linked to the path
+// form /bundles/p/{slug}, which 404'd because no /bundles pages existed at
+// all in this portal. This page is the query-param permalink target
+// (mirrors cookbooks/p.astro exactly) — the homepage cards now link here as
+// /bundles/p?slug={slug} (see index.astro change in this same PR).
+//
+// Data source: GET /api/bundles/public/{slug} (anonymous; verified live
+// 2026-07-05 — HTTP 200 JSON {slug,name,description,skill_count,skills[],
+// ref,...} for dev-agent-essentials and research-and-report, the exact two
+// slugs the homepage cards reference). 404 unless the bundle's
+// visibility='public'.
+//
+// Static Astro can't pre-render per-slug routes without a build-time fetch
+// (AGENTS.md build-time fetch ban — no getStaticPaths enumeration here), so
+// the page lives at /bundles/p/?slug=<slug>. A Caddy rewrite
+// (/bundles/p/<slug> → /bundles/p/?slug=<slug>) would additionally support
+// the OLD path-form URL for any already-shared links (see PR body for the
+// exact Caddyfile lines — out of repo scope). The client also resolves the
+// slug from the trailing path segment as a fallback.
+
+import AppShell from "../../layouts/AppShell.astro";
+
+const API_BASE = import.meta.env.PUBLIC_RECIPES_API_BASE || "https://app.loopskill.io";
+---
+
+<AppShell mode="public"
+  title="Bundle — LoopSkill"
+  description="A public, security-vetted skill stack for AI agents. Compose the whole bundle into your agent with one MCP line."
+  pageType="product"
+>
+  <main class="bd-pub max-w-3xl mx-auto px-6 pt-12 pb-20">
+    <a href="/bundles" class="text-xs text-muted hover:text-accent transition inline-flex items-center gap-1.5 mb-6">← Discover bundles</a>
+
+    <!-- States -->
+    <section id="state-loading" class="text-muted text-sm py-10">Loading bundle…</section>
+
+    <section id="state-notfound" hidden class="bg-bg-card border border-border rounded-2xl p-8 text-center">
+      <h1 class="text-2xl font-semibold mb-2">Bundle not found</h1>
+      <p class="text-sm text-muted mb-5">This bundle doesn't exist or isn't public.</p>
+      <a href="/bundles" class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-accent text-bg font-semibold text-sm hover:bg-accent-soft transition">Browse public bundles</a>
+    </section>
+
+    <!-- Honest failure state — never fabricate bundle content when the fetch fails. -->
+    <section id="state-error" hidden class="bg-bg-card border border-red-500/40 rounded-2xl p-6">
+      <h2 class="text-lg font-semibold mb-2">Couldn't load bundle</h2>
+      <p id="error-detail" class="text-sm text-muted"></p>
+    </section>
+
+    <!-- Loaded -->
+    <div id="content" hidden>
+      <header class="flex flex-col gap-3 mb-8">
+        <div class="flex items-center gap-2">
+          <span class="badge badge-public">Public bundle</span>
+          <span id="bd-by" class="text-xs text-muted-soft"></span>
+        </div>
+        <h1 id="bd-name" class="text-3xl md:text-4xl font-semibold tracking-tight">Bundle</h1>
+        <p id="bd-desc" class="text-muted leading-relaxed"></p>
+        <div id="bd-stats" class="text-sm text-muted-soft flex items-center gap-4 flex-wrap"></div>
+      </header>
+
+      <!-- THE GTM GATE: one copy-paste line that composes the whole stack. -->
+      <section class="bg-bg-card border border-accent/30 rounded-2xl p-6 mb-10">
+        <div class="flex items-center justify-between gap-3 mb-3 flex-wrap">
+          <h2 class="text-base font-semibold">Install this whole stack — one line</h2>
+          <span class="text-[11px] text-muted-soft">paste to your agent</span>
+        </div>
+        <div class="relative">
+          <pre class="bg-[#0d0d0d] border border-border rounded-xl p-4 pr-12 text-sm text-accent overflow-x-auto"><code id="clone-line">recipes_install_from_cookbook from "cookbook://…"</code></pre>
+          <button id="copy-btn" class="absolute top-3 right-3 px-2.5 py-1 rounded-md bg-bg-elev border border-border text-xs text-muted hover:text-accent hover:border-accent/40 transition" type="button">Copy</button>
+        </div>
+        <p class="text-xs text-muted-soft mt-3">
+          Your agent runs this over MCP (StreamableHTTP at <code>app.loopskill.io/api/mcp/http</code>) and pulls every skill below in a single call. No account required to install free skills.
+        </p>
+
+        <!-- Native skill-bundle install (agentskills.io / .well-known) -->
+        <div class="mt-5 pt-5 border-t border-border-soft">
+          <div class="flex items-center justify-between gap-3 mb-2 flex-wrap">
+            <h3 class="text-sm font-semibold text-text">…or install as a skill bundle</h3>
+            <span class="text-[11px] text-muted-soft">Hermes · Claude Code · any agentskills.io agent</span>
+          </div>
+          <div class="relative">
+            <pre class="bg-[#0d0d0d] border border-border rounded-xl p-4 pr-12 text-sm text-cool overflow-x-auto"><code id="wellknown-line">Install the agentskills.io skill bundle from app.loopskill.io/api/bundles/public/…</code></pre>
+            <button id="copy-wk-btn" class="absolute top-3 right-3 px-2.5 py-1 rounded-md bg-bg-elev border border-border text-xs text-muted hover:text-cool hover:border-cool/40 transition" type="button">Copy</button>
+          </div>
+          <p class="text-xs text-muted-soft mt-3">
+            Standards-based install via the open <a href="https://agentskills.io/specification" class="text-cool hover:underline" target="_blank" rel="noopener">agentskills.io</a> <code>.well-known/skills</code> convention — the whole bundle lands as native skills in your agent. Free skills install verbatim; paid skills ship a locked pointer until you install with a LoopSkill key.
+          </p>
+        </div>
+      </section>
+
+      <!-- Skill list -->
+      <section>
+        <h2 class="text-sm font-medium text-muted-soft uppercase tracking-wide mb-3">Skills in this bundle</h2>
+        <div id="bd-empty" hidden class="bg-bg-card border border-border rounded-2xl p-8 text-center text-sm text-muted">
+          This bundle has no skills yet.
+        </div>
+        <ul id="skills-list" class="flex flex-col gap-2"></ul>
+      </section>
+
+      <!-- CTA footer -->
+      <section class="mt-12 bg-bg-card border border-border rounded-2xl p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div>
+          <p class="font-semibold mb-1">Build your own bundle</p>
+          <p class="text-sm text-muted">Compose a security-vetted skill stack and share it as one link.</p>
+        </div>
+        <a href="/pricing" class="shrink-0 inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-accent text-bg font-semibold text-sm hover:bg-accent-soft transition">Get started</a>
+      </section>
+    </div>
+  </main>
+</AppShell>
+
+<style>
+  .badge { display: inline-flex; align-items: center; gap: .25rem; font-size: 10px; text-transform: uppercase; letter-spacing: .04em; padding: .15rem .5rem; border-radius: 999px; border: 1px solid; }
+  .badge-public { color: #4ade80; background: rgba(74,222,128,.1); border-color: rgba(74,222,128,.3); }
+  .badge-scan { color: #5b9bf5; background: rgba(91,155,245,.1); border-color: rgba(91,155,245,.35); }
+  .badge-unscanned { color: #9aa3b2; background: transparent; border-color: var(--border-soft, #2a2f3a); }
+  .skill-row { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: .85rem 1rem; background: var(--bg-card, #14171d); border: 1px solid var(--border, #2a2f3a); border-radius: .85rem; }
+</style>
+
+<script define:vars={{ API_BASE }}>
+  // Resolve slug: ?slug=<slug> (primary, via query-param URL or a future
+  // Caddy rewrite) or trailing path segment (fallback).
+  const slug = (() => {
+    const q = new URLSearchParams(location.search).get("slug");
+    if (q) return q.trim();
+    const parts = location.pathname.split("/").filter(Boolean);
+    const last = parts[parts.length - 1];
+    return last && last !== "p" && last !== "bundles" ? last : "";
+  })();
+
+  const $ = (id) => document.getElementById(id);
+  const show = (id) => { const e = $(id); if (e) e.hidden = false; };
+  const hide = (id) => { const e = $(id); if (e) e.hidden = true; };
+
+  function fail(state, detail) {
+    hide("state-loading");
+    if (detail) { const d = $("error-detail"); if (d) d.textContent = detail; }
+    show(state);
+  }
+
+  async function load() {
+    if (!slug) { fail("state-notfound"); return; }
+    let res;
+    try {
+      res = await fetch(`${API_BASE}/api/bundles/public/${encodeURIComponent(slug)}`);
+    } catch (e) {
+      fail("state-error", "Network error: " + (e && e.message ? e.message : e));
+      return;
+    }
+    if (res.status === 404) { hide("state-loading"); show("state-notfound"); return; }
+    if (!res.ok) { fail("state-error", `API returned ${res.status}.`); return; }
+    let bd;
+    try { bd = await res.json(); } catch { fail("state-error", "Malformed API response."); return; }
+    render(bd);
+  }
+
+  function render(bd) {
+    hide("state-loading");
+    show("content");
+
+    document.title = (bd.name || "Bundle") + " — LoopSkill";
+    $("bd-name").textContent = bd.name || "Bundle";
+    if (bd.description) $("bd-desc").textContent = bd.description;
+    if (bd.ref) $("bd-by").textContent = "shared by a creator on LoopSkill";
+
+    const skills = bd.skills || [];
+    const parts = [`${skills.length} skill${skills.length === 1 ? "" : "s"}`];
+    if (typeof bd.installs_total === "number") parts.push(`${bd.installs_total} install${bd.installs_total === 1 ? "" : "s"}`);
+    if (typeof bd.installs_7d === "number" && bd.installs_7d > 0) parts.push(`${bd.installs_7d} this week`);
+    $("bd-stats").textContent = parts.join("  ·  ");
+
+    // The one-line clone — prefer the server-provided clone_line (carries ?ref),
+    // fall back to a constructed line if the API didn't send one.
+    const cloneLine = bd.clone_line || `recipes_install_from_cookbook from "cookbook://${bd.slug}"`;
+    $("clone-line").textContent = cloneLine;
+    const copyBtn = $("copy-btn");
+    copyBtn.addEventListener("click", async () => {
+      try {
+        await navigator.clipboard.writeText(cloneLine);
+        copyBtn.textContent = "Copied";
+        setTimeout(() => { copyBtn.textContent = "Copy"; }, 1600);
+      } catch {
+        copyBtn.textContent = "Select & copy";
+      }
+    });
+
+    // Open-standard bundle install (agentskills.io). Plain-English, cross-vendor —
+    // no leaked "well-known:" token, no vendor-locked CLI. Any agentskills.io-aware
+    // agent resolves the /.well-known/skills bundle from this base URL.
+    const wkLine = `Install the agentskills.io skill bundle from app.loopskill.io/api/bundles/public/${bd.slug}`;
+    const wkEl = $("wellknown-line");
+    if (wkEl) wkEl.textContent = wkLine;
+    const copyWkBtn = $("copy-wk-btn");
+    if (copyWkBtn) {
+      copyWkBtn.addEventListener("click", async () => {
+        try {
+          await navigator.clipboard.writeText(wkLine);
+          copyWkBtn.textContent = "Copied";
+          setTimeout(() => { copyWkBtn.textContent = "Copy"; }, 1600);
+        } catch {
+          copyWkBtn.textContent = "Select & copy";
+        }
+      });
+    }
+
+    if (skills.length === 0) { show("bd-empty"); return; }
+
+    const list = $("skills-list");
+    list.innerHTML = "";
+    for (const s of skills) {
+      const li = document.createElement("li");
+      li.className = "skill-row";
+
+      const left = document.createElement("div");
+      // Public catalog skills link to their detail page; tailored/private skills
+      // (is_public === false) render as plain text (no public page exists).
+      let nameEl;
+      if (s.is_public) {
+        nameEl = document.createElement("a");
+        nameEl.href = `/skills/${s.slug}`;
+        nameEl.className = "font-medium text-text hover:text-accent transition";
+      } else {
+        nameEl = document.createElement("span");
+        nameEl.className = "font-medium text-text";
+      }
+      nameEl.textContent = s.title || s.slug;
+      left.appendChild(nameEl);
+      const slugEl = document.createElement("div");
+      slugEl.className = "text-[11px] text-muted-soft mt-0.5";
+      slugEl.textContent = s.slug;
+      left.appendChild(slugEl);
+      li.appendChild(left);
+
+      // Trust badge — Ph C scan status when present.
+      const right = document.createElement("div");
+      const scan = (s.scan_status || "").toLowerCase();
+      if (scan && scan !== "unscanned") {
+        const b = document.createElement("span");
+        b.className = "badge badge-scan";
+        b.textContent = scan === "clean" ? "scanned" : scan;
+        right.appendChild(b);
+      } else if (s.is_public === false) {
+        const b = document.createElement("span");
+        b.className = "badge badge-unscanned";
+        b.textContent = "community · as-is";
+        right.appendChild(b);
+      }
+      li.appendChild(right);
+
+      list.appendChild(li);
+    }
+  }
+
+  load();
+</script>
