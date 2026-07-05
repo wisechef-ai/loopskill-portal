@@ -45,14 +45,14 @@ jobs:
         # distinct page sizes for /skills, /pricing, /carousel, /stats.
         run: |
           set -e
-          home_size=$(stat -c %s dist/index.html)
+          home_size=$(wc -c < dist/index.html | tr -d " ")
           for route in skills pricing carousel integrations; do
             page="dist/$route/index.html"
             if [ ! -f "$page" ]; then
               echo "ERROR: $route/index.html not built"
               exit 1
             fi
-            page_size=$(stat -c %s "$page")
+            page_size=$(wc -c < "$page" | tr -d " ")
             if [ "$page_size" -eq "$home_size" ]; then
               echo "ERROR: /$route is byte-identical to / — SPA-fallback regression"
               exit 1
@@ -72,8 +72,8 @@ jobs:
             echo "ERROR: dist/skills/index.html not built"
             exit 1
           fi
-          home_size=$(stat -c %s dist/index.html)
-          skills_size=$(stat -c %s dist/skills/index.html)
+          home_size=$(wc -c < dist/index.html | tr -d " ")
+          skills_size=$(wc -c < dist/skills/index.html | tr -d " ")
           if [ "$skills_size" -eq "$home_size" ]; then
             echo "ERROR: /skills is byte-identical to / — SPA-fallback regression"
             exit 1
