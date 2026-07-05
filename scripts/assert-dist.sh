@@ -179,6 +179,53 @@ if [ "$id_failures" -gt 0 ]; then
   exit 1
 fi
 
+# ─────────────────────────────────────────────────────────────────────────
+# Bundles-public-pages guards (2026-07-05, feat/bundles-public-pages)
+#
+# Class rule: no homepage CTA may point at a page the build did not emit.
+# The P0 this guards against: homepage bundle cards linked to
+# /bundles/p/{slug} (path form) while no /bundles pages existed in the
+# portal at all — both cards 404'd in prod. Two asserts:
+#   (e) the new public bundle pages must actually be emitted by the build.
+#   (f) dist/index.html must never regress to the broken path-form href —
+#       homepage links must use the query form (/bundles/p?slug=...).
+# ─────────────────────────────────────────────────────────────────────────
+
+BUNDLES_PAGES=(
+  "bundles/index.html"
+  "bundles/p/index.html"
+)
+
+for page in "${BUNDLES_PAGES[@]}"; do
+  path="$DIST_DIR/$page"
+  if [ ! -f "$path" ]; then
+    fail_id "$path is MISSING (public bundles page not rendered — homepage bundle-card CTAs would 404)"
+  else
+    echo "OK:   $path present"
+  fi
+done
+
+index_html="$DIST_DIR/index.html"
+if [ -f "$index_html" ]; then
+  # Broken path form: href="/bundles/p/<slug>" (a literal slash + at least one
+  # more path segment after "p/"). The correct query form is
+  # href="/bundles/p?slug=..." which this pattern does not match.
+  if grep -nE 'href="/bundles/p/[^"?]+' "$index_html" >/dev/null 2>&1; then
+    fail_id "$index_html contains a broken path-form /bundles/p/<slug> href (must be the query form /bundles/p?slug=<slug>) — offending line(s):"
+    grep -nE 'href="/bundles/p/[^"?]+' "$index_html" | sed 's/^/    /'
+  fi
+fi
+
+if [ "$id_failures" -gt 0 ]; then
+  echo ""
+  echo "BLOCKED: $id_failures identity/bundles guard(s) failed. Deploy aborted."
+  echo "This usually means a stale-brand string, fictional fallback data, or a"
+  echo "homepage CTA pointing at a page the build did not emit regressed back"
+  echo "into the build. See fix/identity-guards and feat/bundles-public-pages"
+  echo "PRs for context."
+  exit 1
+fi
+
 echo "All identity guards passed (canonical origin, robots/sitemap/llms domain, no fictional catalog data)."
 echo ""
 echo "Safe to deploy."
