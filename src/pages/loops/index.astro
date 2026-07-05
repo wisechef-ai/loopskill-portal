@@ -64,6 +64,9 @@ const API_BASE = import.meta.env.PUBLIC_RECIPES_API_BASE || "https://app.loopski
   .lp-chip { display: inline-flex; align-items: center; gap: .25rem; font-size: 11px; padding: .15rem .5rem; border-radius: .4rem; background: var(--bg-elev, #1b1f27); border: 1px solid var(--border, #2a2f3a); color: var(--muted, #9aa3b2); }
   .lp-run { display:inline-flex; align-items:center; gap:.35rem; font-size:12px; font-weight:600; color: var(--accent, #f5a623); }
   .lp-social-proof { display:inline-flex; align-items:center; gap:.2rem; font-size:11px; font-weight:600; padding:.2rem .55rem; border-radius:.4rem; background: var(--accent, #f5a623); color: var(--bg, #0f1115); }
+  .lp-copy-cta { display:inline-flex; align-items:center; gap:.3rem; align-self:flex-start; font-size:11px; font-weight:600; padding:.3rem .6rem; border-radius:.5rem; background: transparent; border: 1px solid var(--border, #2a2f3a); color: var(--muted, #9aa3b2); cursor: pointer; transition: all .15s; }
+  .lp-copy-cta:hover { border-color: var(--accent, #f5a623); color: var(--accent, #f5a623); }
+  .lp-copy-cta.lp-copy-done { border-color: var(--accent, #f5a623); color: var(--accent, #f5a623); }
 </style>
 
 <script define:vars={{ API_BASE }}>
@@ -176,6 +179,38 @@ const API_BASE = import.meta.env.PUBLIC_RECIPES_API_BASE || "https://app.loopski
         meta.appendChild(starBadge);
       }
       if (meta.children.length > 0) a.appendChild(meta);
+
+      // "Run it now" copy-curl CTA — one click puts the exact runnable
+      // command on the clipboard so the registry's RUNS wedge doesn't stay
+      // hidden behind "you'd have to know the API shape" friction.
+      const copyBtn = document.createElement("button");
+      copyBtn.type = "button";
+      copyBtn.className = "lp-copy-cta";
+      copyBtn.textContent = "⧉ Run it now (copy curl)";
+      copyBtn.setAttribute("aria-label", `Copy curl command to run ${lp.title || lp.slug}`);
+      copyBtn.addEventListener("click", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const cmd = `curl -X POST ${API_BASE}/api/loops/${lp.slug}/run`;
+        const done = () => {
+          copyBtn.textContent = "Copied!";
+          copyBtn.classList.add("lp-copy-done");
+          setTimeout(() => {
+            copyBtn.textContent = "⧉ Run it now (copy curl)";
+            copyBtn.classList.remove("lp-copy-done");
+          }, 1500);
+        };
+        const onFail = () => {
+          copyBtn.textContent = "Copy failed";
+          setTimeout(() => { copyBtn.textContent = "⧉ Run it now (copy curl)"; }, 1500);
+        };
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(cmd).then(done).catch(onFail);
+        } else {
+          onFail();
+        }
+      });
+      a.appendChild(copyBtn);
 
       grid.appendChild(a);
     }
