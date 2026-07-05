@@ -214,6 +214,49 @@ import AppShell from '../layouts/AppShell.astro';
       <button id="tok-done" class="text-xs text-muted hover:text-text underline self-start">I've saved it</button>
     </div>
   </div>
+
+  <!-- Skill preview modal (composer) — shows full skill detail without leaving the composer.
+       Pattern: npmjs.com package-detail modal. Data: GET /api/skills/{slug} (authed). -->
+  <div id="skill-preview" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-bg/80 backdrop-blur-sm p-4" role="dialog" aria-modal="true" aria-labelledby="spv-title">
+    <div class="bg-bg-card border border-border rounded-2xl w-full max-w-3xl max-h-[85vh] flex flex-col shadow-2xl overflow-hidden" id="spv-shell">
+      <div class="flex items-start justify-between gap-3 p-5 border-b border-border-soft shrink-0">
+        <div class="min-w-0 flex-1">
+          <div class="flex items-center gap-2 mb-1 flex-wrap">
+            <h3 id="spv-title" class="text-lg font-semibold text-text leading-tight break-words"></h3>
+            <span id="spv-tier" class="text-[10px] uppercase tracking-wide border rounded px-1.5 py-0.5 shrink-0"></span>
+          </div>
+          <p id="spv-tagline" class="text-xs text-muted hidden"></p>
+        </div>
+        <button id="spv-close" type="button" class="text-muted-soft hover:text-text text-xl leading-none px-1 shrink-0" aria-label="Close preview">✕</button>
+      </div>
+      <div class="flex-1 overflow-y-auto p-5" id="spv-body">
+        <div id="spv-meta" class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5 text-xs"></div>
+        <div id="spv-desc-section" class="mb-5 hidden">
+          <div class="text-[10px] uppercase tracking-wider text-muted-soft mb-1.5">Description</div>
+          <p id="spv-desc" class="text-sm text-text leading-relaxed"></p>
+        </div>
+        <div id="spv-readme-section" class="hidden">
+          <div class="text-[10px] uppercase tracking-wider text-muted-soft mb-1.5 flex items-center justify-between">
+            <span>README</span>
+            <span id="spv-readme-note" class="text-muted-soft normal-case tracking-normal text-[10px]"></span>
+          </div>
+          <div id="spv-readme" class="text-sm text-text leading-relaxed prose-sm"></div>
+        </div>
+        <div id="spv-loading" class="flex items-center justify-center py-16 text-sm text-muted">
+          <svg class="animate-spin h-5 w-5 mr-2 text-accent" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+          Loading skill detail…
+        </div>
+        <div id="spv-error" class="hidden text-center py-12">
+          <p class="text-sm text-muted mb-3">Could not load full detail for this skill.</p>
+          <p id="spv-error-hint" class="text-xs text-muted-soft"></p>
+        </div>
+      </div>
+      <div class="flex items-center justify-between gap-2 p-4 border-t border-border-soft shrink-0 bg-bg/30">
+        <a id="spv-fullpage" href="#" class="text-xs text-muted hover:text-accent transition underline">View full page →</a>
+        <button id="spv-add" type="button" class="hidden text-xs px-4 py-2 rounded-lg bg-accent text-bg font-semibold hover:bg-accent-soft transition"></button>
+      </div>
+    </div>
+  </div>
 </AppShell>
 
 <script>
@@ -397,14 +440,20 @@ import AppShell from '../layouts/AppShell.astro';
       : added
         ? `<button class="cmp-add text-[11px] px-2.5 py-1 rounded-lg border border-emerald-500/40 text-emerald-400" data-slug="${esc(s.slug)}" data-community="${s.__community?'1':''}" disabled>Added</button>`
         : `<button class="cmp-add text-[11px] px-2.5 py-1 rounded-lg bg-accent text-bg font-semibold hover:bg-accent-soft transition" data-slug="${esc(s.slug)}" data-community="${s.__community?'1':''}" data-source="${esc(s.source||'')}">+ Add</button>`;
-    return `<div class="rounded-xl border ${ghost ? 'border-border-soft opacity-60' : 'border-border'} bg-bg-card p-4 flex flex-col gap-2" data-zone="${s.__community?'community':'curated'}">
+    // Preview affordance: title + description are clickable (data-preview-slug),
+    // plus an explicit "Preview" link in the footer. All three open the same modal.
+    const previewAttrs = `data-preview-slug="${esc(s.slug)}" data-preview-community="${s.__community?'1':''}" role="button" tabindex="0"`;
+    return `<div class="rounded-xl border ${ghost ? 'border-border-soft opacity-60' : 'border-border'} bg-bg-card p-4 flex flex-col gap-2 cmp-skill-card" data-zone="${s.__community?'community':'curated'}">
       <div class="flex items-start justify-between gap-2">
-        <h3 class="text-sm font-semibold text-text leading-tight">${esc(s.title || s.slug)}</h3>
+        <h3 class="text-sm font-semibold text-text leading-tight cursor-pointer hover:text-accent transition cmp-skill-title" ${previewAttrs}>${esc(s.title || s.slug)}</h3>
         ${tierBadge}
       </div>
-      <p class="text-xs text-muted line-clamp-2 flex-1">${esc(s.description || 'No description.')}</p>
+      <p class="text-xs text-muted line-clamp-2 flex-1 cursor-pointer cmp-skill-desc" ${previewAttrs}>${esc(s.description || 'No description.')}</p>
       <div class="flex items-center justify-between gap-2 pt-1">
-        <span class="text-[10px] text-muted-soft">${s.__community ? esc(s.source || 'community') : 'curated'}</span>
+        <div class="flex items-center gap-2.5 min-w-0">
+          <span class="text-[10px] text-muted-soft">${s.__community ? esc(s.source || 'community') : 'curated'}</span>
+          <button class="cmp-preview text-[10px] text-muted-soft hover:text-accent transition underline" data-slug="${esc(s.slug)}" data-community="${s.__community?'1':''}">Preview</button>
+        </div>
         ${btn}
       </div>
     </div>`;
@@ -425,6 +474,19 @@ import AppShell from '../layouts/AppShell.astro';
         const s = pool.find(x => x.slug === slug);
         if (s) addToBasket(s);
       });
+    });
+    // Preview affordance — three triggers open the same modal:
+    //   1. explicit "Preview" button in the card footer
+    //   2. clickable title (data-preview-slug)
+    //   3. clickable description (data-preview-slug)
+    wrap.querySelectorAll<HTMLElement>('[data-preview-slug]').forEach(el => {
+      el.addEventListener('click', () => openSkillPreview(el.dataset.previewSlug!, el.dataset.previewCommunity === '1'));
+      el.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openSkillPreview(el.dataset.previewSlug!, el.dataset.previewCommunity === '1'); }
+      });
+    });
+    wrap.querySelectorAll<HTMLButtonElement>('.cmp-preview').forEach(b => {
+      b.addEventListener('click', () => openSkillPreview(b.dataset.slug!, b.dataset.community === '1'));
     });
   }
 
@@ -897,6 +959,154 @@ import AppShell from '../layouts/AppShell.astro';
     try { await navigator.clipboard.writeText(($('tok-key') as HTMLElement).textContent || ''); const b = $('tok-copy'); b.textContent = 'Copied ✓'; setTimeout(() => b.textContent = 'Copy', 1500); } catch {}
   });
   $('tok-done').addEventListener('click', () => $('tok-reveal').classList.add('hidden'));
+
+  // ═══════════════════════ SKILL PREVIEW MODAL (composer) ═══════════════
+  // Opens an npmjs-style detail modal inside the composer so users can read
+  // the full description + README before deciding to add. Fetches
+  // GET /api/skills/{slug} for curated skills; community skills have no
+  // detail endpoint so we show the card data we already have.
+  let previewMarked: any = null;  // lazy-loaded marked()
+
+  function closeSkillPreview() {
+    $('skill-preview').classList.add('hidden');
+    document.body.style.overflow = '';
+    // Reset to loading state for next open.
+    $('spv-loading').classList.remove('hidden');
+    $('spv-error').classList.add('hidden');
+    $('spv-readme-section').classList.add('hidden');
+    $('spv-desc-section').classList.add('hidden');
+    $('spv-meta').innerHTML = '';
+    ($('spv-add') as HTMLElement).classList.add('hidden');
+  }
+
+  async function openSkillPreview(slug: string, isCommunity: boolean) {
+    const modal = $('skill-preview');
+    modal.classList.remove('hidden');
+    document.body.style.overflow = 'hidden';  // lock scroll behind modal
+
+    // Header always renders the slug/title from the card data we already have.
+    const pool = isCommunity ? community : curated;
+    const card = pool.find(s => s.slug === slug);
+    ($('spv-title') as HTMLElement).textContent = card?.title || slug;
+    const tierEl = $('spv-tier') as HTMLElement;
+    const tier = card?.tier || 'free';
+    if (isCommunity) {
+      tierEl.textContent = 'community';
+      tierEl.className = 'text-[10px] uppercase tracking-wide text-amber-300/80 bg-amber-500/10 border border-amber-500/25 rounded px-1.5 py-0.5 shrink-0';
+    } else if (tier && tier !== 'free') {
+      tierEl.textContent = tier.replace('_', '+');
+      tierEl.className = 'text-[10px] uppercase tracking-wide text-accent bg-accent/10 border-accent/25 border rounded px-1.5 py-0.5 shrink-0';
+    } else {
+      tierEl.textContent = 'free';
+      tierEl.className = 'text-[10px] uppercase tracking-wide text-muted-soft border-border border rounded px-1.5 py-0.5 shrink-0';
+    }
+
+    // Full-page link (curated skills have a dedicated /skills/{slug} page).
+    ($('spv-fullpage') as HTMLAnchorElement).href = `/skills/${encodeURIComponent(slug)}`;
+
+    // Footer add button — mirror the card's +Add affordance.
+    const addBtn = $('spv-add') as HTMLButtonElement;
+    if (card && !isCommunity && !canInstall(tier)) {
+      addBtn.textContent = `Unlock with ${tier.replace('_', '+')}`;
+      addBtn.className = 'text-xs px-4 py-2 rounded-lg border border-accent/40 text-accent hover:bg-accent/10 transition';
+      addBtn.onclick = () => { window.location.href = '/pricing'; };
+      addBtn.classList.remove('hidden');
+    } else if (card && inBasket(card)) {
+      addBtn.textContent = '✓ Added';
+      addBtn.className = 'text-xs px-4 py-2 rounded-lg border border-emerald-500/40 text-emerald-400';
+      addBtn.onclick = null;
+      addBtn.classList.remove('hidden');
+    } else if (card) {
+      addBtn.textContent = '+ Add to bundle';
+      addBtn.className = 'text-xs px-4 py-2 rounded-lg bg-accent text-bg font-semibold hover:bg-accent-soft transition';
+      addBtn.onclick = () => { addToBasket(card); closeSkillPreview(); };
+      addBtn.classList.remove('hidden');
+    } else {
+      addBtn.classList.add('hidden');
+    }
+
+    // Community skills: no /api/skills/{slug} endpoint. Show what we have.
+    if (isCommunity) {
+      $('spv-loading').classList.add('hidden');
+      if (card?.description) {
+        ($('spv-desc') as HTMLElement).textContent = card.description;
+        $('spv-desc-section').classList.remove('hidden');
+      }
+      ($('spv-readme-note') as HTMLElement).textContent = 'community skill — full README available after install';
+      $('spv-readme-section').classList.remove('hidden');
+      ($('spv-readme') as HTMLElement).innerHTML = '<p class="text-xs text-muted">This is a community skill indexed from an external source. The full SKILL.md body is fetched at install time from the originating registry.</p>';
+      renderPreviewMeta(card, true);
+      return;
+    }
+
+    // Curated: fetch full detail.
+    try {
+      const r = await api(`/api/skills/${encodeURIComponent(slug)}`);
+      if (!r.ok) {
+        $('spv-loading').classList.add('hidden');
+        $('spv-error').classList.remove('hidden');
+        ($('spv-error-hint') as HTMLElement).textContent = `HTTP ${r.status} on /api/skills/${slug}`;
+        return;
+      }
+      const d = await r.json();
+      $('spv-loading').classList.add('hidden');
+
+      // Tagline (optional).
+      if (d.tagline) {
+        ($('spv-tagline') as HTMLElement).textContent = d.tagline;
+        $('spv-tagline').classList.remove('hidden');
+      }
+
+      // Full description.
+      if (d.description) {
+        ($('spv-desc') as HTMLElement).textContent = d.description;
+        $('spv-desc-section').classList.remove('hidden');
+      }
+
+      // README / SKILL.md body — rendered as markdown.
+      if (d.readme) {
+        if (!previewMarked) {
+          const mod = await import('marked');
+          // marked v18 exports { marked, parse } — no default. Use whichever exists.
+          previewMarked = mod.marked || mod.parse;
+        }
+        const html = previewMarked.parse ? previewMarked.parse(d.readme) : previewMarked(d.readme);
+        ($('spv-readme') as HTMLElement).innerHTML = typeof html === 'string' ? html : await html;
+        $('spv-readme-section').classList.remove('hidden');
+      } else {
+        ($('spv-readme-note') as HTMLElement).textContent = 'no README on file';
+      }
+
+      renderPreviewMeta(d, false);
+    } catch {
+      $('spv-loading').classList.add('hidden');
+      $('spv-error').classList.remove('hidden');
+      ($('spv-error-hint') as HTMLElement).textContent = 'Network error — check connection and retry.';
+    }
+  }
+
+  // Metadata row: install count, author, version, license, category.
+  function renderPreviewMeta(d: any, isCommunity: boolean) {
+    const meta: Array<{ label: string; value: string }> = [];
+    const installs = d.install_count_total ?? d.install_count;
+    if (typeof installs === 'number' && installs > 0) meta.push({ label: 'Installs', value: installs.toLocaleString() });
+    if (d.creator_name || d.author) meta.push({ label: 'Author', value: d.creator_name || d.author });
+    if (d.latest_version) meta.push({ label: 'Version', value: d.latest_version });
+    if (d.license) meta.push({ label: 'License', value: d.license });
+    if (d.category) meta.push({ label: 'Category', value: d.category });
+    if (isCommunity && d.source) meta.push({ label: 'Source', value: d.source });
+    if (!meta.length) { $('spv-meta').innerHTML = ''; return; }
+    $('spv-meta').innerHTML = meta.map(m =>
+      `<div class="rounded-lg bg-bg-elev border border-border-soft px-3 py-2"><div class="text-[10px] uppercase tracking-wider text-muted-soft">${esc(m.label)}</div><div class="text-text font-medium mt-0.5 truncate">${esc(m.value)}</div></div>`
+    ).join('');
+  }
+
+  // Modal close handlers: ✕, click backdrop, Escape.
+  $('spv-close').addEventListener('click', closeSkillPreview);
+  $('skill-preview').addEventListener('click', (e) => { if (e.target === $('skill-preview')) closeSkillPreview(); });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && !$('skill-preview').classList.contains('hidden')) closeSkillPreview();
+  });
 
   // ── boot ──────────────────────────────────────────────────────────────
   loadLibraryBundles();
