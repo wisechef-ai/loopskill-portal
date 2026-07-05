@@ -106,7 +106,7 @@ import AppShell from '../layouts/AppShell.astro';
     }
 
     async function loadCookbooks() {
-      try { const r = await api('/api/cookbooks'); if (r.ok) { const d = await r.json(); cookbooks = (d.cookbooks || d.items || d || []); } } catch {}
+      try { const r = await api('/api/cookbooks'); if (r.ok) { const d = await r.json(); bundles = (d.cookbooks || d.items || d || []); } } catch {}
     }
 
     async function load() {

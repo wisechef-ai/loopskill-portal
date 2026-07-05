@@ -402,7 +402,7 @@ import Icon from '../components/Icon.astro';
   // ── Bundles — populate modal dropdown + the visible bundles list ───
   async function loadCookbooks(): Promise<void> {
     const data = await fetchJson<{ cookbooks: CookbookItem[] }>('/api/cookbooks');
-    if (!data?.bundles) return;
+    if (!data?.cookbooks) return;
     _cookbooks = data.cookbooks;
     const sel = $<HTMLSelectElement>('modal-bundle');
     if (sel) {
