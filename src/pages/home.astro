@@ -38,6 +38,7 @@ import AppShell from '../layouts/AppShell.astro';
 </AppShell>
 
 <script>
+  import { identiconSVG } from '../lib/identicon';
   const API_BASE = (import.meta as any).env?.PUBLIC_RECIPES_API_BASE || 'https://app.loopskill.io';
   const $ = (id: string) => document.getElementById(id)!;
   const esc = (s: any) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' } as any)[c]);
@@ -74,6 +75,7 @@ import AppShell from '../layouts/AppShell.astro';
     const ariaLabel = `${BADGE[type]}: ${item.title || item.slug}${m ? '. ' + m : ''}`;
     return `<a href="${esc(href(type, item))}" class="artifact-card" data-artifact-type="${type}" data-artifact-slug="${esc(item.slug)}" aria-label="${esc(ariaLabel)}">
       <span class="artifact-cover" style="background:linear-gradient(135deg, ${grad[0]} 0%, ${grad[1]} 100%);">
+        ${identiconSVG(item.slug || item.title || 'loopskill')}
         <span class="artifact-badge">${BADGE[type]}</span>
         <span class="artifact-mono" aria-hidden="true">${esc(mono)}</span>
       </span>
