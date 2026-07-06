@@ -99,6 +99,34 @@ const API_BASE = import.meta.env.PUBLIC_RECIPES_API_BASE || 'https://app.loopski
   const GRAD = [['#1fb6c0','#0d7d77'],['#a06bff','#6d28d9'],['#c084fc','#7c3aed'],['#ffb446','#c2410c'],['#ff6e50','#b91c1c'],['#34d399','#0f766e'],['#60a5fa','#1d4ed8']];
   function hashIdx(s, n) { let h = 0; for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0; return h % n; }
 
+  // Identicon blocks (mirrors src/lib/identicon.ts — string-templated here
+  // because browse.astro uses a define:vars inline script, no module imports).
+  function identiconSVG(s) {
+    let h1 = 0x811c9dc5, h2 = 0x01000193;
+    for (let i = 0; i < s.length; i++) {
+      h1 = ((h1 ^ s.charCodeAt(i)) * 0x01000193) >>> 0;
+      h2 = ((h2 * 31 + s.charCodeAt(i)) ^ (h2 >>> 7)) >>> 0;
+    }
+    const bytes = [];
+    let x = h1 || 1, y = h2 || 2;
+    for (let i = 0; i < 16; i++) {
+      x ^= x << 13; x >>>= 0; x ^= x >> 17; x ^= x << 5; x >>>= 0;
+      y ^= y << 7; y >>>= 0; y ^= y >> 9; y ^= y << 8; y >>>= 0;
+      bytes.push(((x ^ y) >>> (i % 3)) & 0xff);
+    }
+    const rects = [];
+    for (let row = 0; row < 5; row++) {
+      for (let col = 0; col < 3; col++) {
+        const b = bytes[row * 3 + col];
+        if (b % 2 !== 0) continue;
+        const op = b % 4 === 0 ? 0.5 : 0.28;
+        rects.push(`<rect x="${col*20}" y="${row*20}" width="20" height="20" fill="#fff" fill-opacity="${op}"/>`);
+        if (col < 2) rects.push(`<rect x="${(4-col)*20}" y="${row*20}" width="20" height="20" fill="#fff" fill-opacity="${op}"/>`);
+      }
+    }
+    return `<svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true" style="position:absolute;inset:0;width:100%;height:100%;">${rects.join('')}</svg>`;
+  }
+
   function artifactHref(type, item) {
     if (type === 'loops') return `/loops/run?slug=${encodeURIComponent(item.slug)}`;
     if (type === 'skills') return `/skills/${encodeURIComponent(item.slug)}`;
@@ -126,6 +154,7 @@ const API_BASE = import.meta.env.PUBLIC_RECIPES_API_BASE || 'https://app.loopski
     const ariaLabel = `${TYPE_SINGULAR[type] || 'Item'}: ${item.title || item.slug}${meta ? '. ' + meta : ''}`;
     return `<a href="${esc(artifactHref(type, item))}" class="artifact-card" data-artifact-type="${type}" data-artifact-slug="${esc(item.slug)}" aria-label="${esc(ariaLabel)}">
       <span class="artifact-cover" style="background:linear-gradient(135deg, ${grad[0]} 0%, ${grad[1]} 100%);">
+        ${identiconSVG(item.slug || item.title || 'loopskill')}
         <span class="artifact-badge">${TYPE_SINGULAR[type] || ''}</span>
         <span class="artifact-mono" aria-hidden="true">${esc(mono)}</span>
       </span>
