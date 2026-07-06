@@ -71,7 +71,12 @@ island over `src/lib/api.ts` (`API_BASE = https://recipes.wisechef.ai`).
   `dist/index.html` AND `dist/_astro/` — Astro externalizes big scripts).
   CI does NOT deploy.
 - Deploy: `npm run build` -> backup prod dist -> `rsync -az --delete dist/
-  wisechef-hq:/home/wisechef/recipes-portal/dist/`. Caddy serves it.
+  wisechef-hq:/home/wisechef/loopskill-portal/dist/`. Caddy serves it.
+  NOTE (ah_0706): app.loopskill.io Caddy `root *` is
+  `/home/wisechef/loopskill-portal/dist` — NOT `recipes-portal/dist` (that is
+  the legacy recipes.wisechef.ai root, verify with `grep -A40 'app.loopskill.io'
+  /etc/caddy/Caddyfile` on wisechef-hq). Rsyncing to recipes-portal/dist is a
+  silent no-op on this domain — always re-probe the live URL after deploy.
   "Merged to main" is NOT "live" — re-probe live URLs after rsync.
 - Redirects: static SSG means redirects are client-JS or Caddy. Cut pages
   301 in `/etc/caddy/Caddyfile` on wisechef-hq (`/graph`->`/skills`,

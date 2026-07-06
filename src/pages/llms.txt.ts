@@ -50,6 +50,13 @@ interface CatalogSkill {
   category?: string;
   install_count_total?: number;
 }
+interface CatalogLoop {
+  slug: string;
+  title?: string;
+  description?: string;
+  category?: string;
+  run_count?: number;
+}
 
 // Truncate on a word boundary (no mid-word cuts like "Whit…").
 function clip(s: string, max: number): string {
@@ -65,7 +72,7 @@ export const GET: APIRoute = async () => {
   // install-based trending is too thin to be representative (only a couple
   // of skills have install traction yet), whereas an empty-query search
   // returns a broad, current catalog slice across categories.
-  const [snapRes, catRes, fedRes] = await Promise.all([
+  const [snapRes, catRes, fedRes, loopsRes] = await Promise.all([
     fetchApi<Snapshot>('/api/marketing/snapshot', { authed: false }),
     fetchApi<{ results?: CatalogSkill[] }>(
       '/api/skills/search?q=&limit=24',
@@ -77,6 +84,12 @@ export const GET: APIRoute = async () => {
       counts?: { external_indexed?: number; external_installable?: number };
       available_sources?: string[];
     }>('/api/skills/external', { authed: false }),
+    // ah_0706 rank-1 (external floor): the runnable-loop registry is the star
+    // wedge, but it had ZERO machine-discovery presence — an agent reading this
+    // manifest could not learn a single loop slug or how to run one. Ground the
+    // Loops section in live /api/loops (public, no key); if unreachable at build
+    // time the section is simply omitted (honest degradation, never fabricated).
+    fetchApi<CatalogLoop[]>('/api/loops', { authed: false }),
   ]);
 
   // Honest degradation: only trust counts we actually fetched. No invented
@@ -177,6 +190,27 @@ LoopSkill is a superset of the public agent-skill ecosystem, not just its curate
       ? `${total} production-grade, versioned skills`
       : 'a curated set of production-grade, versioned skills';
 
+  // ah_0706 rank-1 (external floor): Loops section. The loop registry is the
+  // wedge that separates LoopSkill from a static skill catalog — these are
+  // runnable, safety-bounded agentic loops an agent can POST-run in ~30s. We
+  // list slug + one-liner + the run hero (empty-body POST works since #48).
+  // Grounded in live /api/loops; omitted entirely if the fetch failed.
+  const loops = (loopsRes.data ?? []).filter((l: CatalogLoop) => l?.slug);
+  const loopLines = loops.map((l) => {
+    const desc = clip(l.description ?? '', 100);
+    return `- \`${l.slug}\` — ${l.title ?? l.slug}${desc ? `: ${desc}` : ''}\n  Run it: \`curl -X POST ${SITE}/api/loops/${l.slug}/run\` (empty body OK; returns \`passed: true/false\`)`;
+  });
+  const loopsSection = loopLines.length
+    ? `
+
+## Runnable loops — the wedge (POST and it runs)
+Loops are safety-bounded agentic verifiers you can execute directly against the API — not just prose to install. Each carries its own bounds (max_turns, budget, tool_allowlist). The whole point is *prove-it-runs* trust: one POST and you get a real pass/fail.
+- List all loops (no key): \`GET ${SITE}/api/loops\`
+- Loop detail (README + bounds): \`GET ${SITE}/api/loops/{slug}\`
+- Run a loop (returns pass/fail): \`POST ${SITE}/api/loops/{slug}/run\`
+${loopLines.join('\n')}`
+    : '';
+
   const body = `# LoopSkill — the vertical skill marketplace for AI agents
 
 > LoopSkill (by WiseChef) is a curated marketplace of ${catalogSizePhrase} for AI coding agents — and a superset of the public agent-skill ecosystem${fedHeadline ? ` (it federates ${fedHeadline} more community skills, so you never need a second hub)` : ''}. Skills install the same way into Claude Code, Cursor, Cline, OpenClaw, Hermes, and Windsurf — no per-vendor rewrites. ${freeIntro}. Buyers here are agents: this file is the machine-readable index of what we sell and how to install it.
@@ -189,7 +223,7 @@ Or hit the public REST API directly (no key for read/search):
 - Search: \`GET ${SITE}/api/skills/search?q=<query>\`
 - Detail: \`GET ${SITE}/api/skills/{slug}\`
 - Trending: \`GET ${SITE}/api/skills/trending\`
-- Install (returns a signed tarball): \`GET ${SITE}/api/skills/install\`${supersetSection}
+- Install (returns a signed tarball): \`GET ${SITE}/api/skills/install\`${supersetSection}${loopsSection}
 
 ## Start free
 ${freeLine}
@@ -203,6 +237,7 @@ ${trendingLines.length ? trendingLines.join('\n') : '- Browse the full catalog a
 
 ## Key pages
 - Catalog: ${SITE}/skills
+- Runnable loops: ${SITE}/browse?type=loops (API: ${SITE}/api/loops)
 - Docs (install + MCP wiring): ${SITE}/docs
 - Pricing: ${SITE}/pricing
 - Compatibility (supported agents): ${SITE}/compatibility
