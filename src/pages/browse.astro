@@ -235,7 +235,10 @@ const API_BASE = import.meta.env.PUBLIC_RECIPES_API_BASE || 'https://app.loopski
   function hide(id) { const e = $(id); if (e) e.hidden = true; }
 
   async function fetchSearch(q) {
-    const url = `${API_BASE}/api/search?q=${encodeURIComponent(q || '')}&limit=50`;
+    // API caps limit at 20 (le=20) — limit=50 422'd EVERY search on this page
+    // since the Spotify-IA restructure (fc0d01f). Silent-broken: the page
+    // showed the generic error state, no console error.
+    const url = `${API_BASE}/api/search?q=${encodeURIComponent(q || '')}&limit=20`;
     const r = await fetch(url);
     if (!r.ok) throw new Error(`API ${r.status}`);
     return r.json();
@@ -308,18 +311,22 @@ const API_BASE = import.meta.env.PUBLIC_RECIPES_API_BASE || 'https://app.loopski
 
     let data;
     let federated = [];
-    try {
-      [data, federated] = await Promise.all([
-        state.q ? fetchSearch(state.q) : fetchBrowseDefaults(),
-        (state.type === 'all' || state.type === 'skills') ? fetchFederated(state.q, state.type === 'skills' ? 48 : 24) : Promise.resolve([]),
-      ]);
-    } catch (e) {
-      if (mySeq !== seq) return;
+    const [dataR, fedR] = await Promise.allSettled([
+      state.q ? fetchSearch(state.q) : fetchBrowseDefaults(),
+      (state.type === 'all' || state.type === 'skills') ? fetchFederated(state.q, state.type === 'skills' ? 48 : 24) : Promise.resolve([]),
+    ]);
+    if (mySeq !== seq) return;
+    federated = fedR.status === 'fulfilled' ? fedR.value : [];
+    if (dataR.status === 'fulfilled') {
+      data = dataR.value;
+    } else if (federated.length) {
+      // Internal search failed but federation answered — degrade, don't blank.
+      data = { loops: [], skills: [], bundles: [], personalities: [] };
+    } else {
       hide('browse-loading');
       show('browse-error');
       return;
     }
-    if (mySeq !== seq) return;
     hide('browse-loading');
 
     const byType = {
