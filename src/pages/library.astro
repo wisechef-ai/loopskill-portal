@@ -260,6 +260,17 @@ import AppShell from '../layouts/AppShell.astro';
 </AppShell>
 
 <script>
+  import { identiconSVG } from '../lib/identicon';
+  // Shared card art helpers (feat/fleet-console-ui): hash gradient + identicon.
+  const GRAD_PALETTE: [string, string][] = [
+    ['#1fb6c0', '#0d7d77'], ['#a06bff', '#6d28d9'], ['#c084fc', '#7c3aed'],
+    ['#ffb446', '#c2410c'], ['#ff6e50', '#b91c1c'], ['#34d399', '#0f766e'], ['#60a5fa', '#1d4ed8'],
+  ];
+  function hashIdx(s: string, n: number): number {
+    let h = 0;
+    for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
+    return h % n;
+  }
   // ── Tab routing (?tab=library|fleets|delivery, default library) ──────────
   const TABS = ['library', 'fleets', 'delivery'] as const;
   type Tab = typeof TABS[number];
@@ -326,8 +337,14 @@ import AppShell from '../layouts/AppShell.astro';
       const visBadge = vis === 'public'
         ? '<span class="artifact-badge" style="position:static;display:inline-block;background:rgba(255,209,102,0.15);color:#ffd166;">public</span>'
         : '';
-      return `<a href="/library" class="artifact-card" data-bundle-id="${cb.id}">
-        <span class="artifact-cover" style="background:linear-gradient(135deg, #a06bff 0%, #6d28d9 100%); display:flex; align-items:center; justify-content:center;">
+      // feat/fleet-console-ui: cards link to the REAL bundle detail page
+      // (was href="/library" — a self-link dead loop after the Spotify-IA
+      // restructure stubbed /cookbooks/view). Cover = hash gradient +
+      // identicon, not one static violet for every bundle.
+      const grad = GRAD_PALETTE[hashIdx(cb.id || cb.name || 'x', GRAD_PALETTE.length)];
+      return `<a href="/bundles/view?id=${encodeURIComponent(cb.id)}" class="artifact-card" data-bundle-id="${cb.id}">
+        <span class="artifact-cover" style="background:linear-gradient(135deg, ${grad[0]} 0%, ${grad[1]} 100%); display:flex; align-items:center; justify-content:center; position:relative; overflow:hidden;">
+          ${identiconSVG(cb.name || cb.id)}
           ${visBadge}
         </span>
         <span class="artifact-title">${(cb.name || 'Untitled').replace(/[&<>]/g, (c: string) => ({'&':'&amp;','<':'&lt;','>':'&gt;'} as any)[c])}</span>

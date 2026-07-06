@@ -1,0 +1,397 @@
+---
+// /bundles/view?id=<uuid> — bundle detail: the click-through from Library.
+//
+// feat/fleet-console-ui — RESURRECTION + EXTENSION. The Spotify-IA restructure
+// turned /cookbooks/view into a redirect stub back to /library, which made
+// bundle cards a dead loop (click tori-core → bounce to where you started).
+// The original 437-line page (list + force-graph) lived only on the pre-split
+// recipes-portal branch feat/viz-related-edges-portal; this migrates it onto
+// the AppShell chrome and extends it with the two artifact sections the API
+// now returns (v0.9.7 artifact-parity): composite loops + personalities.
+//
+// Views:
+//   1. List (primary) — skills table w/ tailored/catalog + pinned badges +
+//      lineage + corrections; loops + personalities sections (self-hide empty).
+//   2. Graph (delight) — force-graph: skills (blue/gold) + loops (emerald,
+//      dashed composition edges) + personalities (fuchsia).
+import AppShell from '../../layouts/AppShell.astro';
+---
+<AppShell title="Bundle — Recipes" active="library">
+  <main class="max-w-5xl mx-auto px-6 pt-10 pb-16">
+    <header class="flex flex-col gap-2 mb-8">
+      <a href="/library" class="text-xs text-muted hover:text-accent transition inline-flex items-center gap-1.5">← Library</a>
+      <div class="flex items-center justify-between gap-4 flex-wrap">
+        <h1 id="cb-name" class="text-2xl md:text-3xl font-semibold tracking-tight">Bundle</h1>
+        <div class="flex items-center gap-3">
+          <div id="cb-stats" class="text-sm text-muted"></div>
+          <a id="cb-map-link" hidden href="/fleet-map" class="text-xs px-3 py-1.5 rounded-lg border border-border hover:border-accent text-text transition">Fleet map ▸</a>
+        </div>
+      </div>
+      <p id="cb-desc" class="text-muted leading-relaxed max-w-2xl"></p>
+    </header>
+
+    <!-- States -->
+    <section id="state-loading" class="text-muted text-sm py-10">Loading bundle…</section>
+    <section id="state-notfound" hidden class="bg-bg-card border border-border rounded-2xl p-6">
+      <h2 class="text-lg font-semibold mb-2">Bundle not found</h2>
+      <p class="text-sm text-muted">This bundle doesn't exist, or it isn't on your account or org.</p>
+    </section>
+    <section id="state-error" hidden class="bg-bg-card border border-red-500/40 rounded-2xl p-6">
+      <h2 class="text-lg font-semibold mb-2">Couldn't load bundle</h2>
+      <p id="error-detail" class="text-sm text-muted"></p>
+    </section>
+
+    <div id="content" hidden>
+      <div class="flex items-center gap-2 mb-5">
+        <button id="tab-list" class="cb-tab cb-tab-active px-3 py-1.5 rounded-lg text-sm font-medium">List</button>
+        <button id="tab-graph" class="cb-tab px-3 py-1.5 rounded-lg text-sm font-medium">Graph</button>
+      </div>
+
+      <div id="cb-empty" hidden class="bg-bg-card border border-border rounded-2xl p-8 text-center">
+        <p class="text-sm text-muted">This bundle is empty. Add skills from <a href="/library" class="text-accent">Your Library</a> composer, or deploy artifacts via <code class="text-accent">loopskill_bundle_deploy</code>.</p>
+      </div>
+
+      <!-- List view -->
+      <section id="view-list" class="flex flex-col gap-8">
+        <div>
+          <h2 class="text-sm font-semibold text-muted-soft uppercase tracking-wider mb-3">Skills</h2>
+          <div class="overflow-x-auto bg-bg-card border border-border rounded-2xl">
+            <table class="w-full text-sm">
+              <thead>
+                <tr class="text-left text-muted-soft border-b border-border-soft">
+                  <th class="px-4 py-3 font-medium">Skill</th>
+                  <th class="px-4 py-3 font-medium">Type</th>
+                  <th class="px-4 py-3 font-medium">Version</th>
+                  <th class="px-4 py-3 font-medium">Lineage</th>
+                  <th class="px-4 py-3 font-medium text-right">Corrections</th>
+                </tr>
+              </thead>
+              <tbody id="skills-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Composite loops (self-hides when empty) -->
+        <div id="loops-section" hidden>
+          <h2 class="text-sm font-semibold text-muted-soft uppercase tracking-wider mb-3">Loops</h2>
+          <div id="loops-list" class="grid grid-cols-1 md:grid-cols-2 gap-3"></div>
+        </div>
+
+        <!-- Personalities (self-hides when empty) -->
+        <div id="personalities-section" hidden>
+          <h2 class="text-sm font-semibold text-muted-soft uppercase tracking-wider mb-3">Personalities</h2>
+          <div id="personalities-list" class="grid grid-cols-1 md:grid-cols-2 gap-3"></div>
+        </div>
+      </section>
+
+      <!-- Graph view -->
+      <section id="view-graph" hidden>
+        <div id="graph-container" class="relative w-full bg-bg-card border border-border rounded-2xl overflow-hidden" style="height: 560px;">
+          <svg id="cb-graph-svg" width="100%" height="100%" style="display:block;"></svg>
+          <div id="cb-graph-tooltip" class="absolute pointer-events-none px-2.5 py-1.5 rounded-md text-xs bg-bg-elev border border-border shadow-lg" style="opacity:0; transition:opacity .12s;"></div>
+          <div id="cb-graph-empty" hidden class="absolute inset-0 flex items-center justify-center text-sm text-muted">Nothing to graph.</div>
+        </div>
+        <p class="text-xs text-muted-soft mt-3">Gold = tailored fork · blue = catalog skill · emerald = loop (dashed = composes) · fuchsia = personality · solid gold = fork lineage · dashed blue = related skills. Drag to explore.</p>
+      </section>
+    </div>
+  </main>
+</AppShell>
+
+<style>
+  .cb-tab { border: 1px solid var(--border, #2a2f3a); color: var(--muted, #9aa3b2); background: transparent; transition: all .15s; }
+  .cb-tab:hover { color: var(--text, #e6e9ef); }
+  .cb-tab-active { background: var(--accent, #ffd166); color: var(--bg, #0a0a0a); border-color: var(--accent, #ffd166); }
+  .badge { display: inline-flex; align-items: center; gap: .25rem; font-size: 10px; text-transform: uppercase; letter-spacing: .04em; padding: .15rem .45rem; border-radius: 999px; border: 1px solid; }
+  .badge-tailored { color: #f5a623; background: rgba(245,166,35,.1); border-color: rgba(245,166,35,.35); }
+  .badge-catalog { color: #5b9bf5; background: rgba(91,155,245,.1); border-color: rgba(91,155,245,.35); }
+  .badge-pinned { color: #4ade80; background: rgba(74,222,128,.1); border-color: rgba(74,222,128,.3); }
+  .badge-floating { color: #9aa3b2; background: transparent; border-color: var(--border-soft, #2a2f3a); }
+  #skills-tbody tr { border-bottom: 1px solid var(--border-soft, #1c2029); }
+  #skills-tbody tr:last-child { border-bottom: none; }
+  #skills-tbody td { padding: .75rem 1rem; vertical-align: middle; }
+</style>
+
+<script>
+  const API_BASE = (import.meta as any).env?.PUBLIC_RECIPES_API_BASE || 'https://app.loopskill.io';
+  const bundleId = (() => {
+    const q = new URLSearchParams(location.search).get('id');
+    return q ? q.trim() : '';
+  })();
+
+  const $ = (id: string) => document.getElementById(id)!;
+  const show = (id: string) => { $(id).hidden = false; };
+  const hide = (id: string) => { $(id).hidden = true; };
+  const apiKey = (() => { try { return localStorage.getItem('recipes_api_key'); } catch { return null; } })();
+  function esc(s: any) { return String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'} as any)[c]); }
+
+  function fail(state: string, detail?: string) {
+    hide('state-loading');
+    if (detail) $('error-detail').textContent = detail;
+    show(state);
+  }
+
+  async function load() {
+    if (!bundleId) { fail('state-notfound'); return; }
+    const headers: any = {};
+    if (apiKey) headers['x-api-key'] = apiKey;
+    let res: Response;
+    try {
+      res = await fetch(`${API_BASE}/api/bundles/${encodeURIComponent(bundleId)}`, { headers, credentials: 'include' });
+    } catch (e: any) {
+      fail('state-error', 'Network error: ' + (e?.message || e)); return;
+    }
+    if (res.status === 401) { window.location.href = `/signin?next=${encodeURIComponent('/bundles/view?id=' + bundleId)}`; return; }
+    if (res.status === 404) { fail('state-notfound'); return; }
+    if (!res.ok) { fail('state-error', `API returned ${res.status}.`); return; }
+    render(await res.json());
+  }
+
+  function isTailored(s: any) {
+    if (s.source === 'custom-added') return true;
+    if (s.source === 'catalog') return false;
+    return s.skill_variant === 'custom' || s.is_public === false;
+  }
+
+  function render(cb: any) {
+    hide('state-loading'); show('content');
+    $('cb-name').textContent = cb.name || 'Bundle';
+    if (cb.description) $('cb-desc').textContent = cb.description;
+    $('cb-map-link').hidden = false;
+
+    const skills = (cb.skills || []).filter((s: any) => s.source !== 'disabled');
+    const loops = cb.composite_loops || [];
+    const personalities = cb.personalities || [];
+    const parts = [`${skills.length} skill${skills.length === 1 ? '' : 's'}`];
+    if (loops.length) parts.push(`${loops.length} loop${loops.length === 1 ? '' : 's'}`);
+    if (personalities.length) parts.push(`${personalities.length} personalit${personalities.length === 1 ? 'y' : 'ies'}`);
+    $('cb-stats').textContent = parts.join(' · ');
+
+    if (!skills.length && !loops.length && !personalities.length) {
+      show('cb-empty'); hide('view-list'); return;
+    }
+
+    renderTable(skills);
+    renderLoops(loops);
+    renderPersonalities(personalities);
+    setupGraph(skills, loops, personalities);
+    setupTabs();
+  }
+
+  function renderTable(skills: any[]) {
+    const tbody = $('skills-tbody');
+    tbody.innerHTML = skills.map((s) => {
+      const tailored = isTailored(s);
+      const name = tailored
+        ? `<span class="font-medium text-text">${esc(s.title || s.slug)}</span>`
+        : `<a href="/skills/${esc(s.slug)}" class="font-medium text-text hover:text-accent transition">${esc(s.title || s.slug)}</a>`;
+      const typeBadge = tailored
+        ? '<span class="badge badge-tailored">tailored</span>'
+        : '<span class="badge badge-catalog">catalog</span>';
+      const verBadge = s.pinned
+        ? `<span class="badge badge-pinned">pinned ${esc(s.pinned_version || '')}</span>`
+        : '<span class="badge badge-floating">latest</span>';
+      const lineage = s.parent_skill_slug
+        ? `<a href="/skills/${esc(s.parent_skill_slug)}" class="text-xs text-muted hover:text-accent transition">↳ ${esc(s.parent_skill_slug)}</a>`
+        : '<span class="text-xs text-muted-soft">—</span>';
+      const n = s.corrections_absorbed || 0;
+      const corr = n > 0
+        ? `<span class="text-accent text-sm font-medium">${n}</span>`
+        : '<span class="text-muted-soft text-sm">0</span>';
+      return `<tr>
+        <td>${name}<div class="text-[11px] text-muted-soft mt-0.5">${esc(s.slug)}</div></td>
+        <td>${typeBadge}</td>
+        <td>${verBadge}</td>
+        <td>${lineage}</td>
+        <td class="text-right">${corr}</td>
+      </tr>`;
+    }).join('');
+  }
+
+  function renderLoops(loops: any[]) {
+    if (!loops.length) return;
+    show('loops-section');
+    $('loops-list').innerHTML = loops.map((l) => `
+      <div class="bg-bg-card border border-emerald-500/25 rounded-2xl p-4 flex flex-col gap-1.5">
+        <div class="flex items-center justify-between gap-2">
+          <span class="font-semibold text-text text-sm">${esc(l.title || l.slug)}</span>
+          <span class="text-[10px] uppercase tracking-wide text-emerald-400 bg-emerald-500/10 border border-emerald-500/25 rounded px-1.5 py-0.5">loop</span>
+        </div>
+        ${l.description ? `<p class="text-xs text-muted line-clamp-2">${esc(l.description)}</p>` : ''}
+        <div class="text-[11px] text-muted-soft flex flex-wrap gap-x-3 gap-y-0.5 pt-1">
+          ${l.schedule ? `<span>⏱ ${esc(l.schedule)}</span>` : ''}
+          ${l.verifier_slug ? `<span>gate: ${esc(l.verifier_slug)}</span>` : ''}
+          ${(l.skills || []).length ? `<span>composes: ${(l.skills || []).map(esc).join(', ')}</span>` : ''}
+        </div>
+      </div>`).join('');
+  }
+
+  function renderPersonalities(pers: any[]) {
+    if (!pers.length) return;
+    show('personalities-section');
+    $('personalities-list').innerHTML = pers.map((p) => `
+      <div class="bg-bg-card border border-fuchsia-500/25 rounded-2xl p-4 flex flex-col gap-1.5">
+        <div class="flex items-center justify-between gap-2">
+          <span class="font-semibold text-text text-sm">${esc(p.title || p.slug)}</span>
+          <span class="text-[10px] uppercase tracking-wide text-fuchsia-400 bg-fuchsia-500/10 border border-fuchsia-500/25 rounded px-1.5 py-0.5">personality</span>
+        </div>
+        ${p.description ? `<p class="text-xs text-muted line-clamp-2">${esc(p.description)}</p>` : ''}
+        <div class="text-[11px] text-muted-soft pt-1">${p.pinned_version ? 'pinned ' + esc(p.pinned_version) : 'latest'}</div>
+      </div>`).join('');
+  }
+
+  function setupTabs() {
+    const tabList = $('tab-list'), tabGraph = $('tab-graph');
+    tabList.addEventListener('click', () => {
+      tabList.classList.add('cb-tab-active'); tabGraph.classList.remove('cb-tab-active');
+      show('view-list'); hide('view-graph');
+    });
+    tabGraph.addEventListener('click', () => {
+      tabGraph.classList.add('cb-tab-active'); tabList.classList.remove('cb-tab-active');
+      hide('view-list'); show('view-graph');
+    });
+  }
+
+  // ── Dependency-free force-graph: skills + loops + personalities ─────────
+  function setupGraph(skills: any[], loops: any[], personalities: any[]) {
+    const svg = $('cb-graph-svg');
+    const container = $('graph-container');
+    const tip = $('cb-graph-tooltip');
+    if (!skills.length && !loops.length && !personalities.length) { show('cb-graph-empty'); return; }
+
+    type GN = { slug: string; title: string; kind: string; tailored?: boolean; x: number; y: number; vx: number; vy: number; r: number };
+    const W = container.clientWidth || 900;
+    const H = 560;
+    const nodes: GN[] = [];
+    const idx: Record<string, number> = {};
+    function add(key: string, n: Omit<GN, 'x'|'y'|'vx'|'vy'>) {
+      if (idx[key] !== undefined) return idx[key];
+      const i = nodes.length;
+      const ang = (i / 12) * Math.PI * 2;
+      nodes.push({ ...n, x: W/2 + Math.cos(ang) * Math.min(W,H) * 0.3, y: H/2 + Math.sin(ang) * Math.min(W,H) * 0.3, vx: 0, vy: 0 });
+      idx[key] = i;
+      return i;
+    }
+
+    const links: { src: number; tgt: number; kind: string }[] = [];
+    const seen = new Set<string>();
+    const edgeKey = (a: string, b: string) => (a < b ? a + '|' + b : b + '|' + a);
+
+    for (const s of skills) add('s:' + s.slug, { slug: s.slug, title: s.title || s.slug, kind: 'skill', tailored: isTailored(s), r: 7 });
+    for (const s of skills) {
+      if (s.parent_skill_slug && idx['s:' + s.parent_skill_slug] !== undefined) {
+        const k = edgeKey(s.slug, s.parent_skill_slug);
+        if (!seen.has(k)) { seen.add(k); links.push({ src: idx['s:' + s.slug], tgt: idx['s:' + s.parent_skill_slug], kind: 'lineage' }); }
+      }
+      for (const rel of (s.related_skills || [])) {
+        if (idx['s:' + rel] !== undefined && rel !== s.slug) {
+          const k = edgeKey(s.slug, rel);
+          if (!seen.has(k)) { seen.add(k); links.push({ src: idx['s:' + s.slug], tgt: idx['s:' + rel], kind: 'related' }); }
+        }
+      }
+    }
+    for (const l of loops) {
+      const li = add('l:' + l.slug, { slug: l.slug, title: l.title || l.slug, kind: 'loop', r: 9 });
+      for (const sl of (l.skills || [])) {
+        if (idx['s:' + sl] !== undefined) links.push({ src: li, tgt: idx['s:' + sl], kind: 'composes' });
+      }
+    }
+    for (const p of personalities) add('p:' + p.slug, { slug: p.slug, title: p.title || p.slug, kind: 'personality', r: 9 });
+
+    const ns = 'http://www.w3.org/2000/svg';
+    svg.innerHTML = '';
+    const root = document.createElementNS(ns, 'g'); svg.appendChild(root);
+    const linkGroup = document.createElementNS(ns, 'g');
+    const nodeGroup = document.createElementNS(ns, 'g');
+    root.appendChild(linkGroup); root.appendChild(nodeGroup);
+
+    const linkEls = links.map((lk) => {
+      const el = document.createElementNS(ns, 'line');
+      if (lk.kind === 'related') {
+        el.setAttribute('stroke', '#5b9bf5'); el.setAttribute('stroke-width', '1.2');
+        el.setAttribute('stroke-dasharray', '4 3'); el.setAttribute('stroke-opacity', '0.45');
+      } else if (lk.kind === 'composes') {
+        el.setAttribute('stroke', '#34d399'); el.setAttribute('stroke-width', '1.2');
+        el.setAttribute('stroke-dasharray', '3 3'); el.setAttribute('stroke-opacity', '0.5');
+      } else {
+        el.setAttribute('stroke', '#f5a623'); el.setAttribute('stroke-width', '1.4');
+        el.setAttribute('stroke-opacity', '0.5');
+      }
+      linkGroup.appendChild(el); return el;
+    });
+
+    const FILL: Record<string, string> = { skill: '#5b9bf5', loop: '#34d399', personality: '#e879f9' };
+    const nodeEls = nodes.map((n, i) => {
+      const el = document.createElementNS(ns, 'circle');
+      el.setAttribute('r', String(n.r));
+      el.setAttribute('fill', n.kind === 'skill' && n.tailored ? '#f5a623' : FILL[n.kind]);
+      el.setAttribute('stroke', '#0a0a0a'); el.setAttribute('stroke-width', '1.5');
+      (el as any).style.cursor = 'pointer'; el.setAttribute('data-idx', String(i));
+      nodeGroup.appendChild(el); return el;
+    });
+
+    const REPEL = 2600, SPRING = 0.02, SPRING_LEN = 90, CENTRE = 0.002, FRICTION = 0.85;
+    let alpha = 1, frame = 0;
+    function step() {
+      for (let i = 0; i < nodes.length; i++) {
+        const a = nodes[i];
+        for (let j = i + 1; j < nodes.length; j++) {
+          const b = nodes[j];
+          let dx = b.x - a.x, dy = b.y - a.y, d2 = dx*dx + dy*dy;
+          if (d2 < 1) { dx = Math.random() - 0.5; dy = Math.random() - 0.5; d2 = 1; }
+          const d = Math.sqrt(d2), f = (REPEL / d2) * alpha;
+          a.vx -= (dx/d)*f; a.vy -= (dy/d)*f; b.vx += (dx/d)*f; b.vy += (dy/d)*f;
+        }
+      }
+      for (const { src, tgt } of links) {
+        const a = nodes[src], b = nodes[tgt];
+        const dx = b.x - a.x, dy = b.y - a.y, d = Math.sqrt(dx*dx + dy*dy) || 1;
+        const f = (d - SPRING_LEN) * SPRING * alpha;
+        a.vx += (dx/d)*f; a.vy += (dy/d)*f; b.vx -= (dx/d)*f; b.vy -= (dy/d)*f;
+      }
+      for (const n of nodes) {
+        n.vx += (W/2 - n.x) * CENTRE * alpha; n.vy += (H/2 - n.y) * CENTRE * alpha;
+        n.vx *= FRICTION; n.vy *= FRICTION;
+        n.x = Math.max(n.r, Math.min(W - n.r, n.x + n.vx));
+        n.y = Math.max(n.r, Math.min(H - n.r, n.y + n.vy));
+      }
+      links.forEach((l, i) => {
+        const a = nodes[l.src], b = nodes[l.tgt];
+        linkEls[i].setAttribute('x1', String(a.x)); linkEls[i].setAttribute('y1', String(a.y));
+        linkEls[i].setAttribute('x2', String(b.x)); linkEls[i].setAttribute('y2', String(b.y));
+      });
+      nodes.forEach((n, i) => { nodeEls[i].setAttribute('cx', String(n.x)); nodeEls[i].setAttribute('cy', String(n.y)); });
+      alpha *= 0.985;
+      if (frame++ < 600 && alpha > 0.02) requestAnimationFrame(step);
+    }
+    requestAnimationFrame(step);
+
+    let dragIdx = -1;
+    nodeGroup.addEventListener('mousemove', (e: any) => {
+      const t = e.target;
+      if (t?.getAttribute('data-idx') !== null && t?.getAttribute) {
+        const n = nodes[+t.getAttribute('data-idx')];
+        if (!n) return;
+        tip.textContent = `${n.title} (${n.kind}${n.tailored ? ', tailored' : ''})`;
+        const rect = container.getBoundingClientRect();
+        (tip as any).style.left = (e.clientX - rect.left + 12) + 'px';
+        (tip as any).style.top = (e.clientY - rect.top + 12) + 'px';
+        (tip as any).style.opacity = '1';
+      }
+    });
+    nodeGroup.addEventListener('mouseleave', () => { (tip as any).style.opacity = '0'; });
+    svg.addEventListener('mousedown', (e: any) => {
+      const t = e.target;
+      if (t?.getAttribute && t.getAttribute('data-idx') !== null) dragIdx = +t.getAttribute('data-idx');
+    });
+    window.addEventListener('mousemove', (e: any) => {
+      if (dragIdx < 0) return;
+      const rect = svg.getBoundingClientRect();
+      nodes[dragIdx].x = e.clientX - rect.left; nodes[dragIdx].y = e.clientY - rect.top;
+      nodes[dragIdx].vx = 0; nodes[dragIdx].vy = 0; alpha = Math.max(alpha, 0.3);
+      requestAnimationFrame(step);
+    });
+    window.addEventListener('mouseup', () => { dragIdx = -1; });
+  }
+
+  load();
+</script>

@@ -80,10 +80,10 @@ import AppShell from '../layouts/AppShell.astro';
   const $ = (id: string) => document.getElementById(id)!;
   const API_BASE = (import.meta as any).env?.PUBLIC_RECIPES_API_BASE || 'https://app.loopskill.io';
   const apiKey = (() => { try { return localStorage.getItem('recipes_api_key'); } catch { return null; } })();
-  async function api(path: string) {
-    const headers: any = {};
+  async function api(path: string, opts: any = {}) {
+    const headers: any = Object.assign({}, opts.headers || {});
     if (apiKey) headers['x-api-key'] = apiKey;
-    return fetch(API_BASE + path, { credentials: 'include', headers });
+    return fetch(API_BASE + path, { credentials: 'include', ...opts, headers });
   }
   function esc(s: any) { return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'} as any)[c]); }
   function show(id: string) { $(id).removeAttribute('hidden'); }
@@ -100,6 +100,72 @@ import AppShell from '../layouts/AppShell.astro';
   type E = { src: number; tgt: number; kind: string; label?: string };
 
   let fleets: any[] = [];
+  // feat/fleet-console-ui — context the agent-state panel needs.
+  let activeFleetId = '';
+  let activeBundles: { id: string; name: string }[] = [];
+
+  // Agent deep view: actual installed skills (lockfile snapshot) + drift vs
+  // declared + undeclared EXTRAS with one-click "Add to bundle" (harvest flow).
+  async function loadAgentState(memberId: string) {
+    const body = $('fm-panel-body');
+    body.insertAdjacentHTML('beforeend', `<div id="fm-agent-state" class="mt-2 pt-2 border-t border-border-soft text-muted-soft">Loading installed state…</div>`);
+    const box = document.getElementById('fm-agent-state')!;
+    let st: any;
+    try {
+      const r = await api(`/api/fleets/${activeFleetId}/members/${memberId}/state`);
+      if (!r.ok) { box.textContent = `State unavailable (${r.status}).`; return; }
+      st = await r.json();
+    } catch { box.textContent = 'State unavailable (network).'; return; }
+
+    if (!st.has_snapshot) {
+      box.innerHTML = `<span class="text-muted-soft">No state reported yet — the agent posts its lockfile on each 30-min sync. Check back after the next cycle.</span>`;
+      return;
+    }
+    const row = (s: any, cls: string, mark: string) =>
+      `<div class="flex items-center justify-between gap-2 py-0.5"><span class="${cls} truncate">${mark} ${esc(s.slug)}</span><span class="text-muted-soft shrink-0">${esc(s.installed_version || s.pinned_version || '')}</span></div>`;
+    let html = `<div class="text-[10px] uppercase tracking-wide text-muted-soft mb-1 mt-1">Installed on this agent (${st.installed_count}) · reported ${st.reported_at ? new Date(st.reported_at).toLocaleTimeString() : '—'}</div>`;
+    html += (st.in_sync || []).map((s: any) => row(s, 'text-emerald-400', '✓')).join('');
+    if ((st.missing || []).length) {
+      html += `<div class="text-[10px] uppercase tracking-wide text-amber-400 mb-1 mt-2">Missing (declared, not installed)</div>`;
+      html += st.missing.map((s: any) => row(s, 'text-amber-400', '⧗')).join('');
+    }
+    if ((st.extras || []).length) {
+      html += `<div class="text-[10px] uppercase tracking-wide text-fuchsia-400 mb-1 mt-2">On agent, not in any bundle — harvest?</div>`;
+      html += st.extras.map((s: any) =>
+        `<div class="flex items-center justify-between gap-2 py-0.5">
+          <span class="text-fuchsia-300 truncate">◆ ${esc(s.slug)}</span>
+          <button class="fm-harvest text-[10px] px-2 py-0.5 rounded border border-fuchsia-500/40 text-fuchsia-300 hover:bg-fuchsia-500/10 transition shrink-0" data-slug="${esc(s.slug)}">+ Add to bundle</button>
+        </div>`).join('');
+    }
+    box.innerHTML = html;
+
+    box.querySelectorAll<HTMLButtonElement>('.fm-harvest').forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        const slug = btn.dataset.slug!;
+        if (!activeBundles.length) { btn.textContent = 'no bundle'; return; }
+        // One subscribed bundle → add directly; several → simple prompt pick.
+        let target = activeBundles[0];
+        if (activeBundles.length > 1) {
+          const names = activeBundles.map((b, i) => `${i + 1}. ${b.name}`).join('\n');
+          const pick = window.prompt(`Add "${slug}" to which bundle?\n${names}\n\nEnter number:`, '1');
+          const i = pick ? parseInt(pick, 10) - 1 : -1;
+          if (i < 0 || i >= activeBundles.length) return;
+          target = activeBundles[i];
+        }
+        btn.disabled = true; btn.textContent = '…';
+        try {
+          const r = await api(`/api/bundles/${target.id}/skills`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ slug }),
+          });
+          if (r.status === 201) { btn.textContent = `✓ ${target.name}`; btn.classList.add('opacity-70'); }
+          else if (r.status === 404) { btn.textContent = 'not in catalog'; btn.title = 'This skill exists only on the agent — publish it to LoopSkill first (loopskill skill publish), then add it to a bundle.'; }
+          else { btn.textContent = `err ${r.status}`; btn.disabled = false; }
+        } catch { btn.textContent = 'network err'; btn.disabled = false; }
+      });
+    });
+  }
 
   async function boot() {
     const r = await api('/api/fleets');
@@ -137,6 +203,9 @@ import AppShell from '../layouts/AppShell.astro';
     for (let i = 0; i < bundleRs.length; i++) {
       if (bundleRs[i].ok) { const b = await bundleRs[i].json(); b.__channel = subs[i].channel; bundles.push(b); }
     }
+    // feat/fleet-console-ui: context for the agent-state panel + harvest flow.
+    activeFleetId = fleet.fleet_id;
+    activeBundles = bundles.map((b: any) => ({ id: b.id, name: b.name }));
 
     $('fm-sub').textContent = `${esc(dash.fleet_name)} — ${dash.members.length} agent${dash.members.length === 1 ? '' : 's'}, ${bundles.length} bundle${bundles.length === 1 ? '' : 's'}.`;
 
@@ -368,6 +437,18 @@ import AppShell from '../layouts/AppShell.astro';
         $('fm-panel-body').innerHTML = Object.entries(n.detail)
           .map(([k, v]) => `<div class="flex justify-between gap-3"><span class="text-muted-soft shrink-0">${esc(k)}</span><span class="text-text text-right break-all">${esc(v)}</span></div>`)
           .join('');
+        // feat/fleet-console-ui: agent nodes get the DEEP view — what is
+        // actually installed on that machine (lockfile snapshot), drift vs
+        // declared, and undeclared extras with one-click add-to-bundle
+        // (the "built it on Astrovita, promote it everywhere" flow).
+        if (n.kind === 'agent' && n.id.startsWith('member:')) {
+          loadAgentState(n.id.slice('member:'.length));
+        }
+        if (n.kind === 'bundle' && n.id.startsWith('bundle:')) {
+          const bid = n.id.slice('bundle:'.length);
+          $('fm-panel-body').insertAdjacentHTML('beforeend',
+            `<a href="/bundles/view?id=${encodeURIComponent(bid)}" class="mt-2 inline-flex items-center gap-1.5 text-accent hover:opacity-80">Open bundle →</a>`);
+        }
       }
     });
     let dragIdx = -1;
