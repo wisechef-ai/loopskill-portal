@@ -240,6 +240,29 @@ const API_BASE = import.meta.env.PUBLIC_RECIPES_API_BASE || 'https://app.loopski
     if (!r.ok) throw new Error(`API ${r.status}`);
     return r.json();
   }
+
+  // feat/fleet-console-ui — FEDERATION on Browse. The internal catalog is
+  // curated (~dozens); the 84k+ live in the 7 federated sources that the
+  // Composer already queries. Browse only ever hit the internal search, which
+  // read as "not all skills are shown". Community results render as their own
+  // group with source badges; failures degrade to internal-only (no spinner
+  // hostage). Query >= 2 chars OR the skills tab with a query.
+  const FED_SOURCES = 'hermes-hub,skills-sh,well-known,clawhub,lobehub,browse-sh,github-oss';
+  async function fetchFederated(q, limit = 24) {
+    if (!q || q.length < 2) return [];
+    try {
+      const r = await fetch(`${API_BASE}/api/skills/external?sources=${FED_SOURCES}&limit=${limit}&q=${encodeURIComponent(q)}`);
+      if (!r.ok) return [];
+      const d = await r.json();
+      return (d.external || []).map((s) => ({
+        slug: s.slug,
+        title: s.title || s.slug,
+        description: s.description,
+        meta: `${s.source || 'community'}${s.license ? ' · ' + s.license : ''}`,
+        href: s.origin_url || '#',
+      }));
+    } catch { return []; }
+  }
   // Empty-query browse defaults per type (council §3): fall back to the
   // existing per-type endpoints when q is empty.
   async function fetchBrowseDefaults() {
@@ -284,8 +307,12 @@ const API_BASE = import.meta.env.PUBLIC_RECIPES_API_BASE || 'https://app.loopski
     $('browse-results').innerHTML = '';
 
     let data;
+    let federated = [];
     try {
-      data = state.q ? await fetchSearch(state.q) : await fetchBrowseDefaults();
+      [data, federated] = await Promise.all([
+        state.q ? fetchSearch(state.q) : fetchBrowseDefaults(),
+        (state.type === 'all' || state.type === 'skills') ? fetchFederated(state.q, state.type === 'skills' ? 48 : 24) : Promise.resolve([]),
+      ]);
     } catch (e) {
       if (mySeq !== seq) return;
       hide('browse-loading');
@@ -302,13 +329,23 @@ const API_BASE = import.meta.env.PUBLIC_RECIPES_API_BASE || 'https://app.loopski
       personalities: data.personalities || [],
     };
 
-    const totalCount = Object.values(byType).reduce((a, arr) => a + arr.length, 0);
+    const totalCount = Object.values(byType).reduce((a, arr) => a + arr.length, 0) + federated.length;
     const countMsg = state.q
-      ? `${totalCount} result${totalCount === 1 ? '' : 's'} for "${state.q}"`
+      ? `${totalCount} result${totalCount === 1 ? '' : 's'} for "${state.q}"${federated.length ? ` (${federated.length} community)` : ''}`
       : `${totalCount} item${totalCount === 1 ? '' : 's'}`;
     $('browse-live-count').textContent = countMsg;
 
     const results = $('browse-results');
+    const fedGroupHTML = federated.length
+      ? `<section class="ls-section">
+          <div class="flex items-center justify-between ls-section-header">
+            <h2 class="ls-section-title text-text">Community skills <span class="text-xs text-muted-soft font-normal">federated · 7 registries · install as-is</span></h2>
+          </div>
+          <div class="artifact-grid">
+            ${federated.map((it) => artifactCardHTML('skill', it, 'grid')).join('')}
+          </div>
+        </section>`
+      : '';
 
     if (state.type === 'all') {
       if (totalCount === 0) {
@@ -316,19 +353,22 @@ const API_BASE = import.meta.env.PUBLIC_RECIPES_API_BASE || 'https://app.loopski
         $('browse-empty').textContent = state.q ? `No results for "${state.q}"` : 'Nothing is available right now.';
         return;
       }
-      results.innerHTML = GROUP_ORDER.map((t) => renderGroup(t, byType[t], 'all', state.q)).join('');
+      results.innerHTML = GROUP_ORDER.map((t) => renderGroup(t, byType[t], 'all', state.q)).join('') + fedGroupHTML;
       return;
     }
 
     // Single-type tab → grid of results for that type only.
     const items = byType[state.type] || [];
-    if (!items.length) {
+    if (!items.length && !federated.length) {
       show('browse-empty');
       $('browse-empty').textContent = state.q ? `No results for "${state.q}"` : 'Nothing is available right now.';
       return;
     }
     const grid = items.map((it) => artifactCardHTML(state.type, it, 'grid')).join('');
-    results.innerHTML = `<div class="artifact-grid">${grid}</div>`;
+    const curatedHeader = state.type === 'skills' && federated.length
+      ? `<div class="ls-section-header"><h2 class="ls-section-title text-text">LoopSkill catalog <span class="text-xs text-muted-soft font-normal">verified · signed</span></h2></div>`
+      : '';
+    results.innerHTML = (items.length ? `${curatedHeader}<div class="artifact-grid">${grid}</div>` : '') + fedGroupHTML;
   }
 
   $('browse-retry').addEventListener('click', load);

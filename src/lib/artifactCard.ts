@@ -28,6 +28,8 @@ export interface ArtifactItem {
   href: string;
 }
 
+import { identiconSVG } from './identicon';
+
 const TYPE_BADGE: Record<ArtifactType, string> = {
   loop: 'Loop',
   skill: 'Skill',
@@ -69,6 +71,7 @@ export function artifactCardHTML(type: ArtifactType, item: ArtifactItem, variant
     : '';
   return `<a href="${esc(item.href)}" class="artifact-card" data-artifact-type="${type}" data-artifact-slug="${esc(item.slug)}" aria-label="${esc(ariaLabel)}">
     <span class="artifact-cover" style="background:linear-gradient(135deg, ${grad[0]} 0%, ${grad[1]} 100%);">
+      ${identiconSVG(item.slug || item.title || 'loopskill')}
       <span class="artifact-badge">${TYPE_BADGE[type]}</span>
       <span class="artifact-mono" aria-hidden="true">${esc(mono)}</span>
     </span>

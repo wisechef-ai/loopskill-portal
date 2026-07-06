@@ -31,6 +31,7 @@ CRITICAL_PAGES=(
   "home/index.html"
   "library/index.html"
   "fleet-map/index.html"
+  "bundles/view/index.html"
 )
 
 failures=0
