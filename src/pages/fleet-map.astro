@@ -1,0 +1,389 @@
+---
+// /fleet-map — the fleet, visualized. feat/fleet-map-viz.
+//
+// One living picture of a fleet: the fleet node at the center, each enrolled
+// agent (FleetMember) around it with a live status ring (dashboard drift +
+// failed crons), the subscribed bundle(s), and every deployed artifact —
+// skills (blue), composite loops (emerald), personalities (fuchsia) — hanging
+// off the bundle. related_skills edges render dashed; composite-loop→skill
+// composition edges render dashed emerald.
+//
+// Data (all owner-authenticated, same x-api-key bridge as /library):
+//   GET /api/fleets                       — fleet list + subscriptions
+//   GET /api/fleets/{id}/dashboard        — per-member drift, failed crons
+//   GET /api/bundles/{id}                 — skills + personalities +
+//                                           composite_loops (API ≥0.9.7
+//                                           artifact-parity; sections absent
+//                                           on older APIs degrade to empty)
+//
+// Groups self-hide when empty (Spotify-IA doctrine: render real data or
+// nothing). Force layout is the dependency-free pattern from cookbooks/view
+// (fleets are small graphs — well under 200 nodes).
+import AppShell from '../layouts/AppShell.astro';
+---
+<AppShell title="Fleet Map — Recipes" active="library">
+  <section class="max-w-6xl mx-auto px-6 py-10">
+    <header class="mb-6 flex items-end justify-between gap-4 flex-wrap">
+      <div>
+        <a href="/library?tab=fleets" class="text-xs text-muted hover:text-accent transition inline-flex items-center gap-1.5 mb-2">← Fleets</a>
+        <h1 class="text-2xl font-semibold tracking-tight">Fleet Map</h1>
+        <p id="fm-sub" class="text-sm text-muted mt-1">Agents, bundles, and everything deployed to them — one live picture.</p>
+      </div>
+      <div id="fm-fleet-picker-wrap" class="hidden">
+        <select id="fm-fleet-picker" class="px-3 py-2 text-sm bg-bg-elev border border-border rounded-lg text-text focus:outline-none focus:border-accent"></select>
+      </div>
+    </header>
+
+    <!-- States -->
+    <div id="fm-loading" class="text-sm text-muted py-16 text-center">Loading fleet…</div>
+    <div id="fm-empty" hidden class="flex flex-col items-center justify-center gap-3 py-16 rounded-2xl border border-dashed border-border text-center">
+      <span class="text-sm text-text font-medium">No fleets yet.</span>
+      <span class="text-xs text-muted max-w-sm">Create a fleet and subscribe a bundle — the map draws itself from what your agents actually run.</span>
+      <a href="/library?tab=fleets" class="text-xs text-accent hover:opacity-80 mt-1">Go to Fleets</a>
+    </div>
+    <div id="fm-error" hidden class="bg-bg-card border border-red-500/40 rounded-2xl p-6">
+      <h2 class="text-base font-semibold mb-1">Couldn't load the fleet map</h2>
+      <p id="fm-error-detail" class="text-sm text-muted"></p>
+    </div>
+
+    <!-- Graph -->
+    <div id="fm-stage" hidden>
+      <div class="flex flex-wrap items-center gap-x-4 gap-y-1.5 mb-3 text-[11px] text-muted">
+        <span class="inline-flex items-center gap-1.5"><i class="w-2.5 h-2.5 rounded-full inline-block" style="background:#ffd166"></i> Agent</span>
+        <span class="inline-flex items-center gap-1.5"><i class="w-2.5 h-2.5 rounded-full inline-block" style="background:#f5a623"></i> Bundle</span>
+        <span class="inline-flex items-center gap-1.5"><i class="w-2.5 h-2.5 rounded-full inline-block" style="background:#5b9bf5"></i> Skill</span>
+        <span class="inline-flex items-center gap-1.5"><i class="w-2.5 h-2.5 rounded-full inline-block" style="background:#34d399"></i> Loop</span>
+        <span class="inline-flex items-center gap-1.5"><i class="w-2.5 h-2.5 rounded-full inline-block" style="background:#e879f9"></i> Personality</span>
+        <span class="inline-flex items-center gap-1.5 ml-auto"><i class="w-2 h-2 rounded-full inline-block ring-2 ring-emerald-400/80" style="background:#0a0a0a"></i> healthy</span>
+        <span class="inline-flex items-center gap-1.5"><i class="w-2 h-2 rounded-full inline-block ring-2 ring-amber-400/80" style="background:#0a0a0a"></i> attention</span>
+        <span class="inline-flex items-center gap-1.5"><i class="w-2 h-2 rounded-full inline-block ring-2 ring-red-400/80" style="background:#0a0a0a"></i> failing crons</span>
+      </div>
+      <div class="grid grid-cols-1 lg:grid-cols-[1fr_280px] gap-4">
+        <div id="fm-graph-container" class="relative bg-bg-card border border-border rounded-2xl overflow-hidden" style="height:600px">
+          <svg id="fm-svg" width="100%" height="100%" style="display:block"></svg>
+          <div id="fm-tooltip" class="pointer-events-none absolute z-10 px-2.5 py-1.5 rounded-lg bg-bg-elev border border-border text-xs text-text opacity-0 transition-opacity max-w-[260px]"></div>
+        </div>
+        <aside id="fm-panel" class="bg-bg-card border border-border rounded-2xl p-5 h-fit lg:sticky lg:top-6">
+          <h2 id="fm-panel-title" class="text-sm font-semibold mb-1">Select a node</h2>
+          <p id="fm-panel-kind" class="text-[10px] uppercase tracking-wide text-muted-soft mb-3"></p>
+          <div id="fm-panel-body" class="text-xs text-muted leading-relaxed flex flex-col gap-2">
+            Click any node — agent, bundle, skill, loop, or personality — to inspect it here.
+          </div>
+        </aside>
+      </div>
+      <div id="fm-stats" class="mt-3 text-[11px] text-muted-soft"></div>
+    </div>
+  </section>
+</AppShell>
+
+<script>
+  const $ = (id: string) => document.getElementById(id)!;
+  const API_BASE = (import.meta as any).env?.PUBLIC_RECIPES_API_BASE || 'https://app.loopskill.io';
+  const apiKey = (() => { try { return localStorage.getItem('recipes_api_key'); } catch { return null; } })();
+  async function api(path: string) {
+    const headers: any = {};
+    if (apiKey) headers['x-api-key'] = apiKey;
+    return fetch(API_BASE + path, { credentials: 'include', headers });
+  }
+  function esc(s: any) { return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'} as any)[c]); }
+  function show(id: string) { $(id).removeAttribute('hidden'); }
+  function hide(id: string) { $(id).setAttribute('hidden', ''); }
+
+  const COLORS: Record<string, string> = {
+    fleet: '#ffd166', agent: '#ffd166', bundle: '#f5a623',
+    skill: '#5b9bf5', loop: '#34d399', personality: '#e879f9',
+  };
+  const RADII: Record<string, number> = { fleet: 16, agent: 11, bundle: 12, skill: 7, loop: 8, personality: 8 };
+
+  type N = { id: string; kind: string; label: string; detail: any; ring?: string;
+             x: number; y: number; vx: number; vy: number; r: number };
+  type E = { src: number; tgt: number; kind: string; label?: string };
+
+  let fleets: any[] = [];
+
+  async function boot() {
+    const r = await api('/api/fleets');
+    if (r.status === 401) { window.location.href = '/signin?next=/fleet-map'; return; }
+    if (!r.ok) { fail(`Fleet list failed (${r.status}).`); return; }
+    fleets = (await r.json()).fleets || [];
+    if (!fleets.length) { hide('fm-loading'); show('fm-empty'); return; }
+
+    // Picker (only when >1 fleet); honour ?fleet= deep link.
+    const want = new URLSearchParams(location.search).get('fleet');
+    let fleet = fleets.find((f: any) => f.fleet_id === want) || fleets[0];
+    if (fleets.length > 1) {
+      const sel = $('fm-fleet-picker') as HTMLSelectElement;
+      fleets.forEach((f: any) => { const o = document.createElement('option'); o.value = f.fleet_id; o.textContent = f.name; sel.appendChild(o); });
+      sel.value = fleet.fleet_id;
+      sel.addEventListener('change', () => { location.href = '/fleet-map?fleet=' + encodeURIComponent(sel.value); });
+      $('fm-fleet-picker-wrap').classList.remove('hidden');
+    }
+    await render(fleet);
+  }
+
+  function fail(msg: string) {
+    hide('fm-loading'); $('fm-error-detail').textContent = msg; show('fm-error');
+  }
+
+  async function render(fleet: any) {
+    const subs = fleet.subscriptions || [];
+    const [dashR, ...bundleRs] = await Promise.all([
+      api(`/api/fleets/${fleet.fleet_id}/dashboard`),
+      ...subs.map((s: any) => api(`/api/bundles/${s.cookbook_id}`)),
+    ]);
+    if (!dashR.ok) { fail(`Dashboard failed (${dashR.status}).`); return; }
+    const dash = await dashR.json();
+    const bundles: any[] = [];
+    for (let i = 0; i < bundleRs.length; i++) {
+      if (bundleRs[i].ok) { const b = await bundleRs[i].json(); b.__channel = subs[i].channel; bundles.push(b); }
+    }
+
+    $('fm-sub').textContent = `${esc(dash.fleet_name)} — ${dash.members.length} agent${dash.members.length === 1 ? '' : 's'}, ${bundles.length} bundle${bundles.length === 1 ? '' : 's'}.`;
+
+    // ── Build nodes + edges ────────────────────────────────────────────────
+    const nodes: N[] = [];
+    const edges: E[] = [];
+    const byId: Record<string, number> = {};
+    function add(id: string, kind: string, label: string, detail: any, ring?: string): number {
+      if (byId[id] !== undefined) return byId[id];
+      const i = nodes.length;
+      nodes.push({ id, kind, label, detail, ring, x: 0, y: 0, vx: 0, vy: 0, r: RADII[kind] || 7 });
+      byId[id] = i;
+      return i;
+    }
+
+    const fi = add('fleet', 'fleet', dash.fleet_name, {
+      'Fleet ID': fleet.fleet_id,
+      'Total runs': dash.total_runs, 'Accepted changes': dash.total_accepted_changes,
+      'Cost / accepted change': dash.cost_per_accepted_change != null ? '$' + Number(dash.cost_per_accepted_change).toFixed(2) : '—',
+      'Total cost': dash.total_cost_usd != null ? '$' + Number(dash.total_cost_usd).toFixed(2) : '—',
+    });
+
+    for (const m of dash.members) {
+      const failed = Number(m.failed_crons || 0);
+      const ring = failed >= 3 ? '#f87171' : failed >= 1 ? '#fbbf24' : '#34d399';
+      const mi = add('member:' + m.member_id, 'agent', m.host, {
+        'Host': m.host, 'Profile': m.profile,
+        'Last reconcile': m.last_outcome || 'no events yet',
+        'Failed crons': failed, 'Active': m.is_active ? 'yes' : 'no',
+      }, ring);
+      edges.push({ src: fi, tgt: mi, kind: 'enrolled' });
+    }
+
+    for (const b of bundles) {
+      const skills = b.skills || [];
+      const loops = b.composite_loops || [];
+      const pers = b.personalities || [];
+      const bi = add('bundle:' + b.id, 'bundle', b.name, {
+        'Skills': skills.length, 'Loops': loops.length, 'Personalities': pers.length,
+        'Channel': b.__channel, 'Fleets subscribed': b.signals?.fleet_usage ?? '—',
+        'Last synced': b.signals?.last_synced ? new Date(b.signals.last_synced).toLocaleString() : '—',
+      });
+      edges.push({ src: fi, tgt: bi, kind: 'subscribed', label: b.__channel });
+
+      const skillIdx: Record<string, number> = {};
+      for (const s of skills) {
+        const si = add('skill:' + s.slug, 'skill', s.title || s.slug, {
+          'Slug': s.slug, 'Variant': s.skill_variant || 'catalog',
+          'Public': s.is_public ? 'yes' : 'no',
+          'Pinned': s.pinned_version || 'floating',
+          'Corrections absorbed': s.corrections_absorbed ?? 0,
+        });
+        skillIdx[s.slug] = si;
+        edges.push({ src: bi, tgt: si, kind: 'contains' });
+      }
+      // related_skills — dashed, only when both ends are in this bundle.
+      const seen = new Set<string>();
+      for (const s of skills) {
+        for (const rel of (s.related_skills || [])) {
+          if (skillIdx[rel] !== undefined && rel !== s.slug) {
+            const k = [s.slug, rel].sort().join('|');
+            if (!seen.has(k)) { seen.add(k); edges.push({ src: skillIdx[s.slug], tgt: skillIdx[rel], kind: 'related' }); }
+          }
+        }
+      }
+      for (const l of loops) {
+        const li = add('loop:' + l.slug, 'loop', l.title || l.slug, {
+          'Slug': l.slug, 'Schedule': l.schedule || '—',
+          'Verifier': l.verifier_slug || '—',
+          'Composed of': (l.skills || []).join(', ') || '—',
+        });
+        edges.push({ src: bi, tgt: li, kind: 'contains' });
+        for (const sl of (l.skills || [])) {
+          if (skillIdx[sl] !== undefined) edges.push({ src: li, tgt: skillIdx[sl], kind: 'composes' });
+        }
+      }
+      for (const p of pers) {
+        const pi = add('personality:' + p.slug, 'personality', p.title || p.slug, {
+          'Slug': p.slug, 'Pinned': p.pinned_version || 'floating',
+          'Public': p.is_public ? 'yes' : 'no',
+        });
+        edges.push({ src: bi, tgt: pi, kind: 'contains' });
+      }
+    }
+
+    hide('fm-loading'); show('fm-stage');
+    const nSkills = nodes.filter(n => n.kind === 'skill').length;
+    const nLoops = nodes.filter(n => n.kind === 'loop').length;
+    const nPers = nodes.filter(n => n.kind === 'personality').length;
+    $('fm-stats').textContent =
+      `${nodes.length} nodes, ${edges.length} edges — ` +
+      [`${dash.members.length} agents`, `${bundles.length} bundles`, `${nSkills} skills`,
+       nLoops ? `${nLoops} loops` : '', nPers ? `${nPers} personalities` : '']
+        .filter(Boolean).join(', ') + '.';
+    drawGraph(nodes, edges);
+  }
+
+  // ── Dependency-free force layout (pattern from cookbooks/view) ──────────
+  function drawGraph(nodes: N[], edges: E[]) {
+    const svg = $('fm-svg');
+    const container = $('fm-graph-container');
+    const tip = $('fm-tooltip');
+    const W = container.clientWidth || 900;
+    const H = 600;
+
+    nodes.forEach((n, i) => {
+      const ang = (i / nodes.length) * Math.PI * 2;
+      const r0 = Math.min(W, H) * 0.32;
+      n.x = W / 2 + Math.cos(ang) * r0; n.y = H / 2 + Math.sin(ang) * r0;
+    });
+    if (nodes.length) { nodes[0].x = W / 2; nodes[0].y = H / 2; } // fleet centered
+
+    const ns = 'http://www.w3.org/2000/svg';
+    svg.innerHTML = '';
+    const root = document.createElementNS(ns, 'g'); svg.appendChild(root);
+    const linkGroup = document.createElementNS(ns, 'g');
+    const nodeGroup = document.createElementNS(ns, 'g');
+    const labelGroup = document.createElementNS(ns, 'g');
+    root.appendChild(linkGroup); root.appendChild(nodeGroup); root.appendChild(labelGroup);
+
+    const linkEls = edges.map((e) => {
+      const el = document.createElementNS(ns, 'line');
+      if (e.kind === 'related') {
+        el.setAttribute('stroke', '#5b9bf5'); el.setAttribute('stroke-width', '1');
+        el.setAttribute('stroke-dasharray', '4 3'); el.setAttribute('stroke-opacity', '0.4');
+      } else if (e.kind === 'composes') {
+        el.setAttribute('stroke', '#34d399'); el.setAttribute('stroke-width', '1');
+        el.setAttribute('stroke-dasharray', '3 3'); el.setAttribute('stroke-opacity', '0.45');
+      } else if (e.kind === 'enrolled') {
+        el.setAttribute('stroke', '#ffd166'); el.setAttribute('stroke-width', '1.6');
+        el.setAttribute('stroke-opacity', '0.55');
+      } else if (e.kind === 'subscribed') {
+        el.setAttribute('stroke', '#f5a623'); el.setAttribute('stroke-width', '1.6');
+        el.setAttribute('stroke-opacity', '0.55');
+      } else {
+        el.setAttribute('stroke', '#6b7280'); el.setAttribute('stroke-width', '1');
+        el.setAttribute('stroke-opacity', '0.35');
+      }
+      linkGroup.appendChild(el); return el;
+    });
+
+    const nodeEls = nodes.map((n, i) => {
+      const el = document.createElementNS(ns, 'circle');
+      el.setAttribute('r', String(n.r));
+      el.setAttribute('fill', COLORS[n.kind] || '#9ca3af');
+      el.setAttribute('stroke', n.ring || '#0a0a0a');
+      el.setAttribute('stroke-width', n.ring ? '2.5' : '1.5');
+      (el as any).style.cursor = 'pointer';
+      el.setAttribute('data-idx', String(i));
+      nodeGroup.appendChild(el); return el;
+    });
+
+    // Persistent labels for the structural nodes (fleet / agents / bundles).
+    const labelEls = nodes.map((n) => {
+      if (!['fleet', 'agent', 'bundle'].includes(n.kind)) return null;
+      const t = document.createElementNS(ns, 'text');
+      t.textContent = n.label;
+      t.setAttribute('font-size', n.kind === 'fleet' ? '13' : '11');
+      t.setAttribute('fill', '#e5e7eb'); t.setAttribute('text-anchor', 'middle');
+      (t as any).style.pointerEvents = 'none';
+      t.setAttribute('font-weight', n.kind === 'fleet' ? '600' : '500');
+      labelGroup.appendChild(t); return t;
+    });
+
+    const REPEL = 3200, SPRING = 0.02, CENTRE = 0.0025, FRICTION = 0.85;
+    const springLen = (e: E) => e.kind === 'enrolled' ? 150 : e.kind === 'subscribed' ? 130 : e.kind === 'contains' ? 85 : 70;
+    let alpha = 1, frame = 0;
+    function step() {
+      for (let i = 0; i < nodes.length; i++) {
+        const a = nodes[i];
+        for (let j = i + 1; j < nodes.length; j++) {
+          const b = nodes[j];
+          let dx = b.x - a.x, dy = b.y - a.y, d2 = dx * dx + dy * dy;
+          if (d2 < 1) { dx = Math.random() - 0.5; dy = Math.random() - 0.5; d2 = 1; }
+          const d = Math.sqrt(d2), f = (REPEL / d2) * alpha;
+          const fx = (dx / d) * f, fy = (dy / d) * f;
+          a.vx -= fx; a.vy -= fy; b.vx += fx; b.vy += fy;
+        }
+      }
+      for (const e of edges) {
+        const a = nodes[e.src], b = nodes[e.tgt];
+        const dx = b.x - a.x, dy = b.y - a.y, d = Math.sqrt(dx * dx + dy * dy) || 1;
+        const f = (d - springLen(e)) * SPRING * alpha;
+        const fx = (dx / d) * f, fy = (dy / d) * f;
+        a.vx += fx; a.vy += fy; b.vx -= fx; b.vy -= fy;
+      }
+      for (const n of nodes) {
+        n.vx += (W / 2 - n.x) * CENTRE * alpha;
+        n.vy += (H / 2 - n.y) * CENTRE * alpha;
+        n.vx *= FRICTION; n.vy *= FRICTION;
+        n.x += n.vx; n.y += n.vy;
+        n.x = Math.max(n.r + 4, Math.min(W - n.r - 4, n.x));
+        n.y = Math.max(n.r + 16, Math.min(H - n.r - 4, n.y));
+      }
+      edges.forEach((e, i) => {
+        const a = nodes[e.src], b = nodes[e.tgt];
+        linkEls[i].setAttribute('x1', String(a.x)); linkEls[i].setAttribute('y1', String(a.y));
+        linkEls[i].setAttribute('x2', String(b.x)); linkEls[i].setAttribute('y2', String(b.y));
+      });
+      nodes.forEach((n, i) => {
+        nodeEls[i].setAttribute('cx', String(n.x)); nodeEls[i].setAttribute('cy', String(n.y));
+        const lbl = labelEls[i];
+        if (lbl) { lbl.setAttribute('x', String(n.x)); lbl.setAttribute('y', String(n.y - n.r - 6)); }
+      });
+      alpha *= 0.985;
+      if (frame++ < 600 && alpha > 0.02) requestAnimationFrame(step);
+    }
+    requestAnimationFrame(step);
+
+    // Tooltip + click-to-inspect + drag
+    nodeGroup.addEventListener('mousemove', (e: any) => {
+      const t = e.target;
+      if (t && t.getAttribute('data-idx') !== null) {
+        const n = nodes[+t.getAttribute('data-idx')];
+        tip.textContent = n.label;
+        const rect = container.getBoundingClientRect();
+        (tip as any).style.left = (e.clientX - rect.left + 12) + 'px';
+        (tip as any).style.top = (e.clientY - rect.top + 12) + 'px';
+        (tip as any).style.opacity = '1';
+      }
+    });
+    nodeGroup.addEventListener('mouseleave', () => { (tip as any).style.opacity = '0'; });
+    nodeGroup.addEventListener('click', (e: any) => {
+      const t = e.target;
+      if (t && t.getAttribute('data-idx') !== null) {
+        const n = nodes[+t.getAttribute('data-idx')];
+        $('fm-panel-title').textContent = n.label;
+        $('fm-panel-kind').textContent = n.kind;
+        $('fm-panel-body').innerHTML = Object.entries(n.detail)
+          .map(([k, v]) => `<div class="flex justify-between gap-3"><span class="text-muted-soft shrink-0">${esc(k)}</span><span class="text-text text-right break-all">${esc(v)}</span></div>`)
+          .join('');
+      }
+    });
+    let dragIdx = -1;
+    svg.addEventListener('mousedown', (e: any) => {
+      const t = e.target;
+      if (t && t.getAttribute && t.getAttribute('data-idx') !== null) dragIdx = +t.getAttribute('data-idx');
+    });
+    window.addEventListener('mousemove', (e: any) => {
+      if (dragIdx < 0) return;
+      const rect = svg.getBoundingClientRect();
+      nodes[dragIdx].x = e.clientX - rect.left; nodes[dragIdx].y = e.clientY - rect.top;
+      nodes[dragIdx].vx = 0; nodes[dragIdx].vy = 0; alpha = Math.max(alpha, 0.3);
+      requestAnimationFrame(step);
+    });
+    window.addEventListener('mouseup', () => { dragIdx = -1; });
+  }
+
+  boot();
+</script>
