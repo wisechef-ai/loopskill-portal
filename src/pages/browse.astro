@@ -128,7 +128,10 @@ const API_BASE = import.meta.env.PUBLIC_RECIPES_API_BASE || 'https://app.loopski
   }
 
   function artifactHref(type, item) {
-    if (type === 'loops') return `/loops/run?slug=${encodeURIComponent(item.slug)}`;
+    // ah_0708: canonical share-ready per-loop page (real OG, indexable) now
+    // exists at /loops/{slug} — send browse traffic there instead of the
+    // query-string fallback so browse -> run -> install can convert.
+    if (type === 'loops') return `/loops/${encodeURIComponent(item.slug)}`;
     if (type === 'skills') return `/skills/${encodeURIComponent(item.slug)}`;
     if (type === 'bundles') return `/bundles/p?slug=${encodeURIComponent(item.slug)}`;
     return '/browse?type=personalities'; // personalities have no detail page yet
@@ -304,7 +307,25 @@ const API_BASE = import.meta.env.PUBLIC_RECIPES_API_BASE || 'https://app.loopski
       fetch(`${API_BASE}/api/bundles/discover?sort=installs&limit=24`).then((r) => (r.ok ? r.json() : null)),
       fetch(`${API_BASE}/api/personalities`).then((r) => (r.ok ? r.json() : null)),
     ]);
-    const loops = loopsR.status === 'fulfilled' && loopsR.value ? (Array.isArray(loopsR.value) ? loopsR.value : (loopsR.value.loops || loopsR.value.results || [])) : [];
+    let loops = loopsR.status === 'fulfilled' && loopsR.value ? (Array.isArray(loopsR.value) ? loopsR.value : (loopsR.value.loops || loopsR.value.results || [])) : [];
+    // ah_0708 (REVENUE/CATALOG): stable featured ordering so the strongest,
+    // most legible loops lead the browse surface. Curated leads first (in this
+    // fixed order), then everyone else by run_count desc, then slug for a
+    // deterministic tail. install_count=0 across the board today, so a stable
+    // hand-picked lead order beats an all-zero sort.
+    const FEATURED_LOOP_ORDER = ['pr-review-loop', 'test-green-loop', 'json-schema-validate-loop'];
+    loops = loops.slice().sort((a, b) => {
+      const ai = FEATURED_LOOP_ORDER.indexOf(a.slug);
+      const bi = FEATURED_LOOP_ORDER.indexOf(b.slug);
+      if (ai !== -1 || bi !== -1) {
+        if (ai === -1) return 1;
+        if (bi === -1) return -1;
+        return ai - bi;
+      }
+      const ar = a.run_count || 0, br = b.run_count || 0;
+      if (br !== ar) return br - ar;
+      return String(a.slug || '').localeCompare(String(b.slug || ''));
+    });
     const skills = skillsR.status === 'fulfilled' && skillsR.value ? (skillsR.value.results || []) : [];
     const bundles = bundlesR.status === 'fulfilled' && bundlesR.value ? (bundlesR.value.cookbooks || bundlesR.value.bundles || []) : [];
     const personalities = persR.status === 'fulfilled' && persR.value ? (Array.isArray(persR.value) ? persR.value : (persR.value.personalities || persR.value.results || [])) : [];
