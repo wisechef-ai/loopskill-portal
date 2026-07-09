@@ -12,7 +12,7 @@ import CrossSell from '../../components/CrossSell.astro';
         A <strong>fleet</strong> is a named group of agents that all share the same bundle.
         You create the fleet once, subscribe one or more bundles to it, distribute the fleet
         key to each agent, and from then on all agents stay in sync with a single
-        <code>recipes_fleet_sync</code> call.
+        <code>loopskill_fleet_sync</code> call.
       </p>
       <p>
         <strong>Tier requirement:</strong> Fleet features require a Pro subscription ($9.95/mo). Fleet keys (<code>rec_fleet_*</code>) are separate from standard API keys and
@@ -23,17 +23,17 @@ import CrossSell from '../../components/CrossSell.astro';
       <ul>
         <li>
           <strong>Fleet</strong> — a named group with a shared fleet key.
-          Created by calling <code>recipes_fleet_create</code>.
+          Created by calling <code>loopskill_fleet_create</code>.
           Fleet key format: <code>rec_fleet_&lt;8hex&gt;_&lt;32hex&gt;</code>.
         </li>
         <li>
           <strong>Subscription</strong> — links a fleet to a bundle on a channel
           (<code>stable</code> or <code>latest</code>). Created by calling
-          <code>recipes_fleet_subscribe</code>.
+          <code>loopskill_fleet_subscribe</code>.
         </li>
         <li>
           <strong>Sync</strong> — updates all agents in the fleet to the subscribed bundle's
-          current pinned versions. Called per-agent via <code>recipes_fleet_sync</code>.
+          current pinned versions. Called per-agent via <code>loopskill_fleet_sync</code>.
         </li>
         <li>
           <strong>Fleet key</strong> — the plaintext key shown ONCE on creation. Store it
@@ -47,10 +47,10 @@ import CrossSell from '../../components/CrossSell.astro';
         Fleets sync from bundles. Create one first if you don't have one:
       </p>
       <pre><code>{`// Via MCP (from your agent):
-recipes_list_cookbook({})   // list existing cookbooks
+loopskill_list_bundle({})   // list existing cookbooks
 
 // Via API:
-curl -X POST -H "x-api-key: $RECIPES_API_KEY" \\
+curl -X POST -H "x-api-key: $LOOPSKILL_API_KEY" \\
   -H "Content-Type: application/json" \\
   -d '{"name": "Production Fleet Bundle"}' \\
   https://app.loopskill.io/api/cookbooks`}</code></pre>
@@ -64,7 +64,7 @@ curl -X POST -H "x-api-key: $RECIPES_API_KEY" \\
       <p>
         From inside your agent conversation:
       </p>
-      <pre><code>{`recipes_fleet_create({ name: "Production Fleet" })`}</code></pre>
+      <pre><code>{`loopskill_fleet_create({ name: "Production Fleet" })`}</code></pre>
       <p>Response:</p>
       <pre><code>{`{
   "fleet_id": "uuid...",
@@ -77,7 +77,7 @@ curl -X POST -H "x-api-key: $RECIPES_API_KEY" \\
       </p>
 
       <h2>Step 3 — Subscribe a bundle to the fleet</h2>
-      <pre><code>{`recipes_fleet_subscribe({
+      <pre><code>{`loopskill_fleet_subscribe({
   fleet_id: "uuid...",
   cookbook_id: "uuid...",
   channel: "stable"   // "stable" (default) or "latest"
@@ -95,7 +95,7 @@ curl -X POST -H "x-api-key: $RECIPES_API_KEY" \\
       <p>
         Each agent that should be part of the fleet needs the fleet key as an environment variable:
       </p>
-      <pre><code>export RECIPES_API_KEY=rec_fleet_a1b2c3d4_e5f6...</code></pre>
+      <pre><code>export LOOPSKILL_API_KEY=rec_fleet_a1b2c3d4_e5f6...</code></pre>
       <p>
         Fleet keys are bundle-scoped. An agent using a fleet key can only install skills that
         are in the fleet's subscribed bundles — it cannot browse or install from the general catalog.
@@ -114,7 +114,7 @@ curl -X POST -H "x-api-key: $RECIPES_API_KEY" \\
         On each agent machine, trigger a sync:
       </p>
       <pre><code>{`// Via MCP (from any agent in the fleet):
-recipes_fleet_sync({ fleet_id: "uuid...", dry_run: false })
+loopskill_fleet_sync({ fleet_id: "uuid...", dry_run: false })
 
 // Via CLI:
 loopskill sync`}</code></pre>
@@ -137,7 +137,7 @@ loopskill sync`}</code></pre>
       </p>
 
       <h2>Listing fleets</h2>
-      <pre><code>{`recipes_fleet_list({})
+      <pre><code>{`loopskill_fleet_list({})
 // Returns:
 {
   "fleets": [
@@ -157,7 +157,7 @@ loopskill sync`}</code></pre>
         systemd timer:
       </p>
       <pre><code>{`# crontab entry (runs at 05:30 UTC, 30 min after carousel refresh)
-30 5 * * * RECIPES_API_KEY=rec_fleet_... loopskill sync >> /var/log/recipes-sync.log 2>&1`}</code></pre>
+30 5 * * * LOOPSKILL_API_KEY=rec_fleet_... loopskill sync >> /var/log/recipes-sync.log 2>&1`}</code></pre>
 
       <h2>Security considerations</h2>
       <ul>

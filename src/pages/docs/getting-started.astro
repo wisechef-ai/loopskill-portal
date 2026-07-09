@@ -25,7 +25,7 @@ import CrossSell from '../../components/CrossSell.astro';
         <li>A LoopSkill API key — free for free-tier skills, Pro ($9.95/mo) for the full library.</li>
 
         <li>One of the supported agent runtimes below.</li>
-        <li>Your key exported: <code>export RECIPES_API_KEY=rec_xx...</code></li>
+        <li>Your key exported: <code>export LOOPSKILL_API_KEY=rec_xx...</code></li>
       </ul>
       <p>Get your key: <a href="/signin?mode=signup">Sign up</a> → Dashboard → API Keys → New key.</p>
 
@@ -64,7 +64,7 @@ curl -sL https://app.loopskill.io/skill \
     "loopskill": {
       "command": "uvx",
       "args": ["loopskill-mcp"],
-      "env": { "RECIPES_API_KEY": "rec_xx..." }
+      "env": { "LOOPSKILL_API_KEY": "rec_xx..." }
     }
   }
 }`}</code></pre>
@@ -78,7 +78,7 @@ curl -sL https://app.loopskill.io/skill \
       <pre><code>{`{
   "name": "loopskill",
   "command": "uvx loopskill-mcp",
-  "env": { "RECIPES_API_KEY": "rec_xx..." }
+  "env": { "LOOPSKILL_API_KEY": "rec_xx..." }
 }`}</code></pre>
 
       <h2>Step 2 — Search the catalog</h2>
@@ -120,7 +120,7 @@ curl -sL https://app.loopskill.io/skill \
       <pre><code>loopskill sync</code></pre>
       <p>
         Or use the MCP tool: ask your agent "sync my LoopSkill skills to latest".
-        The <code>recipes_sync</code> MCP tool updates all installed skills in your bundle.
+        The <code>loopskill_sync</code> MCP tool updates all installed skills in your bundle.
       </p>
 
       <h2>What's in the catalog</h2>

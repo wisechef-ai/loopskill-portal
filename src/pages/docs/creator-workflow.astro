@@ -3,7 +3,7 @@ import AppShell from '../../layouts/AppShell.astro';
 import CrossSell from '../../components/CrossSell.astro';
 ---
 <AppShell mode="public" title="Creator workflow — LoopSkill Docs"
-     description="End-to-end guide for skill creators: signup, develop SKILL.md locally, submit via recipes_publish_request, pass review, get published, earn revenue.">
+     description="End-to-end guide for skill creators: signup, develop SKILL.md locally, submit via loopskill_publish_request, pass review, get published, earn revenue.">
   <section class="max-w-3xl mx-auto px-6 pt-16 pb-12">
     <p class="eyebrow mb-2">Documentation · Creator workflow</p>
     <h1 class="text-4xl font-semibold tracking-tight mb-6">Creator workflow — ship a skill and earn.</h1>
@@ -29,7 +29,7 @@ import CrossSell from '../../components/CrossSell.astro';
         <a href="/signin?mode=signup">Create an account</a> at app.loopskill.io.
         Then, from the dashboard → API Keys → New key, create a <code>rec_</code> key.
       </p>
-      <pre><code>export RECIPES_API_KEY=rec_xx...   # add to your ~/.bashrc or .zshrc</code></pre>
+      <pre><code>export LOOPSKILL_API_KEY=rec_xx...   # add to your ~/.bashrc or .zshrc</code></pre>
       <p>
         You don't need a paid subscription to submit a skill — submissions are open to all
         API key holders. A subscription is only required to <em>install</em> cook-tier skills.
@@ -60,7 +60,7 @@ import CrossSell from '../../components/CrossSell.astro';
 
       <!-- ──── STEP 3 ──── -->
       <h2>Step 3 — Scaffold the skill locally</h2>
-      <p>Use the <code>recipes_recipify</code> MCP tool to turn a description into a SKILL.md draft:</p>
+      <p>Use the <code>loopskill_recipify</code> MCP tool to turn a description into a SKILL.md draft:</p>
       <pre><code>{`// Ask your agent:
 "Recipify a skill that audits a website's Core Web Vitals and outputs a PDF report"
 
@@ -118,7 +118,7 @@ cp -r ~/skills/my-skill ~/.claude/skills/my-skill
       </p>
 
       <!-- ──── STEP 5 ──── -->
-      <h2>Step 5 — Submit via recipes_publish_request</h2>
+      <h2>Step 5 — Submit via loopskill_publish_request</h2>
       <p>
         Once your skill works locally, submit it from your agent conversation:
       </p>
@@ -126,7 +126,7 @@ cp -r ~/skills/my-skill ~/.claude/skills/my-skill
 "Submit my skill at ~/skills/my-skill/ to the LoopSkill marketplace"
 
 // The agent reads the directory and calls:
-recipes_publish_request({
+loopskill_publish_request({
   slug: "my-skill",
   content: "<SKILL.md contents>",
   version: "1.0.0",
@@ -173,7 +173,7 @@ recipes_publish_request({
         </li>
       </ul>
       <p>
-        To resubmit after changes, call <code>recipes_publish_request</code> again with the same slug.
+        To resubmit after changes, call <code>loopskill_publish_request</code> again with the same slug.
         Rate limit is 1 submission per 24h per (user, slug) — if you need to resubmit faster,
         comment on the GitHub issue.
       </p>
@@ -201,12 +201,12 @@ recipes_publish_request({
       </p>
       <p>
         To ship a patch: increment the version in your SKILL.md frontmatter and call
-        <code>recipes_publish_request</code> again. Patch versions (e.g. 1.0.1 → 1.0.2) go
+        <code>loopskill_publish_request</code> again. Patch versions (e.g. 1.0.1 → 1.0.2) go
         through an expedited review. Major versions (1.x → 2.0.0) get a full review.
       </p>
       <p>
         Users on a Pro subscription who have your skill in a bundle will see the update
-        the next time they run <code>recipes_sync</code> or <code>loopskill sync</code>.
+        the next time they run <code>loopskill_sync</code> or <code>loopskill sync</code>.
       </p>
 
       <!-- ──── EARNINGS ──── -->

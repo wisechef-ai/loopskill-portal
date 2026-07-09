@@ -4,12 +4,12 @@
 // page and every bundle page so the install motion is always one copy away.
 //
 // HONESTY: shows the REAL motions only.
-//   - skill: the MCP tool call `recipes_install(slug="X")` (the canonical agent
+//   - skill: the MCP tool call `loopskill_install(slug="X")` (the canonical agent
 //     motion) + the working signed-URL install endpoint
 //     `/api/skills/install?slug=X&ref=…` (the `ref` query param is consumed by
 //     install_routes for UTM attribution — verified live).
-//   - cookbook: `recipes_cookbook_install(cookbook_id="…")` (MCP) +
-//     `recipes_install_from_cookbook from "cookbook://<slug>"` for a public one.
+//   - cookbook: `loopskill_bundle_install(cookbook_id="…")` (MCP) +
+//     `loopskill_install_from_bundle from "bundle://<slug>"` for a public one.
 // We do NOT emit a `curl /i/<slug> | bash` line — that endpoint 404s (it was
 // aspirational on the old skills page). Every line here actually works.
 //
@@ -30,13 +30,13 @@ const refQ = encodeURIComponent(ref);
 
 // Build the canonical lines for this artifact.
 const mcpLine = kind === 'skill'
-  ? `recipes_install(slug="${slug}")`
-  : `recipes_cookbook_install(cookbook_id="${cookbookId}")`;
+  ? `loopskill_install(slug="${slug}")`
+  : `loopskill_bundle_install(cookbook_id="${cookbookId}")`;
 
 const urlLine = kind === 'skill'
   ? `${API}/api/skills/install?slug=${encodeURIComponent(slug)}&ref=${refQ}`
   : (visibility === 'public'
-      ? `recipes_install_from_cookbook from "cookbook://${slug}"`
+      ? `loopskill_install_from_bundle from "bundle://${slug}"`
       : `${API}/api/cookbooks/${cookbookId}/install`);
 
 const urlLabel = kind === 'skill'

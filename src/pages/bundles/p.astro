@@ -68,7 +68,7 @@ const API_BASE = import.meta.env.PUBLIC_RECIPES_API_BASE || "https://app.loopski
           <span class="text-[11px] text-muted-soft">paste to your agent</span>
         </div>
         <div class="relative">
-          <pre class="bg-[#0d0d0d] border border-border rounded-xl p-4 pr-12 text-sm text-accent overflow-x-auto"><code id="clone-line">recipes_install_from_cookbook from "cookbook://…"</code></pre>
+          <pre class="bg-[#0d0d0d] border border-border rounded-xl p-4 pr-12 text-sm text-accent overflow-x-auto"><code id="clone-line">loopskill_install_from_bundle from "bundle://…"</code></pre>
           <button id="copy-btn" class="absolute top-3 right-3 px-2.5 py-1 rounded-md bg-bg-elev border border-border text-xs text-muted hover:text-accent hover:border-accent/40 transition" type="button">Copy</button>
         </div>
         <p class="text-xs text-muted-soft mt-3">
@@ -174,7 +174,7 @@ const API_BASE = import.meta.env.PUBLIC_RECIPES_API_BASE || "https://app.loopski
 
     // The one-line clone — prefer the server-provided clone_line (carries ?ref),
     // fall back to a constructed line if the API didn't send one.
-    const cloneLine = bd.clone_line || `recipes_install_from_cookbook from "cookbook://${bd.slug}"`;
+    const cloneLine = bd.clone_line || `loopskill_install_from_bundle from "bundle://${bd.slug}"`;
     $("clone-line").textContent = cloneLine;
     const copyBtn = $("copy-btn");
     copyBtn.addEventListener("click", async () => {

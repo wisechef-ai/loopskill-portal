@@ -104,7 +104,7 @@ const telemetryBodyEx = `{
 
       <h3>GET /api/skills/install</h3>
       <p>Auth required (every install needs a key — including free-tier skills).</p>
-      <pre><code>curl -H "x-api-key: $RECIPES_API_KEY" \
+      <pre><code>curl -H "x-api-key: $LOOPSKILL_API_KEY" \
   "https://app.loopskill.io/api/skills/install?slug=super-memory&mode=files"</code></pre>
       <p><strong>Query params:</strong></p>
       <ul>
@@ -119,7 +119,7 @@ const telemetryBodyEx = `{
 
       <h3>GET /api/skills/access</h3>
       <p>Auth required. Pre-flight check before install — confirms tier without consuming an install slot.</p>
-      <pre><code>curl -H "x-api-key: $RECIPES_API_KEY" \
+      <pre><code>curl -H "x-api-key: $LOOPSKILL_API_KEY" \
   "https://app.loopskill.io/api/skills/access?slug=seo-audit-engine"</code></pre>
       <p><strong>Response — access granted:</strong></p>
       <pre><code set:text={accessGrantedEx}></code></pre>
@@ -151,7 +151,7 @@ const telemetryBodyEx = `{
 
       <h3>POST /api/cookbooks</h3>
       <p>Create a new bundle.</p>
-      <pre><code>curl -X POST -H "x-api-key: $RECIPES_API_KEY" \
+      <pre><code>curl -X POST -H "x-api-key: $LOOPSKILL_API_KEY" \
   -H "Content-Type: application/json" \
   -d '&#123;"name": "My Team Bundle"&#125;' \
   https://app.loopskill.io/api/cookbooks</code></pre>
@@ -165,7 +165,7 @@ const telemetryBodyEx = `{
 
       <h3>POST /api/cookbooks/&#123;cookbook_id&#125;/skills</h3>
       <p>Add a skill to a bundle (pins to current latest version).</p>
-      <pre><code>curl -X POST -H "x-api-key: $RECIPES_API_KEY" \
+      <pre><code>curl -X POST -H "x-api-key: $LOOPSKILL_API_KEY" \
   -H "Content-Type: application/json" \
   -d '&#123;"slug": "seo-audit-engine"&#125;' \
   "https://app.loopskill.io/api/cookbooks/UUID/skills"</code></pre>
@@ -209,7 +209,7 @@ const telemetryBodyEx = `{
 
       <h3>POST /api/publish/request</h3>
       <p>Auth required. Submit a skill for review (CLI path — use the MCP tool
-      <code>recipes_publish_request</code> for the agent-first path).
+      <code>loopskill_publish_request</code> for the agent-first path).
       Rate limited to 1 per 24h per (user, slug). See <a href="/docs/publishing">Publishing docs</a>.</p>
 
       <!-- ────────────────────────────────── ERRORS ── -->

@@ -118,35 +118,6 @@ const ogDesc =
           </a>
           <p class="text-xs text-muted-soft mt-2">Browsing is free. Deploying a loop needs a key so it's attributable to your fleet.</p>
         </div>
-
-        <!-- secondary: one-shot sandbox test (this is what "run once" was) -->
-        <div class="mt-5 pt-4 border-t border-border">
-          <div class="flex items-center gap-2 mb-2">
-            <h3 class="text-sm font-semibold">Test in sandbox</h3>
-            <span class="lp-chip">verify mode</span>
-          </div>
-          <p class="text-xs text-muted-soft mb-3">
-            Optional: run this loop's verification once under enforced confinement to see an
-            objective pass / fail before you deploy it. One-shot — does not schedule anything.
-          </p>
-          <div id="test-authed" class="hidden">
-            <button id="run-btn" type="button"
-              class="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-border text-text font-medium text-sm hover:border-accent transition disabled:opacity-50">
-              ▷ Test once
-            </button>
-          </div>
-        </div>
-
-        <!-- result -->
-        <div id="run-result" hidden class="mt-5">
-          <div id="run-verdict" class="flex items-center gap-3 mb-3"></div>
-          <dl id="run-meta" class="grid grid-cols-2 sm:grid-cols-4 gap-y-2 gap-x-4 text-sm mb-3"></dl>
-          <details id="run-output-wrap" class="mt-2">
-            <summary class="text-sm text-muted cursor-pointer hover:text-text">Output</summary>
-            <pre id="run-stdout" class="text-xs bg-[#0d0d0d] border border-border rounded-lg p-3 overflow-x-auto mt-2 whitespace-pre-wrap"></pre>
-            <pre id="run-stderr" class="text-xs bg-[#0d0d0d] border border-red-500/30 rounded-lg p-3 overflow-x-auto mt-2 whitespace-pre-wrap"></pre>
-          </details>
-        </div>
       </section>
 
       <!-- ratings -->
@@ -251,10 +222,9 @@ const ogDesc =
     } catch { /* anonymous */ }
     const authed = !!(me && (me.id || me.user_id || me.subscription_tier));
     setFlex("run-authed", authed);
-    setFlex("test-authed", authed);
     setFlex("run-anon", !authed);
     setFlex("rate-authed", authed);
-    if (authed) { wireRun(); wireRate(me); }
+    if (authed) { wireRate(me); }
   }
 
   function wireRun() {

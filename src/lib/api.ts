@@ -35,7 +35,7 @@ interface FetchOpts {
   maxDelayMs?: number;
   /** Per-request timeout in ms. Default 12000. */
   timeoutMs?: number;
-  /** Pass an auth header. Default reads RECIPES_API_KEY env var. */
+  /** Pass an auth header. Default reads LOOPSKILL_API_KEY env var. */
   apiKey?: string | null;
   /** When false, omit the x-api-key header entirely (use for public endpoints). */
   authed?: boolean;
@@ -90,7 +90,7 @@ async function _fetchApiUncached<T>(
     maxDelayMs = 6000,
     timeoutMs = 12000,
     apiKey = (typeof import.meta !== 'undefined'
-      ? (import.meta as any).env?.RECIPES_API_KEY
+      ? (import.meta as any).env?.LOOPSKILL_API_KEY
       : undefined) ?? null,
     authed = true,
   } = opts;

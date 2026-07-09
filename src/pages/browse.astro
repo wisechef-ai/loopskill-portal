@@ -40,6 +40,9 @@ const API_BASE = import.meta.env.PUBLIC_RECIPES_API_BASE || 'https://app.loopski
   <main class="ls-page max-w-6xl mx-auto pb-24">
     <header class="mb-6">
       <h1 class="ls-page-title text-text">Browse</h1>
+      <!-- ah_0709: scale/count signal for first-time visitors on the default
+           (no-query) view — real numbers only, populated by load() below. -->
+      <p id="browse-scale-line" class="ls-body text-sm text-muted mt-1" hidden></p>
     </header>
 
     <!-- Search-first: full-width input is the first control. -->
@@ -281,22 +284,39 @@ const API_BASE = import.meta.env.PUBLIC_RECIPES_API_BASE || 'https://app.loopski
   // Composer already queries. Browse only ever hit the internal search, which
   // read as "not all skills are shown". Community results render as their own
   // group with source badges; failures degrade to internal-only (no spinner
-  // hostage). Query >= 2 chars OR the skills tab with a query.
-  const FED_SOURCES = 'hermes-hub,skills-sh,well-known,clawhub,lobehub,browse-sh,github-oss';
+  // hostage).
+  //
+  // ah_0709: previously this required q.length >= 2, so the DEFAULT view
+  // (empty q, first-time visitor) never fetched federation at all — a
+  // visitor landing on /browse saw ~6 curated skills and no signal the
+  // catalog is 84k+ large. Verified live 2026-07-09:
+  // /api/skills/external?...&q= (empty q) returns a populated `external[]`
+  // teaser, same shape as a real query. So: allow empty q through (default
+  // view teaser), still reject 1-char queries (too noisy to be useful).
+  const FED_SOURCES = 'hermes-hub,skills-sh,well-known,clawhub,lobehub,browse-sh,github-oss,github-anthropic,github-openai,github-huggingface,github-nvidia,github-gstack,github-superpowers';
   async function fetchFederated(q, limit = 24) {
-    if (!q || q.length < 2) return [];
+    if (q && q.length < 2) return { items: [], indexedCount: null };
     try {
-      const r = await fetch(`${API_BASE}/api/skills/external?sources=${FED_SOURCES}&limit=${limit}&q=${encodeURIComponent(q)}`);
-      if (!r.ok) return [];
+      const r = await fetch(`${API_BASE}/api/skills/external?sources=${FED_SOURCES}&limit=${limit}&q=${encodeURIComponent(q || '')}`);
+      if (!r.ok) return { items: [], indexedCount: null };
       const d = await r.json();
-      return (d.external || []).map((s) => ({
+      const items = (d.external || []).map((s) => ({
         slug: s.slug,
         title: s.title || s.slug,
         description: s.description,
         meta: `${s.source || 'community'}${s.license ? ' · ' + s.license : ''}`,
         href: s.origin_url || '#',
       }));
-    } catch { return []; }
+      // ah_0709: `counts.external_indexed` is the API's real live-indexed
+      // count for the enabled sources+query (verified 2026-07-09: 152 at
+      // limit=24, q='') — a genuine fetched number, distinct from the
+      // static "84k+ across 7 registries" scale claim already documented
+      // in the comment above (that figure covers the full federation catalog,
+      // not what's indexed right now, so we label it separately and never
+      // conflate the two).
+      const indexedCount = d.counts && typeof d.counts.external_indexed === 'number' ? d.counts.external_indexed : null;
+      return { items, indexedCount };
+    } catch { return { items: [], indexedCount: null }; }
   }
   // Empty-query browse defaults per type (council §3): fall back to the
   // existing per-type endpoints when q is empty.
@@ -327,24 +347,35 @@ const API_BASE = import.meta.env.PUBLIC_RECIPES_API_BASE || 'https://app.loopski
       return String(a.slug || '').localeCompare(String(b.slug || ''));
     });
     const skills = skillsR.status === 'fulfilled' && skillsR.value ? (skillsR.value.results || []) : [];
+    // ah_0709: `total` is the real curated-skill count from the API (distinct
+    // from skills.length, which is capped at page_size=24) — used for the
+    // scale line and the section-header count. Do NOT fall back to
+    // skills.length when total is missing; leave it null so the caller can
+    // omit the count rather than show a wrong number.
+    const skillsTotal = skillsR.status === 'fulfilled' && skillsR.value && typeof skillsR.value.total === 'number' ? skillsR.value.total : null;
     const bundles = bundlesR.status === 'fulfilled' && bundlesR.value ? (bundlesR.value.cookbooks || bundlesR.value.bundles || []) : [];
     const personalities = persR.status === 'fulfilled' && persR.value ? (Array.isArray(persR.value) ? persR.value : (persR.value.personalities || persR.value.results || [])) : [];
-    return { loops, skills, bundles, personalities };
+    return { loops, skills, skillsTotal, bundles, personalities };
   }
 
-  function renderGroup(type, items, mode, seeAllQ) {
+  function renderGroup(type, items, mode, seeAllQ, totalCountForType) {
     if (!items.length) return '';
     const max = isMobile() ? MAX_MOBILE : MAX_DESKTOP;
     const shown = items.slice(0, max);
     const label = state.q
       ? TYPE_LABEL[type]
       : ({ loops: 'Popular loops', skills: 'Curated skills', bundles: 'Public bundles', personalities: 'Personalities' })[type];
+    // ah_0709: real count badge next to the section title. Prefer the
+    // API-reported total (skillsTotal etc.) when known; otherwise fall back
+    // to items.length (still a real, fetched number — never fabricated).
+    const count = typeof totalCountForType === 'number' ? totalCountForType : items.length;
+    const countBadge = `<span class="text-xs text-muted-soft font-normal">${count.toLocaleString()}</span>`;
     const seeAll = items.length > max || mode === 'all'
       ? `<a href="/browse?type=${type}${seeAllQ ? '&q=' + encodeURIComponent(seeAllQ) : ''}" class="text-xs text-accent hover:opacity-80 shrink-0">See all ${TYPE_LABEL[type].toLowerCase()} →</a>`
       : '';
     return `<section class="ls-section">
       <div class="flex items-center justify-between ls-section-header">
-        <h2 class="ls-section-title text-text">${esc(label)}</h2>
+        <h2 class="ls-section-title text-text">${esc(label)} ${countBadge}</h2>
         ${seeAll}
       </div>
       <div class="${mode === 'grid-only' ? 'artifact-grid' : 'shelf-row'}">
@@ -361,17 +392,21 @@ const API_BASE = import.meta.env.PUBLIC_RECIPES_API_BASE || 'https://app.loopski
 
     let data;
     let federated = [];
+    let fedIndexedCount = null;
     const [dataR, fedR] = await Promise.allSettled([
       state.q ? fetchSearch(state.q) : fetchBrowseDefaults(),
-      (state.type === 'all' || state.type === 'skills') ? fetchFederated(state.q, state.type === 'skills' ? 48 : 24) : Promise.resolve([]),
+      (state.type === 'all' || state.type === 'skills') ? fetchFederated(state.q, state.type === 'skills' ? 48 : 24) : Promise.resolve({ items: [], indexedCount: null }),
     ]);
     if (mySeq !== seq) return;
-    federated = fedR.status === 'fulfilled' ? fedR.value : [];
+    if (fedR.status === 'fulfilled') {
+      federated = fedR.value.items || [];
+      fedIndexedCount = fedR.value.indexedCount;
+    }
     if (dataR.status === 'fulfilled') {
       data = dataR.value;
     } else if (federated.length) {
       // Internal search failed but federation answered — degrade, don't blank.
-      data = { loops: [], skills: [], bundles: [], personalities: [] };
+      data = { loops: [], skills: [], skillsTotal: null, bundles: [], personalities: [] };
     } else {
       hide('browse-loading');
       show('browse-error');
@@ -392,11 +427,41 @@ const API_BASE = import.meta.env.PUBLIC_RECIPES_API_BASE || 'https://app.loopski
       : `${totalCount} item${totalCount === 1 ? '' : 's'}`;
     $('browse-live-count').textContent = countMsg;
 
+    // ah_0709: prominent scale/count signal on the DEFAULT (no-query) view
+    // only — search results already show a live count via countMsg above.
+    // Every number here is a real value from the fetches this load() just
+    // made: skillsTotal (API `total`), loops/bundles/personalities lengths,
+    // and the federation indexed count. The "84k+" figure is the team's
+    // documented federation-catalog scale (see fetchFederated comment) —
+    // shown as a labeled scale claim, never blended into the live counts.
+    const scaleLine = $('browse-scale-line');
+    if (!state.q && state.type === 'all') {
+      const parts = [];
+      if (typeof data.skillsTotal === 'number') parts.push(`${data.skillsTotal.toLocaleString()} curated skill${data.skillsTotal === 1 ? '' : 's'}`);
+      // ah_0709: community count is the REAL live-indexed number from the
+      // federation API (external_indexed across 13 registries), NOT a
+      // marketing "84k+" claim — every number on this line is substantiated
+      // by a fetch this load() just made. Omitted entirely if federation
+      // didn't answer (never show a guessed community figure).
+      if (typeof fedIndexedCount === 'number' && fedIndexedCount > 0) parts.push(`${fedIndexedCount.toLocaleString()} community skills across 13 registries`);
+      parts.push(`${byType.loops.length.toLocaleString()} loop${byType.loops.length === 1 ? '' : 's'}`);
+      parts.push(`${byType.bundles.length.toLocaleString()} bundle${byType.bundles.length === 1 ? '' : 's'}`);
+      parts.push(`${byType.personalities.length.toLocaleString()} personalit${byType.personalities.length === 1 ? 'y' : 'ies'}`);
+      scaleLine.textContent = parts.join(' · ');
+      scaleLine.hidden = false;
+    } else {
+      scaleLine.hidden = true;
+    }
+
     const results = $('browse-results');
+    const fedLabelSuffix = fedIndexedCount != null
+      ? `federated · 13 registries · ${fedIndexedCount.toLocaleString()} indexed · install as-is`
+      : 'federated · 13 registries · install as-is';
     const fedGroupHTML = federated.length
       ? `<section class="ls-section">
           <div class="flex items-center justify-between ls-section-header">
-            <h2 class="ls-section-title text-text">Community skills <span class="text-xs text-muted-soft font-normal">federated · 7 registries · install as-is</span></h2>
+            <h2 class="ls-section-title text-text">Community skills <span class="text-xs text-muted-soft font-normal">${esc(fedLabelSuffix)}</span></h2>
+            ${!state.q ? `<a href="/browse?type=skills" class="text-xs text-accent hover:opacity-80 shrink-0">See more community →</a>` : ''}
           </div>
           <div class="artifact-grid">
             ${federated.map((it) => artifactCardHTML('skill', it, 'grid')).join('')}
@@ -410,7 +475,8 @@ const API_BASE = import.meta.env.PUBLIC_RECIPES_API_BASE || 'https://app.loopski
         $('browse-empty').textContent = state.q ? `No results for "${state.q}"` : 'Nothing is available right now.';
         return;
       }
-      results.innerHTML = GROUP_ORDER.map((t) => renderGroup(t, byType[t], 'all', state.q)).join('') + fedGroupHTML;
+      const totalsByType = { skills: data.skillsTotal };
+      results.innerHTML = GROUP_ORDER.map((t) => renderGroup(t, byType[t], 'all', state.q, totalsByType[t])).join('') + fedGroupHTML;
       return;
     }
 

@@ -651,11 +651,11 @@ import AppShell from '../layouts/AppShell.astro';
     try { const r = await api(`/api/cookbooks/${currentCookbookId}`); if (r.ok) { const d = await r.json(); if (d.slug) slug = d.slug; } } catch {}
     const shareUrl = currentVisibility === 'public'
       ? `${location.origin}/bundles/p?slug=${encodeURIComponent(String(slug))}`
-      : `recipes_cookbook_install(cookbook_id="${currentCookbookId}")`;
+      : `loopskill_bundle_install(cookbook_id="${currentCookbookId}")`;
     ($('out-share') as HTMLElement).textContent = shareUrl;
     const lines = basket.map(s => s.__community
       ? `# ${s.slug} (community · ${s.source}) — install via bundle`
-      : `recipes_install(slug="${s.slug}")`).join('\n');
+      : `loopskill_install(slug="${s.slug}")`).join('\n');
     ($('out-lines') as HTMLElement).textContent = lines;
   }
 

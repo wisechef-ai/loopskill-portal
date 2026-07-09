@@ -11,7 +11,7 @@ import AppShell from '../../layouts/AppShell.astro';
       <p>
         LoopSkill supports 10 agent runtimes out of the box. Pick your runtime below for the
         exact install command and config snippet. All paths need your
-        <code>RECIPES_API_KEY</code> environment variable set.
+        <code>LOOPSKILL_API_KEY</code> environment variable set.
         See <a href="/docs/getting-started">Getting started</a> for key setup.
       </p>
       <p>
@@ -28,19 +28,19 @@ import AppShell from '../../layouts/AppShell.astro';
 
       <h3>Hermes</h3>
       <p>Hermes reads skills from <code>~/.hermes/skills/</code>. After install, the
-      <code>recipes_search</code>, <code>recipes_install</code>, and <code>recipes_sync</code>
+      <code>loopskill_search</code>, <code>loopskill_install</code>, and <code>loopskill_sync</code>
       MCP tools are available automatically via the LoopSkill MCP server bundled in the skill.</p>
       <pre><code>mkdir -p ~/.hermes/skills/loopskill
 curl -sL https://app.loopskill.io/skill \
      -o ~/.hermes/skills/loopskill/SKILL.md
-export RECIPES_API_KEY=rec_xx...</code></pre>
+export LOOPSKILL_API_KEY=rec_xx...</code></pre>
 
       <h3>Claude Code</h3>
       <p>Claude Code reads skills from <code>~/.claude/skills/</code>:</p>
       <pre><code>mkdir -p ~/.claude/skills/loopskill
 curl -sL https://app.loopskill.io/skill \
      -o ~/.claude/skills/loopskill/SKILL.md
-export RECIPES_API_KEY=rec_xx...</code></pre>
+export LOOPSKILL_API_KEY=rec_xx...</code></pre>
 
       <h3>OpenClaw</h3>
       <p>OpenClaw mounts the same skill directory layout as Claude Code. Drop the meta-skill in once;
@@ -48,21 +48,21 @@ export RECIPES_API_KEY=rec_xx...</code></pre>
       <pre><code>mkdir -p ~/.openclaw/skills/loopskill
 curl -sL https://app.loopskill.io/skill \
      -o ~/.openclaw/skills/loopskill/SKILL.md
-export RECIPES_API_KEY=rec_xx...</code></pre>
+export LOOPSKILL_API_KEY=rec_xx...</code></pre>
 
       <h3>Codex CLI</h3>
       <p>OpenAI Codex CLI uses the same format:</p>
       <pre><code>mkdir -p ~/.codex/skills/loopskill
 curl -sL https://app.loopskill.io/skill \
      -o ~/.codex/skills/loopskill/SKILL.md
-export RECIPES_API_KEY=rec_xx...</code></pre>
+export LOOPSKILL_API_KEY=rec_xx...</code></pre>
 
       <!-- ─────────────── MCP (config snippet) ─────────────── -->
       <h2>MCP server integrations</h2>
       <p>
         These runtimes use the <a href="https://modelcontextprotocol.io">Model Context Protocol</a>.
-        Install the LoopSkill MCP server once; your agent gets <code>recipes_search</code>,
-        <code>recipes_install</code>, <code>recipes_sync</code>, and all other LoopSkill tools.
+        Install the LoopSkill MCP server once; your agent gets <code>loopskill_search</code>,
+        <code>loopskill_install</code>, <code>loopskill_sync</code>, and all other LoopSkill tools.
       </p>
       <p>Install the MCP server:</p>
       <pre><code>pip install loopskill-mcp   # or: uvx loopskill-mcp (no install, runs directly)</code></pre>
@@ -76,7 +76,7 @@ export RECIPES_API_KEY=rec_xx...</code></pre>
       "command": "uvx",
       "args": ["loopskill-mcp"],
       "env": {
-        "RECIPES_API_KEY": "rec_xx..."
+        "LOOPSKILL_API_KEY": "rec_xx..."
       }
     }
   }
@@ -90,7 +90,7 @@ export RECIPES_API_KEY=rec_xx...</code></pre>
     "loopskill": {
       "command": "uvx",
       "args": ["loopskill-mcp"],
-      "env": { "RECIPES_API_KEY": "rec_xx..." }
+      "env": { "LOOPSKILL_API_KEY": "rec_xx..." }
     }
   }
 }`}</code></pre>
@@ -102,11 +102,11 @@ export RECIPES_API_KEY=rec_xx...</code></pre>
     "loopskill": {
       "command": "uvx",
       "args": ["loopskill-mcp"],
-      "env": { "RECIPES_API_KEY": "rec_xx..." }
+      "env": { "LOOPSKILL_API_KEY": "rec_xx..." }
     }
   }
 }`}</code></pre>
-      <p>Skills installed via the <code>recipes_install</code> tool are written to
+      <p>Skills installed via the <code>loopskill_install</code> tool are written to
       <code>~/.claude/skills/</code> by default; Cline picks them up.</p>
 
       <h3>Continue.dev</h3>
@@ -119,7 +119,7 @@ export RECIPES_API_KEY=rec_xx...</code></pre>
           "type": "stdio",
           "command": "uvx",
           "args": ["loopskill-mcp"],
-          "env": { "RECIPES_API_KEY": "rec_xx..." }
+          "env": { "LOOPSKILL_API_KEY": "rec_xx..." }
         }
       }
     ]
@@ -134,7 +134,7 @@ export RECIPES_API_KEY=rec_xx...</code></pre>
       "command": {
         "path": "uvx",
         "args": ["loopskill-mcp"],
-        "env": { "RECIPES_API_KEY": "rec_xx..." }
+        "env": { "LOOPSKILL_API_KEY": "rec_xx..." }
       }
     }
   }
@@ -147,11 +147,11 @@ export RECIPES_API_KEY=rec_xx...</code></pre>
         No MCP server required.
       </p>
       <pre><code>{`# Search
-curl -H "x-api-key: $RECIPES_API_KEY" \
+curl -H "x-api-key: $LOOPSKILL_API_KEY" \
   "https://app.loopskill.io/api/skills/search?q=seo"
 
 # Install (get signed tarball URL)
-curl -H "x-api-key: $RECIPES_API_KEY" \
+curl -H "x-api-key: $LOOPSKILL_API_KEY" \
   "https://app.loopskill.io/api/skills/install?slug=super-memory&mode=files"`}</code></pre>
       <p>See <a href="/docs/api-reference">API reference</a> for full endpoint docs.</p>
 
@@ -164,11 +164,11 @@ curl -H "x-api-key: $RECIPES_API_KEY" \
           manually, or set <code>RECIPES_INSTALL_DIR</code> to the correct path.
         </li>
         <li>
-          <strong>"recipes_install tool not found"</strong> — the MCP server isn't configured
+          <strong>"loopskill_install tool not found"</strong> — the MCP server isn't configured
           or started. Re-check your config file and restart the agent.
         </li>
         <li>
-          <strong>"401 Unauthorized"</strong> — your <code>RECIPES_API_KEY</code> env var isn't
+          <strong>"401 Unauthorized"</strong> — your <code>LOOPSKILL_API_KEY</code> env var isn't
           being passed to the MCP server process. Check the <code>env</code> block in your config.
         </li>
         <li>
