@@ -4,7 +4,7 @@
 // Static Astro can't pre-render per-slug routes, so this single page resolves
 // ?slug=<slug> client-side (same pattern as /cookbooks/view). It:
 //   1. fetches GET /api/loops/{slug} (public) → renders the vetted contract
-//   2. exposes "▶ Run this loop" → POST /api/loops/{slug}/run (auth required)
+//   2. exposes "▷ Test once" → POST /api/loops/{slug}/run (auth required)
 //      → renders objective passed:true/false + confinement + duration + output
 //   3. shows live ratings and (for signed-in users) a rate control
 //
@@ -20,7 +20,7 @@ const API_BASE = import.meta.env.PUBLIC_RECIPES_API_BASE || "https://app.loopski
 
 <AppShell mode="public"
   title="Run this loop — LoopSkill"
-  description="Run a vetted agent loop under enforced safety bounds and get an objective pass/fail."
+  description="Deploy a vetted agent loop to your own enrolled agents. They pull it within 30 min and run it on schedule under enforced safety bounds."
   pageType="website"
 >
   <main class="lp-detail max-w-3xl mx-auto px-6 pt-10 pb-24">
@@ -51,32 +51,57 @@ const API_BASE = import.meta.env.PUBLIC_RECIPES_API_BASE || "https://app.loopski
         </details>
       </section>
 
-      <!-- THE HERO: run this loop -->
+      <!-- THE HERO: deploy this loop to your fleet -->
       <section class="bg-bg-card border border-accent/40 rounded-2xl p-5 mb-6">
         <div class="flex items-center justify-between gap-3 mb-3">
-          <h2 class="text-lg font-semibold">Run this loop</h2>
-          <span class="lp-chip" id="lp-mode-chip">verify mode</span>
+          <h2 class="text-lg font-semibold">Deploy to fleet</h2>
+          <span class="lp-chip" id="lp-mode-chip">pull-reconcile</span>
         </div>
         <p class="text-sm text-muted mb-4">
-          Executes the loop's published verification under enforced confinement and
-          returns an objective pass / fail. Your server environment is never inherited.
+          Loops run on <strong class="text-text">your own enrolled agents</strong> — not in
+          this browser. Declare this loop into a bundle and every agent subscribed to it
+          pulls the change within ~30 minutes, then runs the loop on its schedule and
+          reports pass / fail back here. LoopSkill never executes your loop for you; it is
+          the control plane, your agents are the runtime.
         </p>
 
-        <!-- signed-in: can run -->
+        <!-- signed-in: manage deployment -->
         <div id="run-authed" class="hidden">
-          <button id="run-btn" type="button"
-            class="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-accent text-bg font-semibold text-sm hover:bg-accent-soft transition disabled:opacity-50">
-            ▶ Run this loop
-          </button>
+          <a href="/library"
+            class="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-accent text-bg font-semibold text-sm hover:bg-accent-soft transition">
+            ⚡ Add to a bundle
+          </a>
+          <p class="text-xs text-muted-soft mt-2">
+            Open Your Library → pick the bundle your fleet subscribes to → add this loop.
+            No enrolled agents yet? <a href="/docs" class="underline hover:text-text">Enroll a fleet first</a>.
+          </p>
         </div>
 
         <!-- anonymous: must sign in -->
         <div id="run-anon" class="hidden">
           <a id="run-signin" href="/signin"
             class="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg border border-accent text-accent font-semibold text-sm hover:bg-accent hover:text-bg transition">
-            Sign in to run
+            Sign in to deploy
           </a>
-          <p class="text-xs text-muted-soft mt-2">Browsing is free. Running a loop needs a key so runs are attributable.</p>
+          <p class="text-xs text-muted-soft mt-2">Browsing is free. Deploying a loop needs a key so it's attributable to your fleet.</p>
+        </div>
+
+        <!-- secondary: one-shot sandbox test (this is what "run once" was) -->
+        <div class="mt-5 pt-4 border-t border-border">
+          <div class="flex items-center gap-2 mb-2">
+            <h3 class="text-sm font-semibold">Test in sandbox</h3>
+            <span class="lp-chip">verify mode</span>
+          </div>
+          <p class="text-xs text-muted-soft mb-3">
+            Optional: run this loop's verification once under enforced confinement to see an
+            objective pass / fail before you deploy it. One-shot — does not schedule anything.
+          </p>
+          <div id="test-authed" class="hidden">
+            <button id="run-btn" type="button"
+              class="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-border text-text font-medium text-sm hover:border-accent transition disabled:opacity-50">
+              ▷ Test once
+            </button>
+          </div>
         </div>
 
         <!-- result -->
@@ -197,6 +222,7 @@ const API_BASE = import.meta.env.PUBLIC_RECIPES_API_BASE || "https://app.loopski
     } catch { /* anonymous */ }
     const authed = !!(me && (me.id || me.user_id || me.subscription_tier));
     setFlex("run-authed", authed);
+    setFlex("test-authed", authed);
     setFlex("run-anon", !authed);
     setFlex("rate-authed", authed);
     if (authed) { wireRun(); wireRate(me); }
@@ -206,7 +232,7 @@ const API_BASE = import.meta.env.PUBLIC_RECIPES_API_BASE || "https://app.loopski
     const btn = $("run-btn");
     if (!btn) return;
     btn.addEventListener("click", async () => {
-      btn.disabled = true; btn.textContent = "Running…";
+      btn.disabled = true; btn.textContent = "Testing…";
       hide("run-result");
       let res, out;
       try {
@@ -216,14 +242,14 @@ const API_BASE = import.meta.env.PUBLIC_RECIPES_API_BASE || "https://app.loopski
           body: JSON.stringify({ mode: "verify" }),
         });
       } catch (e) {
-        renderRunError("Network error: " + (e && e.message ? e.message : e)); btn.disabled = false; btn.textContent = "▶ Run this loop"; return;
+        renderRunError("Network error: " + (e && e.message ? e.message : e)); btn.disabled = false; btn.textContent = "▷ Test once"; return;
       }
-      if (res.status === 401) { renderRunError("Your session expired — sign in again to run."); btn.disabled = false; btn.textContent = "▶ Run this loop"; return; }
-      if (res.status === 501) { renderRunError("Agent mode isn't available yet (verify mode only)."); btn.disabled = false; btn.textContent = "▶ Run this loop"; return; }
-      try { out = await res.json(); } catch { renderRunError("Malformed run response."); btn.disabled = false; btn.textContent = "▶ Run this loop"; return; }
-      if (!res.ok) { renderRunError(out && out.detail ? out.detail : `Run failed (${res.status}).`); btn.disabled = false; btn.textContent = "▶ Run this loop"; return; }
+      if (res.status === 401) { renderRunError("Your session expired — sign in again to run."); btn.disabled = false; btn.textContent = "▷ Test once"; return; }
+      if (res.status === 501) { renderRunError("Agent mode isn't available yet (verify mode only)."); btn.disabled = false; btn.textContent = "▷ Test once"; return; }
+      try { out = await res.json(); } catch { renderRunError("Malformed run response."); btn.disabled = false; btn.textContent = "▷ Test once"; return; }
+      if (!res.ok) { renderRunError(out && out.detail ? out.detail : `Run failed (${res.status}).`); btn.disabled = false; btn.textContent = "▷ Test once"; return; }
       renderRun(out);
-      btn.disabled = false; btn.textContent = "▶ Run again";
+      btn.disabled = false; btn.textContent = "▷ Test again";
     });
   }
 

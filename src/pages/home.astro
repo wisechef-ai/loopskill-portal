@@ -50,7 +50,7 @@ import AppShell from '../layouts/AppShell.astro';
   const BADGE: Record<ShelfType, string> = { loops: 'Loop', skills: 'Skill', bundles: 'Bundle', personalities: 'Personality' };
 
   function href(type: ShelfType, item: any): string {
-    if (type === 'loops') return `/loops/run?slug=${encodeURIComponent(item.slug)}`;
+    if (type === 'loops') return `/loops/${encodeURIComponent(item.slug)}`;
     if (type === 'skills') return `/skills/${encodeURIComponent(item.slug)}`;
     if (type === 'bundles') return `/bundles/p?slug=${encodeURIComponent(item.slug)}`;
     return '/browse?type=personalities';
