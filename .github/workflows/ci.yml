@@ -185,8 +185,15 @@ jobs:
               exit 1
             fi
 
-            # Prune backups — keep newest 5 only.
-            ls -1dt dist.bak-* 2>/dev/null | tail -n +6 | xargs -r rm -rf
+            # Prune backups — keep newest 5 only. NON-FATAL: a permission error
+            # on an old/foreign-owned backup dir must never fail a deploy whose
+            # content swap already succeeded. Try plain rm, then sudo, then warn.
+            for old in $(ls -1dt dist.bak-* 2>/dev/null | tail -n +6); do
+              if ! rm -rf "$old" 2>/dev/null; then
+                sudo rm -rf "$old" 2>/dev/null \
+                  || echo "::warning::could not prune stale backup $old (permission denied) — leaving it; deploy is unaffected"
+              fi
+            done
 
             echo "Swap complete. Backups now on disk:"
             ls -1dt dist.bak-* 2>/dev/null | head -5
