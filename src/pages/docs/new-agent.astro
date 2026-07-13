@@ -28,7 +28,7 @@ import AppShell from '../../layouts/AppShell.astro';
 
       <h3>Hermes</h3>
       <p>Hermes reads skills from <code>~/.hermes/skills/</code>. After install, the
-      <code>recipes_search</code>, <code>recipes_install</code>, and <code>recipes_sync</code>
+      <code>loopskill_search</code>, <code>loopskill_install</code>, and <code>loopskill_sync</code>
       MCP tools are available automatically via the LoopSkill MCP server bundled in the skill.</p>
       <pre><code>mkdir -p ~/.hermes/skills/loopskill
 curl -sL https://app.loopskill.io/skill \
@@ -61,8 +61,8 @@ export RECIPES_API_KEY=rec_xx...</code></pre>
       <h2>MCP server integrations</h2>
       <p>
         These runtimes use the <a href="https://modelcontextprotocol.io">Model Context Protocol</a>.
-        Install the LoopSkill MCP server once; your agent gets <code>recipes_search</code>,
-        <code>recipes_install</code>, <code>recipes_sync</code>, and all other LoopSkill tools.
+        Install the LoopSkill MCP server once; your agent gets <code>loopskill_search</code>,
+        <code>loopskill_install</code>, <code>loopskill_sync</code>, and all other LoopSkill tools.
       </p>
       <p>Install the MCP server:</p>
       <pre><code>pip install loopskill-mcp   # or: uvx loopskill-mcp (no install, runs directly)</code></pre>
@@ -106,7 +106,7 @@ export RECIPES_API_KEY=rec_xx...</code></pre>
     }
   }
 }`}</code></pre>
-      <p>Skills installed via the <code>recipes_install</code> tool are written to
+      <p>Skills installed via the <code>loopskill_install</code> tool are written to
       <code>~/.claude/skills/</code> by default; Cline picks them up.</p>
 
       <h3>Continue.dev</h3>
@@ -164,7 +164,7 @@ curl -H "x-api-key: $RECIPES_API_KEY" \
           manually, or set <code>RECIPES_INSTALL_DIR</code> to the correct path.
         </li>
         <li>
-          <strong>"recipes_install tool not found"</strong> — the MCP server isn't configured
+          <strong>"loopskill_install tool not found"</strong> — the MCP server isn't configured
           or started. Re-check your config file and restart the agent.
         </li>
         <li>
