@@ -97,7 +97,7 @@ const API_BASE = import.meta.env.PUBLIC_RECIPES_API_BASE || "https://app.loopski
         <div id="bd-empty" hidden class="bg-bg-card border border-border rounded-2xl p-8 text-center text-sm text-muted">
           This bundle has no skills yet.
         </div>
-        <ul id="skills-list" class="flex flex-col gap-2"></ul>
+        <ul id="skills-list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3"></ul>
       </section>
 
       <!-- CTA footer -->
@@ -117,7 +117,19 @@ const API_BASE = import.meta.env.PUBLIC_RECIPES_API_BASE || "https://app.loopski
   .badge-public { color: #4ade80; background: rgba(74,222,128,.1); border-color: rgba(74,222,128,.3); }
   .badge-scan { color: #5b9bf5; background: rgba(91,155,245,.1); border-color: rgba(91,155,245,.35); }
   .badge-unscanned { color: #9aa3b2; background: transparent; border-color: var(--border-soft, #2a2f3a); }
-  .skill-row { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: .85rem 1rem; background: var(--bg-card, #14171d); border: 1px solid var(--border, #2a2f3a); border-radius: .85rem; }
+  .skill-row { position: relative; display: flex; flex-direction: column; gap: .5rem; padding: .9rem 1rem; background: var(--bg-card, #14171d); border: 1px solid var(--border, #2a2f3a); border-radius: .85rem; transition: border-color .15s ease, transform .1s ease; }
+  .skill-row:hover { border-color: var(--accent, #5b9bf5); transform: translateY(-1px); }
+  /* Stretched-link pattern: the primary <a> covers the whole card so the
+     entire card is clickable, while the secondary "View on LoopSkill" <a>
+     stays independently clickable above it (no nested <a>, which is invalid
+     HTML and unreliable across browsers). */
+  .skill-row-link { position: absolute; inset: 0; z-index: 1; border-radius: inherit; }
+  .skill-row > * { position: relative; z-index: 2; pointer-events: none; }
+  .skill-row a.skill-loopskill-link { pointer-events: auto; }
+  .skill-source-badge { display: inline-flex; align-items: center; font-size: 10px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted-soft, #9aa3b2); background: var(--bg-elev, #1b1f27); border: 1px solid var(--border-soft, #2a2f3a); border-radius: 999px; padding: .1rem .5rem; }
+  .skill-view-source { font-size: 11px; color: var(--accent, #5b9bf5); }
+  .skill-loopskill-link { font-size: 11px; color: var(--muted-soft, #9aa3b2); text-decoration: none; }
+  .skill-loopskill-link:hover { color: var(--accent, #5b9bf5); }
 </style>
 
 <script define:vars={{ API_BASE }}>
@@ -211,44 +223,79 @@ const API_BASE = import.meta.env.PUBLIC_RECIPES_API_BASE || "https://app.loopski
     const list = $("skills-list");
     list.innerHTML = "";
     for (const s of skills) {
+      // Primary CLICKABLE target: source_url (always non-null per the API
+      // contract — external skills resolve to their GitHub tree URL, internal
+      // skills to their own origin or /skills/<slug>). Falls back to the
+      // LoopSkill detail page only if source_url is somehow absent (defensive;
+      // the API guarantees it's always truthy).
+      const href = s.source_url || s.loopskill_url || `/skills/${s.slug}`;
+      const isExternalHref = /^https?:\/\//.test(href);
+
       const li = document.createElement("li");
       li.className = "skill-row";
 
-      const left = document.createElement("div");
-      // Public catalog skills link to their detail page; tailored/private skills
-      // (is_public === false) render as plain text (no public page exists).
-      let nameEl;
-      if (s.is_public) {
-        nameEl = document.createElement("a");
-        nameEl.href = `/skills/${s.slug}`;
-        nameEl.className = "font-medium text-text hover:text-accent transition";
-      } else {
-        nameEl = document.createElement("span");
-        nameEl.className = "font-medium text-text";
+      // Full-card clickable overlay (stretched-link pattern — no nested <a>).
+      const cardLink = document.createElement("a");
+      cardLink.className = "skill-row-link";
+      cardLink.href = href;
+      cardLink.setAttribute("aria-label", s.title || s.slug);
+      if (isExternalHref) {
+        cardLink.target = "_blank";
+        cardLink.rel = "noopener";
       }
+      li.appendChild(cardLink);
+
+      const top = document.createElement("div");
+      top.className = "flex items-start justify-between gap-2";
+
+      const nameEl = document.createElement("span");
+      nameEl.className = "font-medium text-text";
       nameEl.textContent = s.title || s.slug;
-      left.appendChild(nameEl);
-      const slugEl = document.createElement("div");
-      slugEl.className = "text-[11px] text-muted-soft mt-0.5";
-      slugEl.textContent = s.slug;
-      left.appendChild(slugEl);
-      li.appendChild(left);
+      top.appendChild(nameEl);
+
+      if (s.source) {
+        const badge = document.createElement("span");
+        badge.className = "skill-source-badge shrink-0";
+        badge.textContent = s.source;
+        top.appendChild(badge);
+      }
+      li.appendChild(top);
+
+      const bottom = document.createElement("div");
+      bottom.className = "flex items-center justify-between gap-2 flex-wrap";
+
+      const viewSource = document.createElement("span");
+      viewSource.className = "skill-view-source";
+      viewSource.textContent = "view source ↗";
+      bottom.appendChild(viewSource);
 
       // Trust badge — Ph C scan status when present.
-      const right = document.createElement("div");
       const scan = (s.scan_status || "").toLowerCase();
       if (scan && scan !== "unscanned") {
         const b = document.createElement("span");
         b.className = "badge badge-scan";
         b.textContent = scan === "clean" ? "scanned" : scan;
-        right.appendChild(b);
+        bottom.appendChild(b);
       } else if (s.is_public === false) {
         const b = document.createElement("span");
         b.className = "badge badge-unscanned";
         b.textContent = "community · as-is";
-        right.appendChild(b);
+        bottom.appendChild(b);
       }
-      li.appendChild(right);
+      li.appendChild(bottom);
+
+      // Secondary "View on LoopSkill" link — rendered ONLY when loopskill_url
+      // is non-null. Hard "never 404" rule: no affordance at all when null
+      // (external skills have no LoopSkill detail page yet). Sits ABOVE the
+      // full-card overlay (z-index + pointer-events) so it's independently
+      // clickable without triggering the primary source_url navigation.
+      if (s.loopskill_url) {
+        const lsLink = document.createElement("a");
+        lsLink.className = "skill-loopskill-link";
+        lsLink.href = s.loopskill_url;
+        lsLink.textContent = "View on LoopSkill →";
+        li.appendChild(lsLink);
+      }
 
       list.appendChild(li);
     }
