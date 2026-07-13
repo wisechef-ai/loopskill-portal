@@ -108,3 +108,136 @@ jobs:
           name: dist
           path: dist/
           retention-days: 7
+
+  deploy:
+    name: Deploy to production (app.loopskill.io)
+    needs: build
+    runs-on: wisechef-runner
+    # Push-to-main only. NEVER deploy on pull_request events.
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    timeout-minutes: 15
+    # Dedicated, non-cancellable group — a fast follow-up push must NOT cancel
+    # a deploy mid-swap (the build job above keeps its own cancellable group).
+    concurrency:
+      group: portal-prod-deploy
+      cancel-in-progress: false
+    env:
+      DEPLOY_HOST: "77.42.92.141"
+      DEPLOY_USER: "wisechef"
+      APP_DIR: "/home/wisechef/loopskill-portal"
+    steps:
+      - name: Download built dist artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist
+
+      - name: Sanity check downloaded dist
+        run: |
+          set -e
+          test -f dist/index.html || { echo "ERR: no index.html in downloaded artifact"; exit 1; }
+          PAGE_COUNT=$(find dist -name "*.html" | wc -l)
+          echo "Downloaded pages: $PAGE_COUNT"
+          test "$PAGE_COUNT" -ge 5 || { echo "ERR: only $PAGE_COUNT pages, expected more"; exit 1; }
+
+      - name: Trust deploy host key (idempotent)
+        run: |
+          set -e
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          touch ~/.ssh/known_hosts
+          ssh-keyscan -t ed25519,ecdsa,rsa "$DEPLOY_HOST" >> ~/.ssh/known_hosts 2>/dev/null || true
+          chmod 600 ~/.ssh/known_hosts
+
+      - name: Rsync fresh build to staging dir on prod
+        # Never rsync --delete straight onto the live "dist" dir — that serves
+        # a half-synced site during transfer. Land in dist.incoming first;
+        # the swap step below promotes it atomically.
+        run: |
+          set -e
+          rsync -az --delete \
+            -e "ssh -o StrictHostKeyChecking=accept-new -o ConnectTimeout=20" \
+            dist/ "${DEPLOY_USER}@${DEPLOY_HOST}:${APP_DIR}/dist.incoming/"
+
+      - name: Atomic swap + backup rotation (remote)
+        id: swap
+        run: |
+          set -e
+          ssh -o StrictHostKeyChecking=accept-new -o ConnectTimeout=20 \
+            "${DEPLOY_USER}@${DEPLOY_HOST}" bash -se <<'REMOTE'
+            set -euo pipefail
+            cd /home/wisechef/loopskill-portal
+
+            test -d dist.incoming || { echo "ERR: dist.incoming missing — rsync step did not land"; exit 1; }
+            test -f dist.incoming/index.html || { echo "ERR: dist.incoming/index.html missing"; exit 1; }
+
+            STAMP=$(date -u +%Y%m%d-%H%M%S)
+
+            if [ -d dist ]; then
+              mv dist "dist.bak-${STAMP}"
+            fi
+
+            if ! mv dist.incoming dist; then
+              echo "ERR: promote of dist.incoming failed — restoring previous dist"
+              if [ -d "dist.bak-${STAMP}" ]; then
+                mv "dist.bak-${STAMP}" dist
+              fi
+              exit 1
+            fi
+
+            # Prune backups — keep newest 5 only.
+            ls -1dt dist.bak-* 2>/dev/null | tail -n +6 | xargs -r rm -rf
+
+            echo "Swap complete. Backups now on disk:"
+            ls -1dt dist.bak-* 2>/dev/null | head -5
+          REMOTE
+
+      - name: Post-deploy readiness gate (public routes)
+        id: verify
+        run: |
+          set -e
+          FAIL=0
+          for path in "/" "/browse" "/bundles/p?slug=coreys-marketing"; do
+            OK=0
+            URL="https://app.loopskill.io${path}"
+            for i in 1 2 3 4 5; do
+              CODE=$(curl -s -o /dev/null -w "%{http_code}" "$URL" || echo "000")
+              echo "attempt $i: $URL -> $CODE"
+              if [[ "$CODE" =~ ^(200|301|302)$ ]]; then
+                OK=1
+                break
+              fi
+              sleep 3
+            done
+            if [ "$OK" -ne 1 ]; then
+              echo "ERR: $path never became healthy"
+              FAIL=1
+            fi
+          done
+          if [ "$FAIL" -ne 0 ]; then
+            echo "READINESS GATE FAILED"
+            exit 1
+          fi
+          echo "All routes healthy."
+
+      - name: Auto-rollback on readiness failure
+        # Only fires when the swap actually landed (dist was touched) AND a
+        # later step (the readiness gate) failed. If the swap itself failed,
+        # it already self-healed inline above — nothing to roll back here.
+        if: failure() && steps.swap.outcome == 'success'
+        run: |
+          ssh -o StrictHostKeyChecking=accept-new -o ConnectTimeout=20 \
+            "${DEPLOY_USER}@${DEPLOY_HOST}" bash -se <<'REMOTE'
+            set -euo pipefail
+            cd /home/wisechef/loopskill-portal
+            STAMP=$(date -u +%Y%m%d-%H%M%S)
+            LATEST_BAK=$(ls -1dt dist.bak-* 2>/dev/null | head -1)
+            if [ -z "${LATEST_BAK}" ]; then
+              echo "ERR: no backup available to roll back to"
+              exit 1
+            fi
+            mv dist "dist.broken-${STAMP}"
+            mv "${LATEST_BAK}" dist
+            echo "Rolled back to ${LATEST_BAK}"
+          REMOTE
+          echo "::error::Deploy readiness gate failed — rolled back to previous dist on prod."
