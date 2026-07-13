@@ -3,21 +3,21 @@ import AppShell from '../../layouts/AppShell.astro';
 import CrossSell from '../../components/CrossSell.astro';
 ---
 <AppShell mode="public" title="Publishing a skill — LoopSkill Docs"
-     description="How to publish a skill to the LoopSkill marketplace using the MCP-first path via recipes_publish_request.">
+     description="How to publish a skill to the LoopSkill marketplace using the MCP-first path via loopskill_publish_request.">
   <section class="max-w-3xl mx-auto px-6 pt-16 pb-12">
     <p class="eyebrow mb-2">Documentation · Publishing</p>
     <h1 class="text-4xl font-semibold tracking-tight mb-6">Publishing a skill.</h1>
     <div class="prose">
       <p>
         LoopSkill is an open marketplace. Any developer can submit a skill for review.
-        The canonical publish path is MCP-first — your agent calls <code>recipes_publish_request</code>
+        The canonical publish path is MCP-first — your agent calls <code>loopskill_publish_request</code>
         from within a conversation. A CLI fallback is also available.
       </p>
 
       <div class="not-prose mb-6 rounded-2xl border border-accent/40 bg-accent/5 p-5">
         <p class="text-xs uppercase tracking-wider text-accent font-semibold mb-2">New in Phase C / recipes_2005</p>
         <p class="text-sm text-muted leading-relaxed">
-          The <code>recipes_publish_request</code> MCP tool is live. It submits your SKILL.md
+          The <code>loopskill_publish_request</code> MCP tool is live. It submits your SKILL.md
           directly from the agent conversation, runs the quality gate in-memory, opens a GitHub
           review issue, and returns a <code>request_id</code> and <code>issue_url</code> in one
           tool call. No dashboard, no upload form.
@@ -44,7 +44,7 @@ import CrossSell from '../../components/CrossSell.astro';
       <h2>MCP-first path (recommended)</h2>
 
       <h3>Step 1: Develop locally</h3>
-      <p>Scaffold your skill directory using <code>recipes_recipify</code> or by hand:</p>
+      <p>Scaffold your skill directory using <code>loopskill_skillify</code> or by hand:</p>
       <pre><code>{`SKILL.md          ← required: YAML frontmatter + instructions body
 skill.toml        ← required: metadata (slug, version, tier, license)
 references/       ← optional: reference docs, loaded on demand
@@ -55,13 +55,13 @@ templates/        ← optional: config snippets, scaffolds`}</code></pre>
         <code>tier</code> (free | cook | operator), and <code>license</code> (SPDX).
       </p>
 
-      <h3>Step 2: Call recipes_publish_request</h3>
+      <h3>Step 2: Call loopskill_publish_request</h3>
       <p>From inside your agent conversation (e.g. Claude Code, Hermes):</p>
       <pre><code>{`// Tell your agent:
 "Submit my skill at ./skills/my-skill/ to the LoopSkill marketplace"
 
 // The agent calls:
-recipes_publish_request({
+loopskill_publish_request({
   slug: "my-skill",
   content: "<SKILL.md contents>",
   version: "1.0.0",
@@ -100,7 +100,7 @@ recipes_publish_request({
       </ol>
       <p>
         You can track the issue directly. The reviewer may leave comments asking for changes.
-        Respond by updating your SKILL.md and calling <code>recipes_publish_request</code> again
+        Respond by updating your SKILL.md and calling <code>loopskill_publish_request</code> again
         with the same slug — the system deduplicates and links the new submission to the existing issue.
       </p>
 
@@ -168,7 +168,7 @@ recipes_publish_request({
 
       <h2>Rate limits</h2>
       <p>
-        <code>recipes_publish_request</code> is rate-limited to 1 submission per 24h per
+        <code>loopskill_publish_request</code> is rate-limited to 1 submission per 24h per
         (user, slug) pair. This prevents flooding the review queue. If you need to resubmit
         quickly after a rejection, contact the reviewer on the GitHub issue.
       </p>
@@ -193,7 +193,7 @@ recipes_publish_request({
       <h3>Can I update a published skill?</h3>
       <p>
         Yes — increment the version in your SKILL.md frontmatter and call
-        <code>recipes_publish_request</code> again with the updated content.
+        <code>loopskill_publish_request</code> again with the updated content.
         Patch versions (e.g. 1.0.0 → 1.0.1) go through expedited review.
         Major versions (e.g. 1.x → 2.0.0) get a full review cycle.
       </p>

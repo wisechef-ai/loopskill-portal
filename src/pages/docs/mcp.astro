@@ -48,11 +48,11 @@ import AppShell from '../../layouts/AppShell.astro';
           <span>
             <strong class="text-text">Six dedicated tools, not a REST wrapper.</strong>
             <code class="text-xs bg-bg-elev rounded px-1">loopskill_search</code>,
-            <code class="text-xs bg-bg-elev rounded px-1">recipes_detail</code>,
-            <code class="text-xs bg-bg-elev rounded px-1">recipes_trending</code>,
+            <code class="text-xs bg-bg-elev rounded px-1">loopskill_detail</code>,
+            <code class="text-xs bg-bg-elev rounded px-1">loopskill_trending</code>,
             <code class="text-xs bg-bg-elev rounded px-1">loopskill_install</code>,
             <code class="text-xs bg-bg-elev rounded px-1">loopskill_skillify</code>,
-            <code class="text-xs bg-bg-elev rounded px-1">recipes_stats</code>.
+            <code class="text-xs bg-bg-elev rounded px-1">loopskill_stats</code>.
             The agent gets verbs it can reason about — not raw HTTP calls it has to construct
             and error-handle itself.
           </span>
@@ -157,11 +157,11 @@ git clone https://github.com/wisechef-ai/loopskill-mcp.git ~/loopskill-mcp</code
     <h2 class="text-xl font-semibold text-text mt-12 mb-3">Tools exposed</h2>
     <ul class="space-y-2 text-sm text-muted">
       <li><code class="text-xs bg-bg-elev rounded px-1">loopskill_search</code> — full-text + tier + category filter, returns compact JSON</li>
-      <li><code class="text-xs bg-bg-elev rounded px-1">recipes_detail</code> — fetch full SKILL.md before installing (free, no key)</li>
-      <li><code class="text-xs bg-bg-elev rounded px-1">recipes_trending</code> — top installs by day/week/month</li>
+      <li><code class="text-xs bg-bg-elev rounded px-1">loopskill_detail</code> — fetch full SKILL.md before installing (free, no key)</li>
+      <li><code class="text-xs bg-bg-elev rounded px-1">loopskill_trending</code> — top installs by day/week/month</li>
       <li><code class="text-xs bg-bg-elev rounded px-1">loopskill_install</code> — download, SHA256-verify, tar-slip-safe extract</li>
       <li><code class="text-xs bg-bg-elev rounded px-1">loopskill_skillify</code> — drop the master meta-skill into the agent's skills dir</li>
-      <li><code class="text-xs bg-bg-elev rounded px-1">recipes_stats</code> — public marketplace transparency stats</li>
+      <li><code class="text-xs bg-bg-elev rounded px-1">loopskill_stats</code> — public marketplace transparency stats</li>
     </ul>
 
     <h2 class="text-xl font-semibold text-text mt-12 mb-3">Custom install dir</h2>
