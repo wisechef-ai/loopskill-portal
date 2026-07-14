@@ -1,0 +1,199 @@
+---
+// atomic_0714 fallback-top1 — real /loops/{slug} DETAIL pages.
+//
+// Before: /loops/index.astro and /loops/run.astro existed, but there was no
+// crawlable per-slug route — /loops/{slug} 404'd, and the loop catalog (10
+// public loops incl. hello-world-loop, pr-review-loop, test-green-loop) was
+// invisible to GEO/SEO crawlers. This is the star wedge for the runner
+// funnel (install_count=0, run_count=1 on the catalog) — clears the
+// VIOLATED ah-deferred-build-real-loops-slug-detail-pages goal predicate.
+//
+// Static Astro CAN pre-render this one because /api/loops is a small, stable
+// public list (10 loops today) — unlike /skills (100+, paginated, changes
+// often), we can safely enumerate all slugs at build time via getStaticPaths.
+// Falls back to a small static seed list if the API is briefly down at
+// build time (same defensive pattern as skills/[slug].astro).
+import AppShell from "../../layouts/AppShell.astro";
+import Icon from "../../components/Icon.astro";
+import { fetchApi } from "../../lib/api";
+
+interface Loop {
+  id?: string;
+  slug: string;
+  title?: string;
+  description?: string;
+  category?: string;
+  tier?: string;
+  creator_name?: string;
+  creator_handle?: string;
+  latest_version?: string;
+  install_count?: number;
+  run_count?: number;
+  rating_count?: number;
+  rating_avg?: number | null;
+  max_turns?: number;
+  budget_usd?: number | null;
+  tool_allowlist?: string[];
+  license?: string;
+  readme?: string;
+  success_condition?: string;
+  verification_script?: string;
+  updated_at?: string;
+}
+
+export async function getStaticPaths() {
+  const result = await fetchApi<Loop[]>("/api/loops", { authed: false });
+  let loops: Loop[] = (result.ok && Array.isArray(result.data)) ? result.data : [];
+
+  // Defensive seed — the loops actually verified 404 in the 2026-07-14
+  // brief plus the rest of the catalog snapshot. Only used if the API is
+  // down at build time; the real fetch above always wins when it succeeds.
+  const seedSlugs = [
+    "hello-world-loop", "pr-review-loop", "test-green-loop",
+    "repo-steward-loop", "daily-briefing-loop", "lint-clean-loop",
+    "changelog-from-commits-loop", "doc-coverage-loop",
+    "json-schema-validate-loop", "secret-scan-loop",
+  ];
+  if (loops.length === 0) {
+    loops = seedSlugs.map((slug) => ({
+      slug,
+      title: slug.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()),
+    }));
+  }
+
+  return loops.map((loop) => ({
+    params: { slug: loop.slug },
+    props: { initialLoop: loop },
+  }));
+}
+
+const { slug } = Astro.params;
+const { initialLoop } = Astro.props as { initialLoop: Loop };
+
+// Fetch full detail at build time (readme, verification_script, contract) —
+// public endpoint, no auth, same trust boundary as skills/[slug].astro.
+const detail = await fetchApi<Loop>(`/api/loops/${slug}`, { authed: false });
+const loop: Loop = detail.ok && detail.data ? { ...initialLoop, ...detail.data } : initialLoop;
+
+const display = {
+  slug,
+  title: loop.title || (slug as string).replace(/-/g, " ").replace(/\b\w/g, (c: string) => c.toUpperCase()),
+  description: loop.description || "A vetted, safety-bounded LoopSkill loop.",
+  category: loop.category || "general",
+  tier: loop.tier || "free",
+  author: loop.creator_name || "LoopSkill Team",
+  author_handle: loop.creator_handle || null,
+  version: loop.latest_version || "0.1.0",
+  install_count: loop.install_count ?? 0,
+  run_count: loop.run_count ?? 0,
+  rating_avg: loop.rating_avg ?? null,
+  rating_count: loop.rating_count ?? 0,
+  max_turns: loop.max_turns ?? 25,
+  budget_usd: loop.budget_usd ?? null,
+  tool_allowlist: Array.isArray(loop.tool_allowlist) ? loop.tool_allowlist : [],
+  license: loop.license || null,
+  success_condition: loop.success_condition || null,
+};
+
+const siteURL = "https://app.loopskill.io";
+const loopSchema = {
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  name: display.title,
+  description: display.description,
+  url: `${siteURL}/loops/${display.slug}`,
+  applicationCategory: "DeveloperApplication",
+  operatingSystem: "Any",
+  offers: {
+    "@type": "Offer",
+    price: display.tier === "free" ? "0" : "20",
+    priceCurrency: "USD",
+    url: `${siteURL}/loops/${display.slug}`,
+  },
+  ...(display.run_count >= 1
+    ? {
+        interactionStatistic: {
+          "@type": "InteractionCounter",
+          interactionType: "https://schema.org/UseAction",
+          userInteractionCount: display.run_count,
+        },
+      }
+    : {}),
+};
+---
+
+<AppShell
+  mode="public"
+  active="search"
+  title={`${display.title} — LoopSkill`}
+  description={display.description}
+  pageType="website"
+>
+  <Fragment slot="head">
+    <script type="application/ld+json" set:html={JSON.stringify(loopSchema)}></script>
+  </Fragment>
+
+  <section class="max-w-4xl mx-auto px-6 pt-12 pb-24">
+    <a href="/loops" class="inline-flex items-center gap-1.5 text-xs text-muted hover:text-text transition mb-8">
+      <Icon name="chevron-left" size={12} />
+      All loops
+    </a>
+
+    <header class="flex flex-col gap-3 mb-8">
+      <div class="flex items-center gap-2 flex-wrap">
+        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold tracking-wider bg-accent/10 text-accent border border-accent/20">
+          {display.tier.toUpperCase()}
+        </span>
+        <span class="text-[10px] text-muted-soft uppercase tracking-wider">{display.category}</span>
+        <span class="text-[10px] text-muted-soft font-mono">v{display.version}</span>
+        {display.license && <span class="text-[10px] text-muted-soft uppercase tracking-wider">· {display.license}</span>}
+        {display.run_count >= 1 && (
+          <span class="inline-flex items-center gap-1 text-[10px] text-muted font-medium" title="Total runs (telemetry-backed)">
+            {display.run_count.toLocaleString()} run{display.run_count === 1 ? "" : "s"}
+          </span>
+        )}
+      </div>
+      <h1 class="text-3xl md:text-5xl font-bold tracking-tight" style="letter-spacing: -0.03em;">{display.title}</h1>
+      <p class="text-xs text-muted-soft">
+        by <span class="text-muted font-medium">{display.author}</span>
+        {display.author_handle && <span class="text-muted-soft"> @{display.author_handle}</span>}
+      </p>
+      <p class="text-text leading-relaxed text-lg">{display.description}</p>
+    </header>
+
+    <!-- Safety contract -->
+    <section class="bg-bg-card border border-border rounded-2xl p-5 mb-6">
+      <h2 class="text-sm font-semibold uppercase tracking-wide text-muted mb-3">Safety contract</h2>
+      <dl class="grid grid-cols-2 sm:grid-cols-3 gap-y-3 gap-x-4 text-sm">
+        <div class="flex flex-col gap-0.5">
+          <dt class="text-muted-soft text-xs">Max turns</dt>
+          <dd class="text-text font-medium">{display.max_turns}</dd>
+        </div>
+        <div class="flex flex-col gap-0.5">
+          <dt class="text-muted-soft text-xs">Budget</dt>
+          <dd class="text-text font-medium">{display.budget_usd != null ? `$${display.budget_usd}` : "—"}</dd>
+        </div>
+        <div class="flex flex-col gap-0.5">
+          <dt class="text-muted-soft text-xs">Tools</dt>
+          <dd class="text-text font-medium">{display.tool_allowlist.length ? display.tool_allowlist.join(", ") : "none"}</dd>
+        </div>
+      </dl>
+      {display.success_condition && (
+        <p class="text-sm text-muted mt-4">
+          <span class="text-muted-soft">Success:</span> {display.success_condition}
+        </p>
+      )}
+    </section>
+
+    {display.rating_count > 0 && (
+      <p class="text-sm text-muted mb-6">★ {(display.rating_avg ?? 0).toFixed(1)} · {display.rating_count} rating{display.rating_count === 1 ? "" : "s"}</p>
+    )}
+
+    <a
+      href={`/loops/run?slug=${encodeURIComponent(display.slug)}`}
+      class="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-accent text-bg font-semibold text-sm hover:bg-accent-soft transition"
+    >
+      ▶ Run this loop
+    </a>
+  </section>
+</AppShell>

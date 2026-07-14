@@ -89,12 +89,31 @@ async function fetchAllSkillSlugs(): Promise<{ slug: string; updatedAt: string }
   return all;
 }
 
+// atomic_0714: enumerate the public loop catalog (small, stable list — no
+// pagination needed today) so /loops/{slug} detail pages are crawlable.
+// Falls back to an empty list on API failure; static routes + skill pages
+// still ship (same no-hard-500 contract as fetchAllSkillSlugs above).
+async function fetchAllLoopSlugs(): Promise<{ slug: string; updatedAt: string }[]> {
+  const res = await fetchApi<{ slug: string; updated_at?: string }[]>('/api/loops', {
+    authed: false,
+    maxAttempts: 8,
+    initialDelayMs: 600,
+    maxDelayMs: 12000,
+  });
+  if (!res.ok || !Array.isArray(res.data)) return [];
+  return res.data.map((l) => ({
+    slug: l.slug,
+    updatedAt: l.updated_at ? new Date(l.updated_at).toISOString().slice(0, 10) : '',
+  }));
+}
+
 export const GET: APIRoute = async () => {
   const today = new Date().toISOString().slice(0, 10);
 
-  const [posts, skillSlugs] = await Promise.all([
+  const [posts, skillSlugs, loopSlugs] = await Promise.all([
     getCollection('blog'),
     fetchAllSkillSlugs(),
+    fetchAllLoopSlugs(),
   ]);
 
   const blogUrls = posts.map((p) => {
@@ -130,9 +149,20 @@ export const GET: APIRoute = async () => {
   </url>`,
   );
 
+  // atomic_0714: per-loop detail pages — one <loc> per public loop.
+  // Priority 0.7: below skill pages (primary catalog) but above blog.
+  const loopUrls = loopSlugs.map(
+    (l) => `  <url>
+    <loc>${SITE}/loops/${l.slug}</loc>
+    <lastmod>${l.updatedAt || today}</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>`,
+  );
+
   const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-${[...staticUrls, ...skillUrls, ...blogUrls].join('\n')}
+${[...staticUrls, ...skillUrls, ...loopUrls, ...blogUrls].join('\n')}
 </urlset>
 `;
 
