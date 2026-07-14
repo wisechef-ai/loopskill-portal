@@ -326,6 +326,18 @@ else
   echo "OK:   $skill_detail_count dist/skills/<slug>/ detail page(s) present"
 fi
 
+# (j) dist/loops/<slug>/ detail dirs must exist — atomic_0714: src/pages/loops/[slug].astro
+# was built TWICE (2026-07-08 commit 72a2dea, then silently deleted by the
+# fc0d01f IA-restructure refactor with zero guard, then rebuilt 2026-07-14).
+# Same regression-prevention pattern as (i) above — a future aggregator cut
+# on loops/index.html must NOT sweep up the per-loop SEO detail pages.
+loop_detail_count=$(find "$DIST_DIR/loops" -mindepth 2 -maxdepth 2 -name 'index.html' 2>/dev/null | wc -l | tr -d ' ')
+if [ "$loop_detail_count" -lt 1 ]; then
+  fail_ia "No dist/loops/<slug>/index.html detail pages found — src/pages/loops/[slug].astro may have been deleted or getStaticPaths broken (LRN-119, this has happened once before — commit fc0d01f)"
+else
+  echo "OK:   $loop_detail_count dist/loops/<slug>/ detail page(s) present"
+fi
+
 if [ "$ia_failures" -gt 0 ]; then
   echo ""
   echo "BLOCKED: $ia_failures Spotify-IA kill-test(s) failed. Deploy aborted."
