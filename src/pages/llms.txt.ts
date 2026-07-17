@@ -103,12 +103,12 @@ export const GET: APIRoute = async () => {
   const total: number | null =
     snapRes.ok && typeof counts?.skills_total === 'number' ? counts.skills_total : null;
   const mcpTools = snapRes.data?.mcp_tools ?? [
-    'recipes_search',
-    'recipes_detail',
-    'recipes_trending',
-    'recipes_install',
-    'recipes_install_meta_skill',
-    'recipes_stats',
+    'loopskill_search',
+    'loopskill_detail',
+    'loopskill_trending',
+    'loopskill_install',
+    'loopskill_install_meta_skill',
+    'loopskill_stats',
   ];
 
   const catalog = (catRes.data?.results ?? []).filter(

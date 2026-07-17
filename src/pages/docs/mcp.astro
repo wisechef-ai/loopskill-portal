@@ -22,12 +22,12 @@ import AppShell from '../../layouts/AppShell.astro';
         Once LoopSkill is wired in as an MCP server, your agent can search the skill catalog, fetch
         full skill documentation, browse trending installs, and install a skill — all from inside
         a conversation, without you touching a terminal. Ask your agent "find me an SEO audit
-        skill" and it calls <code class="text-xs bg-bg-elev rounded px-1">recipes_search</code>,
+        skill" and it calls <code class="text-xs bg-bg-elev rounded px-1">loopskill_search</code>,
         reads the results, installs the winner with
-        <code class="text-xs bg-bg-elev rounded px-1">recipes_install</code>, and reports back
+        <code class="text-xs bg-bg-elev rounded px-1">loopskill_install</code>, and reports back
         — one turn of conversation, zero copy-paste. The same works for bundle syncs: a
         a Pro agent can call
-        <code class="text-xs bg-bg-elev rounded px-1">recipes_install_meta_skill</code> to
+        <code class="text-xs bg-bg-elev rounded px-1">loopskill_skillify</code> to
         bootstrap a full bundle on a new machine in under 60 seconds.
       </p>
 
@@ -47,12 +47,12 @@ import AppShell from '../../layouts/AppShell.astro';
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none" class="text-accent mt-0.5 shrink-0"><path d="M3 8.5L6 11.5L13 4.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
           <span>
             <strong class="text-text">Six dedicated tools, not a REST wrapper.</strong>
-            <code class="text-xs bg-bg-elev rounded px-1">recipes_search</code>,
-            <code class="text-xs bg-bg-elev rounded px-1">recipes_detail</code>,
-            <code class="text-xs bg-bg-elev rounded px-1">recipes_trending</code>,
-            <code class="text-xs bg-bg-elev rounded px-1">recipes_install</code>,
-            <code class="text-xs bg-bg-elev rounded px-1">recipes_install_meta_skill</code>,
-            <code class="text-xs bg-bg-elev rounded px-1">recipes_stats</code>.
+            <code class="text-xs bg-bg-elev rounded px-1">loopskill_search</code>,
+            <code class="text-xs bg-bg-elev rounded px-1">loopskill_detail</code>,
+            <code class="text-xs bg-bg-elev rounded px-1">loopskill_trending</code>,
+            <code class="text-xs bg-bg-elev rounded px-1">loopskill_install</code>,
+            <code class="text-xs bg-bg-elev rounded px-1">loopskill_skillify</code>,
+            <code class="text-xs bg-bg-elev rounded px-1">loopskill_stats</code>.
             The agent gets verbs it can reason about — not raw HTTP calls it has to construct
             and error-handle itself.
           </span>
@@ -152,21 +152,21 @@ git clone https://github.com/wisechef-ai/loopskill-mcp.git ~/loopskill-mcp</code
 &#125;</code></pre>
 
     <h2 class="text-xl font-semibold text-text mt-12 mb-3">4. Restart your client</h2>
-    <p class="text-muted mb-6">Then ask your agent: <em>"Search the LoopSkill marketplace for an SEO audit skill."</em> The agent will call <code class="text-xs bg-bg-elev rounded px-1">recipes_search</code> and report results.</p>
+    <p class="text-muted mb-6">Then ask your agent: <em>"Search the LoopSkill marketplace for an SEO audit skill."</em> The agent will call <code class="text-xs bg-bg-elev rounded px-1">loopskill_search</code> and report results.</p>
 
     <h2 class="text-xl font-semibold text-text mt-12 mb-3">Tools exposed</h2>
     <ul class="space-y-2 text-sm text-muted">
-      <li><code class="text-xs bg-bg-elev rounded px-1">recipes_search</code> — full-text + tier + category filter, returns compact JSON</li>
-      <li><code class="text-xs bg-bg-elev rounded px-1">recipes_detail</code> — fetch full SKILL.md before installing (free, no key)</li>
-      <li><code class="text-xs bg-bg-elev rounded px-1">recipes_trending</code> — top installs by day/week/month</li>
-      <li><code class="text-xs bg-bg-elev rounded px-1">recipes_install</code> — download, SHA256-verify, tar-slip-safe extract</li>
-      <li><code class="text-xs bg-bg-elev rounded px-1">recipes_install_meta_skill</code> — drop the master meta-skill into the agent's skills dir</li>
-      <li><code class="text-xs bg-bg-elev rounded px-1">recipes_stats</code> — public marketplace transparency stats</li>
+      <li><code class="text-xs bg-bg-elev rounded px-1">loopskill_search</code> — full-text + tier + category filter, returns compact JSON</li>
+      <li><code class="text-xs bg-bg-elev rounded px-1">loopskill_detail</code> — fetch full SKILL.md before installing (free, no key)</li>
+      <li><code class="text-xs bg-bg-elev rounded px-1">loopskill_trending</code> — top installs by day/week/month</li>
+      <li><code class="text-xs bg-bg-elev rounded px-1">loopskill_install</code> — download, SHA256-verify, tar-slip-safe extract</li>
+      <li><code class="text-xs bg-bg-elev rounded px-1">loopskill_skillify</code> — drop the master meta-skill into the agent's skills dir</li>
+      <li><code class="text-xs bg-bg-elev rounded px-1">loopskill_stats</code> — public marketplace transparency stats</li>
     </ul>
 
     <h2 class="text-xl font-semibold text-text mt-12 mb-3">Custom install dir</h2>
     <p class="text-muted mb-6">
-      By default, <code class="text-xs bg-bg-elev rounded px-1">recipes_install</code> writes to
+      By default, <code class="text-xs bg-bg-elev rounded px-1">loopskill_install</code> writes to
       <code class="text-xs bg-bg-elev rounded px-1">~/.claude/skills/&lt;slug&gt;/</code>.
       Override with <code class="text-xs bg-bg-elev rounded px-1">RECIPES_INSTALL_DIR</code> env var
       (e.g. <code class="text-xs bg-bg-elev rounded px-1">~/.codex/skills</code> for Codex,

@@ -278,12 +278,18 @@ const API_BASE = import.meta.env.PUBLIC_RECIPES_API_BASE || 'https://app.loopski
   // Composer already queries. Browse only ever hit the internal search, which
   // read as "not all skills are shown". Community results render as their own
   // group with source badges; failures degrade to internal-only (no spinner
-  // hostage). Query >= 2 chars OR the skills tab with a query.
+  // hostage).
+  //
+  // feat/browse-federated-defaults: empty-query browse ALSO shows the
+  // federated index. The API serves cached per-source first pages on an
+  // empty q (~400ms, no live walk), so a first-time visitor sees the breadth
+  // of the catalog instead of only the ~dozens of curated skills — the
+  // "where are all the skills?" fix. Curated stays FIRST; community renders
+  // below it, clearly badged.
   const FED_SOURCES = 'hermes-hub,skills-sh,well-known,clawhub,lobehub,browse-sh,github-oss';
   async function fetchFederated(q, limit = 24) {
-    if (!q || q.length < 2) return [];
     try {
-      const r = await fetch(`${API_BASE}/api/skills/external?sources=${FED_SOURCES}&limit=${limit}&q=${encodeURIComponent(q)}`);
+      const r = await fetch(`${API_BASE}/api/skills/external?sources=${FED_SOURCES}&limit=${limit}&q=${encodeURIComponent(q || '')}`);
       if (!r.ok) return [];
       const d = await r.json();
       return (d.external || []).map((s) => ({
