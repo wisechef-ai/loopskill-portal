@@ -26,6 +26,15 @@ const API_BASE = import.meta.env.PUBLIC_RECIPES_API_BASE || "https://app.loopski
   <main class="lp-detail max-w-3xl mx-auto px-6 pt-10 pb-24">
     <a href="/loops" class="text-sm text-muted hover:text-text">← All loops</a>
 
+    <!-- feat/composite-loops-surface: demotion notice. This page only runs
+         the loop's VERIFIER (quality gate) on the server — it is a preview,
+         not a deployment. The full deployable loop lives on the new
+         /loops/view composite-loop detail page, reachable from Browse. -->
+    <p class="text-xs text-muted-soft bg-bg-card border border-border rounded-lg px-4 py-3 mt-4">
+      This runs the loop's <strong>verifier</strong> (its quality gate) on the server — it does not run the
+      loop on your agent. To deploy the full loop, see <a href="/browse?type=loops" class="text-accent hover:underline">Browse → Loops</a>.
+    </p>
+
     <section id="state-loading" class="text-muted text-sm py-12">Loading loop…</section>
 
     <section id="state-error" hidden class="bg-bg-card border border-red-500/40 rounded-2xl p-6 mt-6">

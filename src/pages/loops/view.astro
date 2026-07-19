@@ -1,0 +1,373 @@
+---
+// feat/composite-loops-surface — composite LOOP detail + "Deploy to my agent".
+//
+// A composite loop is a deployable autonomous work unit (schedule + skills +
+// sub-agents + a verifier gate) — distinct from the old verifier registry
+// (/loops/run, /loops/[slug]) which only runs a loop's quality-gate check on
+// the server. This page is the detail surface for the NEW /api/composite-loops
+// resource and hosts the "Deploy to my agent" flow (fleet+member picker →
+// POST deploy).
+//
+// Static Astro CANNOT pre-render this: composite loops are a live, growing,
+// user-facing catalog (installable/deployable, not a small fixed set like the
+// ~10-loop verifier registry that [slug].astro enumerates at build time via
+// getStaticPaths). Enumerating every composite-loop slug at build time would
+// mean a new loop is invisible until the next deploy, and — per AGENTS.md's
+// build-time fetch ban — this page also needs an AUTH-AWARE deploy panel,
+// which can never be resolved at build time anyway (Trap B: frontmatter runs
+// build-time and would bake the anonymous branch). So: query-param page
+// (?slug=...), fully client-fetched, same pattern as /loops/run.astro and
+// /bundles/p.astro.
+//
+// mode="public": browsing a loop's detail (title/description/schedule/tier)
+// is public and indexable; only the Deploy panel is auth-gated, and it
+// renders BOTH signed-in/signed-out states in static HTML per AGENTS.md
+// trap-class doctrine (never a JS-fill target hidden behind a build-time
+// ternary).
+import AppShell from "../../layouts/AppShell.astro";
+
+const API_BASE = import.meta.env.PUBLIC_RECIPES_API_BASE || "https://app.loopskill.io";
+---
+
+<AppShell mode="public"
+  title="Loop — LoopSkill"
+  description="A deployable autonomous work unit: schedule + skills + sub-agents + a verifier gate. Deploy it to your own agent in one click."
+  pageType="website"
+>
+  <main class="cl-detail max-w-3xl mx-auto px-6 pt-10 pb-24">
+    <a href="/browse?type=loops" class="text-sm text-muted hover:text-text">← All loops</a>
+
+    <section id="state-loading" class="text-muted text-sm py-12">Loading loop…</section>
+
+    <section id="state-error" hidden class="bg-bg-card border border-red-500/40 rounded-2xl p-6 mt-6">
+      <h2 class="text-lg font-semibold mb-2">Couldn't load this loop</h2>
+      <p id="error-detail" class="text-sm text-muted"></p>
+    </section>
+
+    <article id="loop-body" hidden class="mt-6">
+      <header class="flex flex-col gap-3 mb-6">
+        <div class="flex items-center gap-2 flex-wrap">
+          <span id="cl-tier" class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold tracking-wider bg-accent/10 text-accent border border-accent/20"></span>
+          <span id="cl-version" class="text-[10px] text-muted-soft font-mono"></span>
+          <span id="cl-residency" class="text-[10px] text-muted-soft uppercase tracking-wider"></span>
+        </div>
+        <h1 id="cl-title" class="text-4xl font-semibold tracking-tight"></h1>
+        <p id="cl-desc" class="text-lg text-muted leading-relaxed"></p>
+        <div id="cl-social" class="text-sm text-muted-soft flex items-center gap-4 flex-wrap"></div>
+      </header>
+
+      <!-- What this loop actually does — schedule + install count. -->
+      <section class="bg-bg-card border border-border rounded-2xl p-5 mb-6">
+        <h2 class="text-sm font-semibold uppercase tracking-wide text-muted mb-3">Loop contract</h2>
+        <dl id="cl-contract" class="grid grid-cols-2 sm:grid-cols-3 gap-y-3 gap-x-4 text-sm"></dl>
+      </section>
+
+      <!-- Quality gate — a PREVIEW of the loop's verifier, not the loop itself. -->
+      <section id="cl-verifier-wrap" hidden class="bg-bg-card border border-border rounded-2xl p-5 mb-6">
+        <h2 class="text-sm font-semibold uppercase tracking-wide text-muted mb-2">Quality gate</h2>
+        <p class="text-sm text-muted mb-3">
+          This loop is backed by a verifier that checks its output objectively. You can preview
+          that quality gate on its own — this does <strong>not</strong> run or deploy the loop itself.
+        </p>
+        <a id="cl-verifier-link" href="#" class="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-border text-sm text-text hover:border-accent transition">
+          Quality gate: <span id="cl-verifier-slug" class="font-mono"></span> (preview) →
+        </a>
+      </section>
+
+      <!-- THE HERO: deploy this loop to my agent -->
+      <section class="bg-bg-card border border-accent/40 rounded-2xl p-5 mb-6">
+        <div class="flex items-center justify-between gap-3 mb-3">
+          <h2 class="text-lg font-semibold">Deploy to my agent</h2>
+        </div>
+        <p class="text-sm text-muted mb-4">
+          Installs this loop's schedule + skills + sub-agents onto one of your fleet's agents.
+          It runs autonomously on the agent's own sync cycle — nothing executes on our servers.
+        </p>
+
+        <!-- Render BOTH auth states in static HTML (AGENTS.md Trap C). -->
+        <div id="deploy-anon" class="hidden">
+          <a id="deploy-signin" href="/signin"
+            class="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg border border-accent text-accent font-semibold text-sm hover:bg-accent hover:text-bg transition">
+            Sign in to deploy
+          </a>
+          <p class="text-xs text-muted-soft mt-2">Browsing is free. Deploying needs an account so we know which fleet/agent to place it on.</p>
+        </div>
+
+        <div id="deploy-authed" class="hidden">
+          <div id="deploy-picker" class="flex flex-col sm:flex-row gap-3 mb-4">
+            <div class="flex-1">
+              <label for="deploy-fleet" class="block text-xs text-muted-soft mb-1">Fleet</label>
+              <select id="deploy-fleet" class="w-full px-3 py-2 text-sm bg-bg-elev border border-border rounded-lg text-text focus:outline-none focus:border-accent">
+                <option value="">Loading fleets…</option>
+              </select>
+            </div>
+            <div class="flex-1">
+              <label for="deploy-member" class="block text-xs text-muted-soft mb-1">Agent</label>
+              <select id="deploy-member" disabled class="w-full px-3 py-2 text-sm bg-bg-elev border border-border rounded-lg text-text focus:outline-none focus:border-accent disabled:opacity-50">
+                <option value="">Choose a fleet first</option>
+              </select>
+            </div>
+          </div>
+          <button id="deploy-btn" type="button" disabled
+            class="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-accent text-bg font-semibold text-sm hover:bg-accent-soft transition disabled:opacity-50">
+            Deploy to my agent
+          </button>
+          <p id="deploy-inline-note" class="text-xs text-muted-soft mt-2"></p>
+        </div>
+
+        <!-- result -->
+        <div id="deploy-result" hidden class="mt-5">
+          <div id="deploy-verdict" class="flex items-start gap-3"></div>
+        </div>
+      </section>
+    </article>
+  </main>
+</AppShell>
+
+<style>
+  .verdict-pass { background: rgba(34,197,94,.12); border: 1px solid rgba(34,197,94,.5); color: #4ade80; }
+  .verdict-fail { background: rgba(239,68,68,.12); border: 1px solid rgba(239,68,68,.5); color: #f87171; }
+  .verdict-info { background: rgba(91,155,245,.12); border: 1px solid rgba(91,155,245,.4); color: #5b9bf5; }
+  .verdict-badge { display: flex; flex-direction: column; gap: .3rem; font-size: 13px; padding: .75rem 1rem; border-radius: .6rem; line-height: 1.5; }
+</style>
+
+<script define:vars={{ API_BASE }}>
+  const $ = (id) => document.getElementById(id);
+  const show = (id) => { const e = $(id); if (e) e.hidden = false; };
+  const hide = (id) => { const e = $(id); if (e) e.hidden = true; };
+  // AGENTS.md Trap A: swap via classList AND inline style.display — Tailwind
+  // responsive variants outrank .hidden in the cascade.
+  const setFlex = (id, on) => { const e = $(id); if (!e) return; e.classList.toggle("hidden", !on); e.style.display = on ? "block" : "none"; };
+
+  const slug = new URLSearchParams(location.search).get("slug");
+  const here = location.pathname + location.search;
+
+  function fail(detail) {
+    hide("state-loading"); hide("loop-body");
+    const d = $("error-detail"); if (d) d.textContent = detail || "";
+    show("state-error");
+  }
+
+  function dt(dl, term, val) {
+    const cell = document.createElement("div");
+    cell.className = "flex flex-col gap-0.5";
+    const t = document.createElement("dt"); t.className = "text-muted-soft text-xs"; t.textContent = term;
+    const d = document.createElement("dd"); d.className = "text-text font-medium"; d.textContent = val;
+    cell.appendChild(t); cell.appendChild(d);
+    dl.appendChild(cell);
+  }
+
+  // Lightweight cron → human text. Not a full cron parser — covers the
+  // common shapes the API actually emits, falls back to the raw string.
+  function humanizeSchedule(sched) {
+    if (!sched) return "Manual — no schedule (deploy runs it once)";
+    const s = String(sched).trim();
+    const pad = (n) => String(n).padStart(2, "0");
+    const rules = [
+      [/^@hourly$/, () => "Every hour"],
+      [/^@daily$/, () => "Daily"],
+      [/^@weekly$/, () => "Weekly"],
+      [/^\*\/(\d+) \* \* \* \*$/, (m) => `Every ${m[1]} minute${m[1] === "1" ? "" : "s"}`],
+      [/^0 \* \* \* \*$/, () => "Every hour"],
+      [/^0 (\d{1,2}) \* \* \*$/, (m) => `Daily at ${pad(m[1])}:00 UTC`],
+      [/^0 (\d{1,2}) \* \* 0$/, (m) => `Weekly on Sunday at ${pad(m[1])}:00 UTC`],
+      [/^0 (\d{1,2}) \* \* 1-5$/, (m) => `Weekdays at ${pad(m[1])}:00 UTC`],
+    ];
+    for (const [re, fn] of rules) { const m = s.match(re); if (m) return fn(m); }
+    return `Schedule: ${s}`;
+  }
+
+  let loop = null;
+
+  async function load() {
+    if (!slug) { fail("No loop specified."); return; }
+    let res;
+    try { res = await fetch(`${API_BASE}/api/composite-loops/${encodeURIComponent(slug)}`); }
+    catch (e) { fail("Network error: " + (e && e.message ? e.message : e)); return; }
+    if (res.status === 404) { fail("This loop doesn't exist."); return; }
+    if (!res.ok) { fail(`API returned ${res.status}.`); return; }
+    try { loop = await res.json(); } catch { fail("Malformed API response."); return; }
+    renderLoop();
+  }
+
+  function renderLoop() {
+    hide("state-loading");
+    show("loop-body");
+    document.title = (loop.title || loop.slug) + " — LoopSkill";
+    $("cl-title").textContent = loop.title || loop.slug;
+    $("cl-desc").textContent = loop.description || "";
+    $("cl-tier").textContent = (loop.tier || "free").toUpperCase();
+    $("cl-version").textContent = loop.latest_version ? `v${loop.latest_version}` : "";
+    $("cl-residency").textContent = loop.residency ? `· ${loop.residency}` : "";
+
+    const social = $("cl-social");
+    social.innerHTML = "";
+    const n = loop.install_count || 0;
+    const inst = document.createElement("span"); inst.textContent = `${n} install${n === 1 ? "" : "s"}`;
+    social.appendChild(inst);
+    if (loop.is_public === false) {
+      const priv = document.createElement("span"); priv.textContent = "Private";
+      social.appendChild(priv);
+    }
+
+    const c = $("cl-contract"); c.innerHTML = "";
+    dt(c, "Schedule", humanizeSchedule(loop.schedule));
+    dt(c, "Tier", loop.tier || "free");
+    dt(c, "Latest version", loop.latest_version || "—");
+    dt(c, "Installs", String(loop.install_count ?? 0));
+
+    if (loop.verifier_slug) {
+      show("cl-verifier-wrap");
+      $("cl-verifier-slug").textContent = loop.verifier_slug;
+      $("cl-verifier-link").href = `/loops/run?slug=${encodeURIComponent(loop.verifier_slug)}`;
+    }
+
+    resolveAuth();
+  }
+
+  async function resolveAuth() {
+    let me = null;
+    try {
+      const res = await fetch(`${API_BASE}/api/auth/me`, { credentials: "include" });
+      if (res.ok) me = await res.json();
+    } catch { /* anonymous */ }
+    const authed = !!(me && (me.id || me.user_id || me.subscription_tier));
+    setFlex("deploy-anon", !authed);
+    setFlex("deploy-authed", authed);
+    if (!authed) {
+      $("deploy-signin").href = `/signin?next=${encodeURIComponent(here)}`;
+    } else {
+      loadFleets();
+    }
+  }
+
+  function renderDeployMessage(kind, html) {
+    show("deploy-result");
+    const v = $("deploy-verdict"); v.innerHTML = "";
+    const badge = document.createElement("div");
+    badge.className = "verdict-badge " + (kind === "success" ? "verdict-pass" : kind === "info" ? "verdict-info" : "verdict-fail");
+    badge.innerHTML = html;
+    v.appendChild(badge);
+  }
+
+  // "Do NOT auto-redirect on 401" — render an inline sign-in CTA instead of
+  // bouncing (fleets/members are cookie-authed, and a session can expire
+  // between the initial /api/auth/me check and this call).
+  function renderInline401(context) {
+    renderDeployMessage("fail", `Your session expired — <a href="/signin?next=${encodeURIComponent(here)}" class="underline">sign in again</a> to ${context}.`);
+  }
+
+  async function loadFleets() {
+    const sel = $("deploy-fleet");
+    let res;
+    try { res = await fetch(`${API_BASE}/api/fleets`, { credentials: "include" }); }
+    catch (e) { sel.innerHTML = '<option value="">Couldn\'t load fleets (network)</option>'; return; }
+    if (res.status === 401) { renderInline401("see your fleets"); sel.innerHTML = '<option value="">Sign in required</option>'; return; }
+    if (!res.ok) { sel.innerHTML = `<option value="">Couldn't load fleets (${res.status})</option>`; return; }
+    let data;
+    try { data = await res.json(); } catch { sel.innerHTML = '<option value="">Malformed response</option>'; return; }
+    const fleets = data.fleets || data.items || (Array.isArray(data) ? data : []);
+    if (!fleets.length) {
+      sel.innerHTML = '<option value="">No fleets yet — create one in Your Library</option>';
+      return;
+    }
+    sel.innerHTML = '<option value="">Choose a fleet…</option>' + fleets.map((f) =>
+      `<option value="${f.id || f.fleet_id}">${(f.name || f.id || f.fleet_id)}</option>`
+    ).join("");
+    sel.addEventListener("change", () => onFleetChange(sel.value));
+  }
+
+  async function onFleetChange(fleetId) {
+    const msel = $("deploy-member");
+    const btn = $("deploy-btn");
+    btn.disabled = true;
+    hide("deploy-result");
+    if (!fleetId) {
+      msel.innerHTML = '<option value="">Choose a fleet first</option>';
+      msel.disabled = true;
+      return;
+    }
+    msel.disabled = true;
+    msel.innerHTML = '<option value="">Loading agents…</option>';
+    let res;
+    try { res = await fetch(`${API_BASE}/api/fleets/${encodeURIComponent(fleetId)}/members`, { credentials: "include" }); }
+    catch (e) { msel.innerHTML = '<option value="">Couldn\'t load agents (network)</option>'; return; }
+    if (res.status === 401) { renderInline401("see this fleet's agents"); msel.innerHTML = '<option value="">Sign in required</option>'; return; }
+    if (!res.ok) { msel.innerHTML = `<option value="">Couldn't load agents (${res.status})</option>`; return; }
+    let data;
+    try { data = await res.json(); } catch { msel.innerHTML = '<option value="">Malformed response</option>'; return; }
+    const members = data.members || data.items || (Array.isArray(data) ? data : []);
+    if (!members.length) {
+      msel.innerHTML = '<option value="">No agents on this fleet yet</option>';
+      return;
+    }
+    msel.disabled = false;
+    msel.innerHTML = '<option value="">Choose an agent…</option>' + members.map((m) =>
+      `<option value="${m.id || m.member_id}">${(m.host || m.name || m.label || m.id || m.member_id)}</option>`
+    ).join("");
+    msel.addEventListener("change", () => { btn.disabled = !msel.value; });
+  }
+
+  function wireDeploy() {
+    const btn = $("deploy-btn");
+    btn.addEventListener("click", async () => {
+      const fleetId = $("deploy-fleet").value;
+      const memberId = $("deploy-member").value;
+      if (!fleetId || !memberId) return;
+      btn.disabled = true; btn.textContent = "Deploying…";
+      hide("deploy-result");
+      let res;
+      try {
+        res = await fetch(`${API_BASE}/api/composite-loops/${encodeURIComponent(slug)}/deploy`, {
+          method: "POST", credentials: "include",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ fleet_id: fleetId, member_id: memberId }),
+        });
+      } catch (e) {
+        renderDeployMessage("fail", "Network error: " + (e && e.message ? e.message : e));
+        btn.disabled = false; btn.textContent = "Deploy to my agent"; return;
+      }
+
+      if (res.status === 404) {
+        renderDeployMessage("info", "Deploy API rolling out — try again shortly.");
+        btn.disabled = false; btn.textContent = "Deploy to my agent"; return;
+      }
+      if (res.status === 401) {
+        renderInline401("deploy this loop");
+        btn.disabled = false; btn.textContent = "Deploy to my agent"; return;
+      }
+      if (res.status === 403) {
+        renderDeployMessage("fail", "You don't have permission to deploy to that agent.");
+        btn.disabled = false; btn.textContent = "Deploy to my agent"; return;
+      }
+
+      let out;
+      try { out = await res.json(); } catch { out = {}; }
+
+      if (res.status === 400) {
+        renderDeployMessage("fail", `Can't deploy: ${out.reason || "the agent isn't ready yet."}`);
+        btn.disabled = false; btn.textContent = "Deploy to my agent"; return;
+      }
+      if (res.status === 409) {
+        renderDeployMessage("fail", `This loop isn't deployable right now${out.reason ? ": " + out.reason : "."}`);
+        btn.disabled = false; btn.textContent = "Deploy to my agent"; return;
+      }
+      if (!res.ok) {
+        renderDeployMessage("fail", `Deploy failed (HTTP ${res.status}).`);
+        btn.disabled = false; btn.textContent = "Deploy to my agent"; return;
+      }
+
+      // 200 → {deployed:true, placement_id, epoch, note}
+      const lines = [
+        `<strong>✓ Deployed.</strong> Placement <code>${out.placement_id || "—"}</code>${out.epoch != null ? ` (epoch ${out.epoch})` : ""}.`,
+        `Your agent picks this up on its next sync (≈30 min).`,
+      ];
+      if (out.note) lines.push(out.note);
+      renderDeployMessage("success", lines.join("<br/>"));
+      btn.disabled = false; btn.textContent = "Deploy again";
+    });
+  }
+
+  wireDeploy();
+  load();
+</script>

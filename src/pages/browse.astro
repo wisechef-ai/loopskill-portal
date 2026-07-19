@@ -142,13 +142,34 @@ const API_BASE = import.meta.env.PUBLIC_RECIPES_API_BASE || 'https://app.loopski
     // from fetchFederated() as item.href — so check that FIRST, before the
     // type-based branches, and deep-link out to the source registry.
     if (item && item.href && item.href !== '#') return item.href;
-    if (type === 'loops') return `/loops/run?slug=${encodeURIComponent(item.slug)}`;
+    // feat/composite-loops-surface: the loops tab now renders COMPOSITE loops
+    // (deployable autonomous work units), not the old verifier registry — so
+    // the detail route is /loops/view (client-fetched GET /api/composite-loops/
+    // {slug}), not /loops/run (which now only previews the loop's verifier
+    // quality-gate, demoted — see loops/run.astro). The verifier-registry
+    // fallback path (used only when /api/composite-loops fails/empty and we
+    // degrade to /api/loops) still routes to /loops/run since those items ARE
+    // verifiers, not composite loops — item.is_fallback_verifier flags that.
+    if (type === 'loops') {
+      if (item.is_fallback_verifier) return `/loops/run?slug=${encodeURIComponent(item.slug)}`;
+      return `/loops/view?slug=${encodeURIComponent(item.slug)}`;
+    }
     if (type === 'skills') return `/skills/${encodeURIComponent(item.slug)}`;
     if (type === 'bundles') return `/bundles/p?slug=${encodeURIComponent(item.slug)}`;
     return '/browse?type=personalities'; // personalities have no detail page yet
   }
   function artifactMeta(type, item) {
-    if (type === 'loops') { const n = item.run_count || 0; return n > 0 ? `${n} run${n === 1 ? '' : 's'}` : 'Not yet run'; }
+    if (type === 'loops') {
+      // Fallback verifier items keep their old run_count meta; composite
+      // loops show schedule + install_count instead (what actually matters
+      // for "should I deploy this").
+      if (item.is_fallback_verifier) { const n = item.run_count || 0; return n > 0 ? `${n} run${n === 1 ? '' : 's'}` : 'Not yet run'; }
+      const parts = [];
+      if (item.schedule) parts.push(item.schedule === 'manual' ? 'Manual' : 'Scheduled');
+      const inst = item.install_count || 0;
+      parts.push(`${inst} install${inst === 1 ? '' : 's'}`);
+      return parts.join(' · ');
+    }
     if (type === 'skills') {
       const n = item.install_count_total || item.install_count || 0;
       const cat = item.category || '';
@@ -322,16 +343,45 @@ const API_BASE = import.meta.env.PUBLIC_RECIPES_API_BASE || 'https://app.loopski
       }));
     } catch { return []; }
   }
+  // feat/composite-loops-surface: the Loops tab now shows COMPOSITE loops
+  // (deployable autonomous work units: schedule + skills + sub-agents + a
+  // verifier gate) fetched from GET /api/composite-loops, instead of the old
+  // verifier registry (GET /api/loops). We fall back to the verifier registry
+  // ONLY if the composite fetch fails or returns empty — degrade, don't blank
+  // (council §3 doctrine). Fallback items are tagged is_fallback_verifier so
+  // artifactHref/artifactMeta route+label them correctly (old /loops/run
+  // behavior), rather than silently misrouting verifier items to /loops/view
+  // where they'd 404 against the composite-loops API.
+  async function fetchLoopsTabData() {
+    let composite = [];
+    try {
+      const r = await fetch(`${API_BASE}/api/composite-loops`);
+      if (r.ok) {
+        const d = await r.json();
+        composite = Array.isArray(d) ? d : (d.composite_loops || d.loops || d.results || []);
+      }
+    } catch { /* fall through to verifier fallback below */ }
+    if (composite.length) return composite;
+
+    try {
+      const r = await fetch(`${API_BASE}/api/loops`);
+      if (!r.ok) return [];
+      const d = await r.json();
+      const verifiers = Array.isArray(d) ? d : (d.loops || d.results || []);
+      return verifiers.map((v) => ({ ...v, is_fallback_verifier: true }));
+    } catch { return []; }
+  }
+
   // Empty-query browse defaults per type (council §3): fall back to the
   // existing per-type endpoints when q is empty.
   async function fetchBrowseDefaults() {
     const [loopsR, skillsR, bundlesR, persR] = await Promise.allSettled([
-      fetch(`${API_BASE}/api/loops`).then((r) => (r.ok ? r.json() : null)),
+      fetchLoopsTabData(),
       fetch(`${API_BASE}/api/skills/search?page_size=24`).then((r) => (r.ok ? r.json() : null)),
       fetch(`${API_BASE}/api/bundles/discover?sort=installs&limit=24`).then((r) => (r.ok ? r.json() : null)),
       fetch(`${API_BASE}/api/personalities`).then((r) => (r.ok ? r.json() : null)),
     ]);
-    const loops = loopsR.status === 'fulfilled' && loopsR.value ? (Array.isArray(loopsR.value) ? loopsR.value : (loopsR.value.loops || loopsR.value.results || [])) : [];
+    const loops = loopsR.status === 'fulfilled' && Array.isArray(loopsR.value) ? loopsR.value : [];
     const skills = skillsR.status === 'fulfilled' && skillsR.value ? (skillsR.value.results || []) : [];
     const bundles = bundlesR.status === 'fulfilled' && bundlesR.value ? (bundlesR.value.cookbooks || bundlesR.value.bundles || []) : [];
     const personalities = persR.status === 'fulfilled' && persR.value ? (Array.isArray(persR.value) ? persR.value : (persR.value.personalities || persR.value.results || [])) : [];
@@ -424,7 +474,14 @@ const API_BASE = import.meta.env.PUBLIC_RECIPES_API_BASE || 'https://app.loopski
     const items = byType[state.type] || [];
     if (!items.length && !federated.length) {
       show('browse-empty');
-      $('browse-empty').textContent = state.q ? `No results for "${state.q}"` : 'Nothing is available right now.';
+      // feat/composite-loops-surface: the Loops empty state explains what a
+      // loop actually IS (most visitors have never heard the term) instead of
+      // the generic "nothing available" copy.
+      if (state.type === 'loops' && !state.q) {
+        $('browse-empty').textContent = 'A loop = schedule + skills + sub-agents + a verifier gate — deployable to your own agent. Nothing is available right now.';
+      } else {
+        $('browse-empty').textContent = state.q ? `No results for "${state.q}"` : 'Nothing is available right now.';
+      }
       return;
     }
     const grid = items.map((it) => artifactCardHTML(state.type, it, 'grid')).join('');
