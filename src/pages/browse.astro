@@ -128,6 +128,20 @@ const API_BASE = import.meta.env.PUBLIC_RECIPES_API_BASE || 'https://app.loopski
   }
 
   function artifactHref(type, item) {
+    // Federated community cards are rendered via artifactCardHTML('skill', ...)
+    // — SINGULAR 'skill', not the plural 'skills' this function matches below.
+    // That singular/plural mismatch is deliberate-ish: the fedGroupHTML call site
+    // (search "artifactCardHTML('skill'" in this file) uses 'skill' as a type tag
+    // for badge/aria text, not as a route type. Left unhandled, 'skill' falls
+    // through every branch here and hits the default '/browse?type=personalities'
+    // — every community card silently misrouted to the Personalities tab.
+    // Community skills also have NO local detail page (only the ~53 curated
+    // skills get a statically-generated /skills/{slug}), so routing federated
+    // items through the plural 'skills' branch would 404 instead. The correct
+    // destination for a federated item is its own origin_url, passed through
+    // from fetchFederated() as item.href — so check that FIRST, before the
+    // type-based branches, and deep-link out to the source registry.
+    if (item && item.href && item.href !== '#') return item.href;
     if (type === 'loops') return `/loops/run?slug=${encodeURIComponent(item.slug)}`;
     if (type === 'skills') return `/skills/${encodeURIComponent(item.slug)}`;
     if (type === 'bundles') return `/bundles/p?slug=${encodeURIComponent(item.slug)}`;
@@ -152,7 +166,14 @@ const API_BASE = import.meta.env.PUBLIC_RECIPES_API_BASE || 'https://app.loopski
     const meta = artifactMeta(type, item);
     const desc = mode === 'grid' ? (item.description || '') : '';
     const ariaLabel = `${TYPE_SINGULAR[type] || 'Item'}: ${item.title || item.slug}${meta ? '. ' + meta : ''}`;
-    return `<a href="${esc(artifactHref(type, item))}" class="artifact-card" data-artifact-type="${type}" data-artifact-slug="${esc(item.slug)}" aria-label="${esc(ariaLabel)}">
+    const href = artifactHref(type, item);
+    // External (federated/community) hrefs point off-site at the source
+    // registry — open those in a new tab so browsing /browse never navigates
+    // the user away entirely. Internal routes (/skills/…, /loops/run…,
+    // /bundles/p…, /browse?type=…) are unaffected — same-tab as before.
+    const isExternal = /^https?:\/\//i.test(href);
+    const externalAttrs = isExternal ? ' target="_blank" rel="noopener"' : '';
+    return `<a href="${esc(href)}" class="artifact-card" data-artifact-type="${type}" data-artifact-slug="${esc(item.slug)}" aria-label="${esc(ariaLabel)}"${externalAttrs}>
       <span class="artifact-cover" style="background:linear-gradient(135deg, ${grad[0]} 0%, ${grad[1]} 100%);">
         ${identiconSVG(item.slug || item.title || 'loopskill')}
         <span class="artifact-badge">${TYPE_SINGULAR[type] || ''}</span>
