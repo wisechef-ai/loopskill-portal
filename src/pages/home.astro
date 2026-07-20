@@ -56,7 +56,10 @@ import AppShell from '../layouts/AppShell.astro';
     return '/browse?type=personalities';
   }
   function meta(type: ShelfType, item: any): string {
-    if (type === 'loops') { const n = item.run_count || 0; return n > 0 ? `${n} run${n === 1 ? '' : 's'}` : 'Not yet run'; }
+    // atomic-habits 2026-07-20 rank-8 REVENUE/CATALOG: kept in sync with
+    // browse.astro / artifactCard.ts — see those files' comments for the
+    // "Battle-tested" trust-line rationale (empty ratings, real run_count).
+    if (type === 'loops') { const n = item.run_count || 0; return n > 0 ? `Battle-tested · ${n} run${n === 1 ? '' : 's'}` : 'Not yet run'; }
     if (type === 'skills') {
       const n = item.install_count_total || item.install_count || 0;
       const cat = item.category || '';

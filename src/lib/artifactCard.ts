@@ -85,8 +85,11 @@ export function artifactCardHTML(type: ArtifactType, item: ArtifactItem, variant
 export function artifactMeta(type: ArtifactType, raw: any): string {
   switch (type) {
     case 'loop': {
+      // atomic-habits 2026-07-20 rank-8 REVENUE/CATALOG: kept in sync with the
+      // browse.astro inline artifactMeta() — see that file's comment for the
+      // "Battle-tested" trust-line rationale (empty ratings, real run_count).
       const runs = raw.run_count || 0;
-      return runs > 0 ? `${runs} run${runs === 1 ? '' : 's'}` : 'Not yet run';
+      return runs > 0 ? `Battle-tested · ${runs} run${runs === 1 ? '' : 's'}` : 'Not yet run';
     }
     case 'skill': {
       const installs = raw.install_count_total || raw.install_count || 0;

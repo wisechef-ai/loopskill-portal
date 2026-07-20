@@ -163,7 +163,12 @@ const API_BASE = import.meta.env.PUBLIC_RECIPES_API_BASE || 'https://app.loopski
       // Fallback verifier items keep their old run_count meta; composite
       // loops show schedule + install_count instead (what actually matters
       // for "should I deploy this").
-      if (item.is_fallback_verifier) { const n = item.run_count || 0; return n > 0 ? `${n} run${n === 1 ? '' : 's'}` : 'Not yet run'; }
+      // atomic-habits 2026-07-20 rank-8 REVENUE/CATALOG: all 10 fallback-verifier
+      // loops show rating_count:0/rating_avg:null (no stars = weak conversion
+      // signal) but several have real run_count already returned by /api/loops.
+      // Surface that as a "Battle-tested" trust line instead of a bare number —
+      // same data, stronger social proof, no API/schema change.
+      if (item.is_fallback_verifier) { const n = item.run_count || 0; return n > 0 ? `Battle-tested · ${n} run${n === 1 ? '' : 's'}` : 'Not yet run'; }
       const parts = [];
       if (item.schedule) parts.push(item.schedule === 'manual' ? 'Manual' : 'Scheduled');
       const inst = item.install_count || 0;
