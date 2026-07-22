@@ -192,6 +192,18 @@ body {
 @media (max-width: 640px) { .artifact-grid { gap: 14px; } }
 .artifact-grid .artifact-card { width: auto; max-width: 240px; }
 
+/* Deploy CTA on composite-loop cards (atomic-habits 2026-07-22 rank-1) */
+.artifact-card .artifact-deploy {
+  margin-top: 8px; display: inline-flex; align-items: center; gap: 4px;
+  padding: 4px 10px; border-radius: 6px; font-size: 12px; font-weight: 600;
+  background: rgba(255,209,102,0.12); color: #ffd166; border: 1px solid rgba(255,209,102,0.25);
+  transition: background .18s ease, border-color .18s ease; align-self: flex-start;
+}
+.artifact-card:hover .artifact-deploy,
+.artifact-card:focus-visible .artifact-deploy {
+  background: rgba(255,209,102,0.22); border-color: rgba(255,209,102,0.5);
+}
+
 /* Shelf — one consistent horizontal-scroll component */
 .shelf-row {
   display: flex; gap: 16px; overflow-x: auto; scroll-snap-type: x mandatory;

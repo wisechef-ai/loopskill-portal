@@ -186,6 +186,12 @@ const API_BASE = import.meta.env.PUBLIC_RECIPES_API_BASE || 'https://app.loopski
     if (type === 'personalities') return item.source || item.role || item.category || '';
     return '';
   }
+  // feat/loop-deploy-cta (atomic-habits 2026-07-22 rank-1): composite-loop cards
+  // on the Loops tab get a "Deploy →" button that links to the deploy panel on
+  // /loops/view. The POST /api/composite-loops/{slug}/deploy endpoint is shipped
+  // and the deploy panel exists on the detail page, but the browse card was a
+  // plain link with no deploy affordance — the fleet-deploy write path was
+  // invisible to every browse visitor. This surfaces it as a primary CTA.
   function artifactCardHTML(type, item, mode) {
     const grad = GRAD[hashIdx(item.slug || item.title || 'x', GRAD.length)];
     const mono = ((item.title || item.slug || 'L').trim()[0] || 'L').toUpperCase();
@@ -199,7 +205,14 @@ const API_BASE = import.meta.env.PUBLIC_RECIPES_API_BASE || 'https://app.loopski
     // /bundles/p…, /browse?type=…) are unaffected — same-tab as before.
     const isExternal = /^https?:\/\//i.test(href);
     const externalAttrs = isExternal ? ' target="_blank" rel="noopener"' : '';
-    return `<a href="${esc(href)}" class="artifact-card" data-artifact-type="${type}" data-artifact-slug="${esc(item.slug)}" aria-label="${esc(ariaLabel)}"${externalAttrs}>
+    // Composite loops get a Deploy CTA in the card footer (links to the deploy
+    // panel on /loops/view). Fallback verifiers (old /api/loops registry) don't
+    // have a deploy path — they route to /loops/run preview only.
+    const isCompositeLoop = type === 'loops' && !item.is_fallback_verifier;
+    const deployCTA = isCompositeLoop
+      ? `<span class="artifact-deploy" role="button" tabindex="-1" aria-hidden="true">Deploy →</span>`
+      : '';
+    return `<a href="${esc(href)}" class="artifact-card${isCompositeLoop ? ' artifact-card--deployable' : ''}" data-artifact-type="${type}" data-artifact-slug="${esc(item.slug)}" aria-label="${esc(ariaLabel)}"${externalAttrs}>
       <span class="artifact-cover" style="background:linear-gradient(135deg, ${grad[0]} 0%, ${grad[1]} 100%);">
         ${identiconSVG(item.slug || item.title || 'loopskill')}
         <span class="artifact-badge">${TYPE_SINGULAR[type] || ''}</span>
@@ -208,6 +221,7 @@ const API_BASE = import.meta.env.PUBLIC_RECIPES_API_BASE || 'https://app.loopski
       <span class="artifact-title">${esc(item.title || item.slug)}</span>
       ${meta ? `<span class="artifact-meta">${esc(meta)}</span>` : ''}
       ${desc ? `<span class="artifact-desc">${esc(desc)}</span>` : ''}
+      ${deployCTA}
     </a>`;
   }
 
