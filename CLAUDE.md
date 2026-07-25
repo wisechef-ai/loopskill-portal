@@ -61,7 +61,8 @@ NEVER add a build-time API fetch for user data. A handful of catalog pages
 (index, skills) do build-time fetches WITH fallbacks — do not add more; a
 build-time fetch couples the build to API uptime (WIS-737 incident class;
 `scripts/assert-dist.sh` guards the blast radius). New live data = client
-island over `src/lib/api.ts` (`API_BASE = https://recipes.wisechef.ai`).
+island over `src/lib/api.ts` (`API_BASE = https://app.loopskill.io`; the legacy
+`recipes.wisechef.ai` 301s here as of 2026-07-10).
 
 ## Build, CI, deploy (deploy is MANUAL)
 
