@@ -16,7 +16,13 @@ concurrency:
 jobs:
   build:
     name: Build (Astro)
-    runs-on: wisechef-runner
+    # ponytail_0725: was `wisechef-runner` (an org-level Mac). That runner stopped
+    # picking up this repo's jobs — a push-to-main sat queued indefinitely with
+    # runner_name:"" while the label resolved to nothing. Combined with the SSH
+    # deploy failure below, the pipeline had TWO independent single points of
+    # failure on hosts this repo does not own. Both are now the prod host, which
+    # already runs Node 22 and is the machine the artifact ships to anyway.
+    runs-on: wisechef-hq-portal
     steps:
       - uses: actions/checkout@v4
 
