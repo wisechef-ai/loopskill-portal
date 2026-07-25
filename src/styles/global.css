@@ -204,6 +204,58 @@ body {
   background: rgba(255,209,102,0.22); border-color: rgba(255,209,102,0.5);
 }
 
+/* ── Like ("heart") control — ponytail_0724 ─────────────────────────────────
+   The Spotify heart. The card itself is an <a>, so the button must be a
+   SIBLING inside a positioned wrapper, never a descendant — a <button> nested
+   in an <a> is invalid HTML and breaks keyboard activation in every browser.
+
+   SIZING TRAP (caught in visual QA 2026-07-24): the wrapper must be exactly as
+   wide as the card it wraps, or the absolutely-positioned heart anchors to the
+   wrapper's right edge and floats in empty space beside the cover art. So the
+   slot inherits the card's width rules and the card fills the slot.           */
+.artifact-slot {
+  position: relative;
+  display: block;
+  width: 176px;          /* mirrors .artifact-card default width */
+  flex-shrink: 0;        /* the slot is now the shelf-row flex item */
+  scroll-snap-align: start;
+}
+@media (max-width: 640px) { .artifact-slot { width: 148px; } }
+/* In the Browse grid the slot IS the grid item and stretches to the column. */
+.artifact-grid .artifact-slot { width: auto; max-width: 240px; }
+/* The card always fills its slot so the heart anchors to the cover's edge. */
+.artifact-slot > .artifact-card { width: 100%; max-width: none; }
+.artifact-like {
+  position: absolute; top: 6px; right: 6px; z-index: 2;
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 30px; height: 30px; padding: 0; border-radius: 999px;
+  background: rgba(0,0,0,0.55); border: 1px solid rgba(255,255,255,0.14);
+  color: rgba(255,255,255,0.85); cursor: pointer; backdrop-filter: blur(4px);
+  /* Hidden until hover/focus on pointer devices (Spotify behaviour), but
+     ALWAYS visible once liked so the state is never invisible. */
+  opacity: 0; transform: scale(0.9);
+  transition: opacity .16s ease, transform .16s ease, color .16s ease, border-color .16s ease;
+}
+.artifact-slot:hover .artifact-like,
+.artifact-slot:focus-within .artifact-like,
+.artifact-like[aria-pressed="true"],
+.artifact-like:focus-visible { opacity: 1; transform: scale(1); }
+.artifact-like:hover { border-color: rgba(255,209,102,0.55); color: #ffd166; }
+.artifact-like:focus-visible { outline: 2px solid #ffd166; outline-offset: 2px; }
+.artifact-like[aria-pressed="true"] { color: #ff5f7e; border-color: rgba(255,95,126,0.55); }
+.artifact-like[aria-busy="true"] { opacity: .6; cursor: progress; }
+.artifact-like svg { width: 16px; height: 16px; display: block; }
+.artifact-like[aria-pressed="true"] svg { fill: currentColor; }
+/* Touch devices have no hover — always show the control. */
+@media (hover: none) { .artifact-like { opacity: 1; transform: scale(1); } }
+/* Respect reduced-motion: no scale animation. */
+@media (prefers-reduced-motion: reduce) {
+  .artifact-like { transition: opacity .16s ease; transform: none; }
+  .artifact-slot:hover .artifact-like,
+  .artifact-slot:focus-within .artifact-like,
+  .artifact-like[aria-pressed="true"] { transform: none; }
+}
+
 /* Shelf — one consistent horizontal-scroll component */
 .shelf-row {
   display: flex; gap: 16px; overflow-x: auto; scroll-snap-type: x mandatory;

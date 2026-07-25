@@ -192,6 +192,48 @@ const API_BASE = import.meta.env.PUBLIC_RECIPES_API_BASE || 'https://app.loopski
   // and the deploy panel exists on the detail page, but the browse card was a
   // plain link with no deploy affordance — the fleet-deploy write path was
   // invisible to every browse visitor. This surfaces it as a primary CTA.
+
+  // ── Like ("heart") control — ponytail_0724 ────────────────────────────────
+  // Adam 2026-07-24: "I want to add skill to favourite but there is no menu
+  // similar to spotify on skills". The like BACKEND already shipped
+  // (liked_0711) — POST/DELETE /api/skills/{slug}/like — but no surface ever
+  // called it (zero matches for `api/library|/like` across src/ before this).
+  //
+  // NOTE ON DUPLICATION: this script carries `define:vars`, which forces
+  // Astro's `is:inline` mode — ESM imports are UNAVAILABLE here. So the logic
+  // is mirrored from src/lib/likeControl.ts rather than imported. That module
+  // is the CANONICAL implementation and is unit-tested; keep the two in sync.
+  // home.astro (a processed <script>) imports it properly.
+  //
+  // Track identity: local skills use their bare slug; FEDERATED skills use the
+  // `source__slug` form the API's _resolve_track_identity expects (double
+  // underscore). Getting this wrong 404s every federated like.
+  //
+  // The card root is an <a>, so the button is a SIBLING inside .artifact-slot,
+  // never nested — a <button> inside an <a> is invalid HTML and breaks
+  // keyboard activation in every browser.
+  const HEART_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1-1.1a5.5 5.5 0 0 0-7.8 7.8l1.1 1L12 21l7.7-7.6 1.1-1a5.5 5.5 0 0 0 0-7.8z"/></svg>';
+
+  function likeTrackId(item) {
+    const src = item && (item.like_source || item.source);
+    const slug = (item && item.slug) || '';
+    return src && src !== 'local' ? `${src}__${slug}` : slug;
+  }
+
+  function isLikeable(type, item) {
+    // Skills only for now — personalities/loops/bundles use their own shelves.
+    const t = String(type || '');
+    return (t === 'skills' || t === 'skill') && !!(item && item.slug);
+  }
+
+  function likeButtonHTML(type, item) {
+    if (!isLikeable(type, item)) return '';
+    const name = item.title || item.slug;
+    return `<button type="button" class="artifact-like" data-like-id="${esc(likeTrackId(item))}"`
+      + ` aria-pressed="false" title="Save to your library"`
+      + ` aria-label="Save ${esc(name)} to your library">${HEART_SVG}</button>`;
+  }
+
   function artifactCardHTML(type, item, mode) {
     const grad = GRAD[hashIdx(item.slug || item.title || 'x', GRAD.length)];
     const mono = ((item.title || item.slug || 'L').trim()[0] || 'L').toUpperCase();
@@ -212,7 +254,7 @@ const API_BASE = import.meta.env.PUBLIC_RECIPES_API_BASE || 'https://app.loopski
     const deployCTA = isCompositeLoop
       ? `<span class="artifact-deploy" role="button" tabindex="-1" aria-hidden="true">Deploy →</span>`
       : '';
-    return `<a href="${esc(href)}" class="artifact-card${isCompositeLoop ? ' artifact-card--deployable' : ''}" data-artifact-type="${type}" data-artifact-slug="${esc(item.slug)}" aria-label="${esc(ariaLabel)}"${externalAttrs}>
+    const card = `<a href="${esc(href)}" class="artifact-card${isCompositeLoop ? ' artifact-card--deployable' : ''}" data-artifact-type="${type}" data-artifact-slug="${esc(item.slug)}" aria-label="${esc(ariaLabel)}"${externalAttrs}>
       <span class="artifact-cover" style="background:linear-gradient(135deg, ${grad[0]} 0%, ${grad[1]} 100%);">
         ${identiconSVG(item.slug || item.title || 'loopskill')}
         <span class="artifact-badge">${TYPE_SINGULAR[type] || ''}</span>
@@ -223,6 +265,7 @@ const API_BASE = import.meta.env.PUBLIC_RECIPES_API_BASE || 'https://app.loopski
       ${desc ? `<span class="artifact-desc">${esc(desc)}</span>` : ''}
       ${deployCTA}
     </a>`;
+    return `<div class="artifact-slot">${card}${likeButtonHTML(type, item)}</div>`;
   }
 
   // ── URL state ──────────────────────────────────────────────────────────
@@ -359,6 +402,11 @@ const API_BASE = import.meta.env.PUBLIC_RECIPES_API_BASE || 'https://app.loopski
         description: s.description,
         meta: `${s.source || 'community'}${s.license ? ' · ' + s.license : ''}`,
         href: s.origin_url || '#',
+        // ponytail_0724: carry the federation source through so the like
+        // control can mint the `source__slug` track identity the API's
+        // _resolve_track_identity expects. Dropping it here made every
+        // federated heart resolve as a LOCAL slug and 404.
+        like_source: s.source || null,
       }));
     } catch { return []; }
   }
@@ -486,6 +534,7 @@ const API_BASE = import.meta.env.PUBLIC_RECIPES_API_BASE || 'https://app.loopski
         return;
       }
       results.innerHTML = GROUP_ORDER.map((t) => renderGroup(t, byType[t], 'all', state.q)).join('') + fedGroupHTML;
+      refreshLikes();
       return;
     }
 
@@ -508,9 +557,104 @@ const API_BASE = import.meta.env.PUBLIC_RECIPES_API_BASE || 'https://app.loopski
       ? `<div class="ls-section-header"><h2 class="ls-section-title text-text">LoopSkill catalog <span class="text-xs text-muted-soft font-normal">verified · signed</span></h2></div>`
       : '';
     results.innerHTML = (items.length ? `${curatedHeader}<div class="artifact-grid">${grid}</div>` : '') + fedGroupHTML;
+    refreshLikes();
   }
 
   $('browse-retry').addEventListener('click', load);
+
+  // ── Like wiring — ponytail_0724 ───────────────────────────────────────────
+  // Delegated so it survives every innerHTML re-render in load(). Optimistic
+  // toggle with rollback: the heart must never lie about what the server did.
+  const likedIds = new Set();
+  let likedHydrated = false;
+
+  function paintLikes(root) {
+    (root || document).querySelectorAll('.artifact-like').forEach((btn) => {
+      const on = likedIds.has(btn.dataset.likeId || '');
+      btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+      btn.title = on ? 'Remove from your library' : 'Save to your library';
+    });
+  }
+
+  async function hydrateLikes() {
+    // GET /api/library carries TWO skill sources, deliberately separate:
+    //   shelves.skills   — the DEPLOYABLE Liked bundle (local catalog skills;
+    //                      frozen {id, slug, title, liked_at} shape, no source)
+    //   federated_skills — hub/skills.sh/ClawHub bookmarks
+    //                      ({slug, title, source, liked_at}, NOT deployable)
+    // Read BOTH so a heart paints pressed regardless of which side it lives on.
+    try {
+      const r = await fetch(`${API_BASE}/api/library`, { credentials: 'include' });
+      if (!r.ok) {
+        // Anonymous (401): latch so refreshLikes() does not re-issue this call
+        // on every render for the rest of the session.
+        likedHydrated = true;
+        return;
+      }
+      const d = await r.json();
+      likedIds.clear();
+      ((d && d.shelves && d.shelves.skills) || []).forEach((row) => {
+        if (row && row.slug) likedIds.add(row.slug);
+      });
+      ((d && d.federated_skills) || []).forEach((row) => {
+        if (!row || !row.slug) return;
+        likedIds.add(row.source && row.source !== 'local' ? `${row.source}__${row.slug}` : row.slug);
+      });
+      likedHydrated = true;
+      paintLikes();
+    } catch {
+      // Offline / CORS — hearts stay unpressed, no console noise. Latched.
+      likedHydrated = true;
+    }
+  }
+
+  // Called at the end of EVERY render path in load(). Hydrates the liked set
+  // once (first render), then repaints cheaply from the cached set thereafter,
+  // so hearts survive tab switches, search, and re-renders.
+  function refreshLikes() {
+    if (likedHydrated) { paintLikes(); return; }
+    hydrateLikes();
+  }
+
+  document.addEventListener('click', async (ev) => {
+    const btn = ev.target && ev.target.closest ? ev.target.closest('.artifact-like') : null;
+    if (!btn) return;
+    // The heart sits inside .artifact-slot next to the card <a>. Stop the event
+    // so clicking it never navigates to the skill.
+    ev.preventDefault();
+    ev.stopPropagation();
+    if (btn.getAttribute('aria-busy') === 'true') return;
+
+    const id = btn.dataset.likeId || '';
+    const wasLiked = btn.getAttribute('aria-pressed') === 'true';
+    const nowLiked = !wasLiked;
+
+    // Optimistic paint.
+    btn.setAttribute('aria-pressed', nowLiked ? 'true' : 'false');
+    btn.setAttribute('aria-busy', 'true');
+
+    try {
+      const r = await fetch(`${API_BASE}/api/skills/${encodeURIComponent(id)}/like`, {
+        method: nowLiked ? 'POST' : 'DELETE',
+        credentials: 'include',
+      });
+      if (r.status === 401 || r.status === 403) {
+        // Anonymous visitor — roll back and send them to sign-in, preserving
+        // where they were so they land back on the same browse state.
+        btn.setAttribute('aria-pressed', wasLiked ? 'true' : 'false');
+        location.href = `/signin?next=${encodeURIComponent(location.pathname + location.search)}`;
+        return;
+      }
+      if (!r.ok) throw new Error(`like failed: ${r.status}`);
+      if (nowLiked) likedIds.add(id); else likedIds.delete(id);
+      btn.title = nowLiked ? 'Remove from your library' : 'Save to your library';
+    } catch {
+      // Roll back — never leave a heart claiming a state the server rejected.
+      btn.setAttribute('aria-pressed', wasLiked ? 'true' : 'false');
+    } finally {
+      btn.removeAttribute('aria-busy');
+    }
+  });
 
   syncTabsUI();
   updateCanonical(state.type);
