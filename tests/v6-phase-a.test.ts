@@ -129,37 +129,37 @@ describe('currency sweep', () => {
   const USER_FACING_DIRS = [join(SRC, 'pages'), join(SRC, 'components'), join(SRC, 'layouts')];
   // Locked canonical pricing per RCP-1 (PR #17): Cook $20/mo (1 seat),
   // Operator $100/mo (20 endpoints). rebrand(loopskill_0622) relabeled these
-  // Pro/Pro+ (DB slugs unchanged — see src/lib/tiers.ts). REAL BUG fix
-  // 2026-07-25: $300/mo is a genuine, separately-documented SKU — the
-  // per-client bundle-deployment rate (EarningsCalculator.astro's own
-  // in-file math comment: "Bundle earnings = clients × $300/mo (Pro+
-  // unlock)"), not a stale leftover. It predates this test's last update
-  // and was never added to the allowlist even though it's load-bearing,
-  // internally-consistent pricing copy. Anything else in user-facing copy
-  // is stale.
-  const CANONICAL_PRICES = new Set(['$20/mo', '$100/mo', '$300/mo']);
+  // Pro/Pro+ (DB slugs unchanged — see src/lib/tiers.ts). Anything else in
+  // user-facing copy is stale.
+  //
+  // ponytail_0725 NOTE — do NOT re-add '$300/mo' here. It was briefly added on
+  // the reasoning that EarningsCalculator.astro documented a per-client bundle
+  // rate. That component was DEAD CODE: orphaned since the open-core reprice
+  // (a3028b3), imported by no page, absent from `dist/`, and unreachable on the
+  // live site. Widening a revenue-facing guard to accommodate copy that renders
+  // nowhere weakens the guard for zero user benefit. The component was deleted
+  // instead and this set restored. If a $300 SKU ever ships for real, add it
+  // here together with the page that actually renders it.
+  const CANONICAL_PRICES = new Set(['$20/mo', '$100/mo']);
 
-  it('has zero stale prices outside canonical Cook ($20/mo) / Operator ($100/mo) / Bundle ($300/mo) pricing', () => {
+  it('has zero stale prices outside canonical Cook ($20/mo) / Operator ($100/mo) pricing', () => {
     const files = USER_FACING_DIRS.flatMap(d => walkFiles(d, ['.astro', '.ts', '.js', '.html']));
     // File allow-list: pages whose price strings are intentionally non-canonical.
     const ALLOWLIST_FILES = new Set([
-      // Competitor comparison content — /vs named ChatGPT GPTs at $20/mo
-      // (Plus) alongside our pricing. The page was removed in the D6 IA
-      // cuts (feat/spotify-ia, commit 8565532) but the allowlist entry is
-      // harmless to keep for any future competitor-comparison page.
-      join(SRC, 'pages/vs.astro'),
-      // REAL BUG fix 2026-07-25: these two files show WORKED EXAMPLES of
-      // the 50% referral rev-share formula (e.g. "10 refs × $20 × 0.5 =
-      // $100/mo"), not independent price points. Their $10/$50/$250/$350
-      // figures are arithmetic derivatives of the canonical $20/$100
-      // prices, correctly computed and internally consistent (verified:
-      // 10×20×0.5=100, 5×100×0.5=250, 100+250=350) — not fabricated or
-      // stale pricing. A regex that flags "$N/mo" text can't tell a locked
-      // price from a computed illustration; allowlisting is the honest fix
-      // (the alternative — deleting the worked examples — would remove
-      // real, correct educational content the referral page depends on).
+      // WORKED EXAMPLES of the 50% referral rev-share formula (e.g.
+      // "10 refs × $20 × 0.5 = $100/mo"), not independent price points. The
+      // $10/$50/$250/$350 figures are arithmetic derivatives of the canonical
+      // $20/$100 prices, correctly computed and internally consistent
+      // (verified: 10×20×0.5=100, 5×100×0.5=250, 100+250=350). A regex that
+      // flags "$N/mo" cannot tell a locked price from a computed illustration,
+      // so allow-listing is the honest fix here — deleting the worked examples
+      // would remove real educational content /referrals depends on.
+      //
+      // This entry is LIVE, unlike the EarningsCalculator one removed alongside
+      // it: ReferralPitch is imported by src/pages/referrals.astro and renders
+      // into dist/referrals/index.html. Verify before ever adding another entry
+      // — an allow-listed dead file is a hole in the guard, not an exemption.
       join(SRC, 'components/ReferralPitch.astro'),
-      join(SRC, 'components/EarningsCalculator.astro'),
     ]);
     const hits: string[] = [];
     for (const f of files) {
