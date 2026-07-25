@@ -45,6 +45,18 @@ jobs:
           RECIPES_API_KEY: ${{ secrets.RECIPES_API_KEY }}
         run: npm run build
 
+      - name: Stamp build id into dist (deploy-identity canary source)
+        # ponytail_0725. The deploy job asserts that the LIVE origin serves THIS
+        # exact build. Guessing at content-hash asset names is unreliable: Astro
+        # only rehashes assets whose content changed, so an unchanged component's
+        # hash is identical between a fresh build and a week-stale one — the very
+        # staleness the canary exists to detect. A commit-pinned stamp is
+        # unambiguous: it differs on every commit, by construction.
+        run: |
+          set -euo pipefail
+          printf '%s\n' "${GITHUB_SHA}" > dist/build-id.txt
+          echo "Stamped dist/build-id.txt = ${GITHUB_SHA}"
+
       - name: Verify multi-page output (no SPA-fallback regression)
         # See pitfall #29 in recipes-marketplace-deploy skill: SPA fallback bug
         # served homepage HTML for every route. Catch it pre-deploy by asserting
@@ -236,25 +248,44 @@ jobs:
       - name: Content canary — the deployed dist must be the dist we just built
         # A green readiness gate only proves the site RESPONDS. It cannot tell a
         # fresh deploy from a week-old one — which is exactly how the 2026-07-17
-        # outage stayed invisible. This asserts identity: a marker string picked
-        # from the freshly-built artifact MUST be present in what Caddy serves.
+        # outage stayed invisible for 8 days. This asserts IDENTITY: the origin
+        # must serve the build-id stamped by THIS run's build job.
+        #
+        # Implementation notes (both learned the hard way, ponytail_0725):
+        #   1. Compare against $GITHUB_SHA, not an Astro content-hash asset name.
+        #      Astro reuses a hash when the asset content is unchanged, so a
+        #      stale dist can present the same hash as a fresh one — a canary
+        #      that green-lights the exact staleness it exists to catch.
+        #   2. NEVER pipe a large shell variable into `grep -q` under
+        #      `set -o pipefail`. grep exits on first match and closes the pipe,
+        #      the writer takes SIGPIPE, and pipefail promotes that to a step
+        #      failure EVEN WHEN THE MATCH SUCCEEDED. The first cut of this
+        #      canary did exactly that and failed a deploy that had in fact
+        #      landed correctly (log: "printf: write error: Broken pipe").
+        #      Compare strings directly instead — no pipes, no subshell exits.
         run: |
           set -euo pipefail
-          MARKER=$(grep -o 'index\.[A-Za-z0-9_-]\{6,\}\.js' dist/index.html | head -1 || true)
-          if [ -z "$MARKER" ]; then
-            MARKER=$(grep -o '/_astro/[A-Za-z0-9._-]\{8,\}\.\(js\|css\)' dist/index.html | head -1 || true)
-          fi
-          if [ -z "$MARKER" ]; then
-            echo "::warning::no content-hash marker found in built index.html — canary skipped"
-            exit 0
-          fi
-          echo "Canary marker from fresh build: $MARKER"
-          LIVE=$(curl -s -m 20 https://app.loopskill.io/ || true)
-          if ! printf '%s' "$LIVE" | grep -qF "$MARKER"; then
-            echo "::error::DEPLOY DID NOT LAND — live site does not serve the build we just produced ($MARKER missing)."
+          EXPECTED="${GITHUB_SHA}"
+          echo "Expecting live build-id: ${EXPECTED}"
+          LIVE_ID=""
+          for i in 1 2 3 4 5; do
+            LIVE_ID="$(curl -sS -m 20 --fail-with-body \
+              -H 'Cache-Control: no-cache' \
+              "https://app.loopskill.io/build-id.txt?cb=${GITHUB_RUN_ID}-${i}" \
+              | tr -d '[:space:]')" || LIVE_ID=""
+            # NOTE: `[ x = y ] && break` as the last command of a loop body is a
+            # `set -e` trap — on the final iteration a false test makes the body
+            # exit non-zero and kills the step before the real check below runs.
+            # Keep the explicit if/break form.
+            if [ "${LIVE_ID}" = "${EXPECTED}" ]; then break; fi
+            echo "attempt ${i}: live build-id = '${LIVE_ID:-<none>}' (waiting for propagation)"
+            sleep 3
+          done
+          if [ "${LIVE_ID}" != "${EXPECTED}" ]; then
+            echo "::error::DEPLOY DID NOT LAND — https://app.loopskill.io/build-id.txt reports '${LIVE_ID:-<none>}' but this run built '${EXPECTED}'. The origin is serving a different (probably stale) dist."
             exit 1
           fi
-          echo "Canary OK — live site is serving this build."
+          echo "Canary OK — the live origin is serving this exact build (${EXPECTED})."
 
       - name: Auto-rollback on readiness failure
         # Only fires when the swap actually landed (dist was touched) AND a
