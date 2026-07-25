@@ -138,6 +138,22 @@ import AppShell from '../layouts/AppShell.astro';
         </div>
       </div>
 
+      <!-- Liked skills (ponytail_0724).
+           The heart control on browse/home writes to GET /api/library's
+           `shelves.skills`, but until now NO page rendered that shelf — a user
+           could like a skill and have nowhere to see it. This is the
+           destination. Rendered in static HTML and revealed by JS (Trap C:
+           never branch a JS-fill target away behind a build-time ternary).
+           The shelf is a UNION of local catalog skills and federated
+           (hub/skills.sh/ClawHub) likes, so rows carry a source badge. -->
+      <section id="library-liked-wrap" hidden class="mb-10">
+        <div class="flex items-center justify-between ls-section-header">
+          <h2 class="ls-section-title text-text">Liked skills</h2>
+          <a href="/browse?type=skills" class="text-xs text-accent hover:opacity-80 shrink-0">Find more →</a>
+        </div>
+        <div id="library-liked" class="artifact-grid"></div>
+      </section>
+
       <!-- Bundles grid -->
       <div id="library-bundles" class="artifact-grid">
         <div class="col-span-full text-sm text-muted py-8 text-center" id="library-bundles-loading">Loading…</div>
@@ -261,6 +277,7 @@ import AppShell from '../layouts/AppShell.astro';
 
 <script>
   import { identiconSVG } from '../lib/identicon';
+  import { likeButtonHTML, createLikeController } from '../lib/likeControl';
   // Shared card art helpers (feat/fleet-console-ui): hash gradient + identicon.
   const GRAD_PALETTE: [string, string][] = [
     ['#1fb6c0', '#0d7d77'], ['#a06bff', '#6d28d9'], ['#c084fc', '#7c3aed'],
@@ -315,6 +332,72 @@ import AppShell from '../layouts/AppShell.astro';
   function maybeShowFirstLogin() {
     const el = $('lib-first-login');
     el.hidden = !(libraryBundleCount === 0 && libraryFleetCount === 0);
+  }
+
+  // ── Liked skills shelf (ponytail_0724) ──────────────────────────────────
+  // The heart on browse/home writes to GET /api/library's `shelves.skills`.
+  // Before this, no page rendered that shelf — the like had no destination.
+  //
+  // The shelf is a UNION of local catalog skills (which have a real detail
+  // page and a UUID `id`) and FEDERATED likes from external registries
+  // (skills-sh / ClawHub / hub), which have `id: null` and no local page, so
+  // they deep-link out to /browse. Rows carry `source` + `federated` for the
+  // badge. The section stays hidden when the shelf is empty rather than
+  // showing a dead header.
+  function likedCardHTML(row: any): string {
+    const slug = String(row?.slug ?? '');
+    const title = String(row?.title || slug);
+    const federated = row?.federated === true;
+    const source = String(row?.source || (federated ? 'community' : 'local'));
+    const grad = GRAD_PALETTE[hashIdx(slug || title || 'x', GRAD_PALETTE.length)];
+    // Local skills have a statically-generated detail page; federated ones do
+    // not (only ~73 curated slugs are built), so route those to a search that
+    // will actually resolve instead of a guaranteed 404.
+    const href = federated
+      ? `/browse?type=skills&q=${encodeURIComponent(slug)}`
+      : `/skills/${encodeURIComponent(slug)}`;
+    const badge = federated
+      ? `<span class="artifact-badge">${esc(source)}</span>`
+      : '<span class="artifact-badge">Skill</span>';
+    const card = `<a href="${esc(href)}" class="artifact-card" data-liked-slug="${esc(slug)}">
+      <span class="artifact-cover" style="background:linear-gradient(135deg, ${grad[0]} 0%, ${grad[1]} 100%);">
+        ${identiconSVG(slug || title)}
+        ${badge}
+      </span>
+      <span class="artifact-title">${esc(title)}</span>
+      <span class="artifact-meta">${esc(federated ? `${source} · community` : 'LoopSkill catalog')}</span>
+    </a>`;
+    // Same slot+heart contract as browse/home so a user can UNLIKE from here.
+    return `<div class="artifact-slot">${card}${likeButtonHTML('skills', {
+      slug,
+      title,
+      like_source: federated ? source : null,
+    })}</div>`;
+  }
+
+  async function loadLikedSkills() {
+    const wrap = $('library-liked');
+    const section = $('library-liked-wrap');
+    const data = await fetchJson('/api/library');
+    // Two deliberately-separate sources (see app/library_service.py):
+    //   shelves.skills   — DEPLOYABLE Liked bundle, local catalog skills only,
+    //                      frozen {id, slug, title, liked_at} shape.
+    //   federated_skills — hub/skills.sh/ClawHub bookmarks, NOT deployable,
+    //                      {slug, title, source, liked_at}.
+    const local = ((data && data.shelves && data.shelves.skills) || [])
+      .map((r: any) => ({ ...r, federated: false }));
+    const federated = ((data && data.federated_skills) || [])
+      .map((r: any) => ({ ...r, federated: true }));
+    const rows = [...local, ...federated];
+    if (!rows.length) {
+      section.hidden = true;
+      wrap.innerHTML = '';
+      return;
+    }
+    section.hidden = false;
+    wrap.innerHTML = rows.map(likedCardHTML).join('');
+    // Paint the hearts pressed — every row here is by definition liked.
+    likeControl.refresh();
   }
 
   async function loadLibraryBundles() {
@@ -1129,6 +1212,15 @@ import AppShell from '../layouts/AppShell.astro';
   });
 
   // ── boot ──────────────────────────────────────────────────────────────
+  // ponytail_0724: this page RENDERS the liked set, so an unlike must remove
+  // the row rather than leave a ghost card. `onToggled` fires only after the
+  // server accepted the change — deterministic, no timer guesswork.
+  const likeControl = createLikeController({
+    apiBase: '',
+    onToggled: () => { void loadLikedSkills(); },
+  });
+
+  loadLikedSkills();
   loadLibraryBundles();
   if (initialTab === 'fleets') { (window as any).__fleetsLoaded = true; loadFleets(); }
   if (initialTab === 'delivery') { (window as any).__deliveryLoaded = true; loadDelivery(); }
