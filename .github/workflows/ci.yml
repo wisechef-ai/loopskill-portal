@@ -112,7 +112,8 @@ jobs:
   deploy:
     name: Deploy to production (app.loopskill.io)
     needs: build
-    runs-on: wisechef-runner
+    # Runs ON the production host (wisechef-hq). See "Why no SSH" below.
+    runs-on: wisechef-hq-portal
     # Push-to-main only. NEVER deploy on pull_request events.
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     timeout-minutes: 15
@@ -122,10 +123,22 @@ jobs:
       group: portal-prod-deploy
       cancel-in-progress: false
     env:
-      DEPLOY_HOST: "77.42.92.141"
-      DEPLOY_USER: "wisechef"
       APP_DIR: "/home/wisechef/loopskill-portal"
     steps:
+      # ── Why no SSH (ponytail_0725 — deploy outage post-mortem) ─────────────
+      # This job used to run on the `wisechef-runner` (a Mac) and rsync/ssh into
+      # prod as wisechef@77.42.92.141. That runner's key was not accepted by the
+      # prod sshd, so EVERY push-to-main deploy failed with
+      #   "Permission denied (publickey,password)" → rsync exit 255
+      # silently, from 2026-07-17 onward. Builds stayed green, so nothing looked
+      # broken — but no portal change reached production for over a week (the
+      # like/heart control, PR #98, merged green and never shipped).
+      #
+      # Fix (musk-5-step: DELETE the step rather than repair it): this job now
+      # runs on a self-hosted runner ON the prod host itself, so the deploy is
+      # plain local file moves. No SSH, no keys, no rsync, no third host — the
+      # entire class of credential failure is deleted, not patched. This mirrors
+      # how loopskill-api already deploys (runs-on: [self-hosted, loopskill-prod]).
       - name: Download built dist artifact
         uses: actions/download-artifact@v4
         with:
@@ -140,64 +153,51 @@ jobs:
           echo "Downloaded pages: $PAGE_COUNT"
           test "$PAGE_COUNT" -ge 5 || { echo "ERR: only $PAGE_COUNT pages, expected more"; exit 1; }
 
-      - name: Trust deploy host key (idempotent)
+      - name: Stage build into dist.incoming (local)
+        # Never write --delete straight onto the live "dist" dir — that serves a
+        # half-synced site during transfer. Land in dist.incoming first; the swap
+        # step below promotes it atomically.
         run: |
-          set -e
-          mkdir -p ~/.ssh
-          chmod 700 ~/.ssh
-          touch ~/.ssh/known_hosts
-          ssh-keyscan -t ed25519,ecdsa,rsa "$DEPLOY_HOST" >> ~/.ssh/known_hosts 2>/dev/null || true
-          chmod 600 ~/.ssh/known_hosts
+          set -euo pipefail
+          rsync -a --delete dist/ "${APP_DIR}/dist.incoming/"
+          test -f "${APP_DIR}/dist.incoming/index.html" \
+            || { echo "ERR: staging did not land"; exit 1; }
 
-      - name: Rsync fresh build to staging dir on prod
-        # Never rsync --delete straight onto the live "dist" dir — that serves
-        # a half-synced site during transfer. Land in dist.incoming first;
-        # the swap step below promotes it atomically.
-        run: |
-          set -e
-          rsync -az --delete \
-            -e "ssh -o StrictHostKeyChecking=accept-new -o ConnectTimeout=20" \
-            dist/ "${DEPLOY_USER}@${DEPLOY_HOST}:${APP_DIR}/dist.incoming/"
-
-      - name: Atomic swap + backup rotation (remote)
+      - name: Atomic swap + backup rotation
         id: swap
         run: |
-          set -e
-          ssh -o StrictHostKeyChecking=accept-new -o ConnectTimeout=20 \
-            "${DEPLOY_USER}@${DEPLOY_HOST}" bash -se <<'REMOTE'
-            set -euo pipefail
-            cd /home/wisechef/loopskill-portal
+          set -euo pipefail
+          cd "${APP_DIR}"
 
-            test -d dist.incoming || { echo "ERR: dist.incoming missing — rsync step did not land"; exit 1; }
-            test -f dist.incoming/index.html || { echo "ERR: dist.incoming/index.html missing"; exit 1; }
+          test -d dist.incoming || { echo "ERR: dist.incoming missing — staging step did not land"; exit 1; }
+          test -f dist.incoming/index.html || { echo "ERR: dist.incoming/index.html missing"; exit 1; }
 
-            STAMP=$(date -u +%Y%m%d-%H%M%S)
+          STAMP=$(date -u +%Y%m%d-%H%M%S)
 
-            if [ -d dist ]; then
-              mv dist "dist.bak-${STAMP}"
+          if [ -d dist ]; then
+            mv dist "dist.bak-${STAMP}"
+          fi
+
+          if ! mv dist.incoming dist; then
+            echo "ERR: promote of dist.incoming failed — restoring previous dist"
+            if [ -d "dist.bak-${STAMP}" ]; then
+              mv "dist.bak-${STAMP}" dist
             fi
+            exit 1
+          fi
 
-            if ! mv dist.incoming dist; then
-              echo "ERR: promote of dist.incoming failed — restoring previous dist"
-              if [ -d "dist.bak-${STAMP}" ]; then
-                mv "dist.bak-${STAMP}" dist
-              fi
-              exit 1
+          # Prune backups — keep newest 5 only. NON-FATAL: a permission error
+          # on an old/foreign-owned backup dir must never fail a deploy whose
+          # content swap already succeeded. Try plain rm, then sudo, then warn.
+          for old in $(ls -1dt dist.bak-* 2>/dev/null | tail -n +6); do
+            if ! rm -rf "$old" 2>/dev/null; then
+              sudo rm -rf "$old" 2>/dev/null \
+                || echo "::warning::could not prune stale backup $old (permission denied) — leaving it; deploy is unaffected"
             fi
+          done
 
-            # Prune backups — keep newest 5 only. NON-FATAL: a permission error
-            # on an old/foreign-owned backup dir must never fail a deploy whose
-            # content swap already succeeded. Try plain rm, then sudo, then warn.
-            for old in $(ls -1dt dist.bak-* 2>/dev/null | tail -n +6); do
-              if ! rm -rf "$old" 2>/dev/null; then
-                sudo rm -rf "$old" 2>/dev/null \
-                  || echo "::warning::could not prune stale backup $old (permission denied) — leaving it; deploy is unaffected"
-              fi
-            done
-
-            echo "Swap complete. Backups now on disk:"
-            ls -1dt dist.bak-* 2>/dev/null | head -5
-          REMOTE
+          echo "Swap complete. Backups now on disk:"
+          ls -1dt dist.bak-* 2>/dev/null | head -5
 
       - name: Post-deploy readiness gate (public routes)
         id: verify
@@ -227,24 +227,44 @@ jobs:
           fi
           echo "All routes healthy."
 
+      - name: Content canary — the deployed dist must be the dist we just built
+        # A green readiness gate only proves the site RESPONDS. It cannot tell a
+        # fresh deploy from a week-old one — which is exactly how the 2026-07-17
+        # outage stayed invisible. This asserts identity: a marker string picked
+        # from the freshly-built artifact MUST be present in what Caddy serves.
+        run: |
+          set -euo pipefail
+          MARKER=$(grep -o 'index\.[A-Za-z0-9_-]\{6,\}\.js' dist/index.html | head -1 || true)
+          if [ -z "$MARKER" ]; then
+            MARKER=$(grep -o '/_astro/[A-Za-z0-9._-]\{8,\}\.\(js\|css\)' dist/index.html | head -1 || true)
+          fi
+          if [ -z "$MARKER" ]; then
+            echo "::warning::no content-hash marker found in built index.html — canary skipped"
+            exit 0
+          fi
+          echo "Canary marker from fresh build: $MARKER"
+          LIVE=$(curl -s -m 20 https://app.loopskill.io/ || true)
+          if ! printf '%s' "$LIVE" | grep -qF "$MARKER"; then
+            echo "::error::DEPLOY DID NOT LAND — live site does not serve the build we just produced ($MARKER missing)."
+            exit 1
+          fi
+          echo "Canary OK — live site is serving this build."
+
       - name: Auto-rollback on readiness failure
         # Only fires when the swap actually landed (dist was touched) AND a
         # later step (the readiness gate) failed. If the swap itself failed,
         # it already self-healed inline above — nothing to roll back here.
         if: failure() && steps.swap.outcome == 'success'
         run: |
-          ssh -o StrictHostKeyChecking=accept-new -o ConnectTimeout=20 \
-            "${DEPLOY_USER}@${DEPLOY_HOST}" bash -se <<'REMOTE'
-            set -euo pipefail
-            cd /home/wisechef/loopskill-portal
-            STAMP=$(date -u +%Y%m%d-%H%M%S)
-            LATEST_BAK=$(ls -1dt dist.bak-* 2>/dev/null | head -1)
-            if [ -z "${LATEST_BAK}" ]; then
-              echo "ERR: no backup available to roll back to"
-              exit 1
-            fi
-            mv dist "dist.broken-${STAMP}"
-            mv "${LATEST_BAK}" dist
-            echo "Rolled back to ${LATEST_BAK}"
-          REMOTE
+          set -euo pipefail
+          cd "${APP_DIR}"
+          STAMP=$(date -u +%Y%m%d-%H%M%S)
+          LATEST_BAK=$(ls -1dt dist.bak-* 2>/dev/null | head -1)
+          if [ -z "${LATEST_BAK}" ]; then
+            echo "ERR: no backup available to roll back to"
+            exit 1
+          fi
+          mv dist "dist.broken-${STAMP}"
+          mv "${LATEST_BAK}" dist
+          echo "Rolled back to ${LATEST_BAK}"
           echo "::error::Deploy readiness gate failed — rolled back to previous dist on prod."

@@ -3,3 +3,7 @@ self-hosted-runner:
   # See recipes-api/.github/actionlint.yaml (mirror) and the recipes_2005 reconciliation note.
   labels:
     - wisechef-runner
+    # ponytail_0725: the deploy job runs ON the prod host (wisechef-hq) so the
+    # portal ships with local file moves instead of an SSH hop. See the
+    # "Why no SSH" comment in ci.yml's deploy job.
+    - wisechef-hq-portal
