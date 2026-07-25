@@ -1,99 +1,88 @@
 /**
- * fedui_0604 superset-visibility regression — TASK1.
+ * fedui_0604 superset-visibility regression — TASK1. [REVISED 2026-07-25]
  *
- * Bug: on /skills the community/federated skills were gated behind the search
- * box (#community-section shipped `hidden`, only revealed by the q>=2 debounced
- * handler). So a cold page load — and any curl of the static HTML — showed only
- * the 62 curated cards even though the header advertised "62 curated + 953+
- * community". The superset must be VISIBLE AT REST, not searchable-only.
+ * STALE (architecture superseded): src/pages/skills/index.astro — the file
+ * this suite targeted — is now a thin client-side RedirectStub to
+ * /browse?type=skills (feat/spotify-ia restructure, commit fc0d01f,
+ * "Spotify-model restructure — Home shelves, unified Browse, Library
+ * tabs"). It contains no frontmatter, no server-side community fetch, and
+ * none of the DOM ids (#community-section, #community-more) this suite
+ * asserted against — there is nothing left to read a "hidden by default"
+ * class off of.
  *
- * Fix contract (asserted here):
- *   1. Frontmatter fetches the first page of /api/skills/external at BUILD time
- *      (server-side, public/unauthed) so cards render into the static HTML.
- *   2. #community-section is NOT `hidden` by default — visible at rest.
- *   3. Community cards are rendered SERVER-SIDE (an Astro .map over the fetched
- *      community skills), not only injected client-side on search.
- *   4. A bounded teaser: an initial visible cap + a "show more" control
- *      (#community-more) so the default payload isn't the whole firehose.
- *   5. A "Browse all" path to /skills/external for the full federated set.
- *   6. Search still spans BOTH: curated filtered client-side + community
- *      re-fetched by query (runCommunitySearch retained), and the server-
- *      rendered default is restored when the query is cleared.
+ * The underlying PRODUCT REQUIREMENT this suite protected — "the community/
+ * federated superset must be visible at rest, not gated behind search" —
+ * is still honored, but the implementation moved entirely into
+ * src/pages/browse.astro under two later features:
+ *   - feat/fleet-console-ui: federated results render as their own
+ *     "Community skills" section with source badges (see fetchFederated()
+ *     and the fedGroupHTML template below).
+ *   - feat/browse-federated-defaults: an EMPTY query also renders the
+ *     federated group (previously only a live search triggered it) — the
+ *     exact "superset visible at rest" requirement, just implemented
+ *     client-side on page load instead of via a build-time server fetch.
+ *
+ * These tests pin the CURRENT mechanism. Verified against the live site
+ * 2026-07-25: `curl https://app.loopskill.io/api/skills/external?...`
+ * returns federated rows, and browse.astro's load() calls fetchFederated()
+ * unconditionally (not gated on state.q being non-empty) for type
+ * 'all'/'skills'.
  */
 
 import { readFileSync } from 'fs';
 import { join } from 'path';
 
 const ROOT = join(new URL(import.meta.url).pathname, '../../');
+const BROWSE = join(ROOT, 'src/pages/browse.astro');
 const SKILLS_INDEX = join(ROOT, 'src/pages/skills/index.astro');
 
-const src = readFileSync(SKILLS_INDEX, 'utf-8');
-const frontmatterMatch = src.match(/^---\s*([\s\S]*?)\s*---/m);
-const frontmatter = frontmatterMatch ? frontmatterMatch[1] : '';
+const browseSrc = readFileSync(BROWSE, 'utf-8');
+const skillsIndexSrc = readFileSync(SKILLS_INDEX, 'utf-8');
 
-describe('Community superset visible at rest (fedui_0604 superset fix)', () => {
-  it('frontmatter fetches /api/skills/external at build time', () => {
-    expect(frontmatter).toMatch(/fetchApi[\s\S]*?\/api\/skills\/external/);
+describe('/skills is now a redirect stub (superseded by /browse)', () => {
+  it('skills/index.astro is a RedirectStub to /browse?type=skills', () => {
+    expect(skillsIndexSrc).toContain('RedirectStub');
+    expect(skillsIndexSrc).toContain('/browse?type=skills');
+  });
+});
+
+describe('Community superset visible at rest — now on /browse (feat/browse-federated-defaults)', () => {
+  it('fetches the federated skills endpoint client-side', () => {
+    expect(browseSrc).toContain('/api/skills/external?sources=');
   });
 
-  it('build-time community fetch is unauthed (public endpoint)', () => {
-    // The external fetch must pass authed:false (public surface, no key leak).
-    expect(frontmatter).toMatch(/\/api\/skills\/external[\s\S]*?authed:\s*false/);
+  it('fetches federation unauthed (public endpoint — no auth header on the call)', () => {
+    // fetchFederated() builds a plain fetch(url) with no Authorization/x-api-key.
+    const fnStart = browseSrc.indexOf('async function fetchFederated');
+    const fnEnd = browseSrc.indexOf('\n  }', fnStart);
+    const fnBody = browseSrc.slice(fnStart, fnEnd);
+    expect(fnBody).not.toMatch(/Authorization|x-api-key/i);
   });
 
-  it('build-time community fetch passes the live sources + a bounded limit', () => {
-    expect(frontmatter).toMatch(/sources=/);
-    // Bounded limit: either an inline digit (limit=24) or a numeric const
-    // interpolated into the URL (limit=${COMMUNITY_LIMIT} with the const set).
-    const inlineLimit = /limit=\d+/.test(frontmatter);
-    const constLimit =
-      /limit=\$\{[A-Z_]+\}/.test(frontmatter) &&
-      /COMMUNITY_LIMIT\s*=\s*\d+/.test(frontmatter);
-    expect(inlineLimit || constLimit).toBe(true);
+  it('the community fetch is triggered on an EMPTY query too, not only on live search', () => {
+    // feat/browse-federated-defaults: load() calls fetchFederated(state.q, ...)
+    // unconditionally for type all/skills — state.q may be '' at first paint.
+    expect(browseSrc).toMatch(
+      /\(state\.type === 'all' \|\| state\.type === 'skills'\) \? fetchFederated\(state\.q,/,
+    );
   });
 
-  it('binds the fetched community rows to a server-side array', () => {
-    // Some variable holds the external rows for server-side rendering.
-    expect(frontmatter).toMatch(/communitySkills/);
+  it('renders a "Community skills" section with source badges, not gated behind a hidden class', () => {
+    expect(browseSrc).toContain('Community skills');
+    expect(browseSrc).toContain("meta: `${s.source || 'community'}");
   });
 
-  it('#community-section is NOT hidden by default (visible at rest)', () => {
-    const m = src.match(/id="community-section"[^>]*class="([^"]*)"/);
-    expect(m).not.toBeNull();
-    expect(m![1]).not.toMatch(/\bhidden\b/);
+  it('carries the federation source through for the like control (no bare-slug 404s)', () => {
+    expect(browseSrc).toContain('like_source: s.source || null');
   });
 
-  it('renders community cards SERVER-SIDE (Astro .map over communitySkills)', () => {
-    expect(src).toMatch(/communitySkills\.map/);
-  });
-
-  it('server-rendered community cards are filterable/identifiable (data-community-card)', () => {
-    expect(src).toContain('data-community-card');
-  });
-
-  it('has a bounded "show more" control (#community-more)', () => {
-    expect(src).toContain('community-more');
-  });
-
-  it('has a "Browse all" path to the /skills/external firehose', () => {
-    expect(src).toContain('/skills/external');
-  });
-
-  it('retains client-side community search so query spans the full firehose', () => {
-    expect(src).toContain('runCommunitySearch');
-  });
-
-  it('restores the server-rendered default community set when the query is cleared', () => {
-    // A snapshot of the default grid must be captured and restored on clear,
-    // so clearing search returns to the at-rest superset (not an empty grid).
-    expect(src).toMatch(/defaultCommunity/);
-  });
-
-  it('still renders the curated grid first (curated ranks above community)', () => {
-    const curatedIdx = src.indexOf('id="skill-grid"');
-    const communityIdx = src.indexOf('id="community-section"');
-    expect(curatedIdx).toBeGreaterThan(-1);
-    expect(communityIdx).toBeGreaterThan(-1);
-    expect(curatedIdx).toBeLessThan(communityIdx);
+  it('curated results still render before/above the community group in the DOM order', () => {
+    // renderGroup() builds curated sections; fedGroupHTML is composed and
+    // appended after byType groups in load()'s results assembly.
+    const groupFnIdx = browseSrc.indexOf('function renderGroup');
+    const fedGroupIdx = browseSrc.indexOf('const fedGroupHTML');
+    expect(groupFnIdx).toBeGreaterThan(-1);
+    expect(fedGroupIdx).toBeGreaterThan(-1);
+    expect(groupFnIdx).toBeLessThan(fedGroupIdx);
   });
 });

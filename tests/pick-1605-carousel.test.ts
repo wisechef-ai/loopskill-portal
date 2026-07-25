@@ -45,8 +45,9 @@ describe("Today's Pick widget (pick_1605/A+B)", () => {
   });
 
   it('renders the tagline fallback ladder copy when carousel is empty', () => {
-    // Default fallback string from the ladder
-    expect(src).toContain("Today's spotlight from the Recipes carousel");
+    // STALE string: loopskill_0622 rebrand renamed "Recipes carousel" ->
+    // "LoopSkill carousel" (commit 61756f7). Assert the current brand copy.
+    expect(src).toContain("Today's spotlight from the LoopSkill carousel");
   });
 
   it('links Picks rotate small-text to /carousel ("See all 7")', () => {
@@ -128,19 +129,18 @@ describe('carousel-strip in index.astro (the second grid below "See today\'s lin
   });
 });
 
-describe('carousel.astro (the /carousel page) — same shape contract', () => {
-  // /carousel was already correct (it has the normalizer inline), but we lock
-  // the invariant so it doesn't regress.
+describe('carousel.astro (the /carousel page) — same shape contract [STALE, removed]', () => {
+  // STALE: /carousel was replaced by a RedirectStub to /home in the
+  // feat/spotify-ia restructure (commit fc0d01f, "Spotify-model
+  // restructure — Home shelves, unified Browse, Library tabs"). The
+  // "Today's 7" carousel strip this test guarded now lives entirely in
+  // src/pages/index.astro (see the describe blocks above, which already
+  // pin the normalizer + shape contract there) — src/pages/carousel.astro
+  // no longer contains any carousel-rendering code to normalize.
   const src = readFileSync(CAROUSEL, 'utf-8');
 
-  it('normalizes entries to a uniform shape with skill_slug / skill_title / position', () => {
-    expect(src).toContain('skill_slug:');
-    expect(src).toContain('skill_title:');
-    expect(src).toMatch(/position:\s*typeof\s+e\.position/);
-  });
-
-  it('reads from typed-v0.4+ fallback (e.skill?.slug) in the normalizer', () => {
-    expect(src).toContain('e.skill?.slug');
-    expect(src).toContain('e.skill?.title');
+  it('is a RedirectStub to /home (current behavior, not a carousel renderer)', () => {
+    expect(src).toContain('RedirectStub');
+    expect(src).toContain('to="/home"');
   });
 });

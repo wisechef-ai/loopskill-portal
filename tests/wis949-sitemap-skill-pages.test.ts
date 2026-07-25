@@ -55,9 +55,13 @@ describe('WIS-949: sitemap.xml.ts enumerates skill detail pages', () => {
     expect(src).toContain('WIS-949');
   });
 
-  it('still includes the 14 original static routes', () => {
-    // Key routes that must survive the refactor
-    const required = ['/', '/skills', '/pricing', '/docs', '/blog'];
+  it('still includes the current public static routes', () => {
+    // feat/spotify-ia (council report §9) removed the dead aggregator routes
+    // /skills and /bundles from STATIC_ROUTES — they are now thin client-side
+    // redirect stubs to /browse (see src/pages/skills/index.astro), and /browse
+    // + /home are the new canonical destinations. Assert against the CURRENT
+    // route set, not the pre-restructure one.
+    const required = ['/', '/home', '/browse', '/pricing', '/docs', '/blog'];
     for (const route of required) {
       expect(src).toContain(`path: '${route}'`);
     }

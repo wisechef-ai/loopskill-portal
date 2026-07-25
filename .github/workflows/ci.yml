@@ -40,6 +40,16 @@ jobs:
         # Astro check is strict — TS errors fail the build.
         # If a flaky upstream type makes it block, downgrade to `|| true` ONLY with a TODO + ticket.
 
+      - name: Unit tests (vitest)
+        run: npm test
+        # Enforced 2026-07-25: 56/233 tests were red for a long time with no
+        # CI step ever running them, which is exactly how they were allowed
+        # to rot. Fixed in fix/portal-test-suite-green — every remaining
+        # failure was either a genuine regression (fixed in src/) or a
+        # stale assertion against a deliberately-changed IA (fixed/removed
+        # in tests/, each with an evidence comment). This step is what
+        # keeps the suite from rotting again.
+
       - name: Build
         env:
           RECIPES_API_KEY: ${{ secrets.RECIPES_API_KEY }}

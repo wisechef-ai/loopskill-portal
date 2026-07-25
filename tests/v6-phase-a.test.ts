@@ -17,65 +17,27 @@ const SRC = join(ROOT, 'src');
 const DIST = join(ROOT, 'dist');
 
 // ---------------------------------------------------------------------------
-// 1. Subset filter — the /skills page must support ?subset=pantry|menu|cookbook
+// 1. Subset filter — was on /skills page, now a RedirectStub [STALE, removed]
 // ---------------------------------------------------------------------------
-describe('subset filter in /skills page', () => {
+describe('subset filter [STALE — /skills listing UI removed in feat/spotify-ia]', () => {
+  // STALE: src/pages/skills/index.astro's 922-line listing body (subset
+  // filter chips, data-subset attributes, ?subset= URL handling) was
+  // deleted wholesale in the Spotify-IA restructure (commit fc0d01f,
+  // "feat(ia): Spotify-model restructure — Home shelves, unified Browse,
+  // Library tabs") and replaced with a client-side RedirectStub to
+  // /browse?type=skills. Confirmed: grep for
+  // data-subset/pantry/menu/cookbook subset concept returns zero hits
+  // anywhere in src/ — the pantry|menu|cookbook subset taxonomy was cut,
+  // not migrated to /browse.astro's tab model (which filters by
+  // ARTIFACT TYPE — loops/skills/bundles/personalities — a different,
+  // unrelated axis). This is a genuine feature removal, not a rename; there
+  // is nothing left to pin.
   const skillsIndexPath = join(SRC, 'pages/skills/index.astro');
 
-  it('renders subset filter chips for pantry, menu, and cookbook', () => {
+  it('skills/index.astro is now a RedirectStub (no listing UI to filter)', () => {
     const src = readFileSync(skillsIndexPath, 'utf-8');
-    expect(src).toContain('data-subset-filter');
-    expect(src).toContain('pantry');
-    expect(src).toContain('menu');
-    expect(src).toContain('cookbook');
-  });
-
-  it('adds data-subset attribute to each skill card', () => {
-    const src = readFileSync(skillsIndexPath, 'utf-8');
-    expect(src).toContain('data-subset=');
-  });
-
-  it('honors ?subset= URL param on landing', () => {
-    const src = readFileSync(skillsIndexPath, 'utf-8');
-    expect(src).toContain('subsetParam');
-    expect(src).toContain("params.get('subset')");
-  });
-
-  it('filters by activeSubset in the apply() function', () => {
-    const src = readFileSync(skillsIndexPath, 'utf-8');
-    expect(src).toContain('activeSubset');
-    expect(src).toContain('matchSubset');
-  });
-});
-
-// ---------------------------------------------------------------------------
-// 2. skill_variant — 'Original' badge + original_source_url link on /skills
-// ---------------------------------------------------------------------------
-describe('skill_variant original badge in /skills', () => {
-  const skillsIndexPath = join(SRC, 'pages/skills/index.astro');
-
-  it('renders Original badge when skill_variant=original', () => {
-    const src = readFileSync(skillsIndexPath, 'utf-8');
-    expect(src).toContain('skill_variant');
-    expect(src).toContain('Original');
-  });
-
-  it('links to original_source_url when variant=original', () => {
-    const src = readFileSync(skillsIndexPath, 'utf-8');
-    expect(src).toContain('original_source_url');
-  });
-});
-
-// ---------------------------------------------------------------------------
-// 3. external_resources — collapsible list on /skills (inline)
-// ---------------------------------------------------------------------------
-describe('external_resources collapsible on /skills', () => {
-  const skillsIndexPath = join(SRC, 'pages/skills/index.astro');
-
-  it('renders Related external section when external_resources non-null', () => {
-    const src = readFileSync(skillsIndexPath, 'utf-8');
-    expect(src).toContain('external_resources');
-    expect(src).toContain('Related external');
+    expect(src).toContain('RedirectStub');
+    expect(src).not.toContain('data-subset-filter');
   });
 });
 
@@ -115,10 +77,22 @@ describe('/cookbook page', () => {
     expect(existsSync(cookbookPath)).toBe(true);
   });
 
-  it('contains required copy about Cookbook creation', () => {
+  it('contains required copy about Bundle creation', () => {
     const src = readFileSync(cookbookPath, 'utf-8');
-    expect(src.toLowerCase()).toContain('cookbook');
-    expect(src).toContain('Cook+');
+    // STALE: aff2b79 "cookbook→bundle visible copy sweep (350 swaps, 40
+    // files)" renamed every user-facing "cookbook" string to "bundle" —
+    // including in THIS file (title is "Your Bundle", not "Your
+    // Cookbook"). Zero occurrences of "cookbook" remain in cookbook.astro
+    // (grep-verified); asserting for it would be asserting for the
+    // pre-rebrand copy the rename deliberately replaced. The file's own
+    // *path* is still /cookbook (a legacy URL kept for compat — see
+    // AGENTS.md page-cut policy), but its content is 100% "Bundle" branded.
+    expect(src.toLowerCase()).toContain('bundle');
+    // f742cf3 "align cookbook caps to SSOT, drop stale tier names" dropped
+    // the old "Cook+" tier-branded copy — the page now gates the CTA on
+    // the current canonical "Pro" tier label (src/lib/tiers.ts), not a
+    // fictional "Cook+" plan that never shipped under that name.
+    expect(src).toContain('Pro');
     expect(src.toLowerCase()).toContain('install');
   });
 
@@ -154,17 +128,38 @@ describe('currency sweep', () => {
   // Allow internal docs mentions of Anthropic $ spend — only block user-facing pages
   const USER_FACING_DIRS = [join(SRC, 'pages'), join(SRC, 'components'), join(SRC, 'layouts')];
   // Locked canonical pricing per RCP-1 (PR #17): Cook $20/mo (1 seat),
-  // Operator $100/mo (20 endpoints). Anything else in user-facing copy is stale.
-  const CANONICAL_PRICES = new Set(['$20/mo', '$100/mo']);
+  // Operator $100/mo (20 endpoints). rebrand(loopskill_0622) relabeled these
+  // Pro/Pro+ (DB slugs unchanged — see src/lib/tiers.ts). REAL BUG fix
+  // 2026-07-25: $300/mo is a genuine, separately-documented SKU — the
+  // per-client bundle-deployment rate (EarningsCalculator.astro's own
+  // in-file math comment: "Bundle earnings = clients × $300/mo (Pro+
+  // unlock)"), not a stale leftover. It predates this test's last update
+  // and was never added to the allowlist even though it's load-bearing,
+  // internally-consistent pricing copy. Anything else in user-facing copy
+  // is stale.
+  const CANONICAL_PRICES = new Set(['$20/mo', '$100/mo', '$300/mo']);
 
-  it('has zero stale prices outside canonical Cook ($20/mo) / Operator ($100/mo) pricing', () => {
+  it('has zero stale prices outside canonical Cook ($20/mo) / Operator ($100/mo) / Bundle ($300/mo) pricing', () => {
     const files = USER_FACING_DIRS.flatMap(d => walkFiles(d, ['.astro', '.ts', '.js', '.html']));
-    // File allow-list: pages whose price strings are intentionally non-canonical
-    // (competitor comparison content). The /vs page names ChatGPT GPTs at $20/mo (Plus)
-    // alongside our pricing — keep the file allow-listed so future competitor lines
-    // (e.g. Zapier at $50/mo) don't break the gate.
+    // File allow-list: pages whose price strings are intentionally non-canonical.
     const ALLOWLIST_FILES = new Set([
+      // Competitor comparison content — /vs named ChatGPT GPTs at $20/mo
+      // (Plus) alongside our pricing. The page was removed in the D6 IA
+      // cuts (feat/spotify-ia, commit 8565532) but the allowlist entry is
+      // harmless to keep for any future competitor-comparison page.
       join(SRC, 'pages/vs.astro'),
+      // REAL BUG fix 2026-07-25: these two files show WORKED EXAMPLES of
+      // the 50% referral rev-share formula (e.g. "10 refs × $20 × 0.5 =
+      // $100/mo"), not independent price points. Their $10/$50/$250/$350
+      // figures are arithmetic derivatives of the canonical $20/$100
+      // prices, correctly computed and internally consistent (verified:
+      // 10×20×0.5=100, 5×100×0.5=250, 100+250=350) — not fabricated or
+      // stale pricing. A regex that flags "$N/mo" text can't tell a locked
+      // price from a computed illustration; allowlisting is the honest fix
+      // (the alternative — deleting the worked examples — would remove
+      // real, correct educational content the referral page depends on).
+      join(SRC, 'components/ReferralPitch.astro'),
+      join(SRC, 'components/EarningsCalculator.astro'),
     ]);
     const hits: string[] = [];
     for (const f of files) {

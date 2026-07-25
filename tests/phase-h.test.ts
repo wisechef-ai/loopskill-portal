@@ -15,31 +15,22 @@ const SRC  = join(ROOT, 'src');
 const PUBLIC = join(ROOT, 'public');
 
 // ---------------------------------------------------------------------------
-// Bug 1 — Nav "Creators → Referrals"
+// Bug 1 — Nav "Creators → Referrals" [REMOVED 2026-07-25]
+//
+// STALE: src/components/Nav.astro was deleted wholesale in
+// onechrome_0611-P3 (commit bab875c, "Base.astro + Nav.astro RETIRED") — the
+// entire site now shares src/layouts/AppShell.astro as its one chrome (see
+// AGENTS.md "The ONE chrome"). AppShell's primary rail is a deliberately
+// small Spotify-model set (Home / Browse / Your Library + a Pro pricing
+// pill) and does NOT carry a dedicated Referrals entry; referrals are
+// reached via the "Open referrals →" link on /account (see account.astro)
+// and the /docs/referrals guide link. The Nav-specific "Creators→Referrals"
+// wiring these three tests guarded no longer exists in any form — there is
+// no file left to assert against. Removed rather than reassigned to
+// AppShell.astro because AppShell intentionally does not carry this link;
+// reintroducing an assertion here would be inventing a requirement, not
+// pinning current behavior.
 // ---------------------------------------------------------------------------
-describe('Bug 1: Nav label and href point directly to /referrals', () => {
-  const navPath = join(SRC, 'components/Nav.astro');
-
-  it('test_nav_referrals_label_and_href: desktop nav has Referrals link to /referrals', () => {
-    const src = readFileSync(navPath, 'utf-8');
-    // Must have a link with href="/referrals" that contains the text "Referrals"
-    expect(src).toContain('href="/referrals"');
-    expect(src).toContain('>Referrals<');
-  });
-
-  it('test_nav_referrals_label_and_href: mobile nav has Referrals link to /referrals', () => {
-    const src = readFileSync(navPath, 'utf-8');
-    // Ensure at least two occurrences (desktop + mobile)
-    const matches = [...src.matchAll(/href="\/referrals"/g)];
-    expect(matches.length).toBeGreaterThanOrEqual(2);
-  });
-
-  it('test_nav_referrals_label_and_href: nav no longer links to /creators', () => {
-    const src = readFileSync(navPath, 'utf-8');
-    // The nav should not have the old /creators link
-    expect(src).not.toContain('href="/creators"');
-  });
-});
 
 // ---------------------------------------------------------------------------
 // Bug 1 (compat) — creators.astro still 302-redirects to /referrals
@@ -184,22 +175,33 @@ describe('test_hero_spotlight_uses_live_api', () => {
   });
 });
 
-describe('test_hero_spotlight_falls_back_when_api_down', () => {
+describe('test_hero_spotlight_falls_back_when_api_down [REVISED 2026-07-05]', () => {
   const indexPath = join(SRC, 'pages/index.astro');
 
-  it('spotlightFallback exists and contains verified-live skill slugs', () => {
+  // STALE (partially): identity-guards fix (2026-07-05, commit present on
+  // main) deliberately REMOVED the spotlightFallback hardcoded array. Its
+  // own in-repo comment explains why: "the 'spotlightFallback' hardcoded
+  // array this used to fall back to was itself fictional/unverifiable
+  // against the live catalog and was rendered with real-looking PRO/PRO+
+  // tier badges — indistinguishable from genuine catalog data to a
+  // visitor... when the API is unreachable at build time, spotlight... is
+  // simply empty and the section is omitted — never invented." This is a
+  // deliberate honesty fix, not a regression — asserting the old fallback
+  // array still exists would be asserting for its own reintroduction.
+  it('spotlight has NO fabricated fallback data — omits the section instead when API fails', () => {
     const src = readFileSync(indexPath, 'utf-8');
-    expect(src).toContain('spotlightFallback');
-    // Must contain at least one verified fallback slug
-    expect(src).toContain('super-memory');
-    // web-scraper-pro must not appear in any data (may appear in comments)
+    // "spotlightFallback" only survives in the removal-rationale comment
+    // block now — strip comments before asserting no live fallback array.
     const noComments = src.replace(/\/\/.*$/gm, '');
-    expect(noComments).not.toContain('web-scraper-pro');
+    expect(noComments).not.toContain('spotlightFallback');
+    // The try/catch around the live fetch leaves `spotlight` empty on
+    // failure instead of substituting invented data.
+    expect(src).toMatch(/let spotlight: SpotlightSkill\[\] = \[\];/);
+    expect(src).toContain("} catch {} // Rationale: offline build or API down");
   });
 
-  it('fallback is used when spotlight is empty', () => {
+  it('the spotlight section itself is gated on spotlight.length so it is omitted, not faked, when empty', () => {
     const src = readFileSync(indexPath, 'utf-8');
-    expect(src).toContain('spotlight.length === 0');
-    expect(src).toContain('spotlightFallback');
+    expect(src).toContain('spotlight.length > 0');
   });
 });

@@ -142,22 +142,31 @@ describe('No vaporware in docs (Phase I)', () => {
 // Part 2: Key content checks in docs
 // ---------------------------------------------------------------------------
 
-describe('Docs content requirements (Phase I)', () => {
-  it('publishing.astro mentions recipes_publish_request MCP tool', () => {
+describe('Docs content requirements (Phase I) [REVISED — loopskill_0622 rebrand]', () => {
+  // STALE: the loopskill_0622 rebrand (commit 61756f7, "portal chrome +
+  // brand strings Recipes -> LoopSkill") renamed every product-prefixed MCP
+  // tool name from recipes_* to loopskill_* across the docs pages — e.g.
+  // publishing.astro's own file now says (see its own H2) "Step 5 — Submit
+  // via loopskill_publish_request" and fleet.astro documents
+  // loopskill_fleet_create / loopskill_fleet_subscribe throughout. These
+  // tests were pinned to the pre-rebrand recipes_* names and never updated
+  // when the rename shipped; the current tool names are the correct,
+  // deliberate ones.
+  it('publishing.astro mentions loopskill_publish_request MCP tool', () => {
     const src = readFileSync(join(DOCS, 'publishing.astro'), 'utf-8');
-    expect(src).toContain('recipes_publish_request');
+    expect(src).toContain('loopskill_publish_request');
   });
 
-  it('fleet.astro mentions recipes_fleet_create tool', () => {
+  it('fleet.astro mentions loopskill_fleet_create tool', () => {
     if (!existsSync(join(DOCS, 'fleet.astro'))) return;
     const src = readFileSync(join(DOCS, 'fleet.astro'), 'utf-8');
-    expect(src).toContain('recipes_fleet_create');
+    expect(src).toContain('loopskill_fleet_create');
   });
 
-  it('fleet.astro mentions recipes_fleet_subscribe tool', () => {
+  it('fleet.astro mentions loopskill_fleet_subscribe tool', () => {
     if (!existsSync(join(DOCS, 'fleet.astro'))) return;
     const src = readFileSync(join(DOCS, 'fleet.astro'), 'utf-8');
-    expect(src).toContain('recipes_fleet_subscribe');
+    expect(src).toContain('loopskill_fleet_subscribe');
   });
 
   it('security.astro mentions rec_fleet key prefix', () => {
@@ -165,10 +174,10 @@ describe('Docs content requirements (Phase I)', () => {
     expect(src).toContain('rec_fleet');
   });
 
-  it('creator-workflow.astro mentions recipes_publish_request', () => {
+  it('creator-workflow.astro mentions loopskill_publish_request', () => {
     if (!existsSync(join(DOCS, 'creator-workflow.astro'))) return;
     const src = readFileSync(join(DOCS, 'creator-workflow.astro'), 'utf-8');
-    expect(src).toContain('recipes_publish_request');
+    expect(src).toContain('loopskill_publish_request');
   });
 
   it('getting-started.astro covers multiple integration paths (Hermes, Claude Desktop, Codex)', () => {
