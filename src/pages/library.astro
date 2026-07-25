@@ -350,16 +350,21 @@ import AppShell from '../layouts/AppShell.astro';
     const federated = row?.federated === true;
     const source = String(row?.source || (federated ? 'community' : 'local'));
     const grad = GRAD_PALETTE[hashIdx(slug || title || 'x', GRAD_PALETTE.length)];
-    // Local skills have a statically-generated detail page; federated ones do
-    // not (only ~73 curated slugs are built), so route those to a search that
-    // will actually resolve instead of a guaranteed 404.
+    // Local skills have a statically-generated detail page. Federated ones do
+    // not (only ~73 curated slugs are built), so prefer the real upstream URL
+    // the API now resolves from the hub snapshot (ponytail_0725); fall back to
+    // a search only when the row is unresolvable — never a guaranteed 404.
+    const originUrl = typeof row?.origin_url === 'string' ? row.origin_url : '';
+    const isExternal = /^https?:\/\//i.test(originUrl);
     const href = federated
-      ? `/browse?type=skills&q=${encodeURIComponent(slug)}`
+      ? (isExternal ? originUrl : `/browse?type=skills&q=${encodeURIComponent(slug)}`)
       : `/skills/${encodeURIComponent(slug)}`;
+    // Only an off-site origin link opens in a new tab; internal routes must not.
+    const externalAttrs = federated && isExternal ? ' target="_blank" rel="noopener"' : '';
     const badge = federated
       ? `<span class="artifact-badge">${esc(source)}</span>`
       : '<span class="artifact-badge">Skill</span>';
-    const card = `<a href="${esc(href)}" class="artifact-card" data-liked-slug="${esc(slug)}">
+    const card = `<a href="${esc(href)}" class="artifact-card" data-liked-slug="${esc(slug)}"${externalAttrs}>
       <span class="artifact-cover" style="background:linear-gradient(135deg, ${grad[0]} 0%, ${grad[1]} 100%);">
         ${identiconSVG(slug || title)}
         ${badge}
