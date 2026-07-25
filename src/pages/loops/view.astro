@@ -52,7 +52,8 @@ const API_BASE = import.meta.env.PUBLIC_RECIPES_API_BASE || "https://app.loopski
           <span id="cl-residency" class="text-[10px] text-muted-soft uppercase tracking-wider"></span>
         </div>
         <h1 id="cl-title" class="text-4xl font-semibold tracking-tight"></h1>
-        <p id="cl-desc" class="text-lg text-muted leading-relaxed"></p>
+        <p id="cl-tagline" class="text-lg text-text/90 leading-relaxed font-medium"></p>
+        <p id="cl-desc" class="text-sm text-muted leading-relaxed"></p>
         <div id="cl-social" class="text-sm text-muted-soft flex items-center gap-4 flex-wrap"></div>
       </header>
 
@@ -193,8 +194,17 @@ const API_BASE = import.meta.env.PUBLIC_RECIPES_API_BASE || "https://app.loopski
   function renderLoop() {
     hide("state-loading");
     show("loop-body");
-    document.title = (loop.title || loop.slug) + " — LoopSkill";
+    // atomic-habits #8 (2026-07-25, REVENUE/CATALOG): hydrate the real title +
+    // value_tagline instead of the generic "Loop — LoopSkill" fallback. This is
+    // the ONE reachable composite-loop surface (/loops/atomic-habits/ 404s
+    // until rank-1's [slug].astro getStaticPaths fix ships) — was serving zero
+    // per-loop copy despite the API carrying value_tagline + agent_instructions
+    // since commits 050d514/4287116.
+    document.title = (loop.value_tagline || loop.title || loop.slug) + " — LoopSkill";
     $("cl-title").textContent = loop.title || loop.slug;
+    const taglineEl = $("cl-tagline");
+    if (loop.value_tagline) { taglineEl.textContent = loop.value_tagline; show("cl-tagline"); }
+    else { hide("cl-tagline"); }
     $("cl-desc").textContent = loop.description || "";
     $("cl-tier").textContent = (loop.tier || "free").toUpperCase();
     $("cl-version").textContent = loop.latest_version ? `v${loop.latest_version}` : "";
