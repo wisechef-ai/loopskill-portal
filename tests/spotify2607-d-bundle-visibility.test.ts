@@ -118,3 +118,64 @@ describe('portal wiring — one-click visibility control on bundles/view.astro',
     expect(view).not.toMatch(/visibility['"]?\s*:\s*['"]public['"]/);
   });
 });
+
+// ── MUST-FIX 3 (Codex R1, verified) — the toggle must never fail silently ──
+
+describe('MUST-FIX 3 — bundles/view.astro visibility toggle never fails silently', () => {
+  const view = existsSync(VIEW) ? readFileSync(VIEW, 'utf-8') : '';
+
+  it('renders a user-visible error surface for the toggle', () => {
+    expect(view).toContain('cb-vis-error');
+  });
+
+  it('the old silent `if (!res.ok) { return; }` pattern is gone', () => {
+    expect(view).not.toMatch(/if\s*\(!res\.ok\)\s*\{\s*return;\s*\}\s*\/\/\s*best-effort/);
+  });
+
+  it('handles a network throw with a visible error and state restoration', () => {
+    expect(view).toMatch(/catch\s*\(e:\s*any\)\s*\{[\s\S]{0,200}showVisError/);
+  });
+
+  it('handles 401 with a session-expiry message and redirect, not a silent no-op', () => {
+    expect(view).toMatch(/res\.status === 401\)\s*\{[\s\S]{0,300}showVisError/);
+    expect(view).toMatch(/res\.status === 401\)\s*\{[\s\S]{0,400}signin\?next=/);
+  });
+
+  it('handles 403 with a permission message', () => {
+    expect(view).toMatch(/res\.status === 403\)\s*\{[\s\S]{0,200}showVisError/);
+  });
+
+  it('handles any other non-2xx with a visible error', () => {
+    expect(view).toMatch(/if\s*\(!res\.ok\)\s*\{[\s\S]{0,200}showVisError/);
+  });
+
+  it('R2 (Codex): does not silently commit to \'private\' when the 2xx body carries an unexpected or missing visibility value', () => {
+    // The regression Codex R2 caught: `(d && d.visibility === 'public') ? 'public' : 'private'`
+    // treats `{}`, `null`, or a garbage value as confirmation of 'private'.
+    // The fix requires an EXACT match on 'public' OR 'private' before
+    // committing, and takes the error path otherwise.
+    expect(view).not.toMatch(/currentVis\s*=\s*\(d\s*&&\s*d\.visibility\s*===\s*'public'\)\s*\?\s*'public'\s*:\s*'private';/);
+    expect(view).toMatch(/returnedVis\s*!==\s*'public'\s*&&\s*returnedVis\s*!==\s*'private'/);
+  });
+
+  it('every failure branch restores the toggle via paintVisibility, never leaving stale UI', () => {
+    // Count paintVisibility( calls inside the handler body — should appear
+    // on every exit path (network throw, 401, 403, generic !ok, malformed
+    // JSON, unexpected value, AND the success path) = at least 6.
+    const handlerStart = view.indexOf("const handler = (target:");
+    const handlerEnd = view.indexOf('btnPrivate.addEventListener', handlerStart);
+    const handlerBody = view.slice(handlerStart, handlerEnd);
+    const paintCalls = (handlerBody.match(/paintVisibility\(cb\.slug\)/g) || []).length;
+    expect(paintCalls).toBeGreaterThanOrEqual(6);
+  });
+});
+
+// ── SHOULD-FIX 6 (Codex R1) — no duplicate listener stacking ───────────────
+
+describe('SHOULD-FIX 6 — setupVisibility does not stack duplicate listeners', () => {
+  const view = existsSync(VIEW) ? readFileSync(VIEW, 'utf-8') : '';
+
+  it('guards re-entry with a wired-once flag', () => {
+    expect(view).toMatch(/visibilityWired/);
+  });
+});

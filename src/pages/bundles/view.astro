@@ -290,7 +290,20 @@ import AppShell from '../../layouts/AppShell.astro';
         paintVisibility(cb.slug);
         return;
       }
-      currentVis = (d && d.visibility === 'public') ? 'public' : 'private';
+      // R2 (Codex): a parseable-but-unexpected body (e.g. `{}`, `null`, or an
+      // unrecognized `visibility` value) must NOT silently fall through to
+      // 'private' as if the server confirmed that state — that would commit
+      // the UI to a value the server never actually returned, exactly the
+      // "malformed response" class this handler exists to catch. Require an
+      // EXACT match on one of the two known values; anything else takes the
+      // same "couldn't confirm" error path as a JSON-parse failure.
+      const returnedVis = d && d.visibility;
+      if (returnedVis !== 'public' && returnedVis !== 'private') {
+        showVisError("Couldn't confirm the change — please refresh and check.");
+        paintVisibility(cb.slug);
+        return;
+      }
+      currentVis = returnedVis;
       // The PATCH response only guarantees {cookbook_id, visibility} — refetch
       // the slug from the cached cb object (unchanged by a visibility flip;
       // fix/bundle-slug-on-create guarantees every bundle already has one).
