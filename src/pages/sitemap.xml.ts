@@ -107,13 +107,33 @@ async function fetchAllLoopSlugs(): Promise<{ slug: string; updatedAt: string }[
   }));
 }
 
+// fallback_2607: composite loops (atomic-habits, dreaming, ...) live at the
+// same /loops/{slug} route (see [slug].astro union fix) but were never
+// enumerated here, so sitemap.xml had ZERO composite-loop URLs despite 5 days
+// of catalog work landing (deploy_hint, agent_instructions, value_tagline).
+// Same no-hard-500 contract — empty list on API failure, everything else ships.
+async function fetchAllCompositeLoopSlugs(): Promise<{ slug: string; updatedAt: string }[]> {
+  const res = await fetchApi<{ slug: string; updated_at?: string }[]>('/api/composite-loops', {
+    authed: false,
+    maxAttempts: 8,
+    initialDelayMs: 600,
+    maxDelayMs: 12000,
+  });
+  if (!res.ok || !Array.isArray(res.data)) return [];
+  return res.data.map((l) => ({
+    slug: l.slug,
+    updatedAt: l.updated_at ? new Date(l.updated_at).toISOString().slice(0, 10) : '',
+  }));
+}
+
 export const GET: APIRoute = async () => {
   const today = new Date().toISOString().slice(0, 10);
 
-  const [posts, skillSlugs, loopSlugs] = await Promise.all([
+  const [posts, skillSlugs, loopSlugs, compositeLoopSlugs] = await Promise.all([
     getCollection('blog'),
     fetchAllSkillSlugs(),
     fetchAllLoopSlugs(),
+    fetchAllCompositeLoopSlugs(),
   ]);
 
   const blogUrls = posts.map((p) => {
@@ -151,7 +171,8 @@ export const GET: APIRoute = async () => {
 
   // atomic_0714: per-loop detail pages — one <loc> per public loop.
   // Priority 0.7: below skill pages (primary catalog) but above blog.
-  const loopUrls = loopSlugs.map(
+  // fallback_2607: unioned with composite loop slugs (same /loops/{slug} route).
+  const loopUrls = [...loopSlugs, ...compositeLoopSlugs].map(
     (l) => `  <url>
     <loc>${SITE}/loops/${l.slug}</loc>
     <lastmod>${l.updatedAt || today}</lastmod>

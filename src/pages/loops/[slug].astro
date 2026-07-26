@@ -39,11 +39,33 @@ interface Loop {
   success_condition?: string;
   verification_script?: string;
   updated_at?: string;
+  // fallback_2607: composite-loop-only fields (union'd from /api/composite-loops).
+  kind?: "loop" | "composite";
+  schedule?: string;
+  tags?: string[];
+  value_tagline?: string;
+  agent_instructions?: string;
+  deploy_hint?: boolean;
 }
 
+// fallback_2607: /loops/<slug> getStaticPaths only enumerated /api/loops,
+// so the 5 days of composite-loop catalog work (deploy_hint, agent_instructions,
+// value_tagline — see /api/composite-loops) had NO crawlable detail URL and was
+// 100% absent from sitemap.xml. Union both catalogs; composite loops are tagged
+// kind="composite" so the render branch below can show their deploy-oriented UI
+// instead of the "Run this loop" CTA that only applies to verifier loops.
 export async function getStaticPaths() {
-  const result = await fetchApi<Loop[]>("/api/loops", { authed: false });
-  let loops: Loop[] = (result.ok && Array.isArray(result.data)) ? result.data : [];
+  const [loopsResult, compositeResult] = await Promise.all([
+    fetchApi<Loop[]>("/api/loops", { authed: false }),
+    fetchApi<Loop[]>("/api/composite-loops", { authed: false }),
+  ]);
+
+  let loops: Loop[] = (loopsResult.ok && Array.isArray(loopsResult.data))
+    ? loopsResult.data.map((l) => ({ ...l, kind: "loop" as const }))
+    : [];
+  const composites: Loop[] = (compositeResult.ok && Array.isArray(compositeResult.data))
+    ? compositeResult.data.map((l) => ({ ...l, kind: "composite" as const }))
+    : [];
 
   // Defensive seed — the loops actually verified 404 in the 2026-07-14
   // brief plus the rest of the catalog snapshot. Only used if the API is
@@ -58,10 +80,12 @@ export async function getStaticPaths() {
     loops = seedSlugs.map((slug) => ({
       slug,
       title: slug.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()),
+      kind: "loop" as const,
     }));
   }
 
-  return loops.map((loop) => ({
+  const all = [...loops, ...composites];
+  return all.map((loop) => ({
     params: { slug: loop.slug },
     props: { initialLoop: loop },
   }));
@@ -69,17 +93,22 @@ export async function getStaticPaths() {
 
 const { slug } = Astro.params;
 const { initialLoop } = Astro.props as { initialLoop: Loop };
+const isComposite = initialLoop.kind === "composite";
 
 // Fetch full detail at build time (readme, verification_script, contract) —
 // public endpoint, no auth, same trust boundary as skills/[slug].astro.
-const detail = await fetchApi<Loop>(`/api/loops/${slug}`, { authed: false });
+// Composite loops hit /api/composite-loops/{slug} instead — different route,
+// different response shape (versions[], prompt, subagents_config etc).
+const detail = isComposite
+  ? await fetchApi<Loop>(`/api/composite-loops/${slug}`, { authed: false })
+  : await fetchApi<Loop>(`/api/loops/${slug}`, { authed: false });
 const loop: Loop = detail.ok && detail.data ? { ...initialLoop, ...detail.data } : initialLoop;
 
 const display = {
   slug,
   title: loop.title || (slug as string).replace(/-/g, " ").replace(/\b\w/g, (c: string) => c.toUpperCase()),
-  description: loop.description || "A vetted, safety-bounded LoopSkill loop.",
-  category: loop.category || "general",
+  description: loop.value_tagline || loop.description || "A vetted, safety-bounded LoopSkill loop.",
+  category: loop.category || (isComposite ? "composite-loop" : "general"),
   tier: loop.tier || "free",
   author: loop.creator_name || "LoopSkill Team",
   author_handle: loop.creator_handle || null,
@@ -93,6 +122,9 @@ const display = {
   tool_allowlist: Array.isArray(loop.tool_allowlist) ? loop.tool_allowlist : [],
   license: loop.license || null,
   success_condition: loop.success_condition || null,
+  schedule: loop.schedule || null,
+  tags: Array.isArray(loop.tags) ? loop.tags : [],
+  agent_instructions: loop.agent_instructions || null,
 };
 
 const siteURL = "https://app.loopskill.io";
@@ -159,7 +191,26 @@ const loopSchema = {
         {display.author_handle && <span class="text-muted-soft"> @{display.author_handle}</span>}
       </p>
       <p class="text-text leading-relaxed text-lg">{display.description}</p>
+      {isComposite && display.schedule && (
+        <p class="text-xs text-muted-soft">
+          Runs on schedule: <span class="text-muted font-medium font-mono">{display.schedule}</span>
+        </p>
+      )}
+      {isComposite && display.tags.length > 0 && (
+        <div class="flex flex-wrap gap-1.5">
+          {display.tags.map((t) => (
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] bg-bg-card border border-border text-muted-soft">{t}</span>
+          ))}
+        </div>
+      )}
     </header>
+
+    {isComposite && display.agent_instructions && (
+      <section class="bg-bg-card border border-border rounded-2xl p-5 mb-6">
+        <h2 class="text-sm font-semibold uppercase tracking-wide text-muted mb-3">How to deploy</h2>
+        <p class="text-sm text-text leading-relaxed">{display.agent_instructions}</p>
+      </section>
+    )}
 
     <!-- Safety contract -->
     <section class="bg-bg-card border border-border rounded-2xl p-5 mb-6">
@@ -190,10 +241,10 @@ const loopSchema = {
     )}
 
     <a
-      href={`/loops/run?slug=${encodeURIComponent(display.slug)}`}
+      href={isComposite ? `/loops/view?slug=${encodeURIComponent(display.slug)}` : `/loops/run?slug=${encodeURIComponent(display.slug)}`}
       class="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-accent text-bg font-semibold text-sm hover:bg-accent-soft transition"
     >
-      ▶ Run this loop
+      {isComposite ? "▶ Deploy this loop" : "▶ Run this loop"}
     </a>
   </section>
 </AppShell>
