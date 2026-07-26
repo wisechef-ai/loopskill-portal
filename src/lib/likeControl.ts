@@ -49,10 +49,34 @@ export function likeTrackId(item: LikeableItem): string {
   return src && src !== 'local' ? `${src}__${slug}` : slug;
 }
 
-/** Only skills are likeable today. Accepts both the singular and plural tag. */
+/**
+ * All four artifact types are likeable (spotify_2607 Phase D). Accepts both
+ * the singular and plural tag for each — browse.astro's federated shelf uses
+ * the singular 'skill' as a type tag (see artifactHref's comment on that),
+ * while the typed group renderers use the plural.
+ *
+ * The Phase B backend (artifact_like_routes.py) shipped slug-based
+ * POST/DELETE /api/{personalities|loops|bundles}/{slug}/like specifically so
+ * every card type could carry a heart, not just skills.
+ */
+const LIKEABLE_TYPES = new Set([
+  'skills', 'skill',
+  'personalities', 'personality',
+  'loops', 'loop',
+  'bundles', 'bundle',
+]);
 export function isLikeable(type: string, item: LikeableItem | null | undefined): boolean {
   const t = String(type || '');
-  return (t === 'skills' || t === 'skill') && !!(item && item.slug);
+  return LIKEABLE_TYPES.has(t) && !!(item && item.slug);
+}
+
+/** Type-specific like endpoint path segment (plural, matching the API routes). */
+export function likeEndpointSegment(type: string): string {
+  const t = String(type || '');
+  if (t === 'personality' || t === 'personalities') return 'personalities';
+  if (t === 'loop' || t === 'loops') return 'loops';
+  if (t === 'bundle' || t === 'bundles') return 'bundles';
+  return 'skills';
 }
 
 /** Escape a string for safe interpolation into an HTML attribute or text node. */
@@ -69,6 +93,7 @@ export function likeButtonHTML(type: string, item: LikeableItem): string {
   const name = item.title || item.slug;
   return (
     `<button type="button" class="artifact-like" data-like-id="${esc(likeTrackId(item))}"` +
+    ` data-like-type="${esc(likeEndpointSegment(type))}"` +
     ` aria-pressed="false" title="Save to your library"` +
     ` aria-label="Save ${esc(name)} to your library">${HEART_SVG}</button>`
   );
@@ -106,14 +131,20 @@ export function libraryRowTrackId(row: {
 /**
  * Collect every liked track id from a GET /api/library payload.
  *
- * Reads BOTH the deployable `shelves.skills` and the additive
- * `federated_skills` array, so a heart is painted pressed regardless of which
- * side the like lives on. Tolerates either key being absent.
+ * Reads the deployable `shelves.skills`, the additive `federated_skills`
+ * array (spotify_2607 Phase D adds `shelves.personalities` / `shelves.loops`
+ * the same way), and `followed_bundles` (liking a bundle = following it, per
+ * §7 Q3) — so a heart is painted pressed regardless of which artifact type or
+ * shelf it lives on. Tolerates any key being absent.
  */
 export function likedIdsFromLibrary(payload: any): string[] {
   const ids: string[] = [];
-  const local = (payload && payload.shelves && payload.shelves.skills) || [];
+  const shelves = (payload && payload.shelves) || {};
+  const local = shelves.skills || [];
+  const personalities = shelves.personalities || [];
+  const loops = shelves.loops || [];
   const federated = (payload && payload.federated_skills) || [];
+  const followedBundles = (payload && payload.followed_bundles) || [];
   for (const row of local) {
     const id = libraryRowTrackId(row);
     if (id) ids.push(id);
@@ -121,6 +152,20 @@ export function likedIdsFromLibrary(payload: any): string[] {
   for (const row of federated) {
     const id = libraryRowTrackId(row);
     if (id) ids.push(id);
+  }
+  for (const row of personalities) {
+    const id = libraryRowTrackId(row);
+    if (id) ids.push(id);
+  }
+  for (const row of loops) {
+    const id = libraryRowTrackId(row);
+    if (id) ids.push(id);
+  }
+  // Followed bundles have no `source` field — they key on their public slug
+  // directly (matches the button's data-like-id, minted as the bare bundle
+  // slug by likeTrackId since bundles never carry like_source/source).
+  for (const row of followedBundles) {
+    if (row && row.slug) ids.push(row.slug);
   }
   return ids;
 }
@@ -192,6 +237,11 @@ export function createLikeController(opts: LikeControllerOptions) {
   async function toggle(btn: HTMLButtonElement): Promise<void> {
     if (btn.getAttribute('aria-busy') === 'true') return;
     const id = btn.dataset.likeId || '';
+    // spotify_2607 Phase D: each artifact type has its own like route
+    // (artifact_like_routes.py). Default to 'skills' for buttons rendered
+    // before this attribute existed (defensive, not expected in practice —
+    // likeButtonHTML always stamps it now).
+    const segment = btn.dataset.likeType || 'skills';
     const wasLiked = btn.getAttribute('aria-pressed') === 'true';
     const nowLiked = !wasLiked;
 
@@ -199,7 +249,7 @@ export function createLikeController(opts: LikeControllerOptions) {
     btn.setAttribute('aria-pressed', nowLiked ? 'true' : 'false');
     btn.setAttribute('aria-busy', 'true');
     try {
-      const r = await doFetch(`${apiBase}/api/skills/${encodeURIComponent(id)}/like`, {
+      const r = await doFetch(`${apiBase}/api/${segment}/${encodeURIComponent(id)}/like`, {
         method: nowLiked ? 'POST' : 'DELETE',
         credentials: 'include',
       });

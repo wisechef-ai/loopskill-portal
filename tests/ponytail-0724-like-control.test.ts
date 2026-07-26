@@ -96,6 +96,35 @@ describe('likedIdsFromLibrary — reads BOTH API skill sources', () => {
     expect(likedIdsFromLibrary({ federated_skills: [{ source: 'clawhub' }, { slug: 'ok', source: 'clawhub' }] }))
       .toEqual(['clawhub__ok']);
   });
+
+  // spotify_2607 Phase D: liked_library() already serves typed shelves for
+  // personalities and loops (library_service.py `shelves.personalities` /
+  // `shelves.loops`), and followed bundles on their own `followed_bundles`
+  // key. Hearts on those card types must paint pressed from the same
+  // GET /api/library payload.
+  it('also collects liked personalities and loops shelves', () => {
+    const ids = likedIdsFromLibrary({
+      shelves: {
+        skills: [],
+        personalities: [{ id: 'uuid-p1', slug: 'blunt-editor', title: 'Blunt Editor', liked_at: 'x' }],
+        loops: [{ id: 'uuid-l1', slug: 'nightly-digest', title: 'Nightly Digest', liked_at: 'y' }],
+      },
+    });
+    expect(ids).toEqual(['blunt-editor', 'nightly-digest']);
+  });
+
+  it('collects followed (liked) bundles by slug', () => {
+    const ids = likedIdsFromLibrary({
+      followed_bundles: [{ id: 'uuid-b1', slug: 'dev-essentials', name: 'Dev Essentials', followed_at: 'x' }],
+    });
+    expect(ids).toEqual(['dev-essentials']);
+  });
+
+  it('a followed bundle with no public slug (never published) contributes nothing', () => {
+    // Bundle.slug is nullable for private bundles; a slug-less follow can't
+    // be matched back to a button (buttons key on slug) and must not throw.
+    expect(likedIdsFromLibrary({ followed_bundles: [{ id: 'uuid-b2', slug: null, name: 'X' }] })).toEqual([]);
+  });
 });
 
 describe('isLikeable', () => {
@@ -104,12 +133,27 @@ describe('isLikeable', () => {
     expect(isLikeable('skill', { slug: 'a' })).toBe(true);
   });
 
-  it('rejects non-skill artifacts and slugless items', () => {
-    expect(isLikeable('loops', { slug: 'a' })).toBe(false);
-    expect(isLikeable('bundles', { slug: 'a' })).toBe(false);
-    expect(isLikeable('personalities', { slug: 'a' })).toBe(false);
+  // spotify_2607 Phase D: like now works on ALL FOUR artifact types — the
+  // Phase B backend (artifact_like_routes.py) shipped slug-based
+  // POST/DELETE /api/{personalities|loops|bundles}/{slug}/like specifically
+  // so the portal could stop being skills-only. This supersedes the
+  // ponytail_0724 "skills only for now" comment.
+  it('accepts personalities, loops and bundles too (both singular and plural)', () => {
+    expect(isLikeable('personalities', { slug: 'a' })).toBe(true);
+    expect(isLikeable('personality', { slug: 'a' })).toBe(true);
+    expect(isLikeable('loops', { slug: 'a' })).toBe(true);
+    expect(isLikeable('loop', { slug: 'a' })).toBe(true);
+    expect(isLikeable('bundles', { slug: 'a' })).toBe(true);
+    expect(isLikeable('bundle', { slug: 'a' })).toBe(true);
+  });
+
+  it('rejects unknown artifact types and slugless items', () => {
+    expect(isLikeable('widgets', { slug: 'a' })).toBe(false);
     expect(isLikeable('skills', {})).toBe(false);
     expect(isLikeable('skills', null)).toBe(false);
+    expect(isLikeable('personalities', {})).toBe(false);
+    expect(isLikeable('loops', null)).toBe(false);
+    expect(isLikeable('bundles', {})).toBe(false);
   });
 });
 
@@ -132,7 +176,8 @@ describe('likeButtonHTML — markup contract', () => {
   });
 
   it('renders nothing for a non-likeable artifact', () => {
-    expect(likeButtonHTML('loops', { slug: 'a' })).toBe('');
+    expect(likeButtonHTML('widgets', { slug: 'a' })).toBe('');
+    expect(likeButtonHTML('loops', {})).toBe('');
   });
 
   it('produces valid DOM — the button is NOT nested inside the card anchor', () => {
@@ -174,6 +219,42 @@ describe('createLikeController — click behaviour', () => {
     expect(calls[0][0]).toBe('https://api.test/api/skills/skills-sh__owner--repo--x/like');
     expect(calls[0][1]).toBe('POST');
     expect(btn.getAttribute('aria-pressed')).toBe('true');
+  });
+
+  // spotify_2607 Phase D: the heart now appears on personality/loop/bundle
+  // cards too. Each type has its own like route (artifact_like_routes.py);
+  // the button must carry which one to hit via data-like-type.
+  it('routes a personality heart to /api/personalities/{slug}/like', async () => {
+    const btn = mountCard({ slug: 'blunt-editor', title: 'Blunt Editor' } as any, 'personalities');
+    const calls: any[] = [];
+    const fetchImpl = vi.fn(async (url: any, init: any) => { calls.push([String(url), init?.method]); return status(200); });
+    const c = createLikeController({ apiBase: 'https://api.test', fetchImpl: fetchImpl as any });
+
+    await c.toggle(btn);
+
+    expect(calls[0][0]).toBe('https://api.test/api/personalities/blunt-editor/like');
+  });
+
+  it('routes a loop heart to /api/loops/{slug}/like', async () => {
+    const btn = mountCard({ slug: 'nightly-digest', title: 'Nightly Digest' } as any, 'loops');
+    const calls: any[] = [];
+    const fetchImpl = vi.fn(async (url: any, init: any) => { calls.push([String(url), init?.method]); return status(200); });
+    const c = createLikeController({ apiBase: 'https://api.test', fetchImpl: fetchImpl as any });
+
+    await c.toggle(btn);
+
+    expect(calls[0][0]).toBe('https://api.test/api/loops/nightly-digest/like');
+  });
+
+  it('routes a bundle heart (= follow) to /api/bundles/{slug}/like', async () => {
+    const btn = mountCard({ slug: 'dev-essentials', title: 'Dev Essentials' } as any, 'bundles');
+    const calls: any[] = [];
+    const fetchImpl = vi.fn(async (url: any, init: any) => { calls.push([String(url), init?.method]); return status(200); });
+    const c = createLikeController({ apiBase: 'https://api.test', fetchImpl: fetchImpl as any });
+
+    await c.toggle(btn);
+
+    expect(calls[0][0]).toBe('https://api.test/api/bundles/dev-essentials/like');
   });
 
   it('DELETEs and flips the heart off when already liked', async () => {
