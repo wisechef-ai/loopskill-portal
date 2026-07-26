@@ -55,6 +55,18 @@ jobs:
           RECIPES_API_KEY: ${{ secrets.RECIPES_API_KEY }}
         run: npm run build
 
+      - name: Render tests against the built dist (vitest)
+        # spotify_2607 Phase −1. tests/spotify-2607-browse-renders.test.ts loads
+        # the BUILT dist/browse/index.html, executes its inline scripts in jsdom
+        # against a stubbed API, and asserts real cards land in the DOM.
+        #
+        # It MUST run after `npm run build`, not in the `npm test` step above:
+        # those dist-dependent cases self-skip when dist/ is absent (so a fresh
+        # clone doesn't report a false failure), which would make them silently
+        # no-op in CI if run pre-build. Running them here is what makes the
+        # render assertions real rather than decorative.
+        run: npx vitest run tests/spotify-2607-browse-renders.test.ts
+
       - name: Stamp build id into dist (deploy-identity canary source)
         # ponytail_0725. The deploy job asserts that the LIVE origin serves THIS
         # exact build. Guessing at content-hash asset names is unreliable: Astro
@@ -99,27 +111,30 @@ jobs:
         # and which masqueraded as a missing-RECIPES_API_KEY symptom during the
         # repo move. Re-pointed at the page that actually carries the catalog.
         #
-        # /browse hydrates client-side (`define:vars` inline fetch), so asserting
-        # a static card COUNT here would be wrong by construction. Assert what a
-        # static build can honestly prove: the page exists, is not an SPA-fallback
-        # copy of /, and ships the client fetch that populates it.
+        # These are STRUCTURAL checks only. Proof that /browse actually RENDERS
+        # is carried by tests/spotify-2607-browse-renders.test.ts (run in the
+        # "Render tests against the built dist" step above), which executes the
+        # built page's inline scripts in jsdom against a stubbed API and asserts
+        # real cards land in the DOM.
+        # A string grep cannot distinguish a live fetch from a commented-out one,
+        # nor catch a client-side throw — see the Codex review on PR #24.
         run: |
           set -e
           if [ ! -f dist/browse/index.html ]; then
             echo "ERROR: dist/browse/index.html not built"
             exit 1
           fi
-          home_size=$(wc -c < dist/index.html | tr -d " ")
-          browse_size=$(wc -c < dist/browse/index.html | tr -d " ")
-          if [ "$browse_size" -eq "$home_size" ]; then
-            echo "ERROR: /browse is byte-identical to / — SPA-fallback regression"
+          # Document IDENTITY, not byte count: an SPA fallback that differs by a
+          # single byte of injected metadata would slip past a size comparison.
+          if cmp -s dist/index.html dist/browse/index.html; then
+            echo "ERROR: /browse is identical to / — SPA-fallback regression"
             exit 1
           fi
-          if ! grep -q '/api/skills/search' dist/browse/index.html; then
-            echo "ERROR: /browse lost its catalog fetch — the grid will render empty"
+          if ! grep -q 'browse-results' dist/browse/index.html; then
+            echo "ERROR: /browse lost its results container — the render target is gone"
             exit 1
           fi
-          echo "✓ /browse built ($browse_size bytes) and retains its catalog fetch"
+          echo "✓ /browse built, distinct from /, and retains its render target"
 
       - name: Verify auth-aware nav helper present in bundles
         # Regression guard for the "Sign in / Get access still visible while logged in"
