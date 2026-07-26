@@ -24,10 +24,41 @@ import AppShell from '../../layouts/AppShell.astro';
         <h1 id="cb-name" class="text-2xl md:text-3xl font-semibold tracking-tight">Bundle</h1>
         <div class="flex items-center gap-3">
           <div id="cb-stats" class="text-sm text-muted"></div>
+          <!--
+            spotify_2607 Phase D — one-click visibility control (plan §3 #4/5/6).
+            PATCH /api/cookbooks/{id}/visibility already existed (portal_0610 J2)
+            but was only ever called from ONE buried composer flow. This is the
+            first legible, one-click surface for it, on the bundle's own page.
+
+            AGENTS.md auth-state rule (Trap C): render BOTH states in static
+            HTML, never branch a JS-fill target away behind a build-time
+            ternary. Swap with classList AND inline style.display (Trap A).
+            Current state is read from the SAME GET /api/cookbooks/{id}
+            response this page already fetches — no extra call.
+          -->
+          <div id="cb-vis-toggle" hidden class="inline-flex items-center gap-1.5 rounded-lg border border-border overflow-hidden text-xs shrink-0">
+            <button type="button" id="cb-vis-private" data-vis="private" class="cb-vis-btn px-3 py-1.5 transition">Private</button>
+            <button type="button" id="cb-vis-public" data-vis="public" class="cb-vis-btn px-3 py-1.5 transition">Public</button>
+          </div>
+          <!--
+            MUST-FIX 3 (Codex R1, verified): the PATCH failure path used to be
+            `if (!res.ok) { return; }` with an empty catch — a 401 session
+            expiry, 403, malformed response, or network outage produced NO
+            user-visible result, indistinguishable from a missed click.
+            Follows the same pattern as `fail('state-error', ...)` at line 171
+            (the page-load error state), scoped to this one control instead of
+            hiding the whole page.
+          -->
+          <span id="cb-vis-error" hidden role="status" class="text-xs text-red-400 max-w-[220px]"></span>
           <a id="cb-map-link" hidden href="/fleet-map" class="text-xs px-3 py-1.5 rounded-lg border border-border hover:border-accent text-text transition">Fleet map ▸</a>
         </div>
       </div>
       <p id="cb-desc" class="text-muted leading-relaxed max-w-2xl"></p>
+      <!-- Share link — surfaced immediately on publish (plan §3 #4), hidden while private. -->
+      <div id="cb-share-row" hidden class="flex items-center gap-2 mt-1">
+        <code id="cb-share-url" class="font-mono text-[11px] bg-bg-elev border border-border rounded px-2 py-1.5 break-all"></code>
+        <button type="button" id="cb-share-copy" class="px-2 py-1.5 rounded bg-accent text-bg text-[11px] font-semibold shrink-0">Copy</button>
+      </div>
     </header>
 
     <!-- States -->
@@ -101,6 +132,10 @@ import AppShell from '../../layouts/AppShell.astro';
   .cb-tab { border: 1px solid var(--border, #2a2f3a); color: var(--muted, #9aa3b2); background: transparent; transition: all .15s; }
   .cb-tab:hover { color: var(--text, #e6e9ef); }
   .cb-tab-active { background: var(--accent, #ffd166); color: var(--bg, #0a0a0a); border-color: var(--accent, #ffd166); }
+  /* spotify_2607 Phase D — one-click visibility toggle (mirrors library.astro's .vis-btn). */
+  .cb-vis-btn { color: var(--muted, #9aa3b2); background: transparent; cursor: pointer; }
+  .cb-vis-btn:hover { color: var(--text, #e6e9ef); }
+  .cb-vis-btn.cb-vis-active { background: rgba(255,209,102,0.1); color: var(--accent, #ffd166); font-weight: 600; }
   .badge { display: inline-flex; align-items: center; gap: .25rem; font-size: 10px; text-transform: uppercase; letter-spacing: .04em; padding: .15rem .45rem; border-radius: 999px; border: 1px solid; }
   .badge-tailored { color: #f5a623; background: rgba(245,166,35,.1); border-color: rgba(245,166,35,.35); }
   .badge-catalog { color: #5b9bf5; background: rgba(91,155,245,.1); border-color: rgba(91,155,245,.35); }
@@ -112,6 +147,7 @@ import AppShell from '../../layouts/AppShell.astro';
 </style>
 
 <script>
+  import { shareUrl, privacyWarningMessage } from '../../lib/bundleVisibility';
   const API_BASE = (import.meta as any).env?.PUBLIC_RECIPES_API_BASE || 'https://app.loopskill.io';
   const bundleId = (() => {
     const q = new URLSearchParams(location.search).get('id');
@@ -158,6 +194,8 @@ import AppShell from '../../layouts/AppShell.astro';
     if (cb.description) $('cb-desc').textContent = cb.description;
     $('cb-map-link').hidden = false;
 
+    setupVisibility(cb);
+
     const skills = (cb.skills || []).filter((s: any) => s.source !== 'disabled');
     const loops = cb.composite_loops || [];
     const personalities = cb.personalities || [];
@@ -176,6 +214,146 @@ import AppShell from '../../layouts/AppShell.astro';
     setupGraph(skills, loops, personalities);
     setupTabs();
   }
+
+  // ── One-click visibility toggle — spotify_2607 Phase D ──────────────────
+  // GET /api/bundles/{id} (this page's own fetch) now carries visibility +
+  // slug directly (loopskill-api dependency fix: previously only the
+  // public-facing serializer had them, so this owner-facing surface had no
+  // way to render current state). Reads that field, never guesses.
+  let currentVis: 'private' | 'public' = 'private';
+  let visibilityWired = false;
+  function setupVisibility(cb: any) {
+    currentVis = cb.visibility === 'public' ? 'public' : 'private';
+    const toggle = $('cb-vis-toggle');
+    toggle.hidden = false;
+    paintVisibility(cb.slug);
+
+    const btnPrivate = $('cb-vis-private') as HTMLButtonElement;
+    const btnPublic = $('cb-vis-public') as HTMLButtonElement;
+    // SHOULD-FIX 6 (Codex R1): setupVisibility(cb) used to attach two fresh
+    // listeners on EVERY call with no removal — a repeated render (e.g. a
+    // future retry/refresh path) would stack handlers and one click could
+    // fire duplicate PATCHes. Bind once, guarded by this flag.
+    if (visibilityWired) return;
+    visibilityWired = true;
+    const handler = (target: 'private' | 'public') => async () => {
+      if (target === currentVis) return;
+      // §3 Phase D #4: a plain warning before a flip that breaks a share link.
+      if (currentVis === 'public' && target === 'private') {
+        if (!window.confirm(privacyWarningMessage(cb.slug))) return;
+      }
+      hideVisError();
+      const headers: any = { 'content-type': 'application/json' };
+      if (apiKey) headers['x-api-key'] = apiKey;
+      let res: Response;
+      try {
+        res = await fetch(`${API_BASE}/api/cookbooks/${encodeURIComponent(bundleId)}/visibility`, {
+          method: 'PATCH',
+          headers,
+          credentials: 'include',
+          body: JSON.stringify({ visibility: target }),
+        });
+      } catch (e: any) {
+        // MUST-FIX 3: network outage must be visible AND restore the toggle's
+        // prior displayed state — never leave the click looking like it did
+        // nothing.
+        showVisError('Network error — the change was not saved. ' + (e?.message || ''));
+        paintVisibility(cb.slug);
+        return;
+      }
+      if (res.status === 401) {
+        // Session expired mid-visit — same redirect contract as load()'s own
+        // 401 handling above, so the user lands back here after signing in.
+        showVisError('Your session expired — sign in again to change visibility.');
+        paintVisibility(cb.slug);
+        window.location.href = `/signin?next=${encodeURIComponent('/bundles/view?id=' + bundleId)}`;
+        return;
+      }
+      if (res.status === 403) {
+        showVisError("You don't have permission to change this bundle's visibility.");
+        paintVisibility(cb.slug);
+        return;
+      }
+      if (!res.ok) {
+        showVisError(`Couldn't save — the server returned ${res.status}. Try again.`);
+        paintVisibility(cb.slug);
+        return;
+      }
+      let d: any;
+      try {
+        d = await res.json();
+      } catch (e) {
+        // Malformed 2xx body — the PATCH may or may not have actually taken
+        // effect server-side, so don't silently assume success either way;
+        // surface it and restore the last KNOWN-good state.
+        showVisError("Couldn't confirm the change — please refresh and check.");
+        paintVisibility(cb.slug);
+        return;
+      }
+      // R2 (Codex): a parseable-but-unexpected body (e.g. `{}`, `null`, or an
+      // unrecognized `visibility` value) must NOT silently fall through to
+      // 'private' as if the server confirmed that state — that would commit
+      // the UI to a value the server never actually returned, exactly the
+      // "malformed response" class this handler exists to catch. Require an
+      // EXACT match on one of the two known values; anything else takes the
+      // same "couldn't confirm" error path as a JSON-parse failure.
+      const returnedVis = d && d.visibility;
+      if (returnedVis !== 'public' && returnedVis !== 'private') {
+        showVisError("Couldn't confirm the change — please refresh and check.");
+        paintVisibility(cb.slug);
+        return;
+      }
+      currentVis = returnedVis;
+      // The PATCH response only guarantees {cookbook_id, visibility} — refetch
+      // the slug from the cached cb object (unchanged by a visibility flip;
+      // fix/bundle-slug-on-create guarantees every bundle already has one).
+      paintVisibility(cb.slug);
+    };
+    btnPrivate.addEventListener('click', handler('private'));
+    btnPublic.addEventListener('click', handler('public'));
+  }
+
+  function showVisError(msg: string) {
+    const el = $('cb-vis-error');
+    el.textContent = msg;
+    el.hidden = false;
+  }
+  function hideVisError() {
+    const el = $('cb-vis-error');
+    el.hidden = true;
+    el.textContent = '';
+  }
+
+  function paintVisibility(slug: string | null | undefined) {
+    const btnPrivate = $('cb-vis-private');
+    const btnPublic = $('cb-vis-public');
+    btnPrivate.classList.toggle('cb-vis-active', currentVis === 'private');
+    btnPublic.classList.toggle('cb-vis-active', currentVis === 'public');
+    btnPrivate.setAttribute('aria-pressed', String(currentVis === 'private'));
+    btnPublic.setAttribute('aria-pressed', String(currentVis === 'public'));
+
+    const shareRow = $('cb-share-row');
+    const url = currentVis === 'public' ? shareUrl(slug) : null;
+    if (url) {
+      ($('cb-share-url') as HTMLElement).textContent = url;
+      shareRow.hidden = false;
+      shareRow.style.display = 'flex'; // Trap A: inline style outranks Tailwind md: variants
+    } else {
+      shareRow.hidden = true;
+      shareRow.style.display = 'none';
+    }
+  }
+
+  $('cb-share-copy').addEventListener('click', async () => {
+    const txt = ($('cb-share-url') as HTMLElement).textContent || '';
+    const btn = $('cb-share-copy') as HTMLButtonElement;
+    try {
+      await navigator.clipboard.writeText(txt);
+      const orig = btn.textContent;
+      btn.textContent = 'Copied ✓';
+      setTimeout(() => { btn.textContent = orig; }, 1500);
+    } catch { /* clipboard unavailable — link is still selectable text */ }
+  });
 
   function renderTable(skills: any[]) {
     const tbody = $('skills-tbody');

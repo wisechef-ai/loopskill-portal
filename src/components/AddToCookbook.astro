@@ -4,25 +4,35 @@
 // Drop-in control rendered on:
 //   - catalog skill detail (/skills/[slug])
 //   - external/community result cards (/skills/external + unified browse)
+//   - spotify_2607 Phase D: /browse and /home cards, all bundleable types
+//     (skills, personalities, loops — NOT bundles; see
+//     src/lib/addToCookbookControl.ts's isBundleable/toAtcType).
 //
 // Markup-only here; the behaviour is a single shared inline script
 // (AddToCookbookScript.astro) included ONCE per page. Each button carries
 // data-* attributes the script reads:
 //   data-atc-slug      catalog slug OR external slug
 //   data-atc-external  "" for catalog, the source id (lobehub/clawhub/…) for federated
+//   data-atc-type      "skill" | "personality" | "loop" — routes to the
+//                      matching cookbook mutation endpoint (spotify_2607
+//                      Phase D). Defaults to "skill" when omitted, so every
+//                      pre-existing call site (skill detail, /skills/external)
+//                      keeps working unchanged.
 //
 // Auth: cookie (credentials:include) + optional localStorage x-api-key —
 // the livefix_0601 pattern from bundles/view.astro. No token = "Sign in to save".
 interface Props {
   slug: string;
   /** Federation source id (lobehub/clawhub/skills-sh/browse-sh/well-known/hermes-hub).
-   *  Empty/undefined for a curated catalog skill. */
+   *  Empty/undefined for a curated catalog skill. Only meaningful when type="skill". */
   externalSource?: string;
+  /** Artifact type — routes to the matching bundle mutation endpoint. Default "skill". */
+  type?: 'skill' | 'personality' | 'loop';
   /** Visual size — "sm" for cards, "md" for the detail page. */
   size?: 'sm' | 'md';
   class?: string;
 }
-const { slug, externalSource = '', size = 'sm', class: extraClass = '' } = Astro.props;
+const { slug, externalSource = '', type = 'skill', size = 'sm', class: extraClass = '' } = Astro.props;
 const pad = size === 'md' ? 'px-4 py-2 text-sm' : 'px-3 py-1.5 text-xs';
 ---
 <div class={`atc-wrap relative inline-block ${extraClass}`} data-atc-root>
@@ -31,6 +41,7 @@ const pad = size === 'md' ? 'px-4 py-2 text-sm' : 'px-3 py-1.5 text-xs';
     class={`atc-btn inline-flex items-center gap-1.5 rounded-lg border border-border text-text hover:border-accent hover:text-accent transition font-semibold ${pad}`}
     data-atc-slug={slug}
     data-atc-external={externalSource}
+    data-atc-type={type}
     aria-haspopup="true"
     aria-expanded="false"
   >
@@ -51,7 +62,7 @@ const pad = size === 'md' ? 'px-4 py-2 text-sm' : 'px-3 py-1.5 text-xs';
     <div class="atc-list flex flex-col gap-0.5 max-h-56 overflow-y-auto"></div>
     <div class="atc-loading px-3 py-2 text-xs text-muted">Loading your bundles…</div>
     <div class="atc-signin hidden px-3 py-3 text-xs text-muted">
-      <a href="/signup" class="text-accent hover:underline font-semibold">Sign in</a> to save skills to a cookbook.
+      <a href="/signup" class="atc-signin-link text-accent hover:underline font-semibold">Sign in</a> to save skills to a cookbook.
     </div>
     <div class="atc-empty hidden px-3 py-2 text-xs text-muted">No bundles yet — create one below.</div>
     <div class="atc-cap hidden px-3 py-2 text-xs text-amber-300">

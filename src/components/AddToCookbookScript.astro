@@ -53,7 +53,7 @@ const API_BASE = import.meta.env.PUBLIC_RECIPES_API_BASE || 'https://app.loopski
       authState = 'ok';
       let data;
       try { data = await res.json(); } catch (e) { return null; }
-      cookbooks = Array.isArray(data) ? data : (data.cookbooks || data.items || []);
+      bundles = Array.isArray(data) ? data : (data.cookbooks || data.items || []);
       return bundles;
     }
 
@@ -67,14 +67,33 @@ const API_BASE = import.meta.env.PUBLIC_RECIPES_API_BASE || 'https://app.loopski
       const btn = root.querySelector('.atc-btn');
       const slug = btn.getAttribute('data-atc-slug');
       const external = btn.getAttribute('data-atc-external') || '';
-      const body = external ? { slug: slug, external_source: external } : { slug: slug };
+      // spotify_2607 Phase D: personalities and loops have their own
+      // cookbook-mutation routes (loopskill-api bundle_routes.py
+      // add_personality_to_cookbook / add_loop_to_cookbook) — no body, slug
+      // in the URL. Skills keep their existing route + body shape unchanged
+      // (external_source is only meaningful there). Defaults to 'skill' so
+      // every pre-existing call site (no data-atc-type attribute) is
+      // unaffected.
+      const atcType = btn.getAttribute('data-atc-type') || 'skill';
+      let url;
+      let body;
+      if (atcType === 'personality') {
+        url = API_BASE + '/api/cookbooks/' + encodeURIComponent(cookbookId) + '/personalities/' + encodeURIComponent(slug);
+        body = null;
+      } else if (atcType === 'loop') {
+        url = API_BASE + '/api/cookbooks/' + encodeURIComponent(cookbookId) + '/loops/' + encodeURIComponent(slug);
+        body = null;
+      } else {
+        url = API_BASE + '/api/cookbooks/' + encodeURIComponent(cookbookId) + '/skills';
+        body = JSON.stringify(external ? { slug: slug, external_source: external } : { slug: slug });
+      }
       let res;
       try {
-        res = await fetch(API_BASE + '/api/cookbooks/' + encodeURIComponent(cookbookId) + '/skills', {
+        res = await fetch(url, {
           method: 'POST',
-          headers: authHeaders({ 'content-type': 'application/json' }),
+          headers: authHeaders(body ? { 'content-type': 'application/json' } : {}),
           credentials: 'include',
-          body: JSON.stringify(body),
+          body: body,
         });
       } catch (e) { toast('Network error — try again.', 'error'); return; }
 
@@ -87,12 +106,69 @@ const API_BASE = import.meta.env.PUBLIC_RECIPES_API_BASE || 'https://app.loopski
       if (res.status === 403) {
         let d = {}; try { d = await res.json(); } catch (e) {}
         const reason = (d && d.detail && (d.detail.reason || d.detail)) || '';
-        toast(String(reason).indexOf('cap') >= 0 ? 'Skill cap reached — upgrade to Pro+.' : 'Not allowed on this tier.', 'error');
+        // spotify2607_D MUST-FIX 2: plan §3 Phase D item 7 requires the
+        // free-tier cap 403 to use the inline upgrade wall, NEVER a toast or
+        // redirect. composer.astro/library.astro's showUpgradeWall() is
+        // tightly coupled to a `#basket-list` DOM element that only exists on
+        // that page — it cannot be called from here (browse/home/skill-detail
+        // cards, /skills/external), so we cannot reuse it directly. Instead
+        // this renders a SELF-CONTAINED inline wall inside the picker's own
+        // menu (the `.atc-cap` node the markup already carries on every atc
+        // root, previously dead/unused), wired to the SAME live
+        // POST /api/checkout/pro_plus call — inline, never a toast, never a
+        // dead-end redirect to /pricing.
+        if (String(reason).indexOf('cap') >= 0) {
+          showCapWall(root);
+        } else {
+          toast('Not allowed on this tier.', 'error');
+        }
         return;
       }
       if (res.status === 404) { toast('Skill could not be resolved from its source.', 'error'); return; }
       if (res.status === 422) { toast('Unknown source — cannot add this skill.', 'error'); return; }
       toast('Could not add (HTTP ' + res.status + ').', 'error');
+    }
+
+    // ── Inline cap wall — spotify2607_D MUST-FIX 2 ─────────────────────────
+    // Renders INSIDE the picker's own `.atc-cap` node (present in every
+    // AddToCookbook.astro / external.astro markup instance, previously
+    // hidden-and-unused). Live checkout, no toast, no dead-end redirect —
+    // matches AGENTS.md's contract for the (composer-page) upgrade wall, just
+    // scoped to this picker's own DOM rather than `#basket-list`.
+    function showCapWall(root) {
+      const list = root.querySelector('.atc-list');
+      const loading = root.querySelector('.atc-loading');
+      const signin = root.querySelector('.atc-signin');
+      const empty = root.querySelector('.atc-empty');
+      const cap = root.querySelector('.atc-cap');
+      if (!cap) { toast('Skill cap reached — upgrade to Pro+.', 'error'); return; }
+      loading.classList.add('hidden');
+      signin.classList.add('hidden');
+      empty.classList.add('hidden');
+      list.innerHTML = '';
+      cap.classList.remove('hidden');
+      cap.innerHTML =
+        '<p class="mb-1.5">Skill cap reached on this tier.</p>' +
+        '<button type="button" class="atc-cap-upgrade rounded-md bg-accent text-bg text-xs font-semibold px-2.5 py-1 hover:opacity-90 transition">Upgrade to Pro+ — $100/mo</button>';
+      const upgradeBtn = cap.querySelector('.atc-cap-upgrade');
+      upgradeBtn.addEventListener('click', async function () {
+        upgradeBtn.textContent = 'Loading…'; upgradeBtn.disabled = true;
+        let res;
+        try {
+          res = await fetch(API_BASE + '/api/checkout/pro_plus', {
+            method: 'POST',
+            headers: authHeaders({ 'content-type': 'application/json' }),
+            credentials: 'include',
+            body: '{}',
+          });
+        } catch (e) { res = null; }
+        if (res && res.ok) {
+          let d; try { d = await res.json(); } catch (e) { d = null; }
+          if (d && d.url) { window.location.href = d.url; return; }
+        }
+        upgradeBtn.textContent = 'Upgrade to Pro+ — $100/mo'; upgradeBtn.disabled = false;
+        toast('Checkout unavailable — try again or use /pricing.', 'error');
+      });
     }
 
     async function createAndAdd(root, name) {
@@ -118,12 +194,25 @@ const API_BASE = import.meta.env.PUBLIC_RECIPES_API_BASE || 'https://app.loopski
       const loading = root.querySelector('.atc-loading');
       const signin = root.querySelector('.atc-signin');
       const empty = root.querySelector('.atc-empty');
+      const cap = root.querySelector('.atc-cap');
       loading.classList.add('hidden');
       signin.classList.add('hidden');
       empty.classList.add('hidden');
+      // spotify2607_D MUST-FIX 2: clear any inline cap wall left over from a
+      // prior open of this same picker — a fresh open must re-attempt the
+      // normal bundle list, not keep showing a stale upgrade prompt.
+      if (cap) { cap.classList.add('hidden'); cap.innerHTML = ''; }
       list.innerHTML = '';
 
-      if (authState === 'anon') { signin.classList.remove('hidden'); return; }
+      if (authState === 'anon') {
+        signin.classList.remove('hidden');
+        // spotify_2607 Phase D acceptance gate: anonymous users get
+        // "Sign in to save" -> /signin?next=<here>, never a silent no-op —
+        // and never a bare /signup that drops them back to nowhere.
+        const link = signin.querySelector('.atc-signin-link');
+        if (link) link.setAttribute('href', '/signin?next=' + encodeURIComponent(location.pathname + location.search));
+        return;
+      }
       if (!bundles || bundles.length === 0) { empty.classList.remove('hidden'); return; }
 
       bundles.forEach(function (cb) {
