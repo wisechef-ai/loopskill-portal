@@ -9,6 +9,13 @@
  * §7 Q3) but never the "Add to bundle" picker — deletion-pass call, recorded
  * in the Phase D PR body.
  *
+ * NOTE (2026-07-26 removal pass, Adam decision): the picker itself is no
+ * longer mounted on browse.astro / home.astro CARD surfaces (deliberate
+ * product deletion — "as for the 3 - add button - to me this can be removed
+ * from ui as i don't see the purpose of it as of now"). This module and the
+ * picker markup/behavior (AddToCookbook.astro / AddToCookbookScript.astro)
+ * remain live for /skills/[slug] and /skills/external, which still mount it.
+ *
  * Route shapes differ by artifact type (this is why a pure routing helper
  * exists rather than hand-rolling the URL/body at each call site):
  *   - skill:       POST /api/cookbooks/{id}/skills            body {slug, external_source?}
@@ -24,7 +31,7 @@
  * tests/spotify2607-d-add-to-bundle.test.ts's mirror-drift assertions.
  */
 
-/** Card type tags used by browse.astro / home.astro ('skills'|'skill'|...). */
+/** Card type tags used by /skills/[slug] (AddToCookbook.astro) and /skills/external. */
 export type CardArtifactType = 'skills' | 'skill' | 'personalities' | 'personality' | 'loops' | 'loop' | 'bundles' | 'bundle';
 
 /** The atc-specific type vocabulary carried in data-atc-type. */

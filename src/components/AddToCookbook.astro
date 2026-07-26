@@ -3,10 +3,16 @@
 //
 // Drop-in control rendered on:
 //   - catalog skill detail (/skills/[slug])
-//   - external/community result cards (/skills/external + unified browse)
-//   - spotify_2607 Phase D: /browse and /home cards, all bundleable types
-//     (skills, personalities, loops — NOT bundles; see
-//     src/lib/addToCookbookControl.ts's isBundleable/toAtcType).
+//   - external/community result cards (/skills/external)
+//
+// NOTE (2026-07-26 removal pass): previously also rendered on /browse and
+// /home CARD surfaces (spotify_2607 Phase D). Adam decided to remove it
+// there — "as for the 3 - add button - to me this can be removed from ui as
+// i don't see the purpose of it as of now" — because to an anonymous
+// visitor it opened a small "Sign in to save" dead-end. The backend routes
+// and JS wiring were verified working; this was a deliberate UX/product
+// deletion, not a bugfix. This component and its shared script
+// (AddToCookbookScript.astro) remain live for the two call sites above.
 //
 // Markup-only here; the behaviour is a single shared inline script
 // (AddToCookbookScript.astro) included ONCE per page. Each button carries

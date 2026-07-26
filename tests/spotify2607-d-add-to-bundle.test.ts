@@ -20,6 +20,21 @@
  * and no plan requirement asks for it — a bundle card gets the heart (=
  * follow) but never the "Add to bundle" picker. Pinned by
  * isBundleable('bundles') === false below.
+ *
+ * ── REMOVAL PASS (2026-07-26, Adam decision) ────────────────────────────
+ * Adam: "as for the 3 - add button - to me this can be removed from ui as
+ * i don't see the purpose of it as of now." The picker on /browse and
+ * /home CARD surfaces is gone (deliberate product deletion, not a bugfix —
+ * the backend routes and JS wiring were verified working; the issue was an
+ * anonymous visitor landing on a "Sign in to save" dead-end). The "portal
+ * wiring — mounted on cards" describe blocks below were rewritten to assert
+ * the picker's ABSENCE from browse.astro/home.astro cards instead of its
+ * presence. The heart (like control) is untouched and still renders.
+ *
+ * The picker markup/behavior itself (AddToCookbook.astro /
+ * AddToCookbookScript.astro) and the pure routing-logic tests below are
+ * KEPT — /skills/[slug] and /skills/external still mount the picker and
+ * still rely on this exact route-shape contract.
  */
 import {
   toAtcType,
@@ -101,48 +116,60 @@ describe('resolveAddRequest — per-type route shapes', () => {
   });
 });
 
-// ── Wiring: the picker is actually MOUNTED on browse/home cards ────────────
+// ── Wiring: the picker is REMOVED from browse/home card surfaces ──────────
+// (2026-07-26 removal pass — Adam: "as for the 3 - add button - to me this
+// can be removed from ui as i don't see the purpose of it as of now.")
+// These tests used to assert the picker was mounted on these surfaces; they
+// now assert the opposite — its absence — while confirming the heart and
+// the rest of the card markup are untouched.
 
-describe('portal wiring — Add to bundle mounted on browse.astro cards', () => {
+describe('portal wiring — Add to bundle REMOVED from browse.astro cards (2026-07-26)', () => {
   const browse = existsSync(BROWSE) ? readFileSync(BROWSE, 'utf-8') : '';
 
-  it('renders an atc picker as a SIBLING inside .artifact-slot, never nested in the <a>', () => {
-    // The exact trap the heart hit (plan §3 Phase D #2): a <button> inside an
-    // <a> is invalid HTML and breaks keyboard activation. Assert the final
-    // `.artifact-slot` template string closes the card <a> BEFORE calling
-    // the atc picker renderer — i.e. `${card}...${atcPickerHTML(...)}` with
-    // `card` itself ending in `</a>`, never `${atcPickerHTML(...)}` emitted
-    // inside the card's own template literal.
-    expect(browse).toMatch(/data-atc-root/);
-    expect(browse).toMatch(/<div class="artifact-slot">\$\{card\}\$\{likeButtonHTML\(type, item\)\}\$\{atcPickerHTML\(type, item\)\}<\/div>/);
+  it('no longer renders an atc picker root on cards', () => {
+    expect(browse).not.toMatch(/data-atc-root/);
+    expect(browse).not.toMatch(/atcPickerHTML/);
   });
 
-  it('gates the atc picker on isBundleable — bundle cards never render one', () => {
-    expect(browse).toMatch(/isBundleable\(type/);
+  it('no longer imports/mounts AddToCookbookScript', () => {
+    expect(browse).not.toContain('AddToCookbookScript');
   });
 
-  it('wires the freshly-rendered pickers after every render (window.__atcWire)', () => {
-    expect(browse).toContain('__atcWire');
+  it('no longer calls window.__atcWire', () => {
+    expect(browse).not.toContain('__atcWire');
   });
 
-  it('includes AddToCookbookScript once', () => {
-    expect(browse).toContain('AddToCookbookScript');
+  it('the artifact-slot still closes the card <a> before the heart — no atc picker appended after it', () => {
+    expect(browse).toMatch(/<div class="artifact-slot">\$\{card\}\$\{likeButtonHTML\(type, item\)\}<\/div>/);
   });
 });
 
-describe('portal wiring — Add to bundle mounted on home.astro shelves', () => {
+describe('portal wiring — Add to bundle REMOVED from home.astro shelves (2026-07-26)', () => {
   const home = existsSync(HOME) ? readFileSync(HOME, 'utf-8') : '';
 
-  it('renders an atc picker for bundleable shelf items', () => {
-    expect(home).toMatch(/data-atc-root|atcButtonHTML/);
+  it('no longer renders an atc picker root on shelf cards', () => {
+    expect(home).not.toMatch(/data-atc-root/);
+    expect(home).not.toMatch(/atcPickerHTML/);
   });
 
-  it('includes AddToCookbookScript once', () => {
-    expect(home).toContain('AddToCookbookScript');
+  it('no longer imports isBundleable/toAtcType or AddToCookbookScript', () => {
+    expect(home).not.toContain('addToCookbookControl');
+    expect(home).not.toContain('AddToCookbookScript');
+  });
+
+  it('no longer calls window.__atcWire', () => {
+    expect(home).not.toContain('__atcWire');
+  });
+
+  it('the artifact-slot still closes the card <a> before the heart — no atc picker appended after it', () => {
+    expect(home).toMatch(/<div class="artifact-slot">\$\{card\}\$\{likeButtonHTMLFor\(type, item\)\}<\/div>/);
   });
 });
 
 // ── AddToCookbookScript.astro: generalized addArtifact routing ────────────
+// Still live — /skills/[slug] (AddToCookbook.astro) and /skills/external
+// (its own inline picker markup) both still mount this script and depend
+// on this exact routing contract. NOT in scope for the 2026-07-26 removal.
 
 describe('AddToCookbookScript.astro routes personalities/loops to their own endpoints', () => {
   const script = existsSync(ATC_SCRIPT) ? readFileSync(ATC_SCRIPT, 'utf-8') : '';

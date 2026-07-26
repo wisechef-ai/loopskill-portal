@@ -18,7 +18,6 @@
 // four different pages are the same page).
 
 import AppShell from '../layouts/AppShell.astro';
-import AddToCookbookScript from '../components/AddToCookbookScript.astro';
 
 const API_BASE = import.meta.env.PUBLIC_RECIPES_API_BASE || 'https://app.loopskill.io';
 // NOTE: this is a static (SSG) page — Astro.request.url carries no query
@@ -253,51 +252,6 @@ const API_BASE = import.meta.env.PUBLIC_RECIPES_API_BASE || 'https://app.loopski
       + ` aria-label="Save ${esc(name)} to your library">${HEART_SVG}</button>`;
   }
 
-  // ── Add-to-bundle picker — spotify_2607 Phase D ─────────────────────────
-  // Mirrors src/lib/addToCookbookControl.ts's isBundleable/toAtcType. There
-  // is NO API route to add a bundle as a member of another bundle (Phase C's
-  // bundle_routes.py only wired personalities/loops/skills), so bundle cards
-  // never render this picker — deletion pass, recorded in the PR body.
-  // Markup mirrors AddToCookbook.astro; AddToCookbookScript.astro (mounted
-  // once below) wires every '[data-atc-root]' on the page, including these
-  // dynamically-rendered ones, via its exposed window.__atcWire().
-  function toAtcType(type) {
-    const t = String(type || '');
-    if (t === 'skills' || t === 'skill') return 'skill';
-    if (t === 'personalities' || t === 'personality') return 'personality';
-    if (t === 'loops' || t === 'loop') return 'loop';
-    return null;
-  }
-  function isBundleable(type, item) {
-    return toAtcType(type) !== null && !!(item && item.slug);
-  }
-  function atcPickerHTML(type, item) {
-    if (!isBundleable(type, item)) return '';
-    const atcType = toAtcType(type);
-    const external = atcType === 'skill' ? (item.like_source || item.source || '') : '';
-    return `<div class="atc-wrap relative inline-block" data-atc-root>
-      <button type="button" class="atc-btn inline-flex items-center gap-1 rounded-lg border border-border/70 bg-black/40 backdrop-blur-sm text-white/90 hover:border-accent hover:text-accent transition font-semibold px-2 py-1 text-[11px]"
-        data-atc-slug="${esc(item.slug)}" data-atc-external="${esc(external)}" data-atc-type="${esc(atcType)}"
-        aria-haspopup="true" aria-expanded="false" aria-label="Add ${esc(item.title || item.slug)} to a bundle">
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
-        <span class="atc-label">Add</span>
-      </button>
-      <div class="atc-menu hidden absolute right-0 z-30 mt-1 w-64 rounded-xl border border-border bg-bg-card shadow-xl p-1.5" role="menu">
-        <div class="atc-list flex flex-col gap-0.5 max-h-56 overflow-y-auto"></div>
-        <div class="atc-loading px-3 py-2 text-xs text-muted">Loading your bundles…</div>
-        <div class="atc-signin hidden px-3 py-3 text-xs text-muted"><a href="/signin?next=${esc(location.pathname + location.search)}" class="atc-signin-link text-accent hover:underline font-semibold">Sign in</a> to save.</div>
-        <div class="atc-empty hidden px-3 py-2 text-xs text-muted">No bundles yet — create one below.</div>
-        <div class="atc-cap hidden px-3 py-2 text-xs text-amber-300">Cap reached. <a href="/pricing" class="text-accent hover:underline">Upgrade</a>.</div>
-        <div class="border-t border-border-soft mt-1 pt-1">
-          <form class="atc-new flex items-center gap-1.5 px-1.5 py-1">
-            <input type="text" class="atc-new-name flex-1 rounded-md border border-border-soft bg-bg px-2 py-1 text-xs text-text placeholder:text-muted focus:border-accent focus:outline-none" placeholder="＋ New bundle…" maxlength="80"/>
-            <button type="submit" class="atc-new-btn rounded-md bg-accent text-bg text-xs font-semibold px-2.5 py-1 hover:opacity-90 transition">Add</button>
-          </form>
-        </div>
-      </div>
-    </div>`;
-  }
-
   function artifactCardHTML(type, item, mode) {
     const grad = GRAD[hashIdx(item.slug || item.title || 'x', GRAD.length)];
     const mono = ((item.title || item.slug || 'L').trim()[0] || 'L').toUpperCase();
@@ -329,7 +283,7 @@ const API_BASE = import.meta.env.PUBLIC_RECIPES_API_BASE || 'https://app.loopski
       ${desc ? `<span class="artifact-desc">${esc(desc)}</span>` : ''}
       ${deployCTA}
     </a>`;
-    return `<div class="artifact-slot">${card}${likeButtonHTML(type, item)}${atcPickerHTML(type, item)}</div>`;
+    return `<div class="artifact-slot">${card}${likeButtonHTML(type, item)}</div>`;
   }
 
   // ── URL state ──────────────────────────────────────────────────────────
@@ -616,7 +570,6 @@ const API_BASE = import.meta.env.PUBLIC_RECIPES_API_BASE || 'https://app.loopski
       }
       results.innerHTML = GROUP_ORDER.map((t) => renderGroup(t, byType[t], 'all', state.q)).join('') + fedGroupHTML;
       refreshLikes();
-      if (typeof window.__atcWire === 'function') window.__atcWire();
       return;
     }
 
@@ -676,7 +629,6 @@ const API_BASE = import.meta.env.PUBLIC_RECIPES_API_BASE || 'https://app.loopski
       : '';
     results.innerHTML = (loopChipItems.length ? `${curatedHeader}<div class="artifact-grid">${grid}</div>` : '') + fedGroupHTML;
     refreshLikes();
-    if (typeof window.__atcWire === 'function') window.__atcWire();
   }
 
   $('browse-retry').addEventListener('click', load);
@@ -806,5 +758,3 @@ const API_BASE = import.meta.env.PUBLIC_RECIPES_API_BASE || 'https://app.loopski
   load();
   window.addEventListener('resize', () => { /* recompute max on next load */ });
 </script>
-
-<AddToCookbookScript />
