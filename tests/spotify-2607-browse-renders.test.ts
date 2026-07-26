@@ -55,33 +55,65 @@ const FEDERATED_PAYLOAD = {
 };
 
 /**
- * Route a stubbed fetch by URL. Deliberately matches on PATH, not on the
- * whole string: if browse.astro renames an endpoint, the router falls through
- * to `unmatched` and the assertions below go red — which is the entire point.
+ * Route a stubbed fetch by URL.
+ *
+ * Matches on the parsed **pathname**, exactly — never on a substring. Codex's
+ * round-2 review made the point that `u.includes('/api/skills/search')` keeps
+ * answering happily after a production-breaking rename to
+ * `/api/skills/search-v2` (the substring is still present), so the "unrouted
+ * endpoint" detector would never fire and CI would stay green through the
+ * regression it exists to catch. Exact pathname matching means any rename,
+ * prefix, or version bump falls through to `unmatched` and turns the suite red.
+ *
+ * Requested paths are recorded so tests can assert the page asked for what it
+ * is supposed to ask for, rather than only that nothing unexpected was called.
  */
-function stubFetch(unmatched: string[]) {
+function stubFetch(unmatched: string[], requested: string[]) {
   return (url: string) => {
-    const u = String(url);
+    const raw = String(url);
+    let path = raw;
+    try {
+      path = new URL(raw, 'https://app.loopskill.io').pathname;
+    } catch {
+      // A URL we cannot even parse is itself a defect — record it verbatim and
+      // let it land in `unmatched` below.
+    }
+    requested.push(path);
+
     const json = (body: unknown) =>
       Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(body) });
 
-    if (u.includes('/api/skills/search')) return json(SKILLS_PAYLOAD);
-    if (u.includes('/api/bundles/discover')) return json(BUNDLES_PAYLOAD);
-    if (u.includes('/api/personalities')) return json(PERSONALITIES_PAYLOAD);
-    if (u.includes('/api/composite-loops')) return json(LOOPS_PAYLOAD);
-    if (u.includes('/api/skills/external')) return json(FEDERATED_PAYLOAD);
-    if (u.includes('/api/loops')) return json([]);
-    if (u.includes('/api/auth/me')) return Promise.resolve({ ok: false, status: 401, json: () => Promise.resolve({}) });
-    if (u.includes('/api/library')) return json({ shelves: {} });
-
-    unmatched.push(u);
-    return Promise.resolve({ ok: false, status: 404, json: () => Promise.resolve({}) });
+    switch (path) {
+      case '/api/skills/search':
+        return json(SKILLS_PAYLOAD);
+      case '/api/bundles/discover':
+        return json(BUNDLES_PAYLOAD);
+      case '/api/personalities':
+        return json(PERSONALITIES_PAYLOAD);
+      case '/api/composite-loops':
+        return json(LOOPS_PAYLOAD);
+      case '/api/skills/external':
+        return json(FEDERATED_PAYLOAD);
+      // Verifier-registry fallback: only consulted when /api/composite-loops
+      // fails or returns empty. Answering [] here keeps the composite path the
+      // one under test.
+      case '/api/loops':
+        return json([]);
+      case '/api/auth/me':
+        return Promise.resolve({ ok: false, status: 401, json: () => Promise.resolve({}) });
+      case '/api/library':
+        return json({ shelves: {} });
+      default:
+        unmatched.push(path);
+        return Promise.resolve({ ok: false, status: 404, json: () => Promise.resolve({}) });
+    }
   };
 }
 
 async function renderBrowse() {
   const html = readFileSync(BROWSE_DIST, 'utf-8');
   const unmatched: string[] = [];
+  const requested: string[] = [];
 
   const dom = new JSDOM(html, {
     url: 'https://app.loopskill.io/browse',
@@ -90,7 +122,7 @@ async function renderBrowse() {
   });
 
   const win = dom.window as any;
-  win.fetch = stubFetch(unmatched);
+  win.fetch = stubFetch(unmatched, requested);
   win.matchMedia = win.matchMedia || ((q: string) => ({ matches: false, media: q, addListener() {}, removeListener() {}, addEventListener() {}, removeEventListener() {} }));
 
   // Execute every inline JAVASCRIPT block the BUILT page ships.
@@ -119,10 +151,41 @@ async function renderBrowse() {
     }
   }
 
-  // Let the stubbed promises settle and the render land.
-  for (let i = 0; i < 25; i++) await new Promise((r) => setTimeout(r, 0));
+  // Wait for a DETERMINISTIC observable end-state, not an arbitrary tick count.
+  //
+  // The previous form (`for i in 0..25: await setTimeout(0)`) had no causal
+  // relationship to `load()` finishing — Codex's round-2 SHOULD-FIX. It happened
+  // to be enough for immediately-resolving stubs, but would flake under CI
+  // scheduling variance or if the render path gained another await.
+  //
+  // The real completion condition is browse.astro's own contract: `load()` calls
+  // hide('browse-loading') on every terminal branch (success, degraded, error),
+  // so the loading element carrying `hidden` means the render path has finished
+  // one way or another. Bounded, and it reports WHY it gave up.
+  const settled = await waitFor(
+    win,
+    () => {
+      const loading = dom.window.document.getElementById('browse-loading');
+      return !!loading && loading.hasAttribute('hidden');
+    },
+    2000,
+  );
 
-  return { dom, win, unmatched, errors, scriptCount: scripts.length };
+  return { dom, win, unmatched, requested, errors, scriptCount: scripts.length, settled };
+}
+
+/**
+ * Poll `cond` until true or `timeoutMs` elapses. Returns whether it settled, so
+ * a caller can produce a useful failure message rather than an opaque assertion
+ * on downstream state.
+ */
+async function waitFor(win: any, cond: () => boolean, timeoutMs: number): Promise<boolean> {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    if (cond()) return true;
+    await new Promise((r) => setTimeout(r, 5));
+  }
+  return cond();
 }
 
 describe('/browse renders its catalog (not just references the endpoint)', () => {
@@ -170,6 +233,36 @@ describe('/browse renders its catalog (not just references the endpoint)', () =>
     const count = dom.window.document.getElementById('browse-live-count')?.textContent || '';
     expect(count).toMatch(/\d+\s+items?/);
     expect(count).not.toMatch(/^0 items/);
+  });
+
+  it.runIf(built)('settles into a terminal render state within the timeout', async () => {
+    const { settled } = await renderBrowse();
+    expect(settled, 'load() never reached a terminal state — the loading element stayed visible').toBe(true);
+  });
+
+  it.runIf(built)('requests the exact endpoints its shelves depend on', async () => {
+    // Pins the call graph explicitly rather than inferring it from rendered
+    // output. Codex's round-2 review asserted from a static read that
+    // /api/composite-loops would not be called (claiming /api/loops instead)
+    // and that fetchFederated('') short-circuits on an empty query, so
+    // /api/skills/external would never fire. Both were incorrect: browse.astro
+    // calls /api/composite-loops FIRST and only falls back to /api/loops when
+    // it fails or returns empty, and fetchFederated runs on empty-query browse
+    // by design (feat/browse-federated-defaults — "where are all the skills?").
+    // This assertion turns that disagreement into an executable fact.
+    const { requested } = await renderBrowse();
+    for (const path of [
+      '/api/skills/search',
+      '/api/bundles/discover',
+      '/api/personalities',
+      '/api/composite-loops',
+      '/api/skills/external',
+    ]) {
+      expect(requested, `page never requested ${path} — got: ${requested.join(', ')}`).toContain(path);
+    }
+    // The verifier registry is a FALLBACK. Seeing it on a healthy composite
+    // fetch means the primary path silently failed.
+    expect(requested, '/api/loops was called despite a healthy /api/composite-loops response').not.toContain('/api/loops');
   });
 
   it.runIf(built)('called no unrouted API path (catches a silently renamed endpoint)', async () => {
