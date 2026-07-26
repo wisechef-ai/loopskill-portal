@@ -53,7 +53,7 @@ const API_BASE = import.meta.env.PUBLIC_RECIPES_API_BASE || 'https://app.loopski
       authState = 'ok';
       let data;
       try { data = await res.json(); } catch (e) { return null; }
-      cookbooks = Array.isArray(data) ? data : (data.cookbooks || data.items || []);
+      bundles = Array.isArray(data) ? data : (data.cookbooks || data.items || []);
       return bundles;
     }
 
@@ -142,7 +142,15 @@ const API_BASE = import.meta.env.PUBLIC_RECIPES_API_BASE || 'https://app.loopski
       empty.classList.add('hidden');
       list.innerHTML = '';
 
-      if (authState === 'anon') { signin.classList.remove('hidden'); return; }
+      if (authState === 'anon') {
+        signin.classList.remove('hidden');
+        // spotify_2607 Phase D acceptance gate: anonymous users get
+        // "Sign in to save" -> /signin?next=<here>, never a silent no-op —
+        // and never a bare /signup that drops them back to nowhere.
+        const link = signin.querySelector('.atc-signin-link');
+        if (link) link.setAttribute('href', '/signin?next=' + encodeURIComponent(location.pathname + location.search));
+        return;
+      }
       if (!bundles || bundles.length === 0) { empty.classList.remove('hidden'); return; }
 
       bundles.forEach(function (cb) {
