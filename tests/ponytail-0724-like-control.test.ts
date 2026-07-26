@@ -82,7 +82,7 @@ describe('likedIdsFromLibrary — reads BOTH API skill sources', () => {
       shelves: { skills: [{ id: 'uuid-1', slug: 'local-one', title: 'L', liked_at: 'x' }] },
       federated_skills: [{ slug: 'owner--repo--x', title: 'F', source: 'skills-sh', liked_at: 'y' }],
     });
-    expect(ids).toEqual(['local-one', 'skills-sh__owner--repo--x']);
+    expect(ids).toEqual(['skills:local-one', 'skills:skills-sh__owner--repo--x']);
   });
 
   it('tolerates either key being absent', () => {
@@ -94,7 +94,7 @@ describe('likedIdsFromLibrary — reads BOTH API skill sources', () => {
 
   it('skips rows with no slug rather than emitting a junk id', () => {
     expect(likedIdsFromLibrary({ federated_skills: [{ source: 'clawhub' }, { slug: 'ok', source: 'clawhub' }] }))
-      .toEqual(['clawhub__ok']);
+      .toEqual(['skills:clawhub__ok']);
   });
 
   // spotify_2607 Phase D: liked_library() already serves typed shelves for
@@ -110,14 +110,14 @@ describe('likedIdsFromLibrary — reads BOTH API skill sources', () => {
         loops: [{ id: 'uuid-l1', slug: 'nightly-digest', title: 'Nightly Digest', liked_at: 'y' }],
       },
     });
-    expect(ids).toEqual(['blunt-editor', 'nightly-digest']);
+    expect(ids).toEqual(['personalities:blunt-editor', 'loops:nightly-digest']);
   });
 
   it('collects followed (liked) bundles by slug', () => {
     const ids = likedIdsFromLibrary({
       followed_bundles: [{ id: 'uuid-b1', slug: 'dev-essentials', name: 'Dev Essentials', followed_at: 'x' }],
     });
-    expect(ids).toEqual(['dev-essentials']);
+    expect(ids).toEqual(['bundles:dev-essentials']);
   });
 
   it('a followed bundle with no public slug (never published) contributes nothing', () => {
@@ -474,6 +474,62 @@ describe('createLikeController — hydration + repaint', () => {
     c.refresh();
 
     expect(fetchImpl).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('MUST-FIX 1 — like state must not collide across artifact types', () => {
+  beforeEach(() => { document.body.innerHTML = ''; });
+
+  // Codex R1 finding, empirically reproduced: likeTrackId() mints a BARE SLUG
+  // for local skills, personalities, loops AND bundles, and likedIdsFromLibrary
+  // merged all shelves into one flat string[]. So a liked skill named "foo"
+  // painted an UNLIKED personality named "foo" as already-liked — and clicking
+  // it would fire DELETE /api/personalities/foo/like for something never liked.
+  it('a liked skill "foo" must NOT paint an unliked personality "foo" as liked', async () => {
+    document.body.innerHTML =
+      `<div id="results">` +
+      `<div class="artifact-slot"><a href="/skills/foo" class="artifact-card">card</a>${likeButtonHTML('skills', { slug: 'foo', title: 'Foo Skill' })}</div>` +
+      `<div class="artifact-slot"><a href="/browse?type=personalities" class="artifact-card">card</a>${likeButtonHTML('personalities', { slug: 'foo', title: 'Foo Personality' })}</div>` +
+      `</div>`;
+    const fetchImpl = vi.fn(async () =>
+      okJson({ shelves: { skills: [{ id: 'u1', slug: 'foo' }] } }),
+    );
+    const c = createLikeController({ apiBase: 'https://api.test', fetchImpl: fetchImpl as any });
+
+    c.refresh();
+    await vi.waitFor(() => expect(c.isHydrated()).toBe(true));
+
+    const buttons = document.querySelectorAll('.artifact-like');
+    const skillBtn = buttons[0] as HTMLElement;
+    const personalityBtn = buttons[1] as HTMLElement;
+    expect(skillBtn.getAttribute('aria-pressed')).toBe('true');
+    // THE BUG: without type-namespaced keys, this used to also read 'true'.
+    expect(personalityBtn.getAttribute('aria-pressed')).toBe('false');
+  });
+
+  it('clicking the unliked personality "foo" hits the personalities endpoint, never a phantom DELETE', async () => {
+    document.body.innerHTML =
+      `<div id="results">` +
+      `<div class="artifact-slot"><a href="/skills/foo" class="artifact-card">card</a>${likeButtonHTML('skills', { slug: 'foo', title: 'Foo Skill' })}</div>` +
+      `<div class="artifact-slot"><a href="/browse?type=personalities" class="artifact-card">card</a>${likeButtonHTML('personalities', { slug: 'foo', title: 'Foo Personality' })}</div>` +
+      `</div>`;
+    const calls: any[] = [];
+    const fetchImpl = vi.fn(async (url: any, init: any) => {
+      if (String(url).includes('/api/library')) return okJson({ shelves: { skills: [{ id: 'u1', slug: 'foo' }] } });
+      calls.push([String(url), init?.method]);
+      return status(200);
+    });
+    const c = createLikeController({ apiBase: 'https://api.test', fetchImpl: fetchImpl as any });
+    c.refresh();
+    await vi.waitFor(() => expect(c.isHydrated()).toBe(true));
+
+    const personalityBtn = document.querySelectorAll('.artifact-like')[1] as HTMLButtonElement;
+    // Personality is unliked, so a click must POST (like), not DELETE (unlike
+    // a thing it was never told was liked).
+    await c.toggle(personalityBtn);
+
+    expect(calls[0][0]).toBe('https://api.test/api/personalities/foo/like');
+    expect(calls[0][1]).toBe('POST');
   });
 });
 

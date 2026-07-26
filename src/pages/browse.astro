@@ -284,7 +284,7 @@ const API_BASE = import.meta.env.PUBLIC_RECIPES_API_BASE || 'https://app.loopski
       <div class="atc-menu hidden absolute right-0 z-30 mt-1 w-64 rounded-xl border border-border bg-bg-card shadow-xl p-1.5" role="menu">
         <div class="atc-list flex flex-col gap-0.5 max-h-56 overflow-y-auto"></div>
         <div class="atc-loading px-3 py-2 text-xs text-muted">Loading your bundles…</div>
-        <div class="atc-signin hidden px-3 py-3 text-xs text-muted"><a href="/signin?next=${esc(location.pathname + location.search)}" class="text-accent hover:underline font-semibold">Sign in</a> to save.</div>
+        <div class="atc-signin hidden px-3 py-3 text-xs text-muted"><a href="/signin?next=${esc(location.pathname + location.search)}" class="atc-signin-link text-accent hover:underline font-semibold">Sign in</a> to save.</div>
         <div class="atc-empty hidden px-3 py-2 text-xs text-muted">No bundles yet — create one below.</div>
         <div class="atc-cap hidden px-3 py-2 text-xs text-amber-300">Cap reached. <a href="/pricing" class="text-accent hover:underline">Upgrade</a>.</div>
         <div class="border-t border-border-soft mt-1 pt-1">
@@ -635,7 +635,9 @@ const API_BASE = import.meta.env.PUBLIC_RECIPES_API_BASE || 'https://app.loopski
 
   function paintLikes(root) {
     (root || document).querySelectorAll('.artifact-like').forEach((btn) => {
-      const on = likedIds.has(btn.dataset.likeId || '');
+      const segment = btn.dataset.likeType || 'skills';
+      const id = btn.dataset.likeId || '';
+      const on = likedIds.has(`${segment}:${id}`);
       btn.setAttribute('aria-pressed', on ? 'true' : 'false');
       btn.title = on ? 'Remove from your library' : 'Save to your library';
     });
@@ -664,21 +666,26 @@ const API_BASE = import.meta.env.PUBLIC_RECIPES_API_BASE || 'https://app.loopski
       const d = await r.json();
       likedIds.clear();
       const shelves = (d && d.shelves) || {};
+      // MUST-FIX 1 (Codex R1, verified): key by ARTIFACT TYPE + id, never a
+      // bare slug — a liked skill "foo" must not collide with an unliked
+      // personality "foo". Mirrors src/lib/likeControl.ts's
+      // likeHydrationKey()/likedIdsFromLibrary(); keep both in sync.
       ((shelves.skills) || []).forEach((row) => {
-        if (row && row.slug) likedIds.add(row.slug);
+        if (row && row.slug) likedIds.add(`skills:${row.slug}`);
       });
       ((shelves.personalities) || []).forEach((row) => {
-        if (row && row.slug) likedIds.add(row.slug);
+        if (row && row.slug) likedIds.add(`personalities:${row.slug}`);
       });
       ((shelves.loops) || []).forEach((row) => {
-        if (row && row.slug) likedIds.add(row.slug);
+        if (row && row.slug) likedIds.add(`loops:${row.slug}`);
       });
       ((d && d.federated_skills) || []).forEach((row) => {
         if (!row || !row.slug) return;
-        likedIds.add(row.source && row.source !== 'local' ? `${row.source}__${row.slug}` : row.slug);
+        const trackId = row.source && row.source !== 'local' ? `${row.source}__${row.slug}` : row.slug;
+        likedIds.add(`skills:${trackId}`);
       });
       ((d && d.followed_bundles) || []).forEach((row) => {
-        if (row && row.slug) likedIds.add(row.slug);
+        if (row && row.slug) likedIds.add(`bundles:${row.slug}`);
       });
       likedHydrated = true;
       paintLikes();
@@ -729,7 +736,8 @@ const API_BASE = import.meta.env.PUBLIC_RECIPES_API_BASE || 'https://app.loopski
         return;
       }
       if (!r.ok) throw new Error(`like failed: ${r.status}`);
-      if (nowLiked) likedIds.add(id); else likedIds.delete(id);
+      const key = `${segment}:${id}`;
+      if (nowLiked) likedIds.add(key); else likedIds.delete(key);
       btn.title = nowLiked ? 'Remove from your library' : 'Save to your library';
     } catch {
       // Roll back — never leave a heart claiming a state the server rejected.

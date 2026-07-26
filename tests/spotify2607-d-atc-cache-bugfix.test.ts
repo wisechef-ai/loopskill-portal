@@ -46,8 +46,38 @@ describe('AddToCookbookScript.astro — anonymous sign-in never silently no-ops'
     expect(src).toContain("'/signin?next='");
     expect(src).not.toContain("'/signup'");
   });
+});
 
-  it('cap 403 shows an inline toast naming the cap, never a silent failure', () => {
-    expect(src).toMatch(/Skill cap reached.*upgrade to Pro\+/i);
+describe('AddToCookbookScript.astro — cap 403 uses the inline upgrade wall, never a toast', () => {
+  // spotify2607_D MUST-FIX 2 (Codex R1, verified): the original test here
+  // asserted "cap 403 shows an inline toast", but AGENTS.md / plan §3 Phase D
+  // item 7 requires the free-tier cap to use the INLINE upgrade wall, never a
+  // toast or redirect. The prior toast was pre-existing (not introduced by
+  // this PR) but the new test LOCKED IT IN as correct — worse than leaving it
+  // untested. Fixed: cap 403 now renders inline inside the picker's own
+  // `.atc-cap` node (present on every atc-root instance) with a live
+  // POST /api/checkout/pro_plus call, mirroring composer.astro's
+  // showUpgradeWall() contract but scoped to this picker's own DOM rather
+  // than the composer's `#basket-list` (which does not exist on
+  // browse/home/skill-detail — showUpgradeWall() itself is not reachable
+  // from those pages).
+  it('routes the cap reason to the inline showCapWall(), never toast()', () => {
+    expect(src).toMatch(/showCapWall\(root\)/);
+  });
+
+  it('does NOT toast "Skill cap reached" as the primary cap-403 UI', () => {
+    // A toast fallback may still exist for the "no .atc-cap node" defensive
+    // branch, but it must not be the FIRST thing the cap path does.
+    const capBranch = src.slice(src.indexOf("indexOf('cap') >= 0"), src.indexOf('res.status === 404'));
+    expect(capBranch).toMatch(/showCapWall\(root\)/);
+  });
+
+  it('the inline wall calls the SAME live checkout endpoint as composer.astro', () => {
+    expect(src).toContain("API_BASE + '/api/checkout/pro_plus'");
+    expect(src).toMatch(/method:\s*'POST'/);
+  });
+
+  it('the inline wall never dead-ends — falls back to a toast pointing at /pricing only on failure', () => {
+    expect(src).toContain('Checkout unavailable — try again or use /pricing.');
   });
 });

@@ -40,6 +40,16 @@ import AppShell from '../../layouts/AppShell.astro';
             <button type="button" id="cb-vis-private" data-vis="private" class="cb-vis-btn px-3 py-1.5 transition">Private</button>
             <button type="button" id="cb-vis-public" data-vis="public" class="cb-vis-btn px-3 py-1.5 transition">Public</button>
           </div>
+          <!--
+            MUST-FIX 3 (Codex R1, verified): the PATCH failure path used to be
+            `if (!res.ok) { return; }` with an empty catch — a 401 session
+            expiry, 403, malformed response, or network outage produced NO
+            user-visible result, indistinguishable from a missed click.
+            Follows the same pattern as `fail('state-error', ...)` at line 171
+            (the page-load error state), scoped to this one control instead of
+            hiding the whole page.
+          -->
+          <span id="cb-vis-error" hidden role="status" class="text-xs text-red-400 max-w-[220px]"></span>
           <a id="cb-map-link" hidden href="/fleet-map" class="text-xs px-3 py-1.5 rounded-lg border border-border hover:border-accent text-text transition">Fleet map ▸</a>
         </div>
       </div>
@@ -211,6 +221,7 @@ import AppShell from '../../layouts/AppShell.astro';
   // public-facing serializer had them, so this owner-facing surface had no
   // way to render current state). Reads that field, never guesses.
   let currentVis: 'private' | 'public' = 'private';
+  let visibilityWired = false;
   function setupVisibility(cb: any) {
     currentVis = cb.visibility === 'public' ? 'public' : 'private';
     const toggle = $('cb-vis-toggle');
@@ -219,32 +230,85 @@ import AppShell from '../../layouts/AppShell.astro';
 
     const btnPrivate = $('cb-vis-private') as HTMLButtonElement;
     const btnPublic = $('cb-vis-public') as HTMLButtonElement;
+    // SHOULD-FIX 6 (Codex R1): setupVisibility(cb) used to attach two fresh
+    // listeners on EVERY call with no removal — a repeated render (e.g. a
+    // future retry/refresh path) would stack handlers and one click could
+    // fire duplicate PATCHes. Bind once, guarded by this flag.
+    if (visibilityWired) return;
+    visibilityWired = true;
     const handler = (target: 'private' | 'public') => async () => {
       if (target === currentVis) return;
       // §3 Phase D #4: a plain warning before a flip that breaks a share link.
       if (currentVis === 'public' && target === 'private') {
         if (!window.confirm(privacyWarningMessage(cb.slug))) return;
       }
+      hideVisError();
       const headers: any = { 'content-type': 'application/json' };
       if (apiKey) headers['x-api-key'] = apiKey;
+      let res: Response;
       try {
-        const res = await fetch(`${API_BASE}/api/cookbooks/${encodeURIComponent(bundleId)}/visibility`, {
+        res = await fetch(`${API_BASE}/api/cookbooks/${encodeURIComponent(bundleId)}/visibility`, {
           method: 'PATCH',
           headers,
           credentials: 'include',
           body: JSON.stringify({ visibility: target }),
         });
-        if (!res.ok) { return; } // best-effort; toggle stays on its prior state
-        const d = await res.json();
-        currentVis = (d && d.visibility === 'public') ? 'public' : 'private';
-        // The PATCH response only guarantees {cookbook_id, visibility} — refetch
-        // the slug from the cached cb object (unchanged by a visibility flip;
-        // fix/bundle-slug-on-create guarantees every bundle already has one).
+      } catch (e: any) {
+        // MUST-FIX 3: network outage must be visible AND restore the toggle's
+        // prior displayed state — never leave the click looking like it did
+        // nothing.
+        showVisError('Network error — the change was not saved. ' + (e?.message || ''));
         paintVisibility(cb.slug);
-      } catch { /* offline — leave the control showing its last known state */ }
+        return;
+      }
+      if (res.status === 401) {
+        // Session expired mid-visit — same redirect contract as load()'s own
+        // 401 handling above, so the user lands back here after signing in.
+        showVisError('Your session expired — sign in again to change visibility.');
+        paintVisibility(cb.slug);
+        window.location.href = `/signin?next=${encodeURIComponent('/bundles/view?id=' + bundleId)}`;
+        return;
+      }
+      if (res.status === 403) {
+        showVisError("You don't have permission to change this bundle's visibility.");
+        paintVisibility(cb.slug);
+        return;
+      }
+      if (!res.ok) {
+        showVisError(`Couldn't save — the server returned ${res.status}. Try again.`);
+        paintVisibility(cb.slug);
+        return;
+      }
+      let d: any;
+      try {
+        d = await res.json();
+      } catch (e) {
+        // Malformed 2xx body — the PATCH may or may not have actually taken
+        // effect server-side, so don't silently assume success either way;
+        // surface it and restore the last KNOWN-good state.
+        showVisError("Couldn't confirm the change — please refresh and check.");
+        paintVisibility(cb.slug);
+        return;
+      }
+      currentVis = (d && d.visibility === 'public') ? 'public' : 'private';
+      // The PATCH response only guarantees {cookbook_id, visibility} — refetch
+      // the slug from the cached cb object (unchanged by a visibility flip;
+      // fix/bundle-slug-on-create guarantees every bundle already has one).
+      paintVisibility(cb.slug);
     };
     btnPrivate.addEventListener('click', handler('private'));
     btnPublic.addEventListener('click', handler('public'));
+  }
+
+  function showVisError(msg: string) {
+    const el = $('cb-vis-error');
+    el.textContent = msg;
+    el.hidden = false;
+  }
+  function hideVisError() {
+    const el = $('cb-vis-error');
+    el.hidden = true;
+    el.textContent = '';
   }
 
   function paintVisibility(slug: string | null | undefined) {

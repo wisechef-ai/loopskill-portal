@@ -129,13 +129,38 @@ export function libraryRowTrackId(row: {
 }
 
 /**
- * Collect every liked track id from a GET /api/library payload.
+ * Composite hydration key: ARTIFACT TYPE + track id.
+ *
+ * MUST-FIX (Codex R1, verified): `likeTrackId()` returns a BARE SLUG for
+ * local skills, personalities, loops AND bundles, and the old
+ * `likedIdsFromLibrary()` merged all four shelves into ONE flat string[]
+ * keyed only on that bare id. A liked skill named "foo" therefore made an
+ * UNLIKED personality named "foo" render as already-liked, and clicking it
+ * fired DELETE /api/personalities/foo/like for something never liked.
+ *
+ * The fix: namespace every hydration + paint key by `<endpointSegment>:<id>`
+ * — e.g. `personalities:foo`, `skills:foo`, `loops:foo`, `bundles:foo`. This
+ * composes cleanly with the federated `source__slug` form minted by
+ * `likeTrackId` (e.g. `skills:clawhub__foo`), since the `:` separator never
+ * collides with the `__` federation separator.
+ */
+export function likeHydrationKey(segment: string, trackId: string): string {
+  return `${segment}:${trackId}`;
+}
+
+/**
+ * Collect every liked hydration key from a GET /api/library payload.
  *
  * Reads the deployable `shelves.skills`, the additive `federated_skills`
  * array (spotify_2607 Phase D adds `shelves.personalities` / `shelves.loops`
  * the same way), and `followed_bundles` (liking a bundle = following it, per
  * §7 Q3) — so a heart is painted pressed regardless of which artifact type or
  * shelf it lives on. Tolerates any key being absent.
+ *
+ * Every returned string is a `likeHydrationKey()`-shaped `type:id` pair, NOT
+ * a bare id — see MUST-FIX 1 above. Each shelf is namespaced to its own
+ * endpoint segment so identically-slugged artifacts of different types never
+ * collide.
  */
 export function likedIdsFromLibrary(payload: any): string[] {
   const ids: string[] = [];
@@ -147,25 +172,25 @@ export function likedIdsFromLibrary(payload: any): string[] {
   const followedBundles = (payload && payload.followed_bundles) || [];
   for (const row of local) {
     const id = libraryRowTrackId(row);
-    if (id) ids.push(id);
+    if (id) ids.push(likeHydrationKey('skills', id));
   }
   for (const row of federated) {
     const id = libraryRowTrackId(row);
-    if (id) ids.push(id);
+    if (id) ids.push(likeHydrationKey('skills', id));
   }
   for (const row of personalities) {
     const id = libraryRowTrackId(row);
-    if (id) ids.push(id);
+    if (id) ids.push(likeHydrationKey('personalities', id));
   }
   for (const row of loops) {
     const id = libraryRowTrackId(row);
-    if (id) ids.push(id);
+    if (id) ids.push(likeHydrationKey('loops', id));
   }
   // Followed bundles have no `source` field — they key on their public slug
   // directly (matches the button's data-like-id, minted as the bare bundle
   // slug by likeTrackId since bundles never carry like_source/source).
   for (const row of followedBundles) {
-    if (row && row.slug) ids.push(row.slug);
+    if (row && row.slug) ids.push(likeHydrationKey('bundles', row.slug));
   }
   return ids;
 }
@@ -198,7 +223,9 @@ export function createLikeController(opts: LikeControllerOptions) {
 
   function paint(): void {
     root.querySelectorAll<HTMLButtonElement>('.artifact-like').forEach((btn) => {
-      const on = likedIds.has(btn.dataset.likeId || '');
+      const segment = btn.dataset.likeType || 'skills';
+      const id = btn.dataset.likeId || '';
+      const on = likedIds.has(likeHydrationKey(segment, id));
       btn.setAttribute('aria-pressed', on ? 'true' : 'false');
       btn.title = on ? 'Remove from your library' : 'Save to your library';
     });
@@ -261,8 +288,9 @@ export function createLikeController(opts: LikeControllerOptions) {
         return;
       }
       if (!r.ok) throw new Error(`like failed: ${r.status}`);
-      if (nowLiked) likedIds.add(id);
-      else likedIds.delete(id);
+      const key = likeHydrationKey(segment, id);
+      if (nowLiked) likedIds.add(key);
+      else likedIds.delete(key);
       btn.title = nowLiked ? 'Remove from your library' : 'Save to your library';
       // Deterministic post-toggle hook. Surfaces that RENDER the liked set
       // (the library shelf) re-sync from here rather than guessing with a
