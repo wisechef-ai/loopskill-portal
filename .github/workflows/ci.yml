@@ -90,28 +90,36 @@ jobs:
 
       # /graph check removed (onechrome_0611 D5): page disabled, Caddy 301 → /skills.
 
-      - name: Verify /skills renders the full catalog
-        # Same softening as /graph: fail only on SPA-fallback regression
-        # (page byte-identical to /), warn on low card count which usually
-        # signals build-time API rate-limit, not a code regression.
+      - name: Verify /browse renders the catalog shell
+        # spotify_2607 Phase −1: this step used to grep dist/skills/index.html
+        # for `href="/skills/<slug>"` cards. That page is now a RedirectStub to
+        # /browse?type=skills (feat/spotify-ia), so the check counted cards on a
+        # redirect shim and emitted "renders only 0 skill cards" on EVERY run —
+        # a permanent false warning that trained readers to ignore the signal,
+        # and which masqueraded as a missing-RECIPES_API_KEY symptom during the
+        # repo move. Re-pointed at the page that actually carries the catalog.
+        #
+        # /browse hydrates client-side (`define:vars` inline fetch), so asserting
+        # a static card COUNT here would be wrong by construction. Assert what a
+        # static build can honestly prove: the page exists, is not an SPA-fallback
+        # copy of /, and ships the client fetch that populates it.
         run: |
           set -e
-          if [ ! -f dist/skills/index.html ]; then
-            echo "ERROR: dist/skills/index.html not built"
+          if [ ! -f dist/browse/index.html ]; then
+            echo "ERROR: dist/browse/index.html not built"
             exit 1
           fi
           home_size=$(wc -c < dist/index.html | tr -d " ")
-          skills_size=$(wc -c < dist/skills/index.html | tr -d " ")
-          if [ "$skills_size" -eq "$home_size" ]; then
-            echo "ERROR: /skills is byte-identical to / — SPA-fallback regression"
+          browse_size=$(wc -c < dist/browse/index.html | tr -d " ")
+          if [ "$browse_size" -eq "$home_size" ]; then
+            echo "ERROR: /browse is byte-identical to / — SPA-fallback regression"
             exit 1
           fi
-          CARDS=$(grep -oE 'href="/skills/[a-z][a-z0-9-]+"' dist/skills/index.html | sort -u | wc -l)
-          if [ "$CARDS" -lt 10 ]; then
-            echo "::warning::/skills renders only $CARDS skill cards — likely build-time API rate-limit; not blocking"
-          else
-            echo "✓ /skills renders $CARDS skill cards"
+          if ! grep -q '/api/skills/search' dist/browse/index.html; then
+            echo "ERROR: /browse lost its catalog fetch — the grid will render empty"
+            exit 1
           fi
+          echo "✓ /browse built ($browse_size bytes) and retains its catalog fetch"
 
       - name: Verify auth-aware nav helper present in bundles
         # Regression guard for the "Sign in / Get access still visible while logged in"

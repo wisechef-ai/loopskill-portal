@@ -1,8 +1,28 @@
-# recipes-portal — agent guide (onechrome_0611, updated 2026-06-12)
+# loopskill-portal — agent guide (spotify_2607 Phase −1, updated 2026-07-26)
 
-`recipes.wisechef.ai` — Astro 5 STATIC site (no SSR; `astro.config.mjs` has no
+`app.loopskill.io` — Astro 5 STATIC site (no SSR; `astro.config.mjs` has no
 `output:` line). npm, Node 22. Marketing for the product lives on `wisechef.ai`
 (separate repo `wisechef-portal-v3`); THIS repo is the app.
+
+## ⚠️ Repo identity — read before you push
+
+The live repo is **`wisechef-ai/loopskill-portal`**. It owns the CI runner
+(`wisechef-hq-portal`, on the prod host), the `RECIPES_API_KEY` secret, and the
+deploy job.
+
+`wisechef-ai/recipes-portal` was **ARCHIVED read-only on 2026-07-26**. Pushes to
+it are rejected with a misleading *"Please make sure you have the correct access
+rights"* — check `archived` before debugging credentials. Any doc, skill, or
+note saying "origin = recipes-portal, the loopskill remote is stale" is
+**INVERTED and wrong**; that guidance predates 2026-07-26.
+
+Runners and secrets are **per-repo and do NOT transfer** when a repo is
+archived — both were re-provisioned on `loopskill-portal` in Phase −1. The
+archived repo's 4 stranded PRs live on as `rescued/recipes-portal-pr-*`
+branches here; see issue #23.
+
+Locally, `origin` points at `loopskill-portal`; the archive is kept as
+`archived-recipes-portal` with its push URL deliberately disabled.
 
 ## The ONE chrome
 

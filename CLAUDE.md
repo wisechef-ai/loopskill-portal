@@ -1,8 +1,25 @@
-# recipes-portal — agent guide (onechrome_0611, updated 2026-06-12)
+# loopskill-portal — agent guide (spotify_2607 Phase −1, updated 2026-07-26)
 
-`recipes.wisechef.ai` — Astro 5 STATIC site (no SSR; `astro.config.mjs` has no
+`app.loopskill.io` — Astro 5 STATIC site (no SSR; `astro.config.mjs` has no
 `output:` line). npm, Node 22. Marketing for the product lives on `wisechef.ai`
 (separate repo `wisechef-portal-v3`); THIS repo is the app.
+
+## ⚠️ Repo identity — read before you push
+
+The live repo is **`wisechef-ai/loopskill-portal`**. It owns the CI runner
+(`wisechef-hq-portal`, on the prod host), the `RECIPES_API_KEY` secret, and the
+deploy job.
+
+`wisechef-ai/recipes-portal` was **ARCHIVED read-only on 2026-07-26**. Pushes to
+it are rejected with a misleading *"Please make sure you have the correct access
+rights"* — check `archived` before debugging credentials. Any doc, skill, or
+note saying "origin = recipes-portal, the loopskill remote is stale" is
+**INVERTED and wrong**; that guidance predates 2026-07-26.
+
+Runners and secrets are **per-repo and do NOT transfer** when a repo is
+archived — both were re-provisioned on `loopskill-portal` in Phase −1. The
+archived repo's 4 stranded PRs live on as `rescued/recipes-portal-pr-*`
+branches here; see issue #23.
 
 ## The ONE chrome
 
@@ -64,16 +81,25 @@ build-time fetch couples the build to API uptime (WIS-737 incident class;
 island over `src/lib/api.ts` (`API_BASE = https://app.loopskill.io`; the legacy
 `recipes.wisechef.ai` 301s here as of 2026-07-10).
 
-## Build, CI, deploy (deploy is MANUAL)
+## Build, CI, deploy (deploy is AUTOMATIC on push-to-main)
 
 - `npm run build` = `astro build && bash scripts/assert-dist.sh`.
-- CI (`.github/workflows/ci.yml`, runner `wisechef-runner`): astro check,
-  build, page-size anti-SPA-fallback asserts, auth-marker guard (greps
-  `dist/index.html` AND `dist/_astro/` — Astro externalizes big scripts).
-  CI does NOT deploy.
-- Deploy: `npm run build` -> backup prod dist -> `rsync -az --delete dist/
-  wisechef-hq:/home/wisechef/recipes-portal/dist/`. Caddy serves it.
-  "Merged to main" is NOT "live" — re-probe live URLs after rsync.
+- CI (`.github/workflows/ci.yml`, runner **`wisechef-hq-portal`** — a
+  self-hosted runner ON the prod host): astro check, `npm test` (vitest,
+  enforced), build, page-size anti-SPA-fallback asserts, auth-marker guard.
+- **CI DOES deploy.** A push to `main` builds, stages into `dist.incoming`,
+  atomically swaps `/home/wisechef/loopskill-portal/dist`, runs a readiness
+  gate, then asserts a **content canary** — the live `build-id.txt` must equal
+  this run's `GITHUB_SHA`. Ending in `Canary OK` is the only proof a deploy
+  landed. On failure it auto-rolls back.
+- **Do NOT hand-rsync.** The old manual `rsync … wisechef-hq:…/recipes-portal/dist/`
+  procedure is WRONG twice over: `app.loopskill.io`'s Caddy root is
+  `/home/wisechef/loopskill-portal/dist` (rsyncing to `recipes-portal/dist` is a
+  silent no-op on this domain), and the SSH hop it relied on is the exact
+  credential failure that broke every deploy from 2026-07-17 to 2026-07-25 while
+  builds stayed green. That step was DELETED, not repaired.
+- **Untouchable without an explicit mandate:** runner labels, the deploy job,
+  and the build-id canary.
 - Redirects: static SSG means redirects are client-JS or Caddy. Cut pages
   301 in `/etc/caddy/Caddyfile` on wisechef-hq (`/graph`->`/skills`,
   `/stats`->`/home`, `/vs`->wisechef.ai, `/whitepaper`->`/whitepaper.pdf`,
