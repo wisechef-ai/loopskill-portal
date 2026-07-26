@@ -18,6 +18,7 @@
 // four different pages are the same page).
 
 import AppShell from '../layouts/AppShell.astro';
+import AddToCookbookScript from '../components/AddToCookbookScript.astro';
 
 const API_BASE = import.meta.env.PUBLIC_RECIPES_API_BASE || 'https://app.loopskill.io';
 // NOTE: this is a static (SSG) page — Astro.request.url carries no query
@@ -220,18 +221,80 @@ const API_BASE = import.meta.env.PUBLIC_RECIPES_API_BASE || 'https://app.loopski
     return src && src !== 'local' ? `${src}__${slug}` : slug;
   }
 
+  // spotify_2607 Phase D: like now works on all four artifact types (the
+  // Phase B backend shipped slug-based POST/DELETE
+  // /api/{personalities|loops|bundles}/{slug}/like specifically for this).
+  // Mirrors src/lib/likeControl.ts's LIKEABLE_TYPES/likeEndpointSegment —
+  // keep both in sync (ponytail-0724-like-control.test.ts pins the drift).
   function isLikeable(type, item) {
-    // Skills only for now — personalities/loops/bundles use their own shelves.
     const t = String(type || '');
-    return (t === 'skills' || t === 'skill') && !!(item && item.slug);
+    const likeable = t === 'skills' || t === 'skill'
+      || t === 'personalities' || t === 'personality'
+      || t === 'loops' || t === 'loop'
+      || t === 'bundles' || t === 'bundle';
+    return likeable && !!(item && item.slug);
+  }
+
+  function likeEndpointSegment(type) {
+    const t = String(type || '');
+    if (t === 'personality' || t === 'personalities') return 'personalities';
+    if (t === 'loop' || t === 'loops') return 'loops';
+    if (t === 'bundle' || t === 'bundles') return 'bundles';
+    return 'skills';
   }
 
   function likeButtonHTML(type, item) {
     if (!isLikeable(type, item)) return '';
     const name = item.title || item.slug;
     return `<button type="button" class="artifact-like" data-like-id="${esc(likeTrackId(item))}"`
+      + ` data-like-type="${esc(likeEndpointSegment(type))}"`
       + ` aria-pressed="false" title="Save to your library"`
       + ` aria-label="Save ${esc(name)} to your library">${HEART_SVG}</button>`;
+  }
+
+  // ── Add-to-bundle picker — spotify_2607 Phase D ─────────────────────────
+  // Mirrors src/lib/addToCookbookControl.ts's isBundleable/toAtcType. There
+  // is NO API route to add a bundle as a member of another bundle (Phase C's
+  // bundle_routes.py only wired personalities/loops/skills), so bundle cards
+  // never render this picker — deletion pass, recorded in the PR body.
+  // Markup mirrors AddToCookbook.astro; AddToCookbookScript.astro (mounted
+  // once below) wires every '[data-atc-root]' on the page, including these
+  // dynamically-rendered ones, via its exposed window.__atcWire().
+  function toAtcType(type) {
+    const t = String(type || '');
+    if (t === 'skills' || t === 'skill') return 'skill';
+    if (t === 'personalities' || t === 'personality') return 'personality';
+    if (t === 'loops' || t === 'loop') return 'loop';
+    return null;
+  }
+  function isBundleable(type, item) {
+    return toAtcType(type) !== null && !!(item && item.slug);
+  }
+  function atcPickerHTML(type, item) {
+    if (!isBundleable(type, item)) return '';
+    const atcType = toAtcType(type);
+    const external = atcType === 'skill' ? (item.like_source || item.source || '') : '';
+    return `<div class="atc-wrap relative inline-block" data-atc-root>
+      <button type="button" class="atc-btn inline-flex items-center gap-1 rounded-lg border border-border/70 bg-black/40 backdrop-blur-sm text-white/90 hover:border-accent hover:text-accent transition font-semibold px-2 py-1 text-[11px]"
+        data-atc-slug="${esc(item.slug)}" data-atc-external="${esc(external)}" data-atc-type="${esc(atcType)}"
+        aria-haspopup="true" aria-expanded="false" aria-label="Add ${esc(item.title || item.slug)} to a bundle">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+        <span class="atc-label">Add</span>
+      </button>
+      <div class="atc-menu hidden absolute right-0 z-30 mt-1 w-64 rounded-xl border border-border bg-bg-card shadow-xl p-1.5" role="menu">
+        <div class="atc-list flex flex-col gap-0.5 max-h-56 overflow-y-auto"></div>
+        <div class="atc-loading px-3 py-2 text-xs text-muted">Loading your bundles…</div>
+        <div class="atc-signin hidden px-3 py-3 text-xs text-muted"><a href="/signin?next=${esc(location.pathname + location.search)}" class="text-accent hover:underline font-semibold">Sign in</a> to save.</div>
+        <div class="atc-empty hidden px-3 py-2 text-xs text-muted">No bundles yet — create one below.</div>
+        <div class="atc-cap hidden px-3 py-2 text-xs text-amber-300">Cap reached. <a href="/pricing" class="text-accent hover:underline">Upgrade</a>.</div>
+        <div class="border-t border-border-soft mt-1 pt-1">
+          <form class="atc-new flex items-center gap-1.5 px-1.5 py-1">
+            <input type="text" class="atc-new-name flex-1 rounded-md border border-border-soft bg-bg px-2 py-1 text-xs text-text placeholder:text-muted focus:border-accent focus:outline-none" placeholder="＋ New bundle…" maxlength="80"/>
+            <button type="submit" class="atc-new-btn rounded-md bg-accent text-bg text-xs font-semibold px-2.5 py-1 hover:opacity-90 transition">Add</button>
+          </form>
+        </div>
+      </div>
+    </div>`;
   }
 
   function artifactCardHTML(type, item, mode) {
@@ -265,7 +328,7 @@ const API_BASE = import.meta.env.PUBLIC_RECIPES_API_BASE || 'https://app.loopski
       ${desc ? `<span class="artifact-desc">${esc(desc)}</span>` : ''}
       ${deployCTA}
     </a>`;
-    return `<div class="artifact-slot">${card}${likeButtonHTML(type, item)}</div>`;
+    return `<div class="artifact-slot">${card}${likeButtonHTML(type, item)}${atcPickerHTML(type, item)}</div>`;
   }
 
   // ── URL state ──────────────────────────────────────────────────────────
@@ -535,6 +598,7 @@ const API_BASE = import.meta.env.PUBLIC_RECIPES_API_BASE || 'https://app.loopski
       }
       results.innerHTML = GROUP_ORDER.map((t) => renderGroup(t, byType[t], 'all', state.q)).join('') + fedGroupHTML;
       refreshLikes();
+      if (typeof window.__atcWire === 'function') window.__atcWire();
       return;
     }
 
@@ -558,6 +622,7 @@ const API_BASE = import.meta.env.PUBLIC_RECIPES_API_BASE || 'https://app.loopski
       : '';
     results.innerHTML = (items.length ? `${curatedHeader}<div class="artifact-grid">${grid}</div>` : '') + fedGroupHTML;
     refreshLikes();
+    if (typeof window.__atcWire === 'function') window.__atcWire();
   }
 
   $('browse-retry').addEventListener('click', load);
@@ -577,12 +642,17 @@ const API_BASE = import.meta.env.PUBLIC_RECIPES_API_BASE || 'https://app.loopski
   }
 
   async function hydrateLikes() {
-    // GET /api/library carries TWO skill sources, deliberately separate:
-    //   shelves.skills   — the DEPLOYABLE Liked bundle (local catalog skills;
-    //                      frozen {id, slug, title, liked_at} shape, no source)
-    //   federated_skills — hub/skills.sh/ClawHub bookmarks
-    //                      ({slug, title, source, liked_at}, NOT deployable)
-    // Read BOTH so a heart paints pressed regardless of which side it lives on.
+    // GET /api/library carries several skill sources, all deliberately separate:
+    //   shelves.skills          — the DEPLOYABLE Liked bundle (local catalog
+    //                             skills; frozen {id, slug, title, liked_at}
+    //                             shape, no source)
+    //   shelves.personalities   — typed Liked shelf for personalities
+    //   shelves.loops           — typed Liked shelf for composite loops
+    //   federated_skills        — hub/skills.sh/ClawHub bookmarks
+    //                             ({slug, title, source, liked_at}, NOT deployable)
+    //   followed_bundles        — bundles the caller follows (= liked, per §7 Q3)
+    // Read ALL of them so a heart paints pressed regardless of which shelf it
+    // lives on (spotify_2607 Phase D — mirrors src/lib/likeControl.ts).
     try {
       const r = await fetch(`${API_BASE}/api/library`, { credentials: 'include' });
       if (!r.ok) {
@@ -593,12 +663,22 @@ const API_BASE = import.meta.env.PUBLIC_RECIPES_API_BASE || 'https://app.loopski
       }
       const d = await r.json();
       likedIds.clear();
-      ((d && d.shelves && d.shelves.skills) || []).forEach((row) => {
+      const shelves = (d && d.shelves) || {};
+      ((shelves.skills) || []).forEach((row) => {
+        if (row && row.slug) likedIds.add(row.slug);
+      });
+      ((shelves.personalities) || []).forEach((row) => {
+        if (row && row.slug) likedIds.add(row.slug);
+      });
+      ((shelves.loops) || []).forEach((row) => {
         if (row && row.slug) likedIds.add(row.slug);
       });
       ((d && d.federated_skills) || []).forEach((row) => {
         if (!row || !row.slug) return;
         likedIds.add(row.source && row.source !== 'local' ? `${row.source}__${row.slug}` : row.slug);
+      });
+      ((d && d.followed_bundles) || []).forEach((row) => {
+        if (row && row.slug) likedIds.add(row.slug);
       });
       likedHydrated = true;
       paintLikes();
@@ -626,6 +706,9 @@ const API_BASE = import.meta.env.PUBLIC_RECIPES_API_BASE || 'https://app.loopski
     if (btn.getAttribute('aria-busy') === 'true') return;
 
     const id = btn.dataset.likeId || '';
+    // spotify_2607 Phase D: route to the type-specific like endpoint (see
+    // likeEndpointSegment above — mirrors src/lib/likeControl.ts's toggle()).
+    const segment = btn.dataset.likeType || 'skills';
     const wasLiked = btn.getAttribute('aria-pressed') === 'true';
     const nowLiked = !wasLiked;
 
@@ -634,7 +717,7 @@ const API_BASE = import.meta.env.PUBLIC_RECIPES_API_BASE || 'https://app.loopski
     btn.setAttribute('aria-busy', 'true');
 
     try {
-      const r = await fetch(`${API_BASE}/api/skills/${encodeURIComponent(id)}/like`, {
+      const r = await fetch(`${API_BASE}/api/${segment}/${encodeURIComponent(id)}/like`, {
         method: nowLiked ? 'POST' : 'DELETE',
         credentials: 'include',
       });
@@ -661,3 +744,5 @@ const API_BASE = import.meta.env.PUBLIC_RECIPES_API_BASE || 'https://app.loopski
   load();
   window.addEventListener('resize', () => { /* recompute max on next load */ });
 </script>
+
+<AddToCookbookScript />

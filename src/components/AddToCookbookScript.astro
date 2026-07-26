@@ -67,14 +67,33 @@ const API_BASE = import.meta.env.PUBLIC_RECIPES_API_BASE || 'https://app.loopski
       const btn = root.querySelector('.atc-btn');
       const slug = btn.getAttribute('data-atc-slug');
       const external = btn.getAttribute('data-atc-external') || '';
-      const body = external ? { slug: slug, external_source: external } : { slug: slug };
+      // spotify_2607 Phase D: personalities and loops have their own
+      // cookbook-mutation routes (loopskill-api bundle_routes.py
+      // add_personality_to_cookbook / add_loop_to_cookbook) — no body, slug
+      // in the URL. Skills keep their existing route + body shape unchanged
+      // (external_source is only meaningful there). Defaults to 'skill' so
+      // every pre-existing call site (no data-atc-type attribute) is
+      // unaffected.
+      const atcType = btn.getAttribute('data-atc-type') || 'skill';
+      let url;
+      let body;
+      if (atcType === 'personality') {
+        url = API_BASE + '/api/cookbooks/' + encodeURIComponent(cookbookId) + '/personalities/' + encodeURIComponent(slug);
+        body = null;
+      } else if (atcType === 'loop') {
+        url = API_BASE + '/api/cookbooks/' + encodeURIComponent(cookbookId) + '/loops/' + encodeURIComponent(slug);
+        body = null;
+      } else {
+        url = API_BASE + '/api/cookbooks/' + encodeURIComponent(cookbookId) + '/skills';
+        body = JSON.stringify(external ? { slug: slug, external_source: external } : { slug: slug });
+      }
       let res;
       try {
-        res = await fetch(API_BASE + '/api/cookbooks/' + encodeURIComponent(cookbookId) + '/skills', {
+        res = await fetch(url, {
           method: 'POST',
-          headers: authHeaders({ 'content-type': 'application/json' }),
+          headers: authHeaders(body ? { 'content-type': 'application/json' } : {}),
           credentials: 'include',
-          body: JSON.stringify(body),
+          body: body,
         });
       } catch (e) { toast('Network error — try again.', 'error'); return; }
 
