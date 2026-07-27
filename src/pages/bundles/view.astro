@@ -139,6 +139,10 @@ import AppShell from '../../layouts/AppShell.astro';
   .badge { display: inline-flex; align-items: center; gap: .25rem; font-size: 10px; text-transform: uppercase; letter-spacing: .04em; padding: .15rem .45rem; border-radius: 999px; border: 1px solid; }
   .badge-tailored { color: #f5a623; background: rgba(245,166,35,.1); border-color: rgba(245,166,35,.35); }
   .badge-catalog { color: #5b9bf5; background: rgba(91,155,245,.1); border-color: rgba(91,155,245,.35); }
+  /* spotify_2607 Phase B: federated/unvetted provenance — visually distinct
+     from catalog (blue = we host + vetted) so a community bookmark can never
+     be mistaken for vetted hosted content. */
+  .badge-community { color: #c084fc; background: rgba(192,132,252,.1); border-color: rgba(192,132,252,.35); }
   .badge-pinned { color: #4ade80; background: rgba(74,222,128,.1); border-color: rgba(74,222,128,.3); }
   .badge-floating { color: #9aa3b2; background: transparent; border-color: var(--border-soft, #2a2f3a); }
   #skills-tbody tr { border-bottom: 1px solid var(--border-soft, #1c2029); }
@@ -186,6 +190,27 @@ import AppShell from '../../layouts/AppShell.astro';
     if (s.source === 'custom-added') return true;
     if (s.source === 'catalog') return false;
     return s.skill_variant === 'custom' || s.is_public === false;
+  }
+
+  // spotify_2607 Phase A/B: a bundle (notably the auto-created "Liked" bundle)
+  // can hold FEDERATED rows — bookmarks to upstream content we do not host.
+  // They carry `federated: true` + `provenance` and have NO local detail page,
+  // NO version and NO tarball. Mirrors the convention already established in
+  // library.astro:likedCardHTML — keep the two in step.
+  function isFederated(s: any) {
+    return s?.federated === true;
+  }
+
+  // Federated rows have no statically-generated /skills/<slug> page, so link
+  // to the resolved upstream origin; fall back to a browse search rather than
+  // emitting a guaranteed 404.
+  function skillHref(s: any): string {
+    const slug = String(s?.slug ?? '');
+    if (!isFederated(s)) return `/skills/${encodeURIComponent(slug)}`;
+    const origin = typeof s?.origin_url === 'string' ? s.origin_url : '';
+    return /^https?:\/\//i.test(origin)
+      ? origin
+      : `/browse?type=skills&q=${encodeURIComponent(slug)}`;
   }
 
   function render(cb: any) {
@@ -358,16 +383,30 @@ import AppShell from '../../layouts/AppShell.astro';
   function renderTable(skills: any[]) {
     const tbody = $('skills-tbody');
     tbody.innerHTML = skills.map((s) => {
-      const tailored = isTailored(s);
+      const federated = isFederated(s);
+      const tailored = !federated && isTailored(s);
+      // A federated row IS clickable — it links out to the upstream origin —
+      // so it must never fall into the plain-<span> "tailored" branch that
+      // renders a dead, unclickable name.
+      const href = skillHref(s);
+      const isExternal = /^https?:\/\//i.test(href);
+      const extAttrs = isExternal ? ' target="_blank" rel="noopener"' : '';
       const name = tailored
         ? `<span class="font-medium text-text">${esc(s.title || s.slug)}</span>`
-        : `<a href="/skills/${esc(s.slug)}" class="font-medium text-text hover:text-accent transition">${esc(s.title || s.slug)}</a>`;
-      const typeBadge = tailored
-        ? '<span class="badge badge-tailored">tailored</span>'
-        : '<span class="badge badge-catalog">catalog</span>';
-      const verBadge = s.pinned
-        ? `<span class="badge badge-pinned">pinned ${esc(s.pinned_version || '')}</span>`
-        : '<span class="badge badge-floating">latest</span>';
+        : `<a href="${esc(href)}" class="font-medium text-text hover:text-accent transition"${extAttrs}>${esc(s.title || s.slug)}</a>`;
+      const typeBadge = federated
+        ? `<span class="badge badge-community">${esc(s.federated_source || s.provenance || 'community')}</span>`
+        : tailored
+          ? '<span class="badge badge-tailored">tailored</span>'
+          : '<span class="badge badge-catalog">catalog</span>';
+      // Federated bookmarks are unversioned by construction (no tarball, no
+      // pinned_version) — claiming "latest" would assert a guarantee we do
+      // not have. Render an explicit em-dash instead.
+      const verBadge = federated
+        ? '<span class="text-xs text-muted-soft">—</span>'
+        : s.pinned
+          ? `<span class="badge badge-pinned">pinned ${esc(s.pinned_version || '')}</span>`
+          : '<span class="badge badge-floating">latest</span>';
       const lineage = s.parent_skill_slug
         ? `<a href="/skills/${esc(s.parent_skill_slug)}" class="text-xs text-muted hover:text-accent transition">↳ ${esc(s.parent_skill_slug)}</a>`
         : '<span class="text-xs text-muted-soft">—</span>';
