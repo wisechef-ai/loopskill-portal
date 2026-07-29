@@ -16,7 +16,6 @@
 // subline once /api/auth/me resolves client-side (Trap B — never a
 // build-time user-data fetch).
 import AppShell from '../layouts/AppShell.astro';
-import AddToCookbookScript from '../components/AddToCookbookScript.astro';
 ---
 <AppShell mode="public" title="Home — LoopSkill" description="Explore runnable AI-agent artifacts — loops, skills, bundles, and personalities." active="home">
   <main class="ls-page max-w-6xl mx-auto pb-24">
@@ -41,7 +40,6 @@ import AddToCookbookScript from '../components/AddToCookbookScript.astro';
 <script>
   import { identiconSVG } from '../lib/identicon';
   import { likeButtonHTML, createLikeController } from '../lib/likeControl';
-  import { isBundleable, toAtcType } from '../lib/addToCookbookControl';
   const API_BASE = (import.meta as any).env?.PUBLIC_RECIPES_API_BASE || 'https://app.loopskill.io';
   const $ = (id: string) => document.getElementById(id)!;
   const esc = (s: any) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' } as any)[c]);
@@ -83,38 +81,6 @@ import AddToCookbookScript from '../components/AddToCookbookScript.astro';
     return likeButtonHTML(type, item);
   }
 
-  // ── Add-to-bundle picker — spotify_2607 Phase D ─────────────────────────
-  // Mirrors the markup rendered by src/components/AddToCookbook.astro so
-  // AddToCookbookScript.astro's shared wiring (mounted once below) works
-  // identically here. No picker for bundles — deletion pass, see
-  // addToCookbookControl.ts's isBundleable/toAtcType doc comment.
-  function atcPickerHTML(type: ShelfType, item: any): string {
-    if (!isBundleable(type)) return '';
-    const atcType = toAtcType(type)!;
-    const external = atcType === 'skill' ? (item.source || '') : '';
-    return `<div class="atc-wrap relative inline-block" data-atc-root>
-      <button type="button" class="atc-btn inline-flex items-center gap-1 rounded-lg border border-border/70 bg-black/40 backdrop-blur-sm text-white/90 hover:border-accent hover:text-accent transition font-semibold px-2 py-1 text-[11px]"
-        data-atc-slug="${esc(item.slug)}" data-atc-external="${esc(external)}" data-atc-type="${esc(atcType)}"
-        aria-haspopup="true" aria-expanded="false" aria-label="Add ${esc(item.title || item.slug)} to a bundle">
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
-        <span class="atc-label">Add</span>
-      </button>
-      <div class="atc-menu hidden absolute right-0 z-30 mt-1 w-64 rounded-xl border border-border bg-bg-card shadow-xl p-1.5" role="menu">
-        <div class="atc-list flex flex-col gap-0.5 max-h-56 overflow-y-auto"></div>
-        <div class="atc-loading px-3 py-2 text-xs text-muted">Loading your bundles…</div>
-        <div class="atc-signin hidden px-3 py-3 text-xs text-muted"><a href="/signin?next=${esc(location.pathname + location.search)}" class="atc-signin-link text-accent hover:underline font-semibold">Sign in</a> to save.</div>
-        <div class="atc-empty hidden px-3 py-2 text-xs text-muted">No bundles yet — create one below.</div>
-        <div class="atc-cap hidden px-3 py-2 text-xs text-amber-300">Cap reached. <a href="/pricing" class="text-accent hover:underline">Upgrade</a>.</div>
-        <div class="border-t border-border-soft mt-1 pt-1">
-          <form class="atc-new flex items-center gap-1.5 px-1.5 py-1">
-            <input type="text" class="atc-new-name flex-1 rounded-md border border-border-soft bg-bg px-2 py-1 text-xs text-text placeholder:text-muted focus:border-accent focus:outline-none" placeholder="＋ New bundle…" maxlength="80"/>
-            <button type="submit" class="atc-new-btn rounded-md bg-accent text-bg text-xs font-semibold px-2.5 py-1 hover:opacity-90 transition">Add</button>
-          </form>
-        </div>
-      </div>
-    </div>`;
-  }
-
   function cardHTML(type: ShelfType, item: any): string {
     const grad = GRAD[hashIdx(item.slug || item.title || 'x', GRAD.length)];
     const mono = ((item.title || item.slug || 'L').trim()[0] || 'L').toUpperCase();
@@ -129,7 +95,7 @@ import AddToCookbookScript from '../components/AddToCookbookScript.astro';
       <span class="artifact-title">${esc(item.title || item.slug)}</span>
       ${m ? `<span class="artifact-meta">${esc(m)}</span>` : ''}
     </a>`;
-    return `<div class="artifact-slot">${card}${likeButtonHTMLFor(type, item)}${atcPickerHTML(type, item)}</div>`;
+    return `<div class="artifact-slot">${card}${likeButtonHTMLFor(type, item)}</div>`;
   }
   function shelfHTML(title: string, type: ShelfType, items: any[]): string {
     // Council §2: a shelf with zero rows does not render — NOT its header either.
@@ -191,9 +157,6 @@ import AddToCookbookScript from '../components/AddToCookbookScript.astro';
       // survives innerHTML replacement (click handling is delegated, so the
       // buttons stay interactive without rebinding).
       likeControl.refresh();
-      // spotify_2607 Phase D: wire the freshly-rendered add-to-bundle
-      // pickers the same way /skills/external does for its dynamic cards.
-      if (typeof (window as any).__atcWire === 'function') (window as any).__atcWire();
     }
   }
 
@@ -202,5 +165,3 @@ import AddToCookbookScript from '../components/AddToCookbookScript.astro';
   $('home-retry').addEventListener('click', loadShelves);
   loadShelves();
 </script>
-
-<AddToCookbookScript />
