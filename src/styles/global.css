@@ -278,6 +278,19 @@ body {
 .seg-tab[aria-selected="true"] { background: rgba(255,209,102,0.12); color: #ffd166; }
 .seg-tab:hover:not([aria-selected="true"]) { color: #f5f5f5; }
 
+/* Tag-filter chip row (Browse, Loops tab only — feat/loop-tag-filter-ui,
+   atomic-habits 2026-07-29 rank-8). Mirrors .seg-tab visual language (pill,
+   14px h-pad, 999px radius) so it reads as a sibling control, not a new
+   pattern. Wraps instead of horiz-scroll since tag count is small/variable. */
+.tag-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.tag-chip {
+  display: inline-flex; align-items: center; padding: 0 14px; height: 30px; border-radius: 999px;
+  font-size: 12px; font-weight: 600; color: rgba(255,255,255,0.64); background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08); cursor: pointer; transition: all .15s; white-space: nowrap;
+}
+.tag-chip[aria-pressed="true"] { background: rgba(255,209,102,0.12); color: #ffd166; border-color: rgba(255,209,102,0.3); }
+.tag-chip:hover:not([aria-pressed="true"]) { color: #f5f5f5; }
+
 /* Rail active state (council §1) */
 .rail-link { position: relative; }
 .rail-link.rail-active { background: rgba(255,209,102,0.12); color: #ffffff; }
