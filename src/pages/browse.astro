@@ -73,6 +73,7 @@ const API_BASE = import.meta.env.PUBLIC_RECIPES_API_BASE || 'https://app.loopski
     </div>
 
     <div id="browse-loading" class="ls-body text-muted py-12 text-center">Loading…</div>
+    <div id="browse-tag-chips" hidden class="tag-chips mb-6" role="group" aria-label="Filter loops by tag"></div>
     <div id="browse-error" hidden class="ls-body text-muted py-12 text-center">
       Couldn't load results. <button id="browse-retry" type="button" class="text-accent hover:underline">Retry</button>
     </div>
@@ -337,12 +338,14 @@ const API_BASE = import.meta.env.PUBLIC_RECIPES_API_BASE || 'https://app.loopski
     let type = (p.get('type') || 'all').toLowerCase();
     if (!TYPES.includes(type)) type = 'all';
     const q = p.get('q') || '';
-    return { type, q };
+    const tag = (type === 'loops') ? (p.get('tag') || '') : '';
+    return { type, q, tag };
   }
   function pushState(type, q, replace) {
     const p = new URLSearchParams();
     if (type && type !== 'all') p.set('type', type);
     if (q) p.set('q', q);
+    if (type === 'loops' && state.tag) p.set('tag', state.tag);
     const qs = p.toString();
     const url = qs ? `${location.pathname}?${qs}` : location.pathname;
     const fn = replace ? 'replaceState' : 'pushState';
@@ -372,6 +375,7 @@ const API_BASE = import.meta.env.PUBLIC_RECIPES_API_BASE || 'https://app.loopski
     b.addEventListener('click', () => {
       if (state.type === b.dataset.type) return;
       state.type = b.dataset.type;
+      if (state.type !== 'loops') state.tag = '';
       pushState(state.type, state.q);
       syncTabsUI();
       load();
@@ -384,9 +388,21 @@ const API_BASE = import.meta.env.PUBLIC_RECIPES_API_BASE || 'https://app.loopski
     const idx = TYPES.indexOf(state.type);
     const next = e.key === 'ArrowRight' ? (idx + 1) % TYPES.length : (idx - 1 + TYPES.length) % TYPES.length;
     state.type = TYPES[next];
+    if (state.type !== 'loops') state.tag = '';
     pushState(state.type, state.q);
     syncTabsUI();
     tabButtons[next].focus();
+    load();
+  });
+
+  // Tag-chip filter (Loops tab only). Delegated so it survives the
+  // innerHTML re-render each time load() rebuilds the chip row.
+  $('browse-tag-chips').addEventListener('click', (ev) => {
+    const btn = ev.target && ev.target.closest ? ev.target.closest('.tag-chip') : null;
+    if (!btn) return;
+    const tag = btn.dataset.tag || '';
+    state.tag = state.tag === tag ? '' : tag; // click active chip again to clear
+    pushState(state.type, state.q);
     load();
   });
 
@@ -591,6 +607,8 @@ const API_BASE = import.meta.env.PUBLIC_RECIPES_API_BASE || 'https://app.loopski
       : '';
 
     if (state.type === 'all') {
+      hide('browse-tag-chips');
+      $('browse-tag-chips').innerHTML = '';
       if (totalCount === 0) {
         show('browse-empty');
         $('browse-empty').textContent = state.q ? `No results for "${state.q}"` : 'Nothing is available right now.';
@@ -604,23 +622,59 @@ const API_BASE = import.meta.env.PUBLIC_RECIPES_API_BASE || 'https://app.loopski
 
     // Single-type tab → grid of results for that type only.
     const items = byType[state.type] || [];
-    if (!items.length && !federated.length) {
+
+    // feat/loop-tag-filter-ui (atomic-habits 2026-07-29 rank-8): the
+    // Loops tab is the only surface with a `tags` array per item (from
+    // GET /api/composite-loops — see fetchLoopsTabData). The API has
+    // supported ?tag= server-side since ah0723, but browse.astro never
+    // rendered any filter UI, so composite loops were undiscoverable by
+    // tag. Chips are built client-side from whatever loops tab data we
+    // already fetched (no extra API call) and filter `items` in place —
+    // cheap, reversible, no schema/API change.
+    let loopChipItems = items;
+    if (state.type === 'loops') {
+      const tagCounts = new Map();
+      items.forEach((it) => (Array.isArray(it.tags) ? it.tags : []).forEach((t) => {
+        tagCounts.set(t, (tagCounts.get(t) || 0) + 1);
+      }));
+      const chipsEl = $('browse-tag-chips');
+      if (tagCounts.size) {
+        const chips = Array.from(tagCounts.keys()).sort();
+        chipsEl.innerHTML = chips.map((t) => {
+          const on = state.tag === t;
+          return `<button type="button" class="tag-chip" data-tag="${esc(t)}" aria-pressed="${on ? 'true' : 'false'}">${esc(t)} <span class="text-muted-soft">${tagCounts.get(t)}</span></button>`;
+        }).join('');
+        chipsEl.hidden = false;
+        if (state.tag) loopChipItems = items.filter((it) => Array.isArray(it.tags) && it.tags.includes(state.tag));
+      } else {
+        chipsEl.hidden = true;
+        chipsEl.innerHTML = '';
+      }
+    } else {
+      const chipsEl = $('browse-tag-chips');
+      chipsEl.hidden = true;
+      chipsEl.innerHTML = '';
+    }
+
+    if (!loopChipItems.length && !federated.length) {
       show('browse-empty');
       // feat/composite-loops-surface: the Loops empty state explains what a
       // loop actually IS (most visitors have never heard the term) instead of
       // the generic "nothing available" copy.
       if (state.type === 'loops' && !state.q) {
-        $('browse-empty').textContent = 'A loop = schedule + skills + sub-agents + a verifier gate — deployable to your own agent. Nothing is available right now.';
+        $('browse-empty').textContent = state.tag
+          ? `No loops tagged "${state.tag}" right now.`
+          : 'A loop = schedule + skills + sub-agents + a verifier gate — deployable to your own agent. Nothing is available right now.';
       } else {
         $('browse-empty').textContent = state.q ? `No results for "${state.q}"` : 'Nothing is available right now.';
       }
       return;
     }
-    const grid = items.map((it) => artifactCardHTML(state.type, it, 'grid')).join('');
+    const grid = loopChipItems.map((it) => artifactCardHTML(state.type, it, 'grid')).join('');
     const curatedHeader = state.type === 'skills' && federated.length
       ? `<div class="ls-section-header"><h2 class="ls-section-title text-text">LoopSkill catalog <span class="text-xs text-muted-soft font-normal">verified · signed</span></h2></div>`
       : '';
-    results.innerHTML = (items.length ? `${curatedHeader}<div class="artifact-grid">${grid}</div>` : '') + fedGroupHTML;
+    results.innerHTML = (loopChipItems.length ? `${curatedHeader}<div class="artifact-grid">${grid}</div>` : '') + fedGroupHTML;
     refreshLikes();
     if (typeof window.__atcWire === 'function') window.__atcWire();
   }
