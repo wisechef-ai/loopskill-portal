@@ -9,13 +9,25 @@ permissions:
   contents: read
   pull-requests: write
 
+# artifactfree_0730: this workflow builds AND deploys in ONE job, so the
+# concurrency group has to serve two opposed needs:
+#   - branch/PR runs: cancel superseded runs, they're pure CI feedback.
+#   - push-to-main runs: NEVER cancel — a cancelled run can kill the deploy
+#     mid-swap, between `mv dist dist.bak` and `mv dist.incoming dist`, which
+#     leaves the origin with NO dist at all. This was previously guaranteed by
+#     giving the separate `deploy` job its own non-cancellable group; with one
+#     job, it has to be expressed here instead.
 concurrency:
-  group: ci-${{ github.ref }}
-  cancel-in-progress: true
+  group: >-
+    ${{ (github.ref == 'refs/heads/main' && github.event_name == 'push')
+        && 'portal-prod-deploy'
+        || format('ci-{0}', github.ref) }}
+  cancel-in-progress: >-
+    ${{ !(github.ref == 'refs/heads/main' && github.event_name == 'push') }}
 
 jobs:
   build:
-    name: Build (Astro)
+    name: Build (Astro) + deploy on main
     # ponytail_0725: was `wisechef-runner` (an org-level Mac). That runner stopped
     # picking up this repo's jobs — a push-to-main sat queued indefinitely with
     # runner_name:"" while the label resolved to nothing. Combined with the SSH
@@ -23,6 +35,11 @@ jobs:
     # failure on hosts this repo does not own. Both are now the prod host, which
     # already runs Node 22 and is the machine the artifact ships to anyway.
     runs-on: wisechef-hq-portal
+    # Was 15 on the old standalone deploy job; this job now carries build+deploy,
+    # so it needs headroom for npm ci + astro build + vitest on top of the swap.
+    timeout-minutes: 30
+    env:
+      APP_DIR: "/home/wisechef/loopskill-portal"
     steps:
       - uses: actions/checkout@v4
 
@@ -153,29 +170,25 @@ jobs:
           fi
           echo "✓ auth-aware hooks present"
 
-      - name: Upload built site as artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: dist
-          path: dist/
-          retention-days: 7
-
-  deploy:
-    name: Deploy to production (app.loopskill.io)
-    needs: build
-    # Runs ON the production host (wisechef-hq). See "Why no SSH" below.
-    runs-on: wisechef-hq-portal
-    # Push-to-main only. NEVER deploy on pull_request events.
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-    timeout-minutes: 15
-    # Dedicated, non-cancellable group — a fast follow-up push must NOT cancel
-    # a deploy mid-swap (the build job above keeps its own cancellable group).
-    concurrency:
-      group: portal-prod-deploy
-      cancel-in-progress: false
-    env:
-      APP_DIR: "/home/wisechef/loopskill-portal"
-    steps:
+      # ── Deploy (main pushes only) ────────────────────────────────────────
+      # artifactfree_0730: there is NO upload-artifact/download-artifact hop.
+      # `build` and `deploy` used to be two jobs on the SAME self-hosted runner
+      # (`wisechef-hq-portal`, the prod host — there is exactly one runner with
+      # that label), so dist/ was uploaded to GitHub's artifact storage and
+      # immediately downloaded back onto the machine that produced it. That
+      # round-trip existed only to let `deploy` gate on push+main — a condition
+      # an `if:` on each step expresses for free.
+      #
+      # It cost real money and then broke the pipeline: on 2026-07-30T08:54Z the
+      # org Actions storage quota was exhausted (2.96 GB of stale dist artifacts,
+      # 1.27 GB of it on the ARCHIVED recipes-portal) and `upload-artifact` began
+      # failing hard, skipping deploy and blocking every push to main (issue #30).
+      #
+      # Fix per musk-5-step: DELETE the step rather than repair it. dist/ never
+      # leaves this workspace now, so the entire class of failure — quota,
+      # artifact retention, upload flakiness — is deleted, not patched. This
+      # mirrors the SSH-removal precedent below, in this same workflow.
+      #
       # ── Why no SSH (ponytail_0725 — deploy outage post-mortem) ─────────────
       # This job used to run on the `wisechef-runner` (a Mac) and rsync/ssh into
       # prod as wisechef@77.42.92.141. That runner's key was not accepted by the
@@ -185,26 +198,23 @@ jobs:
       # broken — but no portal change reached production for over a week (the
       # like/heart control, PR #98, merged green and never shipped).
       #
-      # Fix (musk-5-step: DELETE the step rather than repair it): this job now
+      # Fix (musk-5-step: DELETE the step rather than repair it): this now
       # runs on a self-hosted runner ON the prod host itself, so the deploy is
       # plain local file moves. No SSH, no keys, no rsync, no third host — the
       # entire class of credential failure is deleted, not patched. This mirrors
       # how loopskill-api already deploys (runs-on: [self-hosted, loopskill-prod]).
-      - name: Download built dist artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: dist
-          path: dist
 
-      - name: Sanity check downloaded dist
+      - name: Sanity check built dist before deploy
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
         run: |
           set -e
-          test -f dist/index.html || { echo "ERR: no index.html in downloaded artifact"; exit 1; }
+          test -f dist/index.html || { echo "ERR: no index.html in built dist"; exit 1; }
           PAGE_COUNT=$(find dist -name "*.html" | wc -l)
-          echo "Downloaded pages: $PAGE_COUNT"
+          echo "Built pages: $PAGE_COUNT"
           test "$PAGE_COUNT" -ge 5 || { echo "ERR: only $PAGE_COUNT pages, expected more"; exit 1; }
 
       - name: Stage build into dist.incoming (local)
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
         # Never write --delete straight onto the live "dist" dir — that serves a
         # half-synced site during transfer. Land in dist.incoming first; the swap
         # step below promotes it atomically.
@@ -216,6 +226,7 @@ jobs:
 
       - name: Atomic swap + backup rotation
         id: swap
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
         run: |
           set -euo pipefail
           cd "${APP_DIR}"
@@ -252,6 +263,7 @@ jobs:
 
       - name: Post-deploy readiness gate (public routes)
         id: verify
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
         run: |
           set -e
           FAIL=0
@@ -296,6 +308,7 @@ jobs:
         #      canary did exactly that and failed a deploy that had in fact
         #      landed correctly (log: "printf: write error: Broken pipe").
         #      Compare strings directly instead — no pipes, no subshell exits.
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
         run: |
           set -euo pipefail
           EXPECTED="${GITHUB_SHA}"
