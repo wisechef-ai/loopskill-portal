@@ -56,6 +56,27 @@ interface CatalogLoop {
   description?: string;
   category?: string;
   run_count?: number;
+  // ah_0730 rank-8: the converting copy shipped onto /api/loops in #135/#153.
+  // llms.txt rendered raw truncated `description` prose instead, throwing away
+  // the hook three REVENUE picks paid to write. Always prefer value_tagline.
+  value_tagline?: string | null;
+  tags?: string[] | null;
+}
+
+// ah_0730 rank-2: composite loops (scheduled, multi-step compositions) were
+// absent from llms.txt entirely — /api/composite-loops was never fetched, so
+// `atomic-habits` and `dreaming` scored ZERO hits in the machine-readable index
+// while sitting in sitemap.xml. Humans could find them; agents could not, which
+// is backwards for a marketplace whose buyers are agents.
+interface CompositeLoop {
+  slug: string;
+  title?: string;
+  description?: string;
+  value_tagline?: string | null;
+  tags?: string[] | null;
+  schedule?: string | null;
+  verifier_slug?: string | null;
+  tier?: string | null;
 }
 
 // Truncate on a word boundary (no mid-word cuts like "Whit…").
@@ -72,7 +93,7 @@ export const GET: APIRoute = async () => {
   // install-based trending is too thin to be representative (only a couple
   // of skills have install traction yet), whereas an empty-query search
   // returns a broad, current catalog slice across categories.
-  const [snapRes, catRes, fedRes, loopsRes] = await Promise.all([
+  const [snapRes, catRes, fedRes, loopsRes, compositeRes] = await Promise.all([
     fetchApi<Snapshot>('/api/marketing/snapshot', { authed: false }),
     fetchApi<{ results?: CatalogSkill[] }>(
       '/api/skills/search?q=&limit=24',
@@ -90,6 +111,13 @@ export const GET: APIRoute = async () => {
     // Loops section in live /api/loops (public, no key); if unreachable at build
     // time the section is simply omitted (honest degradation, never fabricated).
     fetchApi<CatalogLoop[]>('/api/loops', { authed: false }),
+    // ah_0730 rank-2: composite loops are the SCHEDULED, multi-step tier of the
+    // registry (a composition + a verifier + a cadence). Six of last week's
+    // ★feats poured value_tagline / agent_instructions / deploy hints into this
+    // exact surface, yet llms.txt never fetched it. Public, no key; if the fetch
+    // fails at build time the section is omitted entirely (honest degradation,
+    // never a fabricated slug).
+    fetchApi<CompositeLoop[]>('/api/composite-loops', { authed: false }),
   ]);
 
   // Honest degradation: only trust counts we actually fetched. No invented
@@ -197,8 +225,15 @@ LoopSkill is a superset of the public agent-skill ecosystem, not just its curate
   // Grounded in live /api/loops; omitted entirely if the fetch failed.
   const loops = (loopsRes.data ?? []).filter((l: CatalogLoop) => l?.slug);
   const loopLines = loops.map((l) => {
-    const desc = clip(l.description ?? '', 100);
-    return `- \`${l.slug}\` — ${l.title ?? l.slug}${desc ? `: ${desc}` : ''}\n  Run it: \`curl -X POST ${SITE}/api/loops/${l.slug}/run\` (empty body OK; returns \`passed: true/false\`)`;
+    // ah_0730 rank-8: prefer the value_tagline (the deliberately-written
+    // conversion hook) over truncated description prose. Fall back to
+    // description only when the tagline is null, so a loop that predates the
+    // tagline rollout still renders something. Tags are appended so the facets
+    // shipped in portal #28 are machine-discoverable too.
+    const hook = clip(l.value_tagline ?? l.description ?? '', 140);
+    const tags = (l.tags ?? []).filter(Boolean);
+    const tagLine = tags.length ? `\n  Tags: ${tags.join(', ')}` : '';
+    return `- \`${l.slug}\` — ${l.title ?? l.slug}${hook ? `: ${hook}` : ''}${tagLine}\n  Run it: \`curl -X POST ${SITE}/api/loops/${l.slug}/run\` (empty body OK; returns \`passed: true/false\`)`;
   });
   const loopsSection = loopLines.length
     ? `
@@ -209,6 +244,31 @@ Loops are safety-bounded agentic verifiers you can execute directly against the 
 - Loop detail (README + bounds): \`GET ${SITE}/api/loops/{slug}\`
 - Run a loop (returns pass/fail): \`POST ${SITE}/api/loops/{slug}/run\`
 ${loopLines.join('\n')}`
+    : '';
+
+  // ah_0730 rank-2: composite loops — the scheduled, multi-step tier. Each is a
+  // composition (skills + a verifier + a cadence) that DEPLOYS onto a fleet
+  // rather than being POST-run ad hoc, so it gets its own section with the
+  // deploy deep-link instead of the run-it curl. Grounded in live
+  // /api/composite-loops; omitted entirely if that fetch failed.
+  const composites = (compositeRes.data ?? []).filter((l: CompositeLoop) => l?.slug);
+  const compositeLines = composites.map((l) => {
+    const hook = clip(l.value_tagline ?? l.description ?? '', 160);
+    const tags = (l.tags ?? []).filter(Boolean);
+    const tagLine = tags.length ? `\n  Tags: ${tags.join(', ')}` : '';
+    const cadence = l.schedule ? `\n  Cadence: every ${l.schedule}` : '';
+    const verifier = l.verifier_slug ? ` · verified by \`${l.verifier_slug}\`` : '';
+    return `- \`${l.slug}\` — ${l.title ?? l.slug}${hook ? `: ${hook}` : ''}${tagLine}${cadence}${verifier}\n  Deploy it: ${SITE}/loops/view?slug=${l.slug} (or \`POST ${SITE}/api/composite-loops/${l.slug}/deploy\` with a signed-in session and \`{fleet_id, member_id}\`)`;
+  });
+  const compositesSection = compositeLines.length
+    ? `
+
+## Composite loops — scheduled, multi-step (deploy once, runs nightly)
+A composite loop is a *standing* agentic routine: a composition of steps plus its own verifier plus a cadence. You do not POST-run these ad hoc — you deploy one onto an agent in your fleet and it runs on schedule from then on, verifying its own output each cycle. This is the tier that turns a skill catalog into an operating agent.
+- List composite loops (no key): \`GET ${SITE}/api/composite-loops\`
+- Detail (full composition): \`GET ${SITE}/api/composite-loops/{slug}\`
+- Deploy to a fleet agent (session required): \`POST ${SITE}/api/composite-loops/{slug}/deploy\`
+${compositeLines.join('\n')}`
     : '';
 
   const body = `# LoopSkill — the vertical skill marketplace for AI agents
@@ -223,7 +283,7 @@ Or hit the public REST API directly (no key for read/search):
 - Search: \`GET ${SITE}/api/skills/search?q=<query>\`
 - Detail: \`GET ${SITE}/api/skills/{slug}\`
 - Trending: \`GET ${SITE}/api/skills/trending\`
-- Install (returns a signed tarball): \`GET ${SITE}/api/skills/install\`${supersetSection}${loopsSection}
+- Install (returns a signed tarball): \`GET ${SITE}/api/skills/install\`${supersetSection}${loopsSection}${compositesSection}
 
 ## Start free
 ${freeLine}
@@ -238,6 +298,7 @@ ${trendingLines.length ? trendingLines.join('\n') : '- Browse the full catalog a
 ## Key pages
 - Catalog: ${SITE}/skills
 - Runnable loops: ${SITE}/browse?type=loops (API: ${SITE}/api/loops)
+- Composite loops (scheduled): ${SITE}/browse?type=loops (API: ${SITE}/api/composite-loops)
 - Docs (install + MCP wiring): ${SITE}/docs
 - Pricing: ${SITE}/pricing
 - Compatibility (supported agents): ${SITE}/compatibility
