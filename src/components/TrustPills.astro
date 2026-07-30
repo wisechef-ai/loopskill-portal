@@ -19,32 +19,28 @@ interface Props {
   tarball_size_bytes?: number | null;
   last_verified?: string | null;
   install_count?: number | null;
+  unhappy_paths_count?: number | null;
 }
 
-const { quality_score, readme, tarball_size_bytes, last_verified, install_count } = Astro.props;
+const { quality_score, readme, tarball_size_bytes, last_verified, install_count, unhappy_paths_count } = Astro.props;
 
-// Count unhappy_paths entries in the YAML frontmatter (real signal,
-// computed at build, no LLM cost). This is the same field Phase C-content
-// (#101) backfilled and the quality scorer (#102) weights.
-//
-// YAML formatter style varies — some skills indent list items under the
-// parent key (`  - condition:`), others dump them flush-left
-// (`- condition:`). We accept both and count any `^- condition:` or
-// `^[ \t]+- condition:` line after `^unhappy_paths:`.
-let unhappyCount = 0;
-if (readme && typeof readme === 'string') {
+// Count unhappy_paths entries — prefer the server-computed scalar
+// (`unhappy_paths_count` on SkillDetailOut, polish_1805 hotfix) which
+// works even when the readme body is paywalled for anonymous static
+// builds. Fall back to parsing the readme YAML inline for older API
+// responses or for Pro-authed callers who have the body available.
+let unhappyCount = typeof unhappy_paths_count === 'number' ? unhappy_paths_count : 0;
+if (unhappyCount === 0 && readme && typeof readme === 'string') {
   const frontMatch = readme.match(/^---\s*\n([\s\S]*?)\n---\s*\n/);
   if (frontMatch) {
     const yaml = frontMatch[1];
     const upIdx = yaml.search(/^unhappy_paths:\s*$/m);
     if (upIdx >= 0) {
-      // Take everything from `unhappy_paths:` to the next top-level key.
       const tail = yaml.slice(upIdx);
       const stopMatch = tail.slice('unhappy_paths:'.length).match(/^[a-z_][a-z0-9_]*:\s*$/m);
       const block = stopMatch && typeof stopMatch.index === 'number'
         ? tail.slice(0, 'unhappy_paths:'.length + stopMatch.index)
         : tail;
-      // Count entry starts: `- condition:` at any indent level.
       const matches = block.match(/^\s*-\s+condition:/gm);
       unhappyCount = matches ? matches.length : 0;
     }
