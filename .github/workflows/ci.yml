@@ -236,6 +236,28 @@ jobs:
 
           STAMP=$(date -u +%Y%m%d-%H%M%S)
 
+          # artifactfree_0730 (codex adversarial review, item 5): the window
+          # between `mv dist dist.bak` and `mv dist.incoming dist` leaves the
+          # origin with NO dist at all. The inline `if ! mv` below only covers a
+          # FAILED move; it cannot cover the process being KILLED mid-window —
+          # job cancellation, the job timeout, or a runner/host failure all send
+          # a signal that skips straight past it. Concurrency prevents a
+          # superseding run from cancelling us, but not a manual cancel or a
+          # timeout. This trap closes that window: on any exit path (including
+          # TERM/INT/HUP), if `dist` is absent and our backup exists, put it back.
+          #
+          # Deliberately NOT a `set -e` self-trigger: the trap re-checks state
+          # rather than assuming failure, so a clean success path is a no-op.
+          restore_on_abort() {
+            rc=$?
+            if [ ! -d dist ] && [ -d "dist.bak-${STAMP}" ]; then
+              echo "::error::Swap aborted mid-window (rc=${rc}) — restoring dist.bak-${STAMP}"
+              mv "dist.bak-${STAMP}" dist || echo "::error::RESTORE FAILED — origin has no dist, manual intervention required"
+            fi
+            exit "${rc}"
+          }
+          trap restore_on_abort EXIT INT TERM HUP
+
           if [ -d dist ]; then
             mv dist "dist.bak-${STAMP}"
           fi
