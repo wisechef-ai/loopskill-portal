@@ -79,6 +79,24 @@ interface CompositeLoop {
   tier?: string | null;
 }
 
+// ah_0801 rank-8 (REVENUE/CATALOG): personalities were promoted to a
+// first-class installable tier (★feat #144/#145 — "skills, bundles,
+// personalities and loops" / bundles "hold skills + personalities + loops")
+// but llms.txt — the machine-discovery surface every shopping agent reads
+// first — never fetched /api/personalities at all. Grounded in the live,
+// public, no-key endpoint; omitted entirely if the fetch fails, exactly
+// like every other section here (honest degradation, never a fabricated
+// slug). value_tagline/agent_instructions don't exist on this endpoint yet
+// (that's a separate follow-up, tracked as its own candidate) — this ships
+// what the API returns today: title + description + category.
+interface CatalogPersonality {
+  slug: string;
+  title?: string;
+  description?: string;
+  category?: string | null;
+  tier?: string | null;
+}
+
 // Truncate on a word boundary (no mid-word cuts like "Whit…").
 function clip(s: string, max: number): string {
   const flat = (s ?? '').replace(/\s+/g, ' ').trim();
@@ -93,7 +111,7 @@ export const GET: APIRoute = async () => {
   // install-based trending is too thin to be representative (only a couple
   // of skills have install traction yet), whereas an empty-query search
   // returns a broad, current catalog slice across categories.
-  const [snapRes, catRes, fedRes, loopsRes, compositeRes] = await Promise.all([
+  const [snapRes, catRes, fedRes, loopsRes, compositeRes, personalitiesRes] = await Promise.all([
     fetchApi<Snapshot>('/api/marketing/snapshot', { authed: false }),
     fetchApi<{ results?: CatalogSkill[] }>(
       '/api/skills/search?q=&limit=24',
@@ -118,6 +136,9 @@ export const GET: APIRoute = async () => {
     // fails at build time the section is omitted entirely (honest degradation,
     // never a fabricated slug).
     fetchApi<CompositeLoop[]>('/api/composite-loops', { authed: false }),
+    // ah_0801 rank-8: personalities. Public, no key; omitted entirely if the
+    // fetch fails at build time.
+    fetchApi<CatalogPersonality[]>('/api/personalities?limit=100', { authed: false }),
   ]);
 
   // Honest degradation: only trust counts we actually fetched. No invented
@@ -271,6 +292,26 @@ A composite loop is a *standing* agentic routine: a composition of steps plus it
 ${compositeLines.join('\n')}`
     : '';
 
+  // ah_0801 rank-8 (REVENUE/CATALOG): personalities — swap the agent's
+  // operating character (tone, discipline, defaults) without touching its
+  // skill set. Grounded in live /api/personalities; omitted entirely if the
+  // fetch failed.
+  const personalities = (personalitiesRes.data ?? []).filter((p: CatalogPersonality) => p?.slug);
+  const personalityLines = personalities.map((p) => {
+    const hook = clip(p.description ?? '', 140);
+    const cat = p.category ? ` [${p.category}]` : '';
+    return `- \`${p.slug}\` — ${p.title ?? p.slug}${cat}${hook ? `: ${hook}` : ''}\n  Detail: \`GET ${SITE}/api/personalities/${p.slug}\``;
+  });
+  const personalitiesSection = personalityLines.length
+    ? `
+
+## Personalities — swap the agent's operating character
+A personality is a system-prompt + config bundle that changes HOW an agent works (tone, discipline, defaults) without changing WHAT skills it has. Installable standalone or bundled with skills + loops.
+- List personalities (no key): \`GET ${SITE}/api/personalities\`
+- Detail (full system prompt + config): \`GET ${SITE}/api/personalities/{slug}\`
+${personalityLines.join('\n')}`
+    : '';
+
   const body = `# LoopSkill — the vertical skill marketplace for AI agents
 
 > LoopSkill (by WiseChef) is a curated marketplace of ${catalogSizePhrase} for AI coding agents — and a superset of the public agent-skill ecosystem${fedHeadline ? ` (it federates ${fedHeadline} more community skills, so you never need a second hub)` : ''}. Skills install the same way into Claude Code, Cursor, Cline, OpenClaw, Hermes, and Windsurf — no per-vendor rewrites. ${freeIntro}. Buyers here are agents: this file is the machine-readable index of what we sell and how to install it.
@@ -283,7 +324,7 @@ Or hit the public REST API directly (no key for read/search):
 - Search: \`GET ${SITE}/api/skills/search?q=<query>\`
 - Detail: \`GET ${SITE}/api/skills/{slug}\`
 - Trending: \`GET ${SITE}/api/skills/trending\`
-- Install (returns a signed tarball): \`GET ${SITE}/api/skills/install\`${supersetSection}${loopsSection}${compositesSection}
+- Install (returns a signed tarball): \`GET ${SITE}/api/skills/install\`${supersetSection}${loopsSection}${compositesSection}${personalitiesSection}
 
 ## Start free
 ${freeLine}
