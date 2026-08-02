@@ -49,7 +49,7 @@ The backend is FastAPI, reverse-proxied by Caddy. PostgreSQL is the source of tr
 
 **SkillSpector security wall.** All skill content PRs run through NVIDIA SkillSpector (Apache-2.0) in CI — a static scanner with 64 vulnerability patterns across 16 categories (prompt injection, data exfiltration, privilege escalation, supply chain, MCP poisoning, and more). It runs in `--no-llm` static-only mode. Findings are emitted as SARIF to the GitHub Security tab. Advisory by default; one environment variable (`SKILLSPECTOR_BLOCK_ON_HIGH=true`) switches it to a CI blocker. Source: `docs/security/skillspector.md`.
 
-**ed25519 signing.** Every published skill artifact is signed. The Recipes CLI verifies the signature before writing anything to disk. A skill whose signature does not verify is refused, even if it comes from `recipes.wisechef.ai`.
+**ed25519 signing.** Every published skill artifact is signed. The Recipes CLI verifies the signature before writing anything to disk. A skill whose signature does not verify is refused, even if it comes from `app.loopskill.io`.
 
 **Cookbook data model.** A cookbook is a named collection of skills owned by a user (`cookbook_owner` column, `CHECK ck_cookbooks_owner_required` DB constraint enforces NOT NULL). A cookbook can hold:
 - Catalog skills from the public catalog (synced, auto-updated)
@@ -321,9 +321,9 @@ recipes_configure_feedback(
 
 **Three entry points:**
 
-**Evaluate:** Install `super-memory` free at [recipes.wisechef.ai/skills/super-memory](https://recipes.wisechef.ai/skills/super-memory). No account required. Demonstrates the full install UX — allowlist validation, signature verification, agent host handshake — in under 60 seconds.
+**Evaluate:** Install `super-memory` free at [app.loopskill.io/skills/super-memory](https://app.loopskill.io/skills/super-memory). No account required. Demonstrates the full install UX — allowlist validation, signature verification, agent host handshake — in under 60 seconds.
 
-**Subscribe:** Browse the catalog at [/skills](https://recipes.wisechef.ai/skills). Filter by category, tier, and agent host. Pricing at [/pricing](https://recipes.wisechef.ai/pricing). Install docs for Claude Code, Cursor, Cline, OpenClaw, Hermes, and Windsurf at [/docs/install](https://recipes.wisechef.ai/docs/install).
+**Subscribe:** Browse the catalog at [/browse](https://app.loopskill.io/browse?type=skills). Filter by category, tier, and agent host. Pricing at [/pricing](https://app.loopskill.io/pricing). Install docs for Claude Code, Cursor, Cline, OpenClaw, Hermes, and Windsurf at [/docs/install](https://app.loopskill.io/docs/install).
 
 **Tailor and deploy:** Once subscribed (Pro), the tailor loop is live. Use `recipes_tailor` → `recipes_tailor_version` → `recipes_cookbook_attach` → `recipes_cookbook_install`. Configure feedback routing with `recipes_configure_feedback`. Your compounding cookbook starts with the first `recipes_cookbook_attach` call.
 

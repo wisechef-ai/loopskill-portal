@@ -71,8 +71,8 @@ def fetch_categories(base: str, api_key: str | None) -> list[str]:
 
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument("--base", default="https://recipes.wisechef.ai",
-                    help="Recipes API base URL")
+    ap.add_argument("--base", default="https://app.loopskill.io",
+                    help="LoopSkill API base URL")
     ap.add_argument("--api-key", default=os.environ.get("RECIPES_API_KEY"),
                     help="x-api-key header value (env: RECIPES_API_KEY)")
     ap.add_argument("--out", default=None,

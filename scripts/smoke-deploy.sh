@@ -1,18 +1,18 @@
 #!/usr/bin/env bash
-# smoke-deploy.sh — Post-rsync smoke test for recipes.wisechef.ai
+# smoke-deploy.sh — Post-rsync smoke test for app.loopskill.io
 #
 # After deploying, curl the critical aggregator pages to verify they return
 # real content. Catches the case where a bad dist was synced to production.
 #
 # Usage: bash scripts/smoke-deploy.sh [base_url]
-#   base_url defaults to https://recipes.wisechef.ai
+#   base_url defaults to https://app.loopskill.io
 #
 # Run AFTER rsync, BEFORE announcing deploy complete.
 # Exit 0 = site healthy, Exit 1 = ROLL BACK
 
 set -euo pipefail
 
-BASE_URL="${1:-https://recipes.wisechef.ai}"
+BASE_URL="${1:-https://app.loopskill.io}"
 MIN_BYTES=$((5 * 1024))  # 5 KB
 
 CRITICAL_PATHS=(

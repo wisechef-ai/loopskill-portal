@@ -114,12 +114,12 @@ html = f"""<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Recipes — The Integrator Toolchain for AI Agents</title>
+<title>LoopSkill — The Integrator Toolchain for AI Agents</title>
 <style>
   @page {{
     size: A4;
     margin: 2cm 2.5cm;
-    @top-right {{ content: "recipes.wisechef.ai"; font-size: 9px; color: #666; }}
+    @top-right {{ content: "app.loopskill.io"; font-size: 9px; color: #666; }}
     @bottom-center {{ content: counter(page) " / " counter(pages); font-size: 9px; color: #666; }}
 
   }}
@@ -161,14 +161,14 @@ html = f"""<!DOCTYPE html>
 </head>
 <body>
 <div class="cover">
-  <h1>Recipes</h1>
+  <h1>LoopSkill</h1>
   <div class="subtitle">The Integrator Toolchain for AI Agents</div>
   <div class="subtitle" style="font-size:10.5pt; margin-top: 16pt; max-width: 420pt; margin-left: auto; margin-right: auto;">
     Architecture, trust model, economics, and the compounding cookbook.<br>
     DB-as-truth + optional git feedback beats both pure-marketplace and pure-git.
   </div>
   <div class="date">Published: 2026-06-02 | All claims verified against live system</div>
-  <div class="domain">recipes.wisechef.ai</div>
+  <div class="domain">app.loopskill.io</div>
 </div>
 {body_html}
 </body>
