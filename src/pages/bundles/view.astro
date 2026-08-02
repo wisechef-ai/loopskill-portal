@@ -152,7 +152,9 @@ import AppShell from '../../layouts/AppShell.astro';
 
 <script>
   import { shareUrl, privacyWarningMessage } from '../../lib/bundleVisibility';
-  const API_BASE = (import.meta as any).env?.PUBLIC_RECIPES_API_BASE || 'https://app.loopskill.io';
+  import { readMigratedKey } from '../../lib/localStorageMigration';
+  // qa0208-w3: LOOPSKILL env preferred, RECIPES fallback (dual-accept window).
+  const API_BASE = (import.meta as any).env?.PUBLIC_LOOPSKILL_API_BASE || (import.meta as any).env?.PUBLIC_RECIPES_API_BASE || 'https://app.loopskill.io';
   const bundleId = (() => {
     const q = new URLSearchParams(location.search).get('id');
     return q ? q.trim() : '';
@@ -161,7 +163,8 @@ import AppShell from '../../layouts/AppShell.astro';
   const $ = (id: string) => document.getElementById(id)!;
   const show = (id: string) => { $(id).hidden = false; };
   const hide = (id: string) => { $(id).hidden = true; };
-  const apiKey = (() => { try { return localStorage.getItem('recipes_api_key'); } catch { return null; } })();
+  // qa0208-w3: loopskill_api_key primary, migrate-on-read from recipes_api_key.
+  const apiKey = readMigratedKey('loopskill_api_key', 'recipes_api_key');
   function esc(s: any) { return String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'} as any)[c]); }
 
   function fail(state: string, detail?: string) {

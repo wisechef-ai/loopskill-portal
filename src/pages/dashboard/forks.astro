@@ -19,7 +19,8 @@
 
 import AppShell from '../../layouts/AppShell.astro';
 
-const API_BASE = import.meta.env.PUBLIC_RECIPES_API_BASE || "https://app.loopskill.io";
+// qa0208-w3: LOOPSKILL env preferred, RECIPES fallback (dual-accept window).
+const API_BASE = import.meta.env.PUBLIC_LOOPSKILL_API_BASE || import.meta.env.PUBLIC_RECIPES_API_BASE || "https://app.loopskill.io";
 ---
 
 <AppShell title="Your forks — LoopSkill">
@@ -81,7 +82,15 @@ const API_BASE = import.meta.env.PUBLIC_RECIPES_API_BASE || "https://app.loopski
 </AppShell>
 
 <script define:vars={{ API_BASE }}>
-  const apiKey = localStorage.getItem("recipes_api_key");
+  // qa0208-w3: loopskill_api_key primary, migrate-on-read from
+  // recipes_api_key (is:inline via define:vars — no ES module import).
+  const apiKey = (() => {
+    var v = localStorage.getItem("loopskill_api_key");
+    if (v != null) return v;
+    var legacy = localStorage.getItem("recipes_api_key");
+    if (legacy != null) { try { localStorage.setItem("loopskill_api_key", legacy); } catch (e) {} return legacy; }
+    return null;
+  })();
   if (!apiKey) {
     location.href = "/dashboard?reason=no_api_key";
   }

@@ -27,6 +27,17 @@ const SITE = 'https://app.loopskill.io';
 // Caddy 301s land in PR 2). Added /browse and /home, the new canonical
 // destinations. /skills/<slug> detail pages remain indexed via
 // fetchAllSkillSlugs() below — unaffected by this change (council §8 SEO).
+//
+// qa0208-w3 (Portal lane, D6 page-cut policy): /graph, /stats, /vs,
+// /whitepaper, /compatibility, /whats-new were cut (Adam-confirmed
+// 2026-06-12) and are 301'd at Caddy on wisechef-hq — see AGENTS.md
+// "Redirects" section. Never a hard-404, but they must not ship in the
+// sitemap either: crawlers following a sitemap <loc> that immediately
+// 301s is a soft-404 signal. CUT_PATHS is the single source of truth for
+// exclusion — filtered out below rather than removed inline, so a future
+// re-add is a one-line diff and the exclusion is self-documenting.
+const CUT_PATHS = new Set(['/graph', '/stats', '/vs', '/whitepaper', '/compatibility', '/whats-new']);
+
 const STATIC_ROUTES: { path: string; priority: string; changefreq: string }[] = [
   { path: '/', priority: '1.0', changefreq: 'daily' },
   { path: '/home', priority: '0.9', changefreq: 'daily' },
@@ -43,7 +54,7 @@ const STATIC_ROUTES: { path: string; priority: string; changefreq: string }[] = 
   { path: '/publish', priority: '0.5', changefreq: 'monthly' },
   { path: '/security', priority: '0.4', changefreq: 'monthly' },
   { path: '/privacy', priority: '0.3', changefreq: 'monthly' },
-];
+].filter((r) => !CUT_PATHS.has(r.path));
 
 // WIS-949: Walk the full public skill catalog and emit one <loc> per skill
 // detail page.  Uses the same paginated strategy as skills/index.astro so we

@@ -69,7 +69,13 @@ jobs:
 
       - name: Build
         env:
+          # qa0208-w3 (dual-accept rename): RECIPES_API_KEY stays the source
+          # secret (repo secret rename is out of scope for this PR — do NOT
+          # touch repo secrets). Expose it under BOTH env names so src/lib/api.ts's
+          # LOOPSKILL_API_KEY-preferred read finds a value today, and so a
+          # future secret rename to LOOPSKILL_API_KEY is a no-op here.
           RECIPES_API_KEY: ${{ secrets.RECIPES_API_KEY }}
+          LOOPSKILL_API_KEY: ${{ secrets.RECIPES_API_KEY }}
         run: npm run build
 
       - name: Render tests against the built dist (vitest)

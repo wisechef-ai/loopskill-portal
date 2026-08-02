@@ -19,7 +19,7 @@
 
 import AppShell from '../layouts/AppShell.astro';
 
-const API_BASE = import.meta.env.PUBLIC_RECIPES_API_BASE || 'https://app.loopskill.io';
+const API_BASE = import.meta.env.PUBLIC_LOOPSKILL_API_BASE || import.meta.env.PUBLIC_RECIPES_API_BASE || 'https://app.loopskill.io';
 // NOTE: this is a static (SSG) page — Astro.request.url carries no query
 // string at build time, so the AppShell-emitted <link rel="canonical"> is
 // always the bare /browse origin for the file dist/browse/index.html. That

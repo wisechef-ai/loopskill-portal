@@ -77,9 +77,12 @@ import AppShell from '../layouts/AppShell.astro';
 </AppShell>
 
 <script>
+  import { readMigratedKey } from '../lib/localStorageMigration';
   const $ = (id: string) => document.getElementById(id)!;
-  const API_BASE = (import.meta as any).env?.PUBLIC_RECIPES_API_BASE || 'https://app.loopskill.io';
-  const apiKey = (() => { try { return localStorage.getItem('recipes_api_key'); } catch { return null; } })();
+  // qa0208-w3: LOOPSKILL env preferred, RECIPES fallback (dual-accept window).
+  const API_BASE = (import.meta as any).env?.PUBLIC_LOOPSKILL_API_BASE || (import.meta as any).env?.PUBLIC_RECIPES_API_BASE || 'https://app.loopskill.io';
+  // qa0208-w3: loopskill_api_key primary, migrate-on-read from recipes_api_key.
+  const apiKey = readMigratedKey('loopskill_api_key', 'recipes_api_key');
   async function api(path: string, opts: any = {}) {
     const headers: any = Object.assign({}, opts.headers || {});
     if (apiKey) headers['x-api-key'] = apiKey;

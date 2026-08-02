@@ -9,7 +9,8 @@ const isSignup = mode === 'signup';
 // Client-side script below rewrites the OAuth login URLs to carry ?ref=
 // AND shows a "🎟️ Referral code applied" badge when present.
 //
-// Belt + braces: Base.astro already stamps the recipes_ref cookie on any
+// Belt + braces: AppShell.astro already stamps the loopskill_ref cookie
+// (and recipes_ref, dual-write during the deprecation window) on any
 // page load with ?ref=. The OAuth login endpoint reads the cookie too,
 // so attribution survives even if the user lands on a different page first.
 ---
