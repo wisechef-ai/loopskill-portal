@@ -3,14 +3,26 @@
 // Include ONCE near the end of any page that renders the picker. Reads the API
 // base the same way the rest of the portal does (PUBLIC_API_BASE), and uses the
 // livefix_0601 cookie+optional-key auth pattern.
-const API_BASE = import.meta.env.PUBLIC_RECIPES_API_BASE || 'https://app.loopskill.io';
+// qa0208-w3: LOOPSKILL env preferred, RECIPES fallback (dual-accept window).
+const API_BASE = import.meta.env.PUBLIC_LOOPSKILL_API_BASE || import.meta.env.PUBLIC_RECIPES_API_BASE || 'https://app.loopskill.io';
 ---
 <script is:inline define:vars={{ API_BASE }}>
   (function () {
     if (window.__atcInit) return;        // idempotent — only wire once
     window.__atcInit = true;
 
-    const apiKey = (() => { try { return localStorage.getItem('recipes_api_key'); } catch (e) { return null; } })();
+    // qa0208-w3: loopskill_api_key primary, migrate-on-read from
+    // recipes_api_key (is:inline script — no ES module import available,
+    // so the readMigratedKey lib logic is duplicated here inline).
+    const apiKey = (() => {
+      try {
+        var v = localStorage.getItem('loopskill_api_key');
+        if (v != null) return v;
+        var legacy = localStorage.getItem('recipes_api_key');
+        if (legacy != null) { try { localStorage.setItem('loopskill_api_key', legacy); } catch (e) {} return legacy; }
+        return null;
+      } catch (e) { return null; }
+    })();
     function authHeaders(extra) {
       const h = Object.assign({}, extra || {});
       if (apiKey) h['x-api-key'] = apiKey;
@@ -181,7 +193,7 @@ const API_BASE = import.meta.env.PUBLIC_RECIPES_API_BASE || 'https://app.loopski
           body: JSON.stringify({ name: name }),
         });
       } catch (e) { toast('Network error — try again.', 'error'); return; }
-      if (res.status === 401) { toast('Sign in to create a cookbook.', 'error'); return; }
+      if (res.status === 401) { toast('Sign in to create a bundle.', 'error'); return; }
       if (res.status === 403) { toast('Bundle cap reached — upgrade for more.', 'error'); return; }
       if (res.status !== 201 && res.status !== 200) { toast('Could not create bundle (HTTP ' + res.status + ').', 'error'); return; }
       let cb; try { cb = await res.json(); } catch (e) { toast('Malformed response.', 'error'); return; }
@@ -220,7 +232,7 @@ const API_BASE = import.meta.env.PUBLIC_RECIPES_API_BASE || 'https://app.loopski
         item.type = 'button';
         item.className = 'atc-item w-full text-left rounded-md px-3 py-1.5 text-xs text-text hover:bg-accent/10 hover:text-accent transition truncate';
         item.textContent = cb.name || 'Untitled bundle';
-        item.addEventListener('click', function () { addSkill(root, cb.id, cb.name || 'cookbook'); });
+        item.addEventListener('click', function () { addSkill(root, cb.id, cb.name || 'bundle'); });
         list.appendChild(item);
       });
     }

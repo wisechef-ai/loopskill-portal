@@ -113,11 +113,20 @@ const orgSchema = {
       // WIS-660: Detect ?ref=<code> on any page → set referral cookie (30-day TTL).
       // Runs on EVERY AppShell page (member too — harmless, a member clicking a
       // ref link just refreshes the cookie).
+      //
+      // qa0208-w3 (dual-accept rename, portal lane): loopskill_ref is now
+      // primary; recipes_ref is written IN PARALLEL during the deprecation
+      // window so anything still reading the legacy name (server-side or
+      // client-side, ours or a stale cached script) keeps working. The API
+      // reads loopskill_ref first, falls back to recipes_ref — do not drop
+      // the legacy write until the API lane confirms it's safe.
       (function() {
         var p = new URLSearchParams(window.location.search);
         var ref = p.get('ref');
         if (ref && /^[A-Za-z0-9]{4,16}$/.test(ref)) {
-          document.cookie = 'recipes_ref=' + ref + '; Max-Age=2592000; Path=/; SameSite=Lax';
+          var cookieTail = '=' + ref + '; Max-Age=2592000; Path=/; SameSite=Lax';
+          document.cookie = 'loopskill_ref' + cookieTail;
+          document.cookie = 'recipes_ref' + cookieTail;
           var u = new URL(window.location.href);
           u.searchParams.delete('ref');
           window.history.replaceState({}, '', u.toString());

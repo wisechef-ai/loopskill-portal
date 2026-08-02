@@ -278,6 +278,7 @@ import AppShell from '../layouts/AppShell.astro';
 <script>
   import { identiconSVG } from '../lib/identicon';
   import { likeButtonHTML, createLikeController } from '../lib/likeControl';
+  import { readMigratedKey } from '../lib/localStorageMigration';
   // Shared card art helpers (feat/fleet-console-ui): hash gradient + identicon.
   const GRAD_PALETTE: [string, string][] = [
     ['#1fb6c0', '#0d7d77'], ['#a06bff', '#6d28d9'], ['#c084fc', '#7c3aed'],
@@ -467,10 +468,11 @@ import AppShell from '../layouts/AppShell.astro';
                  source?: string; install_path?: string; license?: string;
                  redistributable?: boolean; __community?: boolean };
 
-  const API_BASE = (import.meta as any).env?.PUBLIC_RECIPES_API_BASE || 'https://app.loopskill.io';
+  const API_BASE = (import.meta as any).env?.PUBLIC_LOOPSKILL_API_BASE || (import.meta as any).env?.PUBLIC_RECIPES_API_BASE || 'https://app.loopskill.io';
   const COMMUNITY_SOURCES = 'hermes-hub,skills-sh,well-known,clawhub,lobehub,browse-sh,github-oss';
 
-  const apiKey = (() => { try { return localStorage.getItem('recipes_api_key'); } catch { return null; } })();
+  // qa0208-w3: loopskill_api_key primary, migrate-on-read from recipes_api_key.
+  const apiKey = readMigratedKey('loopskill_api_key', 'recipes_api_key');
   const authHeaders = (extra?: any) => { const h = Object.assign({}, extra || {}); if (apiKey) h['x-api-key'] = apiKey; return h; };
   async function api(path: string, opts: any = {}) {
     return fetch(API_BASE + path, { credentials: 'include', ...opts, headers: authHeaders(opts.headers) });
@@ -637,7 +639,7 @@ import AppShell from '../layouts/AppShell.astro';
     try {
       const r = await api('/api/cookbooks', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ name }) });
       if (r.status === 401) { toast('Sign in to compose.', 'error'); return null; }
-      if (!r.ok) { toast('Could not create cookbook.', 'error'); return null; }
+      if (!r.ok) { toast('Could not create bundle.', 'error'); return null; }
       const cb = await r.json();
       currentCookbookId = cb.id;
       const o = document.createElement('option'); o.value = cb.id; o.textContent = cb.name; o.selected = true; sel.appendChild(o);
@@ -869,7 +871,7 @@ import AppShell from '../layouts/AppShell.astro';
         if (!cb) { fleetToast('Pick a bundle first.', 'error'); return; }
         const r = await api(`/api/fleets/${fid}/subscribe`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ cookbook_id: cb, channel: ch }) });
         if (r.status === 201 || r.status === 200) { fleetToast('Subscribed.'); await loadFleets(); }
-        else if (r.status === 422) { fleetToast('Invalid channel or cookbook.', 'error'); }
+        else if (r.status === 422) { fleetToast('Invalid channel or bundle.', 'error'); }
         else if (r.status === 403) { fleetToast('Not your fleet.', 'error'); }
         else { fleetToast(`Could not subscribe (HTTP ${r.status}).`, 'error'); }
       });
@@ -1004,7 +1006,7 @@ import AppShell from '../layouts/AppShell.astro';
         if (tok) { ($('tok-key') as HTMLElement).textContent = tok; $('tok-reveal').classList.remove('hidden'); }
         deliveryToast('Handoff key minted.');
         loadTokens(cbId, card);
-      } else if (r.status === 403) { deliveryToast('Not your cookbook.', 'error'); }
+      } else if (r.status === 403) { deliveryToast('Not your bundle.', 'error'); }
       else { deliveryToast(`Mint failed (HTTP ${r.status}).`, 'error'); }
     });
 

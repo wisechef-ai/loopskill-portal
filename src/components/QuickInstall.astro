@@ -25,7 +25,7 @@ interface Props {
 }
 const { kind, slug, cookbookId = '', visibility = 'private', ref = 'portal', class: extra = '' } = Astro.props;
 
-const API = import.meta.env.PUBLIC_RECIPES_API_BASE || 'https://app.loopskill.io';
+const API = import.meta.env.PUBLIC_LOOPSKILL_API_BASE || import.meta.env.PUBLIC_RECIPES_API_BASE || 'https://app.loopskill.io';
 const refQ = encodeURIComponent(ref);
 
 // Build the canonical lines for this artifact.
@@ -47,7 +47,7 @@ const urlLabel = kind === 'skill'
   <div class="flex items-center gap-2 px-4 py-2.5 border-b border-border bg-bg-elev">
     <svg width="13" height="13" viewBox="0 0 20 20" fill="none" class="text-accent"><path d="M5 7l5 5 5-5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
     <span class="text-[11px] uppercase tracking-wider text-muted-soft font-semibold">Quick install</span>
-    <span class="ml-auto text-[10px] text-muted-soft font-mono">{kind === 'skill' ? slug : 'cookbook'}</span>
+    <span class="ml-auto text-[10px] text-muted-soft font-mono">{kind === 'skill' ? slug : 'bundle'}</span>
   </div>
 
   <div class="p-4 flex flex-col gap-3">

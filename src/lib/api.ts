@@ -12,11 +12,20 @@
  *   import { fetchApi } from '../lib/api';
  *   const data = await fetchApi<MySkill[]>('/api/skills/search?page_size=200');
  *   if (data.error) { ...fall back... }
+ *
+ * TODO(qa0208-w3): the API is gaining /api/bundles/* aliases for the
+ * existing /api/cookbooks/* routes (loopskill-api lane, parallel PR). Do
+ * NOT switch this portal's fetch calls to the new paths yet — that API PR
+ * may not be merged/deployed when this builds. Every /api/cookbooks/* call
+ * site across src/ (this file, AppShell.astro, library.astro,
+ * AddToCookbookScript.astro, sitemap.xml.ts, bundles/view.astro, etc.)
+ * should move to /api/bundles/* together in a follow-up PR once the API
+ * lane confirms the alias is live in prod.
  */
 
 const API_BASE =
   (typeof import.meta !== 'undefined'
-    ? (import.meta as any).env?.PUBLIC_RECIPES_API_BASE
+    ? (import.meta as any).env?.PUBLIC_LOOPSKILL_API_BASE || (import.meta as any).env?.PUBLIC_RECIPES_API_BASE
     : undefined) || 'https://app.loopskill.io';
 
 export interface ApiResult<T> {
@@ -35,7 +44,7 @@ interface FetchOpts {
   maxDelayMs?: number;
   /** Per-request timeout in ms. Default 12000. */
   timeoutMs?: number;
-  /** Pass an auth header. Default reads RECIPES_API_KEY env var. */
+  /** Pass an auth header. Default reads LOOPSKILL_API_KEY env var, falls back to RECIPES_API_KEY. */
   apiKey?: string | null;
   /** When false, omit the x-api-key header entirely (use for public endpoints). */
   authed?: boolean;
@@ -90,7 +99,7 @@ async function _fetchApiUncached<T>(
     maxDelayMs = 6000,
     timeoutMs = 12000,
     apiKey = (typeof import.meta !== 'undefined'
-      ? (import.meta as any).env?.RECIPES_API_KEY
+      ? (import.meta as any).env?.LOOPSKILL_API_KEY || (import.meta as any).env?.RECIPES_API_KEY
       : undefined) ?? null,
     authed = true,
   } = opts;
