@@ -10,7 +10,7 @@ interface Props {
   source?: string | null; // external registry (clawhub, skills-sh, …) | null = ours
 }
 const { slug, title, category, tier, source } = Astro.props;
-const cat = (category || 'general').toLowerCase();
+const cat = (typeof category === 'string' && category ? category : 'general').toLowerCase();
 const grad_palette: [string, string][] = [
   ['#1fb6c0', '#0d7d77'], // teal
   ['#a06bff', '#6d28d9'], // violet

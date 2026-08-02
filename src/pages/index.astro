@@ -156,7 +156,17 @@ try {
 
 // ─── Public-bundles rail (the shareable playlists) ───────────────────────
 // GET /api/cookbooks/discover is public + ranked by real installs.
-type DiscoverCb = { slug?: string; name?: string; description?: string; skill_count?: number; theme?: string | null };
+// NOTE: `theme` is an OBJECT ({label, accent, icon}) or null on the live API,
+// not a string — SkillCover's `category` prop expects a string it can
+// .toLowerCase(). Passing the raw theme object crashed the prerender build
+// (qa0208 residue-lane build-gate fix). Derive a plain string via theme.icon.
+type DiscoverCb = {
+  slug?: string;
+  name?: string;
+  description?: string;
+  skill_count?: number;
+  theme?: { label?: string; accent?: string; icon?: string } | null;
+};
 let publicCookbooks: DiscoverCb[] = [];
 try {
   const result = await fetchApi<{ cookbooks?: DiscoverCb[]; items?: DiscoverCb[] }>('/api/cookbooks/discover?sort=installs&limit=8');
@@ -205,7 +215,7 @@ const bootcampFallback: BootcampTrackDetail[] = [
     step_count: 5, free_steps: 2, paid_steps: 3,
     steps: [
       { position: 1, slug: 'super-memory', title: 'super-memory', tier: 'free', is_free: true, available: true, why: 'Start here. Full memory stack in one command. Free on-ramp — zero spend on day one.', install_link: '/skills/super-memory?ref=bootcamp-zero-to-agent-step-1' },
-      { position: 2, slug: 'recipes-bundle-reconcile', title: 'recipes-bundle-reconcile', tier: 'free', is_free: true, available: true, why: 'Keep skills evergreen. Auto-updates instead of rotting.', install_link: '/skills/recipes-bundle-reconcile?ref=bootcamp-zero-to-agent-step-2' },
+      { position: 2, slug: 'hyperspace-matrix', title: 'hyperspace-matrix', tier: 'free', is_free: true, available: true, why: 'Discover more skills as your agent needs them. Free on-ramp — search 100k+ indexed capabilities.', install_link: '/skills/hyperspace-matrix?ref=bootcamp-zero-to-agent-step-2' },
       { position: 3, slug: 'cognee', title: 'cognee', tier: 'pro', is_free: false, available: true, why: 'Self-hosted graph retrieval at scale. First Pro skill.', install_link: '/skills/cognee?ref=bootcamp-zero-to-agent-step-3' },
       { position: 4, slug: 'maestro', title: 'maestro', tier: 'pro', is_free: false, available: true, why: 'Morning brief, marketing, code delegation. Turns an agent into an operating loop.', install_link: '/skills/maestro?ref=bootcamp-zero-to-agent-step-4' },
       { position: 5, slug: 'framework-v0', title: 'framework-v0', tier: 'pro', is_free: false, available: true, why: 'One-call bootstrap for the full Maestro stack.', install_link: '/skills/framework-v0?ref=bootcamp-zero-to-agent-step-5' },
@@ -364,7 +374,7 @@ const verticals = [
             <div class="flex gap-3 overflow-x-auto pb-2 -mx-1 px-1 snap-x">
               {publicCookbooks.map(cb => (
                 <a href={`/bundles/p?slug=${cb.slug}`} class="skill-rail-card group shrink-0 w-[140px] sm:w-[160px] snap-start">
-                  <SkillCover slug={cb.slug!} title={cb.name} category={(cb.theme as any) || 'general'} tier="bundle" />
+                  <SkillCover slug={cb.slug!} title={cb.name} category={cb.theme?.icon || cb.theme?.label || 'general'} tier="bundle" />
                   <div class="mt-2 px-0.5">
                     <p class="text-sm font-semibold text-text group-hover:text-accent transition truncate">{cb.name || 'Untitled'}</p>
                     <p class="text-[11px] text-muted-soft truncate">{cb.skill_count != null ? `${cb.skill_count} skill${cb.skill_count === 1 ? '' : 's'}` : 'bundle'}</p>
