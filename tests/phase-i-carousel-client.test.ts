@@ -1,10 +1,10 @@
 /**
- * Phase I — Carousel client-side fetch + docs sweep regression tests.
+ * Phase I — docs sweep regression tests.
  *
- * Part 1: Carousel fetch must be client-side (no build-time await fetchApi for carousel).
- *   - SSR renders a skeleton loader div with data-fetch-url=/api/carousel/today
- *   - A <script> block handles the fetch client-side
- *   - No top-level `await fetchApi('/api/carousel/today')` in the frontmatter
+ * Part 1 (carousel client-side fetch) was removed in autopilot_0308 M0
+ * (hub D-007) along with the carousel section it tested — see
+ * src/pages/index.astro history and tests/pick-1605-carousel.test.ts
+ * (deleted in the same phase).
  *
  * Part 2: Docs pages meet LOC targets and contain required content.
  *
@@ -15,51 +15,8 @@ import { readFileSync, existsSync } from 'fs';
 import { join } from 'path';
 
 const ROOT = join(new URL(import.meta.url).pathname, '../../');
-const INDEX = join(ROOT, 'src/pages/index.astro');
 const DOCS = join(ROOT, 'src/pages/docs');
 const OPS = join(ROOT, 'ops/install-rebuild-timer.sh');
-
-// ---------------------------------------------------------------------------
-// Part 1: Carousel client-side fetch
-// ---------------------------------------------------------------------------
-
-describe('Carousel client-side fetch (Phase I)', () => {
-  const src = readFileSync(INDEX, 'utf-8');
-
-  it('does NOT call await fetchApi for carousel in frontmatter (build-time fetch removed)', () => {
-    // The frontmatter (between the two ---) must not have build-time carousel fetch
-    const frontmatterMatch = src.match(/^---\s*([\s\S]*?)\s*---/m);
-    const frontmatter = frontmatterMatch ? frontmatterMatch[1] : '';
-    expect(frontmatter).not.toMatch(/await fetchApi.*carousel/);
-  });
-
-  it('renders a skeleton loader with data-fetch-url pointing to carousel API', () => {
-    expect(src).toContain('data-fetch-url="/api/carousel/today"');
-  });
-
-  it('has an inline <script> block that fetches carousel client-side', () => {
-    // The script fetches via a URL variable read from data-fetch-url attribute,
-    // then calls fetch(url, ...). Both patterns are valid — check for either.
-    expect(src).toMatch(/fetch\(url|fetch\([^)]*carousel/);
-  });
-
-  it('skeleton loader div has id carousel-strip or carousel-skeleton class', () => {
-    // The skeleton must be identifiable
-    expect(src).toMatch(/carousel-skeleton|carousel-strip/);
-  });
-
-  it('client-side fetch uses cache: "no-store"', () => {
-    expect(src).toContain("cache: 'no-store'");
-  });
-
-  it('still contains normalizeCarouselEntry helper (not removed)', () => {
-    expect(src).toContain('function normalizeCarouselEntry');
-  });
-
-  it('still contains todaysPick computation (not removed)', () => {
-    expect(src).toContain('const todaysPick');
-  });
-});
 
 // ---------------------------------------------------------------------------
 // Part 2: Docs page LOC targets

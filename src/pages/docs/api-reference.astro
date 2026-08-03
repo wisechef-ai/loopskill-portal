@@ -36,18 +36,6 @@ const accessGrantedEx = `{"access": true, "tier": "cook", "slug": "seo-audit-eng
 const accessDeniedEx = `{"access": false, "reason": "tier_required",
  "required_tier": "cook", "upgrade_url": "/pricing"}`;
 
-const carouselResponseEx = `{
-  "date": "2026-05-20",
-  "entries": [
-    {
-      "slot": 1,
-      "skill": {"slug": "super-memory", "title": "Super Memory"},
-      "role": "todays-pick",
-      "tagline": "Durable cross-session memory in 60 seconds",
-      "archives_at": "2026-05-27T05:00:00Z"
-    }
-  ]
-}`;
 
 const apiKeyResponseEx = `{"key": "rec_...", "id": "uuid", "name": "CI server"}`;
 
@@ -68,7 +56,7 @@ const telemetryBodyEx = `{
       <p>Base URL: <code>https://app.loopskill.io/api</code></p>
       <p>
         Auth: <code>x-api-key: rec_xx...</code> header. All install and write endpoints require
-        a valid API key. Read-only endpoints (search, skill detail, carousel) are public.
+        a valid API key. Read-only endpoints (search, skill detail) are public.
       </p>
       <p>Rate limit: 60 req/min per key (burst 10). Exceeding returns <code>429</code> with
       a <code>Retry-After</code> header.</p>
@@ -130,20 +118,6 @@ const telemetryBodyEx = `{
       <p>Public. Returns trending skills by install velocity.</p>
       <pre><code>curl "https://app.loopskill.io/api/skills/trending?period=week&limit=10"</code></pre>
       <p><strong>Query params:</strong> <code>period</code> (week | month), <code>limit</code> (1–50).</p>
-
-      <!-- ────────────────────────────────── CAROUSEL ── -->
-      <h2>Carousel</h2>
-
-      <h3>GET /api/carousel/today</h3>
-      <p>Public. Returns today's 7 active carousel entries (refreshed daily at 05:00 London).</p>
-      <pre><code>curl "https://app.loopskill.io/api/carousel/today"</code></pre>
-      <p><strong>Response 200:</strong></p>
-      <pre><code set:text={carouselResponseEx}></code></pre>
-
-      <h3>GET /api/carousel/&#123;YYYY-MM-DD&#125;</h3>
-      <p>Public. Historical carousel for a specific date. Permalinkable.</p>
-      <pre><code>curl "https://app.loopskill.io/api/carousel/2026-05-01"</code></pre>
-      <p><strong>Errors:</strong> <code>404</code> if no carousel exists for that date.</p>
 
       <!-- ────────────────────────────────── COOKBOOKS ── -->
       <h2>Bundles</h2>

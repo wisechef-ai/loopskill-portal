@@ -156,7 +156,7 @@ loopskill sync`}</code></pre>
         For unattended agents (CI runners, always-on servers), add a sync to your cron or
         systemd timer:
       </p>
-      <pre><code>{`# crontab entry (runs at 05:30 UTC, 30 min after carousel refresh)
+      <pre><code>{`# crontab entry (runs daily at 05:30 UTC)
 30 5 * * * RECIPES_API_KEY=rec_fleet_... loopskill sync >> /var/log/recipes-sync.log 2>&1`}</code></pre>
 
       <h2>Security considerations</h2>
