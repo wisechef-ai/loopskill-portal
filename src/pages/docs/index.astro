@@ -97,11 +97,6 @@ const api = [
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-10">
       {concepts.map(s => (
         <a href={s.href} class="bg-bg-card border border-border rounded-2xl p-5 card-lift block relative">
-          {s.badge && (
-            <span class="absolute top-3 right-3 text-[9px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded-full bg-yellow-500/15 text-yellow-400 border border-yellow-500/30">
-              {s.badge}
-            </span>
-          )}
           <h3 class="text-base font-semibold text-text">{s.title}</h3>
           <p class="text-sm text-muted mt-2 leading-relaxed">{s.body}</p>
           <span class="text-xs text-accent mt-3 inline-flex items-center gap-1">Read →</span>
