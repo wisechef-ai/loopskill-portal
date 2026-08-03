@@ -12,8 +12,8 @@ import AppShell from '../../layouts/AppShell.astro';
     <!-- Phase C gating banner -->
     <div class="bg-yellow-500/10 border border-yellow-500/40 rounded p-4 mb-8">
       <p class="text-sm text-yellow-200">
-        <strong>Coming Q2 2026 with per-bundle API keys and client deployment.</strong>
-        The bundle creation UI and client deployment flow are shipping as part of Phase C.
+        <strong>Per-bundle API keys are live. A bundle is delivered by the agent PULLING it — there is no push, and no client-deployment surface.</strong>
+        The bundle creation UI is live. There is no client-deployment flow: agents converge by polling.
         This page documents the intended feature so you can plan your setup.
         Everything described here is forward-looking and will be updated when Phase C ships.
       </p>
@@ -106,7 +106,7 @@ import AppShell from '../../layouts/AppShell.astro';
 
     <div class="p-6 bg-bg-card border border-border rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
       <div>
-        <p class="text-sm font-semibold text-text">Ready to deploy bundles to clients?</p>
+        <p class="text-sm font-semibold text-text">Ready to declare a bundle for your fleet?</p>
         <p class="text-sm text-muted mt-1">See the deployment walkthrough for a full step-by-step guide.</p>
       </div>
       <a href="/docs/deployment" class="shrink-0 inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold border border-border hover:border-accent text-text transition">
