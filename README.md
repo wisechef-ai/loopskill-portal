@@ -1,43 +1,52 @@
-# Astro Starter Kit: Minimal
+# LoopSkill Portal
+
+The public web frontend for [LoopSkill](https://app.loopskill.io) — a registry
+of vetted, runnable agent loops and skills for AI coding agents (Claude Code,
+Cursor, Cline, and others).
+
+This is a static [Astro](https://astro.build) site. It renders the marketplace
+(skills, bundles, loops), account/billing pages, and docs, and talks to the
+[loopskill-api](https://github.com/wisechef-ai/loopskill-api) backend over a
+public JSON API. It ships no server-side secrets — all API calls are made
+either at static-build time or client-side against public, unauthenticated
+endpoints (auth-gated pages use the visitor's own session cookie).
+
+## Quickstart
 
 ```sh
-npm create astro@latest -- --template minimal
+npm install
+npm run dev       # http://localhost:4321
 ```
 
-> 🧑‍🚀 **Seasoned astronaut?** Delete this file. Have fun!
+By default the site talks to the hosted API at `https://app.loopskill.io`.
+To point it at a local `loopskill-api` instance instead, set:
 
-## 🚀 Project Structure
+```sh
+export PUBLIC_LOOPSKILL_API_BASE=http://localhost:8200
+```
 
-Inside of your Astro project, you'll see the following folders and files:
+## Commands
+
+| Command           | Action                                          |
+| :----------------- | :---------------------------------------------- |
+| `npm install`      | Install dependencies                             |
+| `npm run dev`       | Start the local dev server                       |
+| `npm run build`     | Build the static site to `./dist/`               |
+| `npm run preview`   | Preview the production build locally             |
+| `npm test`          | Run the vitest suite                             |
+
+## Project structure
 
 ```text
-/
-├── public/
-├── src/
-│   └── pages/
-│       └── index.astro
-└── package.json
+src/
+├── components/   # Shared Astro/React components
+├── layouts/       # Page shells (AppShell, etc.)
+├── lib/           # Build-time API client, tier config, small helpers
+├── pages/         # File-based routes (each .astro/.ts is a page or API route)
+└── content/       # Blog posts (Astro content collections)
 ```
 
-Astro looks for `.astro` or `.md` files in the `src/pages/` directory. Each page is exposed as a route based on its file name.
+## License
 
-There's nothing special about `src/components/`, but that's where we like to put any Astro/React/Vue/Svelte/Preact components.
-
-Any static assets, like images, can be placed in the `public/` directory.
-
-## 🧞 Commands
-
-All commands are run from the root of the project, from a terminal:
-
-| Command                   | Action                                           |
-| :------------------------ | :----------------------------------------------- |
-| `npm install`             | Installs dependencies                            |
-| `npm run dev`             | Starts local dev server at `localhost:4321`      |
-| `npm run build`           | Build your production site to `./dist/`          |
-| `npm run preview`         | Preview your build locally, before deploying     |
-| `npm run astro ...`       | Run CLI commands like `astro add`, `astro check` |
-| `npm run astro -- --help` | Get help using the Astro CLI                     |
-
-## 👀 Want to learn more?
-
-Feel free to check [our documentation](https://docs.astro.build) or jump into our [Discord server](https://astro.build/chat).
+MPL-2.0 — see [LICENSE](./LICENSE). See [CONTRIBUTING.md](./CONTRIBUTING.md)
+for how to propose a change.
