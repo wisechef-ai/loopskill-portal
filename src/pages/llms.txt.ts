@@ -264,7 +264,7 @@ ${loopLines.join('\n')}`
     ? `
 
 ## Composite loops — scheduled, multi-step (deploy once, runs nightly)
-A composite loop is a *standing* agentic routine: a composition of steps plus its own verifier plus a cadence. You do not POST-run these ad hoc — you deploy one onto an agent in your fleet and it runs on schedule from then on, verifying its own output each cycle. This is the tier that turns a skill catalog into an operating agent.
+A composite loop is a *standing* agentic routine: a composition of steps plus its own verifier plus a cadence. You do not POST-run these ad hoc — you place a composite loop onto an agent in your fleet and it runs on schedule from then on, verifying its own output each cycle. This is the tier that turns a skill catalog into an operating agent.
 - List composite loops (no key): \`GET ${SITE}/api/composite-loops\`
 - Detail (full composition): \`GET ${SITE}/api/composite-loops/{slug}\`
 - Deploy to a fleet agent (session required): \`POST ${SITE}/api/composite-loops/{slug}/deploy\`
