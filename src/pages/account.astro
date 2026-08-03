@@ -180,7 +180,7 @@ import Icon from '../components/Icon.astro';
           <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div class="flex-1">
               <h2 class="text-lg font-semibold tracking-tight">Want an AI agent that <em>does</em> the work, not just provides recipes?</h2>
-              <p class="text-sm text-muted mt-2">WiseChef's managed AI employee plan — custom pricing. Cook &amp; Operator customers save 40% on the first 3 months.</p>
+              <p class="text-sm text-muted mt-2">WiseChef's managed AI employee plan — custom pricing.</p>
             </div>
             <div class="shrink-0">
               <button id="demo-cta-btn" class="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg bg-accent text-bg text-sm font-semibold hover:bg-accent-soft transition">
@@ -336,7 +336,7 @@ import Icon from '../components/Icon.astro';
       if (isProPlus) {
         const capPhrase = cap !== null ? `up to ${cap} bundles` : 'multiple bundles';
         cookbookSubtitleText.textContent =
-          `You have ${capPhrase} available. Each can be named after a client (e.g. acme-corp-bundle) and deployed to their agent fleet. Use bundle scoping below to map each API key to a client.`;
+          `You have ${capPhrase} available. Each can be named after a client (e.g. acme-corp-bundle) and scoped to that client's bundle, so their agent installs only the skills you chose.`;
         cookbookSubtitle.classList.remove('hidden');
         // Show the Pro+ client-naming hint in the create-key modal
         const proPlusHint = document.getElementById('modal-label-pro-plus-hint');

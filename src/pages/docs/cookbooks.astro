@@ -9,13 +9,13 @@ import AppShell from '../../layouts/AppShell.astro';
   <section class="max-w-3xl mx-auto px-6 pt-16 pb-24">
     <p class="eyebrow mb-3">Docs · Bundles</p>
 
-    <!-- Phase C gating banner -->
-    <div class="bg-yellow-500/10 border border-yellow-500/40 rounded p-4 mb-8">
-      <p class="text-sm text-yellow-200">
-        <strong>Coming Q2 2026 with per-bundle API keys and client deployment.</strong>
-        The bundle creation UI and client deployment flow are shipping as part of Phase C.
-        This page documents the intended feature so you can plan your setup.
-        Everything described here is forward-looking and will be updated when Phase C ships.
+    <!-- What is actually wired, stated up front. LoopSkill is pull-based: the
+         control plane cannot push and cannot execute (hub §1). -->
+    <div class="bg-bg-elev border border-border rounded p-4 mb-8">
+      <p class="text-sm text-muted">
+        <strong class="text-text">LoopSkill never pushes.</strong> An agent converges by
+        polling — on a 30-minute cycle by default. Nothing here reaches out to a machine you
+        do not control, and there is no button that makes a bundle land somewhere now.
       </p>
     </div>
 
@@ -60,16 +60,15 @@ import AppShell from '../../layouts/AppShell.astro';
       the machines where you run agents with your API key.
     </p>
     <p class="text-muted mb-10">
-      <strong class="text-text">Org-scoped bundles</strong> (Pro) belong to your Pro account
-      and can be deployed to agents you operate for clients. Each deployment gets its own
-      bundle-scoped API key so the client's agent can only access the skills you chose —
-      nothing else in your private catalog.
+      <strong class="text-text">Org-scoped bundles</strong> (Pro) belong to your Pro account.
+      Each client agent gets its own bundle-scoped API key, so it can install only the skills
+      you chose — nothing else in your private catalog.
     </p>
 
     <!-- Pre-built catalogs for clients -->
     <h2 class="text-xl font-semibold text-text mb-4">Pre-built catalogs for clients (Pro)</h2>
     <p class="text-muted mb-4">
-      The canonical use case for Pro bundles: you operate AI agents for clients. Instead of
+      The canonical use case for Pro bundles: you run AI agents for clients. Instead of
       manually installing skills on each client's machine, you:
     </p>
     <ol class="flex flex-col gap-3 mb-10 text-sm text-muted list-none">
@@ -91,8 +90,9 @@ import AppShell from '../../layouts/AppShell.astro';
       </li>
     </ol>
     <p class="text-muted mb-10">
-      When you push an update to the bundle — adding a skill, bumping a version — all agents
-      that installed via that key receive the update on their next sync. One push, every client.
+      When you change the bundle — adding a skill, bumping a version — every agent that
+      installed via that key picks the change up on its next poll. You edit one bundle;
+      each agent converges to it on its own schedule.
     </p>
 
     <!-- Whitelabel -->
@@ -106,11 +106,11 @@ import AppShell from '../../layouts/AppShell.astro';
 
     <div class="p-6 bg-bg-card border border-border rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
       <div>
-        <p class="text-sm font-semibold text-text">Ready to deploy bundles to clients?</p>
-        <p class="text-sm text-muted mt-1">See the deployment walkthrough for a full step-by-step guide.</p>
+        <p class="text-sm font-semibold text-text">Want the whole loop, end to end?</p>
+        <p class="text-sm text-muted mt-1">The self-host guide walks a cold clone through fleet, bundle, member and reconcile.</p>
       </div>
-      <a href="/docs/deployment" class="shrink-0 inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold border border-border hover:border-accent text-text transition">
-        Deployment guide →
+      <a href="https://github.com/wisechef-ai/loopskill-api/blob/main/docs/SELF_HOST.md" class="shrink-0 inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold border border-border hover:border-accent text-text transition">
+        Self-host guide →
       </a>
     </div>
   </section>

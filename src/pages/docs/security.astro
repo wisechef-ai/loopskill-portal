@@ -81,13 +81,12 @@ import CrossSell from '../../components/CrossSell.astro';
       <p>Skills are gated by tier. The tier hierarchy (lowest to highest) is:</p>
       <ol>
         <li><strong>free</strong> — available to all API key holders, including free-tier accounts</li>
-        <li><strong>cook</strong> — requires Pro subscription ($9.95/mo)</li>
-        <li><strong>operator</strong> — requires Pro subscription; advanced fleet and deployment features</li>
+        <li><strong>pro</strong> — requires a Pro subscription ($9.95/mo); the full catalog plus fleet sync</li>
       </ol>
       <p>
         The <code>GET /api/skills/access</code> endpoint provides a pre-flight check: pass a
         slug and your key and it returns <code>{"{"}"access": true{"}"}</code> or
-        <code>{"{"}"access": false, "reason": "tier_required", "required_tier": "cook"{"}"}</code>.
+        <code>{"{"}"access": false, "reason": "tier_required", "required_tier": "pro"{"}"}</code>.
         The meta-skill calls this before attempting an install.
       </p>
 

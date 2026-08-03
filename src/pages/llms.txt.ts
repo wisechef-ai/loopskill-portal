@@ -247,7 +247,7 @@ ${loopLines.join('\n')}`
     : '';
 
   // ah_0730 rank-2: composite loops — the scheduled, multi-step tier. Each is a
-  // composition (skills + a verifier + a cadence) that DEPLOYS onto a fleet
+  // composition (skills + a verifier + a cadence) placed onto a fleet member
   // rather than being POST-run ad hoc, so it gets its own section with the
   // deploy deep-link instead of the run-it curl. Grounded in live
   // /api/composite-loops; omitted entirely if that fetch failed.
@@ -263,8 +263,12 @@ ${loopLines.join('\n')}`
   const compositesSection = compositeLines.length
     ? `
 
-## Composite loops — scheduled, multi-step (deploy once, runs nightly)
-A composite loop is a *standing* agentic routine: a composition of steps plus its own verifier plus a cadence. You do not POST-run these ad hoc — you deploy one onto an agent in your fleet and it runs on schedule from then on, verifying its own output each cycle. This is the tier that turns a skill catalog into an operating agent.
+## Composite loops — scheduled, multi-step (deploy once, runs on its cadence)
+A composite loop is a *standing* agentic routine: a composition of steps plus its own verifier plus a cadence. You do not POST-run these ad hoc — you deploy one loop onto an agent in your fleet, and that agent materializes it as a local cron on its next sync.
+
+TWO LIMITS, stated because an agent reading this file will otherwise assume otherwise:
+1. Telemetry is NOT automatic. A run is recorded only if the loop's own prompt calls \`~/.hermes/scripts/loopskill-emit-run.sh\`. Nothing else observes a fire — not the scheduler, not the server. Put that call in the prompt when you declare the loop, or it will run forever and report nothing.
+2. The scheduled path is Hermes-only. Cron materialization writes the Hermes scheduler's \`~/.hermes/cron/jobs.json\`, and nothing else speaks that format yet; the installer refuses Codex/Claude/OpenCode hosts rather than writing a cron that can never converge. Installing SKILLS is cross-vendor; scheduling LOOPS is not.
 - List composite loops (no key): \`GET ${SITE}/api/composite-loops\`
 - Detail (full composition): \`GET ${SITE}/api/composite-loops/{slug}\`
 - Deploy to a fleet agent (session required): \`POST ${SITE}/api/composite-loops/{slug}/deploy\`
