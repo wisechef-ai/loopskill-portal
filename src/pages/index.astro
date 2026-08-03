@@ -8,83 +8,6 @@ import InstallWidget from '../components/InstallWidget.astro';
 import SkillCover from '../components/SkillCover.astro';
 import { fetchApi } from '../lib/api';
 
-// Phase I: Carousel fetch moved to client-side (WIS-2005/I).
-// Build-time fetch caused stale carousel data to be baked into the static HTML —
-// the 04:30 UTC nightly rebuild fires 35 min after the carousel cron (03:55 UTC),
-// so SSR always lagged by ~1 day until the next deploy. Client-side fetch with
-// cache: 'no-store' guarantees visitors always see today's 7 cards.
-//
-// The skeleton strip below is rendered at SSR; the inline <script> tag at the
-// bottom of the carousel section hydrates it on page load.
-const carouselToday: any[] = []; // SSR: always empty — hydrated client-side
-
-// pick_1605: Normalize one carousel entry into a uniform shape for the Today's Pick widget
-// AND the 7-card strip below. Mirrors carousel.astro:15-26 — both legacy
-// ({position, skill_slug, ...}) and typed-v0.4+ ({slot, skill: {slug, title, ...}}, role, tagline)
-// inputs supported. Keep these two in sync; if the carousel API shape changes,
-// update both files.
-function normalizeCarouselEntry(e: any) {
-  const slug: string = e?.skill_slug ?? e?.skill?.slug ?? '';
-  const title: string = e?.skill_title ?? e?.skill?.title ?? '';
-  const description: string = e?.skill_description ?? e?.skill?.description ?? '';
-  // slot is 1-indexed (typed-v0.4+); fall back from legacy position (0-indexed).
-  const slotRaw = typeof e?.slot === 'number' ? e.slot
-    : (typeof e?.position === 'number' ? e.position + 1 : null);
-  const slot: number | null = (typeof slotRaw === 'number' && Number.isFinite(slotRaw)) ? slotRaw : null;
-  const rawTagline: string = (e?.tagline ?? '').toString().trim();
-  // Tagline ladder (pick_1605 Phase B): explicit ≠ title → description[:80] → default.
-  let tagline: string;
-  if (rawTagline && rawTagline !== title) {
-    tagline = rawTagline;
-  } else if (description) {
-    const trimmed = description.slice(0, 80).trimEnd();
-    tagline = description.length > 80 ? `${trimmed}…` : trimmed;
-  } else {
-    tagline = "Today's spotlight from the LoopSkill carousel";
-  }
-  // Role ladder (pick_1605 Phase B): explicit non-empty role → "Today's Pick".
-  const rawRole: string = (e?.role ?? '').toString().trim();
-  const role: string = rawRole || "todays-pick";
-  const isFree: boolean = !!(e?.skill?.is_free);
-  const tier: string = e?.skill?.tier ?? '';
-  const archivesAt: string | null = e?.archives_at ?? null;
-  return { slug, title, description, tagline, role, isFree, tier, slot, archivesAt };
-}
-
-// pick_1605 hotfix (2026-05-16 PM): normalize ALL carousel entries up-front so
-// downstream components (TodaysPickCard at top of hero AND the 7-card strip
-// below "See today's lineup") share one shape. Without this, the strip block
-// rendered "SLOT NaN" + empty titles because the typed-v0.4+ API returns
-// `{slot, skill: {title, ...}}` while the strip read `e.position` / `e.skill_title`.
-const normalizedCarouselToday = carouselToday.map(normalizeCarouselEntry);
-
-// pick_1605: pick slot 1, then fall through to subsequent slots if slot 1 is gated/empty.
-// Premortem #2 mitigation: a gated/private slot 0 entry would lead the hero CTA to a 404.
-// We accept free or pro-tier entries (the public/Pro $20 surface). If none qualify,
-// todaysPick is null and the hero falls back to the hardcoded spotlight grid.
-const todaysPick = (() => {
-  for (const n of normalizedCarouselToday) {
-    if (!n.slug) continue;
-    // Allow free skills and pro-tier skills. 'cook' was a legacy label, normalized to 'pro' since #471 — guard both for backwards compat with any residual API values.
-    if (n.isFree || n.tier === 'pro' || n.tier === 'cook' || n.tier === '') return n;
-  }
-  return null;
-})();
-const todayISO = new Date().toISOString().slice(0, 10);
-// UTM tag for Today's Pick CTA click attribution (atomic-habits 2026-05-17 rank-8).
-// Format: ?ref=pick-today-YYYYMMDD — every click is attributable to the day's pick
-// so /api/marketing/snapshot deltas and Stripe MRR can be tied back to a specific seed.
-const todayUtmDate = todayISO.replace(/-/g, '');
-const roleLabel = (role: string): string => {
-  if (role === 'todays-pick') return "Today's Pick";
-  if (role && role.startsWith('replaces:')) return `Replaces ${role.split(':')[1]}`;
-  const labels: Record<string, string> = {
-    'new-capability': 'New capability',
-    'experimental': 'Experimental',
-  };
-  return labels[role] || "Today's Pick";
-};
-
 // Pull live skill count for the stats strip (retry+jitter; fallback below if API unreachable).
 // CANONICAL NUMBER = 72 = the BROWSABLE catalog (marketing SSOT).
 //   - /api/marketing/snapshot → counts.skills_total = 72  (the marketing source of truth)
@@ -176,8 +99,7 @@ try {
 
 // ─── Agent Bootcamp — live fetch at build time ───────────────────────────────
 // GET /api/bootcamp is PUBLIC (no auth required). We pass authed:false to skip
-// the x-api-key header. Tracks are stable (low churn) so build-time bake is safe;
-// the carousel client-side pattern is only needed for daily-rotating data.
+// the x-api-key header. Tracks are stable (low churn) so build-time bake is safe.
 // 2026-06-07: Bootcamp shipped as PRs #472+#473. Three tracks, each starting on
 // the free on-ramp (super-memory) and crossing free→Pro at a documented step.
 type BootcampTrack = {
@@ -393,39 +315,6 @@ const verticals = [
           <div class="mt-3"><InstallWidget skillCount={liveSkillCount} /></div>
         </details>
 
-        {todaysPick && (
-          <div class="w-full max-w-2xl mt-2" data-testid="todays-pick">
-            <a
-              href={`/skills/${todaysPick.slug}?ref=pick-today-${todayUtmDate}`}
-              class="group block rounded-2xl border border-accent/30 bg-bg-card/60 backdrop-blur-sm p-5 text-left hover:border-accent/60 hover:bg-bg-card/80 transition shadow-lg shadow-accent/5"
-            >
-              <div class="flex items-center justify-between gap-2 mb-2">
-                <span class="text-[10px] font-mono uppercase tracking-wider text-accent inline-flex items-center gap-1.5">
-                  <span class="inline-block w-1.5 h-1.5 rounded-full bg-accent animate-pulse"></span>
-                  Today's Pick · {todayISO}
-                </span>
-                <span class="text-[9px] uppercase tracking-wider text-muted border border-border-soft rounded-full px-2 py-0.5">
-                  {roleLabel(todaysPick.role)}
-                </span>
-              </div>
-              <h3 class="text-xl md:text-2xl font-semibold text-text group-hover:text-accent transition leading-tight">
-                {todaysPick.title}
-              </h3>
-              <p class="text-sm text-muted mt-1.5 leading-relaxed">
-                {todaysPick.tagline}
-              </p>
-              <div class="flex items-center justify-between mt-3 pt-3 border-t border-border-soft">
-                <span class="text-xs text-accent font-semibold inline-flex items-center gap-1.5">
-                  Install this today
-                  <Icon name="arrow-right" size={12} class="group-hover:translate-x-0.5 transition" />
-                </span>
-                <span class="text-[10px] text-muted-soft">
-                  Picks rotate at 05:00 London · <a href="/carousel" class="underline hover:text-accent transition">See all 7</a>
-                </span>
-              </div>
-            </a>
-          </div>
-        )}
 
         <div class="flex flex-col sm:flex-row items-center gap-3 mt-4">
           <a href="/fleets"
@@ -612,110 +501,6 @@ const verticals = [
       "Skill spotlight" section above. Larry's "new" mention lives in
       the spotlight intro now; cookStrip data is unused on the homepage
       but still computed in case we want to surface it elsewhere. */}
-
-  {/* Phase I: Carousel section always rendered — skeleton at SSR, hydrated client-side.
-      data-fetch-url is read by the inline <script> below to do the actual fetch. */}
-  <section class="border-t border-border" id="carousel-section" data-fetch-url="/api/carousel/today">
-    <div class="max-w-6xl mx-auto px-6 py-24">
-      <div class="flex flex-col md:flex-row md:items-end justify-between gap-3 mb-12">
-        <div class="max-w-xl">
-          <p class="eyebrow text-accent">Today's 7</p>
-          <h2 class="text-3xl md:text-5xl font-bold tracking-tight mt-2" style="letter-spacing: -0.03em;">A new skill, every<br/>5 AM London time.</h2>
-          <p class="text-muted mt-3 text-lg">The carousel is how LoopSkill keeps the catalog honest. Each card runs against incumbent skills for 7 days. Telemetry decides what graduates to core.</p>
-        </div>
-        <a href="/carousel" class="text-sm text-accent hover:opacity-80 inline-flex items-center gap-1.5 shrink-0">
-          See today's lineup <Icon name="arrow-right" size={11} />
-        </a>
-      </div>
-      {/* Skeleton loader — replaced by real cards once client-side fetch completes */}
-      <div class="carousel-skeleton grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-2.5" id="carousel-strip">
-        {[1,2,3,4,5,6,7].map(i => (
-          <div class="carousel-strip-card bg-bg-card border border-border rounded-xl p-3 animate-pulse"
-               data-archives-at="">
-            <div class="flex items-center justify-between gap-1 mb-1.5">
-              <span class="text-[9px] font-mono text-muted-soft">SLOT {String(i).padStart(2, '0')}</span>
-              <span class="strip-countdown text-[9px] font-mono text-muted-soft">—</span>
-            </div>
-            <div class="h-3 bg-border rounded w-3/4 mb-1.5"></div>
-            <div class="h-2 bg-border-soft rounded w-full mt-1"></div>
-            <div class="h-2 bg-border-soft rounded w-2/3 mt-1"></div>
-          </div>
-        ))}
-      </div>
-    </div>
-    <script is:inline>
-      (function() {
-        // Phase I: Client-side carousel fetch. cache: 'no-store' ensures every page
-        // load reflects today's 7 cards without waiting for a portal rebuild.
-        var section = document.getElementById('carousel-section');
-        var strip = document.getElementById('carousel-strip');
-        if (!section || !strip) return;
-        var url = section.dataset.fetchUrl;
-        if (!url) return;
-
-        function fmt(sec) {
-          if (sec <= 0) return 'rotating';
-          var d = Math.floor(sec / 86400), h = Math.floor((sec % 86400) / 3600);
-          if (d >= 1) return d + 'd ' + h + 'h';
-          var m = Math.floor((sec % 3600) / 60);
-          return h + 'h ' + m + 'm';
-        }
-
-        function tick() {
-          var now = Date.now();
-          document.querySelectorAll('.carousel-strip-card').forEach(function(c) {
-            var at = c.dataset.archivesAt;
-            if (!at) return;
-            var sec = Math.max(0, Math.floor((new Date(at).getTime() - now) / 1000));
-            var el = c.querySelector('.strip-countdown');
-            if (el) el.textContent = fmt(sec) + ' left';
-          });
-        }
-
-        function normalizeEntry(raw) {
-          var slug = raw.skill_slug || (raw.skill && raw.skill.slug) || '';
-          var title = raw.skill_title || (raw.skill && raw.skill.title) || '';
-          var tagline = raw.tagline || (raw.skill && raw.skill.description) || '';
-          var slotRaw = typeof raw.slot === 'number' ? raw.slot
-            : (typeof raw.position === 'number' ? raw.position + 1 : null);
-          var slot = (typeof slotRaw === 'number' && isFinite(slotRaw)) ? slotRaw : null;
-          return { slug: slug, title: title, tagline: tagline, slot: slot,
-                   archivesAt: raw.archives_at || '' };
-        }
-
-        function renderCards(entries) {
-          var normalized = entries.slice(0, 7).map(normalizeEntry);
-          var html = normalized.map(function(n, i) {
-            var slotNum = n.slot != null ? n.slot : (i + 1);
-            var slotStr = String(slotNum).padStart(2, '0');
-            return '<a href="/skills/' + n.slug + '"'
-              + ' data-archives-at="' + (n.archivesAt || '') + '"'
-              + ' class="carousel-strip-card bg-bg-card border border-border rounded-xl p-3 card-lift block">'
-              + '<div class="flex items-center justify-between gap-1 mb-1.5">'
-              + '<span class="text-[9px] font-mono text-muted-soft">SLOT ' + slotStr + '</span>'
-              + '<span class="strip-countdown text-[9px] font-mono text-muted-soft">—</span>'
-              + '</div>'
-              + '<div class="text-sm font-semibold text-text leading-tight line-clamp-2">' + n.title + '</div>'
-              + (n.tagline ? '<div class="text-[10px] text-muted-soft mt-1 line-clamp-2">' + n.tagline + '</div>' : '')
-              + '</a>';
-          }).join('');
-          strip.innerHTML = html;
-          strip.classList.remove('carousel-skeleton');
-          tick();
-          setInterval(tick, 60000);
-        }
-
-        fetch(url, { cache: 'no-store' })
-          .then(function(r) { return r.ok ? r.json() : null; })
-          .then(function(data) {
-            if (!data) return;
-            var raw = Array.isArray(data) ? data : (data.entries || []);
-            if (raw.length > 0) renderCards(raw);
-          })
-          .catch(function() { /* silently keep skeleton on network error */ });
-      })();
-    </script>
-  </section>
 
   <section class="border-t border-border">
     <div class="max-w-5xl mx-auto px-6 py-20">
