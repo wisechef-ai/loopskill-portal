@@ -273,7 +273,7 @@ ${compositeLines.join('\n')}`
 
   const body = `# LoopSkill — the vertical skill marketplace for AI agents
 
-> LoopSkill (by WiseChef) is a curated marketplace of ${catalogSizePhrase} for AI coding agents — and a superset of the public agent-skill ecosystem${fedHeadline ? ` (it federates ${fedHeadline} more community skills, so you never need a second hub)` : ''}. Skills install the same way into Claude Code, Cursor, Cline, OpenClaw, Hermes, and Windsurf — no per-vendor rewrites. ${freeIntro}. Buyers here are agents: this file is the machine-readable index of what we sell and how to install it.
+> LoopSkill is a curated marketplace of ${catalogSizePhrase} for AI coding agents — and a superset of the public agent-skill ecosystem${fedHeadline ? ` (it federates ${fedHeadline} more community skills, so you never need a second hub)` : ''}. Skills install the same way into Claude Code, Cursor, Cline, OpenClaw, Hermes, and Windsurf — no per-vendor rewrites. ${freeIntro}. Buyers here are agents: this file is the machine-readable index of what we sell and how to install it.
 
 ## How an agent installs a skill
 LoopSkill exposes ${mcpTools.length} dedicated MCP tools (not a generic REST wrapper). Point your agent's MCP client at the LoopSkill server and call:
@@ -306,7 +306,7 @@ ${trendingLines.length ? trendingLines.join('\n') : '- Browse the full catalog a
 - Sitemap: ${SITE}/sitemap.xml
 
 ## About
-LoopSkill is built by WiseChef (${'https://wisechef.ai'}) on a head-chef + line-cooks model: one orchestrating agent delegates to specialist skills. Skills are signed, versioned, and run with no cloud round-trip at execution time.
+LoopSkill runs on a head-chef + line-cooks model: one orchestrating agent delegates to specialist skills. Skills are signed, versioned, and run with no cloud round-trip at execution time.
 `;
 
   return new Response(body, {

@@ -189,11 +189,13 @@ const display = {
   install_count_7d: skill?.install_count_7d ?? 0,
   rating: skill?.rating ?? null,
   version: skill?.latest_version || skill?.version || '0.1.0',
-  // polish_1805 item 4 — author identity. Falls back to a brand name when
-  // creator_name is null. creator_handle + creator_url are populated by the
-  // recipes-api Phase B migration (alembic abc123…); when present they
-  // render as a clickable "by <name> @<handle>" block.
-  author: skill?.creator_name || skill?.author || 'WiseChef',
+  // polish_1805 item 4 — author identity. Falls back to a neutral,
+  // no-attribution label when creator_name is null (D-018 #5: LoopSkill
+  // launches as a standalone product with no WiseChef attribution).
+  // creator_handle + creator_url are populated by the recipes-api Phase B
+  // migration (alembic abc123…); when present they render as a clickable
+  // "by <name> @<handle>" block.
+  author: skill?.creator_name || skill?.author || 'LoopSkill community',
   author_handle: skill?.creator_handle || null,
   author_url: skill?.creator_url || null,
   repo_url: repoUrl,
@@ -316,8 +318,9 @@ const skillSchema = {
           <h1 class="text-3xl md:text-5xl font-bold tracking-tight" style="letter-spacing: -0.03em;">{display.title}</h1>
           {/* polish_1805 item 4 — author identity. Renders as "by <Author>"
               with an optional X/GitHub link when creator_handle / creator_url
-              are populated. Falls back to plain "by WiseChef" for skills the
-              backfill cron hasn't reached yet (no broken state). */}
+              are populated. Falls back to plain "by LoopSkill community" for
+              skills the backfill cron hasn't reached yet (no broken state,
+              no WiseChef attribution — D-018 #5). */}
           <p class="text-xs text-muted-soft inline-flex items-center gap-1.5" data-author-block>
             <span>by</span>
             {display.author_url ? (

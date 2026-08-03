@@ -24,7 +24,7 @@ const layers = [
     title: 'Sandbox runner',
     icon: 'box',
     body: `Before a skill goes live, it runs in an ephemeral container with no outbound network except the explicitly allowlisted domains. The runner records every syscall, every fetch, every disk write, and replays it for a human reviewer. Skills that touch surfaces they didn't declare are rejected.`,
-    proof: 'recipes-api/app/security_scan.py',
+    proof: 'loopskill-api/app/security_scan.py',
   },
   {
     num: '03',
@@ -122,7 +122,7 @@ const guarantees = [
     <p class="text-xs text-muted-soft" data-last-audited>
       Last full audit pass: <time datetime={lastAuditedAt} class="text-text">{lastAuditedAt}</time> ·
       Source on
-      <a href="https://github.com/wisechef-ai/recipes-skill" class="text-accent hover:underline">GitHub</a> ·
+      <a href="https://github.com/wisechef-ai/loopskill-api" class="text-accent hover:underline">GitHub</a> ·
       Apache-2.0 licensed
     </p>
   </section>
