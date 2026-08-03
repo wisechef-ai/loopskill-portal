@@ -227,7 +227,6 @@ import AppShell from '../layouts/AppShell.astro';
     const fi = add('fleet', 'fleet', dash.fleet_name, {
       'Fleet ID': fleet.fleet_id,
       'Total runs': dash.total_runs, 'Accepted changes': dash.total_accepted_changes,
-      'Cost / accepted change': dash.cost_per_accepted_change != null ? '$' + Number(dash.cost_per_accepted_change).toFixed(2) : '—',
       'Total cost': dash.total_cost_usd != null ? '$' + Number(dash.total_cost_usd).toFixed(2) : '—',
     });
 
