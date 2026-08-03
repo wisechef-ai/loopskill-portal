@@ -129,12 +129,11 @@ describe('no claim about a competitor, which no probe can settle', () => {
 describe('tier vocabulary — "operator" is banned, say "fleet owner"', () => {
   it.each(PUBLIC_COPY)('%s uses no operator noun in rendered copy', (page) => {
     const src = read(page);
-    // Strip the legacy-alias plumbing that must keep the literal slug.
-    const copy = src
-      .split('\n')
-      .filter((l) => !/legacy|TIER_RANK|alias/i.test(l))
-      .join('\n');
-    expect(copy).not.toMatch(/\boperators?\b/i);
-    expect(copy).not.toMatch(/\bOperator\b/);
+    // The banned thing is the NOUN a reader sees, not the legacy tier SLUG,
+    // which is still load-bearing in tier maps and equality checks until the
+    // pro_plus migration (D-010) runs. A slug is always followed by `:` (object
+    // key) or wrapped in quotes; prose never is.
+    expect(src).not.toMatch(/\boperators\b/i);
+    expect(src).not.toMatch(/\boperator\b(?!\s*[:'"])/i);
   });
 });
