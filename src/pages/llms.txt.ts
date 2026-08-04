@@ -63,6 +63,25 @@ interface CatalogLoop {
   tags?: string[] | null;
 }
 
+// mesh0408 T1-D — explicit per-type listings for bundles/personalities so the
+// cold-discovery canary can assert every catalog type it covers actually
+// appears in llms.txt (not "where applicable" — an explicit list per type).
+// Grounded in the same public, no-key endpoints the portal's other pages use;
+// omitted entirely (never fabricated) if the build-time fetch fails.
+interface CatalogBundle {
+  slug: string;
+  name?: string;
+  description?: string;
+  skill_count?: number;
+}
+interface CatalogPersonality {
+  slug: string;
+  title?: string;
+  description?: string;
+  category?: string;
+  tier?: string;
+}
+
 // ah_0730 rank-2: composite loops (scheduled, multi-step compositions) were
 // absent from llms.txt entirely — /api/composite-loops was never fetched, so
 // `atomic-habits` and `dreaming` scored ZERO hits in the machine-readable index
@@ -93,7 +112,7 @@ export const GET: APIRoute = async () => {
   // install-based trending is too thin to be representative (only a couple
   // of skills have install traction yet), whereas an empty-query search
   // returns a broad, current catalog slice across categories.
-  const [snapRes, catRes, fedRes, loopsRes, compositeRes] = await Promise.all([
+  const [snapRes, catRes, fedRes, loopsRes, compositeRes, bundlesRes, personalitiesRes] = await Promise.all([
     fetchApi<Snapshot>('/api/marketing/snapshot', { authed: false }),
     fetchApi<{ results?: CatalogSkill[] }>(
       '/api/skills/search?q=&limit=24',
@@ -118,6 +137,10 @@ export const GET: APIRoute = async () => {
     // fails at build time the section is omitted entirely (honest degradation,
     // never a fabricated slug).
     fetchApi<CompositeLoop[]>('/api/composite-loops', { authed: false }),
+    // mesh0408 T1-D: bundles (public cookbooks) — public, no key.
+    fetchApi<{ cookbooks?: CatalogBundle[] }>('/api/cookbooks/discover?limit=24', { authed: false }),
+    // mesh0408 T1-D: personalities — public, no key.
+    fetchApi<CatalogPersonality[]>('/api/personalities', { authed: false }),
   ]);
 
   // Honest degradation: only trust counts we actually fetched. No invented
@@ -271,6 +294,56 @@ A composite loop is a *standing* agentic routine: a composition of steps plus it
 ${compositeLines.join('\n')}`
     : '';
 
+  // mesh0408 T1-D — explicit per-type listing: bundles. Grounded in live
+  // /api/cookbooks/discover (public bundles, no key); omitted entirely if the
+  // fetch failed rather than fabricating slugs.
+  const bundles = (bundlesRes.data?.cookbooks ?? []).filter((b: CatalogBundle) => b?.slug);
+  const bundleLines = bundles.map((b) => {
+    const desc = clip(b.description ?? '', 140);
+    const count = typeof b.skill_count === 'number' ? ` (${b.skill_count} skills)` : '';
+    return `- \`${b.slug}\` — ${b.name ?? b.slug}${count}${desc ? `: ${desc}` : ''}`;
+  });
+  const bundlesSection = bundleLines.length
+    ? `
+
+## Bundles — curated skill collections (install one, get many)
+A bundle groups multiple skills (and connectors) into one install. Bundles are the "playlist" primitive — public bundles are browsable and installable with no key.
+- List public bundles (no key): \`GET ${SITE}/api/cookbooks/discover\`
+- Detail: \`GET ${SITE}/api/cookbooks/public/{slug}\`
+${bundleLines.join('\n')}`
+    : '';
+
+  // mesh0408 T1-D — explicit per-type listing: personalities. Grounded in
+  // live /api/personalities (public, no key); omitted entirely if the fetch
+  // failed rather than fabricating slugs.
+  const personalities = (personalitiesRes.data ?? []).filter((p: CatalogPersonality) => p?.slug);
+  const personalityLines = personalities.map((p) => {
+    const tier = p.tier ? ` [${p.tier}]` : '';
+    const desc = clip(p.description ?? '', 140);
+    return `- \`${p.slug}\` — ${p.title ?? p.slug}${tier}${desc ? `: ${desc}` : ''}`;
+  });
+  const personalitiesSection = personalityLines.length
+    ? `
+
+## Personalities — system-prompt archetypes for your agent
+A personality is a versioned system-prompt archetype (research analyst, focused dev agent, etc.) you can install onto an agent, distinct from a skill (a capability) or a loop (a runnable routine).
+- List public personalities (no key): \`GET ${SITE}/api/personalities\`
+- Detail: \`GET ${SITE}/api/personalities/{slug}\`
+${personalityLines.join('\n')}`
+    : '';
+
+  // mesh0408 T1-D — connectors get an explicit section too, even though the
+  // underlying table can legitimately be empty right now (T1-C, a sister
+  // phase, populates rows). An empty catalog still gets an honest section
+  // naming the endpoints, rather than a silent gap in the machine-readable
+  // manifest.
+  const connectorsSection = `
+
+## Connectors — MCP-server config fragments (deployable to a fleet)
+A connector is a named, versioned MCP-server config template (stdio/http/sse) — literal secrets never transit the server, only \${VAR} env refs. Deployable to fleet members alongside skills and bundles.
+- List public connectors (no key): \`GET ${SITE}/api/connectors\`
+- Detail: \`GET ${SITE}/api/connectors/{slug}\``;
+
   const body = `# LoopSkill — the vertical skill marketplace for AI agents
 
 > LoopSkill is a curated marketplace of ${catalogSizePhrase} for AI coding agents — and a superset of the public agent-skill ecosystem${fedHeadline ? ` (it federates ${fedHeadline} more community skills, so you never need a second hub)` : ''}. Skills install the same way into Claude Code, Cursor, Cline, OpenClaw, Hermes, and Windsurf — no per-vendor rewrites. ${freeIntro}. Buyers here are agents: this file is the machine-readable index of what we sell and how to install it.
@@ -283,7 +356,7 @@ Or hit the public REST API directly (no key for read/search):
 - Search: \`GET ${SITE}/api/skills/search?q=<query>\`
 - Detail: \`GET ${SITE}/api/skills/{slug}\`
 - Trending: \`GET ${SITE}/api/skills/trending\`
-- Install (returns a signed tarball): \`GET ${SITE}/api/skills/install\`${supersetSection}${loopsSection}${compositesSection}
+- Install (returns a signed tarball): \`GET ${SITE}/api/skills/install\`${supersetSection}${loopsSection}${compositesSection}${bundlesSection}${personalitiesSection}${connectorsSection}
 
 ## Start free
 ${freeLine}
