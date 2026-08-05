@@ -339,8 +339,8 @@ ${personalityLines.join('\n')}`
   // manifest.
   const connectorsSection = `
 
-## Connectors — MCP-server config fragments (deployable to a fleet)
-A connector is a named, versioned MCP-server config template (stdio/http/sse) — literal secrets never transit the server, only \${VAR} env refs. Deployable to fleet members alongside skills and bundles.
+## Connectors — MCP-server config fragments
+A connector is a named, versioned MCP-server config template (stdio/http/sse) — literal secrets never transit the server, only \${VAR} env refs. Catalogued alongside skills and bundles.
 - List public connectors (no key): \`GET ${SITE}/api/connectors\`
 - Detail: \`GET ${SITE}/api/connectors/{slug}\``;
 
