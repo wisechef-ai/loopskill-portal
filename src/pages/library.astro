@@ -820,6 +820,7 @@ import AppShell from '../layouts/AppShell.astro';
         <h2 class="text-lg font-semibold tracking-tight truncate">${esc(f.name)}</h2>
         <div class="flex items-center gap-1.5 shrink-0">
           <a href="/fleet-map?fleet=${encodeURIComponent(f.fleet_id)}" class="text-xs px-3 py-1.5 rounded-lg border border-border hover:border-accent text-text transition">Map ▸</a>
+          <a href="/mesh?fleet=${encodeURIComponent(f.fleet_id)}" class="text-xs px-3 py-1.5 rounded-lg border border-border hover:border-accent text-text transition">Mesh ▸</a>
           <button class="fleet-sync text-xs px-3 py-1.5 rounded-lg border border-border hover:border-accent text-text transition" data-fleet="${esc(f.fleet_id)}">Sync ▸</button>
         </div>
       </div>

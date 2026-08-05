@@ -1,0 +1,288 @@
+---
+// /mesh — per-assignment fleet convergence view (mesh0408 T3-B).
+//
+// Backed by GET /api/fleets/{id}/convergence (T1-B\u2032, PR #186). One row per
+// tracked LoopPlacement \u2014 desired vs observed placement epoch, consecutive
+// failures, and convergence age. See app/services/loop_convergence.py for
+// the shape this consumes.
+//
+// THE POINT OF THIS PHASE (plan \u00a73 T3-B.5, codex-flagged): a prior design
+// collapsed every non-green signal into one "offline" bucket, which makes a
+// 401 (you're not signed in) visually identical to a genuinely dead loop and
+// makes an unreachable API look like a down fleet. Four states are rendered
+// with FOUR DISTINCT visual treatments, never collapsed:
+//
+//   unauthorized  \u2014 401/403 fetching convergence. "Sign in" CTA. Never
+//                   implies anything about the fleet itself.
+//   partitioned   \u2014 network failure or 5xx. "We cannot see this fleet
+//                   right now" \u2014 explicitly NOT "the fleet is down".
+//   dead          \u2014 state==="failing" on an assignment. Red, urgent.
+//   stale         \u2014 state==="converged" but convergence_age_seconds
+//                   exceeds STALE_THRESHOLD_SECONDS below.
+//
+// PLUS a fifth, deliberately distinct from "dead": never_attempted \u2014 a loop
+// that has never run is not a broken loop (prod: 3 of the 4 wise-agents-
+// supervision assignments are exactly this, per the T3-C parent probe).
+// Collapsing it into "dead"/"failing" would alarm on every newly-assigned
+// loop. Rendered with its own dashed/neutral treatment.
+//
+// No fleet-picker with free-text fleet_id (acceptance gate: no cross-tenant
+// leak). The fleet select below is populated ONLY from GET /api/fleets \u2014
+// the caller's own authorized fleets \u2014 mirroring fleet-map.astro's pattern
+// exactly. ?fleet= is a deep link into that same authorized set, not an
+// arbitrary lookup.
+import AppShell from '../layouts/AppShell.astro';
+---
+<AppShell title="Mesh — LoopSkill" active="library">
+  <section class="max-w-5xl mx-auto px-6 py-10">
+    <header class="mb-6 flex items-end justify-between gap-4 flex-wrap">
+      <div>
+        <a href="/library?tab=fleets" class="text-xs text-muted hover:text-accent transition inline-flex items-center gap-1.5 mb-2">← Fleets</a>
+        <h1 class="text-2xl font-semibold tracking-tight">Mesh</h1>
+        <p id="mesh-sub" class="text-sm text-muted mt-1">Per-assignment convergence — what's actually running, versus what's desired.</p>
+      </div>
+      <div id="mesh-fleet-picker-wrap" class="hidden">
+        <select id="mesh-fleet-picker" class="px-3 py-2 text-sm bg-bg-elev border border-border rounded-lg text-text focus:outline-none focus:border-accent"></select>
+      </div>
+    </header>
+
+    <!-- Legend — the four-state freshness contract, stated up front. -->
+    <div id="mesh-legend" hidden class="flex flex-wrap items-center gap-x-4 gap-y-1.5 mb-4 text-[11px] text-muted">
+      <span class="inline-flex items-center gap-1.5"><i class="w-2.5 h-2.5 rounded-full inline-block" style="background:#34d399"></i> Converged</span>
+      <span class="inline-flex items-center gap-1.5"><i class="w-2.5 h-2.5 rounded-full inline-block border border-dashed" style="border-color:#38bdf8"></i> Never attempted</span>
+      <span class="inline-flex items-center gap-1.5"><i class="w-2.5 h-2.5 rounded-full inline-block" style="background:#fbbf24"></i> Stale</span>
+      <span class="inline-flex items-center gap-1.5"><i class="w-2.5 h-2.5 rounded-full inline-block" style="background:#f87171"></i> Dead</span>
+    </div>
+
+    <!-- Page-level states -->
+    <div id="mesh-loading" class="text-sm text-muted py-16 text-center">Loading mesh…</div>
+
+    <div id="mesh-empty" hidden class="flex flex-col items-center justify-center gap-3 py-16 rounded-2xl border border-dashed border-border text-center">
+      <span class="text-sm text-text font-medium">No fleets yet.</span>
+      <span class="text-xs text-muted-soft max-w-sm">Enroll a fleet member and subscribe a bundle — this view fills in from real convergence data.</span>
+      <a href="/library?tab=fleets" class="text-xs text-accent hover:opacity-80 mt-1">Go to Fleets</a>
+    </div>
+
+    <!-- unauthorized: 401/403. Never rendered as a broken fleet. -->
+    <div id="mesh-unauthorized" hidden class="flex flex-col items-center justify-center gap-3 py-16 rounded-2xl border border-slate-500/40 bg-slate-500/5 text-center" data-state="unauthorized">
+      <span class="text-2xl" aria-hidden="true">🔒</span>
+      <span class="text-sm text-text font-medium">Sign in to view this fleet's convergence.</span>
+      <span class="text-xs text-muted-soft max-w-sm">Your session isn't authorized for this fleet. This does not mean anything about the fleet's health.</span>
+      <a id="mesh-signin-link" href="/signin?next=/mesh" class="text-xs px-3 py-1.5 rounded-lg bg-accent text-bg font-semibold hover:bg-accent-soft transition mt-1">Sign in</a>
+    </div>
+
+    <!-- partitioned: network failure or 5xx. We cannot SEE the fleet — never implies it's down. -->
+    <div id="mesh-partitioned" hidden class="flex flex-col items-center justify-center gap-3 py-16 rounded-2xl border border-violet-500/40 bg-violet-500/5 text-center" data-state="partitioned">
+      <span class="text-2xl" aria-hidden="true">🌫️</span>
+      <span class="text-sm text-text font-medium">We can't see this fleet right now.</span>
+      <span id="mesh-partitioned-detail" class="text-xs text-muted-soft max-w-sm">The convergence API is unreachable or erroring. This is a visibility gap on our side, not a signal that the fleet itself is unhealthy.</span>
+      <button id="mesh-retry" type="button" class="text-xs px-3 py-1.5 rounded-lg border border-border hover:border-accent text-text transition mt-1">Retry</button>
+    </div>
+
+    <!-- Table -->
+    <div id="mesh-stage" hidden>
+      <div class="flex items-center justify-between gap-3 mb-3 flex-wrap">
+        <h2 id="mesh-fleet-name" class="text-base font-semibold tracking-tight"></h2>
+        <span id="mesh-status-pill" class="text-[11px] uppercase tracking-wide px-2.5 py-1 rounded-full border"></span>
+      </div>
+
+      <!-- Per-fleet empty state: authorized, reachable, zero tracked assignments. Honest, not a spinner. -->
+      <div id="mesh-assignments-empty" hidden class="py-12 text-center rounded-2xl border border-dashed border-border">
+        <p class="text-sm text-text font-medium">No loops assigned to this fleet.</p>
+        <p class="text-xs text-muted-soft mt-1">Nothing to converge yet — assign a loop and it appears here on its own row.</p>
+      </div>
+
+      <div id="mesh-table-wrap" class="bg-bg-card border border-border rounded-2xl overflow-hidden overflow-x-auto">
+        <table class="w-full text-sm" id="mesh-table">
+          <thead>
+            <tr class="text-left text-[11px] uppercase tracking-wide text-muted-soft border-b border-border">
+              <th class="px-4 py-3 font-medium">Loop</th>
+              <th class="px-4 py-3 font-medium">State</th>
+              <th class="px-4 py-3 font-medium">Desired</th>
+              <th class="px-4 py-3 font-medium">Observed</th>
+              <th class="px-4 py-3 font-medium">Failures</th>
+              <th class="px-4 py-3 font-medium">Age</th>
+            </tr>
+          </thead>
+          <tbody id="mesh-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+</AppShell>
+
+<script>
+  const $ = (id: string) => document.getElementById(id)!;
+  const API_BASE = (import.meta as any).env?.PUBLIC_LOOPSKILL_API_BASE || (import.meta as any).env?.PUBLIC_RECIPES_API_BASE || 'https://app.loopskill.io';
+
+  // Same credentialed fetch pattern as library.astro / fleet-map.astro:
+  // cookie-based session via credentials:'include', with an optional
+  // x-api-key header for the localStorage-migrated API key path.
+  function readApiKey(): string | null {
+    try {
+      return localStorage.getItem('loopskill_api_key') || localStorage.getItem('recipes_api_key');
+    } catch { return null; }
+  }
+  const apiKey = readApiKey();
+  function authHeaders(extra?: any) {
+    const h = Object.assign({}, extra || {});
+    if (apiKey) h['x-api-key'] = apiKey;
+    return h;
+  }
+  async function api(path: string, opts: any = {}) {
+    return fetch(API_BASE + path, { credentials: 'include', ...opts, headers: authHeaders(opts.headers) });
+  }
+
+  function esc(s: any) { return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'} as any)[c]); }
+  function show(id: string) { $(id).removeAttribute('hidden'); }
+  function hide(id: string) { $(id).setAttribute('hidden', ''); }
+
+  // No per-loop schedule is returned by /convergence today. A single,
+  // documented threshold stands in for "expected cadence" until the API
+  // exposes one — recorded here rather than guessed silently. 1 hour is
+  // generous against the prod beacon's ~15min cadence (897s observed age)
+  // so a healthy fast loop is never misclassified as stale.
+  const STALE_THRESHOLD_SECONDS = 3600;
+
+  type Assignment = {
+    loop_key: string;
+    state: string; // 'never_attempted' | 'converged' | 'failing' | 'drifting'
+    desired_epoch: number;
+    observed_epoch: number | null;
+    consecutive_failures: number;
+    convergence_age_seconds: number | null;
+  };
+
+  // The four/five-state freshness classification — THE POINT of this phase.
+  // Page-level unauthorized/partitioned are handled by boot()/loadFleet()
+  // before this ever runs; this classifies CONTENT states only.
+  function classify(a: Assignment): { key: string; label: string; badgeClass: string; rowClass: string } {
+    if (a.state === 'never_attempted') {
+      return { key: 'never_attempted', label: 'Never attempted', badgeClass: 'border border-dashed border-sky-400/60 text-sky-300', rowClass: '' };
+    }
+    if (a.state === 'failing') {
+      return { key: 'dead', label: 'Dead', badgeClass: 'bg-red-500/15 border border-red-500/40 text-red-300', rowClass: 'bg-red-500/5' };
+    }
+    if (a.state === 'converged' && typeof a.convergence_age_seconds === 'number' && a.convergence_age_seconds > STALE_THRESHOLD_SECONDS) {
+      return { key: 'stale', label: 'Stale', badgeClass: 'bg-amber-500/15 border border-amber-500/40 text-amber-300', rowClass: 'bg-amber-500/5' };
+    }
+    if (a.state === 'converged') {
+      return { key: 'converged', label: 'Converged', badgeClass: 'bg-emerald-500/15 border border-emerald-500/40 text-emerald-300', rowClass: '' };
+    }
+    // 'drifting' or any future state: distinct neutral treatment, never
+    // silently folded into dead/converged.
+    return { key: a.state || 'unknown', label: a.state || 'unknown', badgeClass: 'border border-border text-muted', rowClass: '' };
+  }
+
+  function fmtAge(seconds: number | null): string {
+    if (seconds == null) return '—';
+    if (seconds < 60) return `${Math.round(seconds)}s`;
+    if (seconds < 3600) return `${Math.round(seconds / 60)}m`;
+    if (seconds < 86400) return `${(seconds / 3600).toFixed(1)}h`;
+    return `${(seconds / 86400).toFixed(1)}d`;
+  }
+
+  function row(a: Assignment): string {
+    const c = classify(a);
+    return `<tr class="border-b border-border-soft last:border-0 ${c.rowClass}" data-loop="${esc(a.loop_key)}" data-freshness="${esc(c.key)}">
+      <td class="px-4 py-3 font-mono text-xs text-text">${esc(a.loop_key)}</td>
+      <td class="px-4 py-3"><span class="text-[10px] uppercase tracking-wide px-2 py-0.5 rounded-full ${c.badgeClass}">${esc(c.label)}</span></td>
+      <td class="px-4 py-3 text-muted">${esc(a.desired_epoch)}</td>
+      <td class="px-4 py-3 text-muted">${a.observed_epoch == null ? '—' : esc(a.observed_epoch)}</td>
+      <td class="px-4 py-3 text-muted">${esc(a.consecutive_failures)}</td>
+      <td class="px-4 py-3 text-muted-soft">${fmtAge(a.convergence_age_seconds)}</td>
+    </tr>`;
+  }
+
+  function renderAssignments(payload: any) {
+    hide('mesh-loading'); hide('mesh-unauthorized'); hide('mesh-partitioned'); hide('mesh-empty');
+    show('mesh-stage'); show('mesh-legend');
+
+    $('mesh-fleet-name').textContent = payload.fleet_name || payload.fleet_id || 'Fleet';
+    const status = payload.status || 'unknown';
+    const pill = $('mesh-status-pill');
+    pill.textContent = status;
+    pill.className = 'text-[11px] uppercase tracking-wide px-2.5 py-1 rounded-full border ' +
+      (status === 'red' ? 'border-red-500/40 text-red-300 bg-red-500/10' : 'border-emerald-500/40 text-emerald-300 bg-emerald-500/10');
+
+    const assignments: Assignment[] = payload.assignments || [];
+    if (!assignments.length) {
+      hide('mesh-table-wrap');
+      show('mesh-assignments-empty');
+      return;
+    }
+    hide('mesh-assignments-empty');
+    show('mesh-table-wrap');
+    $('mesh-tbody').innerHTML = assignments.map(row).join('');
+  }
+
+  function renderUnauthorized() {
+    hide('mesh-loading'); hide('mesh-stage'); hide('mesh-legend'); hide('mesh-partitioned'); hide('mesh-empty');
+    const next = encodeURIComponent(location.pathname + location.search);
+    ($('mesh-signin-link') as HTMLAnchorElement).href = `/signin?next=${next}`;
+    show('mesh-unauthorized');
+  }
+
+  function renderPartitioned(detail?: string) {
+    hide('mesh-loading'); hide('mesh-stage'); hide('mesh-legend'); hide('mesh-unauthorized'); hide('mesh-empty');
+    if (detail) $('mesh-partitioned-detail').textContent = detail;
+    show('mesh-partitioned');
+  }
+
+  let activeFleetId = '';
+
+  async function loadFleet(fleetId: string) {
+    hide('mesh-stage'); hide('mesh-unauthorized'); hide('mesh-partitioned'); hide('mesh-empty');
+    show('mesh-loading');
+    activeFleetId = fleetId;
+
+    let r: Response;
+    try {
+      r = await api(`/api/fleets/${encodeURIComponent(fleetId)}/convergence`);
+    } catch {
+      // Network failure — we cannot see the fleet. Never claim it's down.
+      renderPartitioned('The convergence API is unreachable (network error). This is a visibility gap, not a signal about the fleet.');
+      return;
+    }
+
+    if (r.status === 401 || r.status === 403) { renderUnauthorized(); return; }
+    if (r.status >= 500) { renderPartitioned(`The convergence API returned ${r.status}. This is a visibility gap, not a signal about the fleet.`); return; }
+    if (!r.ok) { renderPartitioned(`Convergence request failed (${r.status}).`); return; }
+
+    let payload: any;
+    try { payload = await r.json(); } catch { renderPartitioned('The convergence API returned an unreadable response.'); return; }
+    renderAssignments(payload);
+  }
+
+  async function boot() {
+    let r: Response;
+    try {
+      r = await api('/api/fleets');
+    } catch { renderPartitioned('The fleet list is unreachable (network error).'); return; }
+    if (r.status === 401 || r.status === 403) { renderUnauthorized(); return; }
+    if (!r.ok) { renderPartitioned(`Fleet list failed (${r.status}).`); return; }
+
+    const data = await r.json();
+    const fleets = data.fleets || [];
+    if (!fleets.length) { hide('mesh-loading'); show('mesh-empty'); return; }
+
+    // Deep link via ?fleet= — resolved ONLY against the caller's own
+    // authorized fleet list, never an arbitrary free-text lookup.
+    const want = new URLSearchParams(location.search).get('fleet');
+    const fleet = fleets.find((f: any) => f.fleet_id === want) || fleets[0];
+
+    if (fleets.length > 1) {
+      const sel = $('mesh-fleet-picker') as HTMLSelectElement;
+      fleets.forEach((f: any) => { const o = document.createElement('option'); o.value = f.fleet_id; o.textContent = f.name; sel.appendChild(o); });
+      sel.value = fleet.fleet_id;
+      sel.addEventListener('change', () => { location.href = '/mesh?fleet=' + encodeURIComponent(sel.value); });
+      $('mesh-fleet-picker-wrap').classList.remove('hidden');
+    }
+
+    await loadFleet(fleet.fleet_id);
+  }
+
+  $('mesh-retry').addEventListener('click', () => { if (activeFleetId) loadFleet(activeFleetId); else boot(); });
+
+  boot();
+</script>
