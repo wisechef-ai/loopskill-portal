@@ -4,6 +4,14 @@ on:
   push:
     branches: [main]
   pull_request:
+  # mesh_0408 T2-B: the portal is a STATIC Astro build and prod serves an
+  # rsynced dist/. A skill published through the API is therefore INVISIBLE on
+  # /skills/<slug> until this workflow runs again — and before this input
+  # existed, the only trigger was a push to main, so the storefront could only
+  # be refreshed by an unrelated portal PR. That made the publish->visible gap
+  # UNBOUNDED. Proven 2026-08-05: buzz-mesh-linux-build was API-200 and
+  # portal-404 with no way to rebuild short of a no-op commit.
+  workflow_dispatch:
 
 permissions:
   contents: read
