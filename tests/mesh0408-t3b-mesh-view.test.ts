@@ -342,4 +342,30 @@ describe('/mesh source contract', () => {
     expect(src).toContain("'never_attempted'");
     expect(src).toContain("a.state === 'failing'");
   });
+
+  // ── parent RED-proof gap (2026-08-05) ──────────────────────────────────
+  // The suite asserted the four states by ELEMENT ID only, so mutating a
+  // block's data-state="..." left every test green. data-state is the
+  // machine-readable contract — a stylesheet, a QA selector, or a screenshot
+  // differ keys on it — so an unguarded attribute can silently drift until
+  // "unauthorized" is styled as "dead". Verified: swapping
+  // data-state="unauthorized" to "dead" passed 20/20 before this test existed.
+  it.runIf(built)('each freshness block carries its OWN data-state (RED-proof gap)', async () => {
+    const { dom } = await renderMesh('ok');
+    const doc = dom.window.document;
+    const expected: Record<string, string> = {
+      'mesh-unauthorized': 'unauthorized',
+      'mesh-partitioned': 'partitioned',
+    };
+    for (const [id, state] of Object.entries(expected)) {
+      const el = doc.getElementById(id);
+      expect(el, `#${id} must exist`).toBeTruthy();
+      expect(el!.getAttribute('data-state'), `#${id} must declare data-state="${state}"`).toBe(state);
+    }
+    // and they must be DISTINCT — collapsing two states is the defect this
+    // phase exists to prevent.
+    const states = Object.keys(expected).map((id) => doc.getElementById(id)!.getAttribute('data-state'));
+    expect(new Set(states).size, 'freshness states must not collapse into one').toBe(states.length);
+  });
+
 });
