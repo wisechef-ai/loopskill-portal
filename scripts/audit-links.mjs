@@ -26,7 +26,7 @@
  */
 
 import { readdirSync, readFileSync, statSync, existsSync } from 'node:fs';
-import { join, dirname, posix, relative } from 'node:path';
+import { join, posix, relative } from 'node:path';
 
 /**
  * Paths a real visitor CAN reach that never appear in dist/, because the
