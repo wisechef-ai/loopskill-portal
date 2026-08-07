@@ -8,7 +8,7 @@
 //
 // Ported logic (verbatim behavior, re-homed):
 //   - Library tab  ← composer.astro (basket, search catalog, visibility,
-//     upgrade wall showUpgradeWall — LIVE POST /api/checkout/pro_plus per
+//     upgrade wall showUpgradeWall — LIVE POST /api/checkout/pro per
 //     AGENTS.md, never a toast) + the former library.astro bundle grid.
 //   - Fleets tab   ← fleets.astro (fleet CRUD, subscribe, sync, key reveal).
 //   - Delivery tab ← cockpit.astro (deliverables, handoff key mint, feedback
@@ -670,12 +670,23 @@ import AppShell from '../layouts/AppShell.astro';
     else { toast(`Could not add (HTTP ${r.status}).`, 'error'); }
   }
 
-  // ── Inline upgrade wall (AGENTS.md: LIVE POST /api/checkout/pro_plus,
-  // NEVER a toast or redirect dead-end — slides INTO the basket pane). ────
+  // ── Inline upgrade wall (AGENTS.md: LIVE checkout POST, NEVER a toast or
+  // redirect dead-end — slides INTO the basket pane). ──────────────────────
+  //
+  // TARGETS `pro`, NOT `pro_plus`. Two reasons, both load-bearing:
+  //  1. D-003 removed Pro+ from the public ladder (`public: false` in the
+  //     server's config/tiers.yaml). Selling a $100/mo tier that /pricing does
+  //     not list — from inside the same app — is the misleading-pricing defect
+  //     Adam flagged on 2026-08-07.
+  //  2. The old copy claimed Pro+ "unlocks client deployment and the private
+  //     org catalog". `bundle_deployments = 0` and the apply/jobs surface
+  //     returns a permanent fake {"status":"applying"} — hub §5 marks
+  //     deploy-to-a-fleet-member as a DO-NOT-SHIP claim. Do not reintroduce it.
+  // Pro is the real public upgrade: $9.95/mo, 50 private bundles (D-004).
   function showUpgradeWall() {
     if (document.getElementById('upgrade-wall')) return;
     const basketList = document.getElementById('basket-list');
-    if (!basketList) { toast('Skill cap reached — upgrade to Pro+.', 'error'); return; }
+    if (!basketList) { toast('Private-bundle cap reached — see /pricing.', 'error'); return; }
     const wall = document.createElement('div');
     wall.id = 'upgrade-wall';
     wall.className = 'mt-2 rounded-xl border border-accent/40 bg-accent/8 p-4 flex flex-col gap-2.5 overflow-hidden';
@@ -683,10 +694,10 @@ import AppShell from '../layouts/AppShell.astro';
     wall.style.opacity = '0';
     wall.style.transition = 'max-height 320ms ease, opacity 280ms ease';
     wall.innerHTML = `
-      <p class="text-xs font-semibold text-text">Bundle is full on your tier.</p>
-      <p class="text-xs text-muted leading-relaxed">Pro+ raises the cap (up to 200 bundles), unlocks client deployment and the private org catalog.</p>
+      <p class="text-xs font-semibold text-text">You've hit the private-bundle cap.</p>
+      <p class="text-xs text-muted leading-relaxed">Pro raises it to 50 private bundles and hosts the registry for you. Public bundles stay unlimited on every tier — including Free.</p>
       <div class="flex items-center gap-2">
-        <button id="upgrade-wall-go" class="px-3 py-1.5 rounded-lg bg-accent text-bg text-xs font-semibold hover:bg-accent-soft transition">Upgrade to Pro+ — $100/mo</button>
+        <button id="upgrade-wall-go" class="px-3 py-1.5 rounded-lg bg-accent text-bg text-xs font-semibold hover:bg-accent-soft transition">Upgrade to Pro — $9.95/mo</button>
         <button id="upgrade-wall-dismiss" class="text-xs text-muted-soft hover:text-text transition">Not now</button>
       </div>`;
     basketList.insertAdjacentElement('afterend', wall);
@@ -699,13 +710,13 @@ import AppShell from '../layouts/AppShell.astro';
       const btn = document.getElementById('upgrade-wall-go') as HTMLButtonElement;
       btn.textContent = 'Loading…'; btn.disabled = true;
       try {
-        const res = await fetch('/api/checkout/pro_plus', {
+        const res = await fetch('/api/checkout/pro', {
           method: 'POST', credentials: 'include',
           headers: { 'Content-Type': 'application/json' }, body: '{}',
         });
         if (res.ok) { const d = await res.json(); window.location.href = d.url; return; }
       } catch { /* fall through */ }
-      btn.textContent = 'Upgrade to Pro+ — $100/mo'; btn.disabled = false;
+      btn.textContent = 'Upgrade to Pro — $9.95/mo'; btn.disabled = false;
       toast('Checkout unavailable — try again or use /pricing.', 'error');
     });
   }

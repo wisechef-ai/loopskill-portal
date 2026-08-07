@@ -1,0 +1,175 @@
+---
+import AppShell from '../../layouts/AppShell.astro';
+
+// What LoopSkill does and does not do — the honest-scope page.
+//
+// WHY THIS PAGE EXISTS. Adam, 2026-08-07: the customer-facing site needed
+// reworking because "the pricing is misleading, and documentation so the
+// potential user knows what to expect". A marketplace that oversells its
+// capabilities buys one signup and loses the user permanently on day two.
+//
+// THE RULE FOR EDITING THIS PAGE: every row below must be backed by something
+// you can RUN. If a capability's evidence is a plan, a PR, or an intention, it
+// belongs in "Not built" — not in "Works today". When you ship something, move
+// the row AND name the probe that proves it. Never soften a "Not built" row
+// into a hedge; a hedge is still a claim.
+//
+// Evidence for the current state was verified live on 2026-08-07.
+
+const works = [
+  {
+    title: 'Browse and install skills from any agent',
+    body: 'Search the public catalog and install a skill into Claude Code, Codex, Cursor, OpenClaw, Hermes, or anything else that speaks MCP. Installation is a pull: your agent fetches the skill. Nothing is pushed to your machine.',
+    proof: '223 recorded installs in production.',
+  },
+  {
+    title: 'Run a loop and get an objective pass/fail',
+    body: 'A loop executes under enforced bounds and returns a real exit code and duration — not a model\'s opinion that it went well. This is the part no other skill marketplace does.',
+    proof: 'Live: run_id, passed, exit_code, duration_seconds returned per run.',
+  },
+  {
+    title: 'Keep separate clients cryptographically isolated',
+    body: 'Each client is its own organisation. A credential minted for one org is rejected against another, and the org is derived from the signature — never from a field in the request. So a misconfigured request cannot cross the boundary; it fails.',
+    proof: 'Cross-org calls return 403 cross_tenant_rejected in both directions.',
+  },
+  {
+    title: 'Route a client agent\'s defect into your private repo',
+    body: 'When an agent you operate hits a problem with a skill from your bundle, the report lands as an issue in a private repository you control — not in a public tracker, and not in your inbox.',
+    proof: 'Round trip proven end to end; the sink is confirmed private by an anonymous request returning 404.',
+  },
+  {
+    title: 'Self-host the whole thing',
+    body: 'MPL-2.0. Clone it, docker compose up, and you have the registry, the runner and the catalog on your own hardware. Nothing phones home. Pro is hosting convenience, never a feature gate.',
+    proof: 'Cold clone verified: healthy container, seeded catalog, README demo runs verbatim.',
+  },
+];
+
+const partial = [
+  {
+    title: 'Fleet convergence reporting',
+    body: 'You can see which loop assignments have converged, which are failing, and which have never run. What it does NOT yet do is age a never-run assignment into an alarm — a loop assigned and never fired looks healthy at the top level.',
+  },
+  {
+    title: 'Connector catalog',
+    body: 'Thousands of MCP servers are staged behind a review gate. The public catalog is deliberately empty until a human promotes an entry, so you will not find them by searching yet. Staging is not publishing.',
+  },
+];
+
+const notBuilt = [
+  {
+    title: 'Pushing a bundle to a machine',
+    body: 'LoopSkill never initiates a connection to your agent or your client\'s agent. Delivery is pull-only: the agent reconciles itself against the bundle. If you read "deploy to a client" anywhere and understood it as a push, that is not what happens.',
+  },
+  {
+    title: 'A hosted dashboard for your clients',
+    body: 'There is no client-facing login, seat, or portal. LoopSkill is a tool for the operator; your clients never touch it. That is a deliberate design decision, not a gap we are racing to close.',
+  },
+  {
+    title: 'Usage-based or per-agent billing',
+    body: 'Pricing is a flat subscription. We do not meter agents, runs, or seats, and we have no plans to — skills are plain text and metering them would be theatre.',
+  },
+];
+---
+
+<AppShell
+  mode="public"
+  title="What LoopSkill does & does not do — LoopSkill Docs"
+  description="An honest scope page: what is proven and running today, what is partial, and what is not built. Read this before planning around a capability."
+>
+  <div class="max-w-3xl mx-auto px-6 py-16 md:py-20">
+    <p class="eyebrow text-accent mb-3">Documentation</p>
+    <h1 class="text-4xl md:text-5xl font-semibold tracking-tight mb-5">
+      What LoopSkill does — and what it doesn't
+    </h1>
+    <p class="text-lg text-muted leading-relaxed mb-4">
+      Most tools tell you what they will eventually do. This page tells you what
+      runs today, so you can decide in five minutes whether LoopSkill fits — and
+      leave without wasting an afternoon if it doesn't.
+    </p>
+    <p class="text-sm text-muted-soft leading-relaxed mb-12">
+      Every claim in the first section is backed by something we can run on
+      demand. Anything we cannot demonstrate is in the last section, stated
+      plainly rather than described as coming soon.
+    </p>
+
+    <section class="mb-14">
+      <h2 class="text-xl font-semibold text-text mb-1">Works today</h2>
+      <p class="text-sm text-muted-soft mb-6">Verified 2026-08-07.</p>
+      <div class="flex flex-col gap-5">
+        {works.map(item => (
+          <div class="rounded-xl border border-border bg-bg-card p-5">
+            <div class="flex items-start gap-2.5">
+              <span class="text-accent mt-0.5 shrink-0" aria-hidden="true">✓</span>
+              <div>
+                <h3 class="font-semibold text-text mb-1.5">{item.title}</h3>
+                <p class="text-sm text-muted leading-relaxed">{item.body}</p>
+                <p class="text-xs text-muted-soft mt-2.5 font-mono">{item.proof}</p>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </section>
+
+    <section class="mb-14">
+      <h2 class="text-xl font-semibold text-text mb-1">Partially built</h2>
+      <p class="text-sm text-muted-soft mb-6">
+        Real, in production, and honestly incomplete. Plan around the limits, not the label.
+      </p>
+      <div class="flex flex-col gap-5">
+        {partial.map(item => (
+          <div class="rounded-xl border border-border bg-bg-card p-5">
+            <div class="flex items-start gap-2.5">
+              <span class="text-muted mt-0.5 shrink-0 text-xs" aria-hidden="true">◑</span>
+              <div>
+                <h3 class="font-semibold text-text mb-1.5">{item.title}</h3>
+                <p class="text-sm text-muted leading-relaxed">{item.body}</p>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </section>
+
+    <section class="mb-14">
+      <h2 class="text-xl font-semibold text-text mb-1">Not built</h2>
+      <p class="text-sm text-muted-soft mb-6">
+        If your plan depends on one of these, LoopSkill is not the right tool today.
+      </p>
+      <div class="flex flex-col gap-5">
+        {notBuilt.map(item => (
+          <div class="rounded-xl border border-border bg-bg-card p-5">
+            <div class="flex items-start gap-2.5">
+              <span class="text-muted-soft mt-0.5 shrink-0" aria-hidden="true">✕</span>
+              <div>
+                <h3 class="font-semibold text-text mb-1.5">{item.title}</h3>
+                <p class="text-sm text-muted leading-relaxed">{item.body}</p>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </section>
+
+    <section class="rounded-xl border border-accent/30 bg-accent/5 p-6">
+      <h2 class="text-lg font-semibold text-text mb-2">Who this is for</h2>
+      <p class="text-sm text-muted leading-relaxed mb-3">
+        People who run AI agents for more than one client — independent
+        consultants and small shops. Every agent framework assumes one operator
+        and one environment; if you have five clients, you have five sets of
+        credentials, five configurations, and no way to keep them from touching
+        each other. That is the gap LoopSkill fills.
+      </p>
+      <p class="text-sm text-muted leading-relaxed">
+        If you run agents for exactly one organisation — your own — you probably
+        do not need the isolation, and the free self-host will serve you fine.
+        We would rather tell you that now than take $9.95 a month for it.
+      </p>
+    </section>
+
+    <p class="text-xs text-muted-soft mt-10">
+      Something here inaccurate? That is a defect, not a nitpick — tell us and we
+      will correct it. Last reviewed 2026-08-07.
+    </p>
+  </div>
+</AppShell>
