@@ -36,6 +36,21 @@ concurrency:
 jobs:
   build:
     name: Build (Astro) + deploy on main
+    # mesh0408e2e (D-018 public-release audit, W3 §D4): this job runs on a
+    # SELF-HOSTED runner that lives on the production host. Once this repo is
+    # public, a pull_request from a FORK would otherwise execute attacker-
+    # authored code there — the standard GitHub Actions footgun.
+    #
+    # The GitHub "require approval for fork PRs" setting is the usual mitigation,
+    # but it is an org-level toggle that can be changed without touching this
+    # repo, and it is invisible from inside the code. This condition is the
+    # durable half: a fork PR simply does not run. Same-repo PRs and pushes are
+    # unaffected, so the gate that guards main keeps working exactly as before.
+    #
+    # `head.repo.full_name` is empty for `push`, hence the event_name clause.
+    if: >-
+      github.event_name != 'pull_request'
+      || github.event.pull_request.head.repo.full_name == github.repository
     # ponytail_0725: was `wisechef-runner` (an org-level Mac). That runner stopped
     # picking up this repo's jobs — a push-to-main sat queued indefinitely with
     # runner_name:"" while the label resolved to nothing. Combined with the SSH

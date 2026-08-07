@@ -30,12 +30,12 @@ const works = [
   {
     title: 'Keep separate clients cryptographically isolated',
     body: 'Each client is its own organisation. A credential minted for one org is rejected against another, and the org is derived from the signature — never from a field in the request. So a misconfigured request cannot cross the boundary; it fails.',
-    proof: 'Cross-org calls return 403 cross_tenant_rejected in both directions.',
+    proof: 'Two independent paths, both probed against production with a same-org control that must pass first. Mesh credentials: 403 cross_tenant_rejected in both directions. Bundle reads and reconcile: 404 in both directions — indistinguishable from a bundle that does not exist, because a distinct forbidden code would confirm the id is real.',
   },
   {
     title: 'Route a client agent\'s defect into your private repo',
     body: 'When an agent you operate hits a problem with a skill from your bundle, the report lands as an issue in a private repository you control — not in a public tracker, and not in your inbox.',
-    proof: 'Round trip proven end to end; the sink is confirmed private by an anonymous request returning 404.',
+    proof: 'Private defect routing proven: a report from a client agent lands as an issue in the private sink, verified at GitHub, and the sink is confirmed private by an anonymous request returning 404. The patch-and-redeploy half of the loop has shipped but has not yet been run end to end.',
   },
   {
     title: 'Self-host the whole thing',

@@ -442,7 +442,7 @@ import AppShell from '../layouts/AppShell.astro';
         // feat/fleet-console-ui: agent nodes get the DEEP view — what is
         // actually installed on that machine (lockfile snapshot), drift vs
         // declared, and undeclared extras with one-click add-to-bundle
-        // (the "built it on Astrovita, promote it everywhere" flow).
+        // (the "built it for one client, promote it everywhere" flow).
         if (n.kind === 'agent' && n.id.startsWith('member:')) {
           loadAgentState(n.id.slice('member:'.length));
         }
