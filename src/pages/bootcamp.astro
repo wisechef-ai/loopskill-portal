@@ -125,11 +125,11 @@ function firstPaidPosition(t: Track): number | null {
 >
   <main class="max-w-5xl mx-auto px-6 py-16">
     <header class="mb-14 text-center">
-      <p class="text-sm uppercase tracking-widest text-orange-500 font-semibold">Agent Bootcamp</p>
+      <p class="text-sm uppercase tracking-widest text-accent font-semibold">Agent Bootcamp</p>
       <h1 class="text-4xl md:text-6xl font-bold mt-3 mb-5 tracking-tighter" style="letter-spacing:-0.03em;">
         Don't browse the catalog.<br />Follow the install path.
       </h1>
-      <p class="text-lg md:text-xl text-gray-600 max-w-2xl mx-auto">
+      <p class="text-lg md:text-xl text-muted max-w-2xl mx-auto">
         Three curated tracks take your agent from zero to a production setup —
         each one an opinionated, ordered sequence of skills. Start on the free
         on-ramp. Upgrade at the step where free stops working.
@@ -137,7 +137,7 @@ function firstPaidPosition(t: Track): number | null {
     </header>
 
     {fetchError && (
-      <p class="text-xs text-gray-400 text-center mb-8">
+      <p class="text-xs text-muted-soft text-center mb-8">
         (Showing the canonical curriculum — live catalog enrichment will refresh on next build.)
       </p>
     )}
@@ -146,11 +146,11 @@ function firstPaidPosition(t: Track): number | null {
       {tracks.map((track) => {
         const boundary = firstPaidPosition(track);
         return (
-          <section class="border border-gray-200 rounded-2xl p-6 md:p-8 bg-white/50">
+          <section class="border border-border rounded-2xl p-6 md:p-8 bg-bg-card">
             <div class="mb-6">
               <h2 class="text-2xl md:text-3xl font-bold tracking-tight">{track.title}</h2>
-              <p class="text-gray-600 mt-1">{track.subtitle}</p>
-              <p class="text-sm text-gray-500 mt-3"><span class="font-semibold text-gray-700">You end with:</span> {track.outcome}</p>
+              <p class="text-muted mt-1">{track.subtitle}</p>
+              <p class="text-sm text-muted-soft mt-3"><span class="font-semibold text-text">You end with:</span> {track.outcome}</p>
             </div>
 
             <ol class="space-y-3">
@@ -158,22 +158,22 @@ function firstPaidPosition(t: Track): number | null {
                 <>
                   {boundary !== null && step.position === boundary && (
                     <li class="flex items-center gap-3 py-1" aria-hidden="true">
-                      <span class="text-xs uppercase tracking-widest text-orange-500 font-semibold whitespace-nowrap">↑ upgrade to Pro here</span>
-                      <span class="h-px flex-1 bg-orange-200"></span>
+                      <span class="text-xs uppercase tracking-widest text-accent font-semibold whitespace-nowrap">↑ upgrade to Pro here</span>
+                      <span class="h-px flex-1 bg-border"></span>
                     </li>
                   )}
                   <li class="flex items-start gap-4">
-                    <span class="shrink-0 w-7 h-7 rounded-full bg-gray-900 text-white text-sm font-bold flex items-center justify-center mt-0.5">{step.position}</span>
+                    <span class="shrink-0 w-7 h-7 rounded-full bg-accent text-bg text-sm font-bold flex items-center justify-center mt-0.5">{step.position}</span>
                     <div class="flex-1 min-w-0">
                       <div class="flex items-center gap-2 flex-wrap">
                         {step.available && step.install_link ? (
-                          <a href={step.install_link} class="font-semibold text-gray-900 hover:text-orange-600 underline-offset-2 hover:underline">{step.slug}</a>
+                          <a href={step.install_link} class="font-semibold text-text hover:text-accent underline-offset-2 hover:underline">{step.slug}</a>
                         ) : (
-                          <span class="font-semibold text-gray-400">{step.slug}</span>
+                          <span class="font-semibold text-muted-soft">{step.slug}</span>
                         )}
-                        <span class={`text-[10px] font-bold px-1.5 py-0.5 rounded ${tierLabel(step) === 'FREE' ? 'bg-green-100 text-green-700' : 'bg-gray-900 text-white'}`}>{tierLabel(step)}</span>
+                        <span class={`text-[10px] font-bold px-1.5 py-0.5 rounded ${tierLabel(step) === 'FREE' ? 'bg-success/15 text-success' : 'bg-accent/15 text-accent'}`}>{tierLabel(step)}</span>
                       </div>
-                      <p class="text-sm text-gray-600 mt-0.5">{step.why}</p>
+                      <p class="text-sm text-muted mt-0.5">{step.why}</p>
                     </div>
                   </li>
                 </>
@@ -186,12 +186,12 @@ function firstPaidPosition(t: Track): number | null {
 
     <section class="mt-16 text-center">
       <h2 class="text-2xl font-bold mb-3">Start the first step free</h2>
-      <p class="text-gray-600 mb-6 max-w-xl mx-auto">
+      <p class="text-muted mb-6 max-w-xl mx-auto">
         Every track begins with <code class="text-sm">super-memory</code> — MIT-licensed, installs in seconds, zero cost. Tell your agent to install it and you're on the path.
       </p>
       <div class="flex items-center justify-center gap-4 flex-wrap">
-        <a href="/skills/super-memory?ref=bootcamp-cta" class="bg-gray-900 text-white px-6 py-3 rounded-lg font-semibold hover:bg-gray-700">Start free → super-memory</a>
-        <a href="/skills?ref=bootcamp-cta" class="px-6 py-3 rounded-lg font-semibold border border-gray-300 hover:border-gray-500">Browse all 72 skills →</a>
+        <a href="/skills/super-memory?ref=bootcamp-cta" class="bg-accent text-bg px-6 py-3 rounded-lg font-semibold hover:bg-accent-soft transition">Start free → super-memory</a>
+        <a href="/skills?ref=bootcamp-cta" class="px-6 py-3 rounded-lg font-semibold border border-border hover:border-accent">Browse all 72 skills →</a>
       </div>
     </section>
   </main>

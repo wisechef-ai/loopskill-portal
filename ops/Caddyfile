@@ -85,6 +85,28 @@
         reverse_proxy localhost:8200
     }
 
+    # The site's own 404 page. WITHOUT THIS, a mistyped URL on app.loopskill.io
+    # returns Caddy's bare 404 with a ZERO-BYTE BODY — a blank page — even
+    # though the build has emitted a designed dist/404.html the whole time.
+    # Probed 2026-08-07:
+    #   curl -sI https://app.loopskill.io/this-page-does-not-exist-xyz
+    #     → 404, size_download=0
+    #   curl -sI https://app.loopskill.io/404   → 200 (the page exists; nothing serves it)
+    #
+    # `file_server` without `browse` here, and the 404 status is preserved
+    # rather than laundered into a 200 — a soft-404 would tell crawlers a dead
+    # URL is a real page, which is the opposite of what this repo just spent a
+    # phase fixing.
+    handle_errors {
+        @notfound expression {err.status_code} == 404
+        handle @notfound {
+            root * /home/wisechef/loopskill-portal/dist
+            rewrite * /404.html
+            file_server
+        }
+        respond "{err.status_code} {err.status_text}"
+    }
+
     # Static multi-page site. Astro emits per-route index.html files.
     # try_files resolves: /skills -> /skills/index.html (NOT homepage fallback).
     handle {

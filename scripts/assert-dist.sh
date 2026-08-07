@@ -345,6 +345,46 @@ if [ "$ia_failures" -gt 0 ]; then
   exit 1
 fi
 
+# ─────────────────────────────────────────────────────────────────────────
+# Dark-theme guard (mesh0408 W3)
+#
+# This site is dark-only: AppShell sets --color-bg #0a0a0a and every surface
+# token is built for it. Tailwind's light-theme greys are therefore ALWAYS a
+# defect here, and they fail silently — the build succeeds, the page renders,
+# and only a human looking at it notices.
+#
+# /bootcamp shipped like that. The whole page was authored against a light
+# design (bg-white/50 cards, border-gray-200, text-gray-600 body) and never
+# converted. On the dark shell it rendered as translucent white panels with
+# grey-on-grey text that was close to unreadable — on a public page, for
+# months, while every automated check stayed green.
+#
+# `bg-white/N` is included deliberately: a translucent white panel is exactly
+# what produced the bootcamp defect. If a genuinely white surface is ever
+# wanted, it needs a token, not a raw utility.
+# ─────────────────────────────────────────────────────────────────────────
+
+theme_failures=0
+LIGHT_THEME_CLASSES='class="[^"]*\b(bg-white(/[0-9]+)?|bg-gray-[0-9]{2,3}|text-gray-[0-9]{2,3}|border-gray-[0-9]{2,3}|bg-slate-[0-9]{2,3}(/[0-9]+)?|text-slate-[0-9]{2,3}|text-black)\b'
+
+while IFS= read -r -d '' html_file; do
+  if grep -nEo "$LIGHT_THEME_CLASSES" "$html_file" >/dev/null 2>&1; then
+    echo "THEME-FAIL: $html_file uses light-theme utilities on a dark-only site:"
+    grep -nEo "$LIGHT_THEME_CLASSES" "$html_file" | head -5 | sed 's/^/    /'
+    theme_failures=$((theme_failures + 1))
+  fi
+done < <(find "$DIST_DIR" -name '*.html' -print0)
+
+if [ "$theme_failures" -gt 0 ]; then
+  echo ""
+  echo "BLOCKED: $theme_failures page(s) carry light-theme classes. Deploy aborted."
+  echo "Use the site tokens: bg-bg-card / bg-bg-elev, text-text / text-muted /"
+  echo "text-muted-soft, border-border, text-accent. See src/styles/global.css."
+  exit 1
+fi
+
+echo "OK:   no light-theme utilities in any emitted page"
+
 echo "All Spotify-IA kill-tests passed (rail link count, redirect stubs, skill detail pages)."
 echo ""
 echo "Safe to deploy."

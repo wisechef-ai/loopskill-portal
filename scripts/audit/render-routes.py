@@ -94,11 +94,22 @@ async def install_api_bridge(ctx):
 
 
 def routes_from_dist(dist: Path) -> list[str]:
+    """Every route the build emitted — including the ones that are not index.html.
+
+    Globbing only index.html misses dist/404.html, and the 404 page is a route
+    real visitors land on. Missing it is how this pass reported "every route
+    rendered" while never once looking at the page a lost visitor sees.
+    """
     out = []
-    for p in sorted(dist.rglob("index.html")):
-        rel = p.relative_to(dist).parent.as_posix()
-        out.append("/" if rel == "." else f"/{rel}/")
-    return out
+    for p in sorted(dist.rglob("*.html")):
+        rel = p.relative_to(dist).as_posix()
+        if rel.endswith("index.html"):
+            parent = p.relative_to(dist).parent.as_posix()
+            out.append("/" if parent == "." else f"/{parent}/")
+        else:
+            # Caddy's try_files {path}.html serves dist/404.html at /404
+            out.append("/" + rel[: -len(".html")])
+    return sorted(set(out))
 
 
 async def capture(ctx, base, route, viewport_name, out_dir):
