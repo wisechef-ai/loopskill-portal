@@ -23,7 +23,7 @@
  * writers to route around it, which is worse than no gate.
  */
 
-import { existsSync, mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'fs';
+import { existsSync, mkdtempSync, mkdirSync, writeFileSync, rmSync, readFileSync } from 'fs';
 import { join, dirname } from 'path';
 import { tmpdir } from 'os';
 
@@ -32,6 +32,7 @@ import {
   resolvesInDist,
   extractHrefs,
   stripScriptsAndStyles,
+  servedOutsideDist,
 } from '../scripts/audit-links.mjs';
 import { RULES, firesOn, renderedText, fragments, scanText } from '../scripts/audit-claims.mjs';
 
@@ -126,6 +127,59 @@ describe('audit-links · resolvesInDist mirrors Caddy try_files', () => {
 
   it('does NOT resolve a route the build never emitted', () => {
     expect(resolvesInDist(dir, '/docs/bundles')).toBe(false);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────
+// audit-links: the exemption list must stay honest
+//
+// The first draft of SERVED_OUTSIDE_DIST exempted /fleet on the strength of a
+// `redir /fleet` line in ops/Caddyfile. Production returns 404 for /fleet —
+// the reference Caddyfile is stale. An exemption for a path the server does
+// not actually serve is this guard asserting a redirect that does not exist,
+// in the one place whose entire job is catching dead links.
+// ─────────────────────────────────────────────────────────────────────────
+
+describe('audit-links · SERVED_OUTSIDE_DIST is exactly as long as it needs to be', () => {
+  it('exempts only /api/* and /skill', () => {
+    const src = readFileSync(join(ROOT, 'scripts/audit-links.mjs'), 'utf8');
+    const list = src.slice(
+      src.indexOf('const SERVED_OUTSIDE_DIST'),
+      src.indexOf('const SKIP_SCHEME')
+    );
+    const entries = [...list.matchAll(/\{\s*(exact|prefix|regex):/g)];
+    expect(entries).toHaveLength(2);
+    expect(list).toContain("prefix: '/api/'");
+    expect(list).toContain("exact: '/skill'");
+  });
+
+  // Behavioural half (trap V3: a string-match guard asserts where text lives,
+  // not what the code does). These run the real predicate.
+  it('behaviourally exempts the two paths the server really answers', () => {
+    expect(servedOutsideDist('/api/auth/google/login')).toBeTruthy();
+    expect(servedOutsideDist('/skill')).toBeTruthy();
+  });
+
+  it('behaviourally does NOT exempt /fleet, so a link to it fails the build', () => {
+    expect(servedOutsideDist('/fleet')).toBeNull();
+    // and it does not resolve in dist either — which is what makes it a 404
+    const dir = fakeDist({ 'index.html': 'x' });
+    expect(resolvesInDist(dir, '/fleet')).toBe(false);
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  it('behaviourally does NOT exempt the unlinked rewrite paths', () => {
+    expect(servedOutsideDist('/cookbooks/p/some-slug')).toBeNull();
+    expect(servedOutsideDist('/SKILL.md')).toBeNull();
+  });
+
+  it('does NOT exempt /fleet — production 404s there', () => {
+    const src = readFileSync(join(ROOT, 'scripts/audit-links.mjs'), 'utf8');
+    const list = src.slice(
+      src.indexOf('const SERVED_OUTSIDE_DIST'),
+      src.indexOf('const SKIP_SCHEME')
+    );
+    expect(list).not.toMatch(/\{\s*exact:\s*'\/fleet'/);
   });
 });
 

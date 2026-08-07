@@ -29,28 +29,34 @@ import { readdirSync, readFileSync, statSync, existsSync } from 'node:fs';
 import { join, dirname, posix, relative } from 'node:path';
 
 /**
- * Paths that a real visitor CAN reach but that never appear in dist/, because
- * the production web server answers them before the file server does. Each
- * entry names the ops/Caddyfile rule that serves it — an entry with no server
- * rule behind it is a bug in this list, not an exemption.
+ * Paths a real visitor CAN reach that never appear in dist/, because the
+ * production web server answers them before the file server does.
  *
- * Keep this list narrow. Every addition is a promise that something outside
- * the build serves that path; the smoke probe in scripts/smoke-deploy.sh is
- * what keeps that promise honest.
+ * EVERY ENTRY IS PROBED, AND THE LIST IS EXACTLY AS LONG AS IT NEEDS TO BE.
+ * An exemption for a path nothing links to is not free — it is a hole sitting
+ * open for whatever gets linked there later, in the one guard whose whole job
+ * is catching dead links. So this list was derived the other way round: the
+ * exemptions were disabled, the guard was run, and only the routes it actually
+ * reported were added back — each after a live probe on 2026-08-07.
+ *
+ * Deliberately NOT here, and why (these were in the first draft):
+ *   /fleet          — ops/Caddyfile has a `redir /fleet`, but production
+ *                     returns 404. The reference Caddyfile is out of date, and
+ *                     nothing in dist links to /fleet anyway. Exempting it
+ *                     would have been this guard asserting a redirect that
+ *                     does not exist.
+ *   /skill/, /SKILL.md, /cookbooks/p/<slug>, /cookbooks/<uuid>
+ *                   — real server rules, but nothing in dist links to them.
+ *                     If something starts to, this guard should say so first.
  */
 const SERVED_OUTSIDE_DIST = [
-  // ops/Caddyfile: `handle /api/*` → reverse_proxy localhost:8200
+  // ops/Caddyfile `handle /api/*` → reverse_proxy localhost:8200.
+  // Load-bearing for the two OAuth entry points on /signin, both probed:
+  //   /api/auth/google/login → 302 accounts.google.com
+  //   /api/auth/github/login → 302 github.com/login/oauth/authorize
   { prefix: '/api/', why: 'Caddyfile: reverse_proxy to the API on :8200' },
-  // ops/Caddyfile: `redir /skill …` → the meta-skill SKILL.md on GitHub raw
-  { exact: '/skill', why: 'Caddyfile: 302 to the meta-skill SKILL.md' },
-  { exact: '/skill/', why: 'Caddyfile: 302 to the meta-skill SKILL.md' },
-  { exact: '/SKILL.md', why: 'Caddyfile: 302 to the meta-skill SKILL.md' },
-  // ops/Caddyfile: `redir /fleet …` → the fleet installer on GitHub raw
-  { exact: '/fleet', why: 'Caddyfile: 302 to install-fleet.sh' },
-  // astro.config.mjs header: Caddy rewrites /cookbooks/<uuid> and
-  // /cookbooks/p/<slug> onto the query-string pages that DO exist in dist.
-  { regex: /^\/cookbooks\/[A-Za-z0-9][A-Za-z0-9-]*\/?$/, why: 'Caddyfile: rewrite → /cookbooks/view?id=' },
-  { regex: /^\/cookbooks\/p\/[A-Za-z0-9][A-Za-z0-9-]*\/?$/, why: 'Caddyfile: rewrite → /cookbooks/p?slug=' },
+  // Linked from 137 pages (every footer). Probed: 200.
+  { exact: '/skill', why: 'Caddyfile: serves the meta-skill SKILL.md' },
 ];
 
 const SKIP_SCHEME = /^(?:[a-z][a-z0-9+.-]*:|\/\/)/i;
@@ -111,7 +117,7 @@ export function normalizeLink(raw, pageRoute) {
   return posix.normalize(baseDir + path);
 }
 
-function servedOutsideDist(route) {
+export function servedOutsideDist(route) {
   for (const rule of SERVED_OUTSIDE_DIST) {
     if (rule.exact && route === rule.exact) return rule;
     if (rule.prefix && route.startsWith(rule.prefix)) return rule;

@@ -38,7 +38,59 @@ VIEWPORTS = {
 }
 
 # Client islands fetch after load; give them a beat before judging emptiness.
-SETTLE_MS = 1200
+SETTLE_MS = 2600
+
+
+async def install_api_bridge(ctx):
+    """Let client islands reach the real API from a localhost origin.
+
+    WHY THIS IS NOT OPTIONAL. `src/lib/api.ts` uses an ABSOLUTE
+    `API_BASE = https://app.loopskill.io`, so a page served from 127.0.0.1
+    fetches cross-origin and the API's CORS allow-list — correctly — refuses
+    it. Without this bridge, /browse rendered "Nothing is available right now"
+    locally while the live site rendered 115 cards. Every dynamic page would
+    have been screenshotted in its empty state, and the render pass would have
+    manufactured a page full of defects that do not exist while hiding the real
+    ones underneath.
+
+    We intercept in the browser and fulfil from a server-side fetch, where CORS
+    does not apply, adding a permissive ACAO on the way back. This changes only
+    who is allowed to read the response — not what the API returns.
+
+    GETs are memoized for the run. 153 routes hit the same handful of catalog
+    endpoints; without the cache the pass spends its whole wall-clock waiting on
+    a remote API to repeat itself, and takes hours instead of minutes.
+    """
+    cache: dict[str, tuple] = {}
+
+    async def handler(route):
+        req = route.request
+        if req.method == "OPTIONS":
+            await route.fulfill(
+                status=204,
+                headers={
+                    "access-control-allow-origin": "*",
+                    "access-control-allow-headers": "*",
+                    "access-control-allow-methods": "GET,POST,PUT,DELETE,OPTIONS",
+                },
+            )
+            return
+        if req.method == "GET" and req.url in cache:
+            status, headers, body = cache[req.url]
+            await route.fulfill(status=status, headers=headers, body=body)
+            return
+        try:
+            resp = await ctx.request.fetch(req, timeout=20000)
+            headers = {k: v for k, v in resp.headers.items() if k.lower() not in ("content-encoding", "content-length")}
+            headers["access-control-allow-origin"] = "*"
+            body = await resp.body()
+            if req.method == "GET":
+                cache[req.url] = (resp.status, headers, body)
+            await route.fulfill(status=resp.status, headers=headers, body=body)
+        except Exception:
+            await route.abort()
+
+    await ctx.route("**/api/**", handler)
 
 
 def routes_from_dist(dist: Path) -> list[str]:
@@ -49,7 +101,13 @@ def routes_from_dist(dist: Path) -> list[str]:
     return out
 
 
-async def capture(page, base, route, viewport_name, out_dir):
+async def capture(ctx, base, route, viewport_name, out_dir):
+    # A FRESH PAGE PER ROUTE. Reusing one page and re-registering the console /
+    # response listeners on every capture leaves every previous capture's
+    # handlers attached, so by route 100 each event fans out to 100 closures
+    # appending to dead lists. It slows the pass to a crawl and cross-
+    # contaminates the records it exists to produce.
+    page = await ctx.new_page()
     console_errors: list[str] = []
     failed: list[str] = []
     page.on("console", lambda m: console_errors.append(m.text) if m.type == "error" else None)
@@ -72,6 +130,7 @@ async def capture(page, base, route, viewport_name, out_dir):
         rec["status"] = resp.status if resp else None
     except Exception as e:
         rec["error"] = f"navigation: {e}"
+        await page.close()
         return rec
 
     await page.wait_for_timeout(SETTLE_MS)
@@ -113,6 +172,7 @@ async def capture(page, base, route, viewport_name, out_dir):
         )
     except Exception as e:
         rec["error"] = f"evaluate: {e}"
+        await page.close()
         return rec
 
     rec["title"] = await page.title()
@@ -133,6 +193,7 @@ async def capture(page, base, route, viewport_name, out_dir):
     shot.parent.mkdir(parents=True, exist_ok=True)
     await page.screenshot(path=str(shot), full_page=True)
     rec["screenshot"] = str(shot.relative_to(out_dir))
+    await page.close()
     return rec
 
 
@@ -151,14 +212,22 @@ async def main():
     records = []
     async with async_playwright() as pw:
         browser = await pw.chromium.launch()
-        for vp_name, vp in VIEWPORTS.items():
+
+        async def run_viewport(vp_name, vp):
             ctx = await browser.new_context(viewport=vp, device_scale_factor=1)
-            page = await ctx.new_page()
+            await install_api_bridge(ctx)
+            out = []
             for i, route in enumerate(routes, 1):
-                rec = await capture(page, base, route, vp_name, out_dir)
-                records.append(rec)
-                print(f"[{vp_name} {i}/{len(routes)}] {route}", flush=True)
+                out.append(await capture(ctx, base, route, vp_name, out_dir))
+                if i % 10 == 0 or i == len(routes):
+                    print(f"[{vp_name} {i}/{len(routes)}] {route}", flush=True)
             await ctx.close()
+            return out
+
+        for chunk in await asyncio.gather(
+            *(run_viewport(n, v) for n, v in VIEWPORTS.items())
+        ):
+            records.extend(chunk)
         await browser.close()
 
     (out_dir / "render-report.json").write_text(json.dumps(records, indent=2))
