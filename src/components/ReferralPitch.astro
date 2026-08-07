@@ -32,7 +32,7 @@ import Icon from './Icon.astro';
         </h1>
 
         <p class="text-lg text-muted leading-relaxed max-w-2xl">
-          For every person who subscribes to Pro or Pro+ through your referral link,
+          For every person who subscribes to Pro through your referral link,
           you earn <strong class="text-text">50% of their subscription every single month</strong>
           — for as long as they stay subscribed. No complicated tiers. No expiry.
         </p>
@@ -144,8 +144,8 @@ import Icon from './Icon.astro';
           50% recurring. Every month.
         </h2>
         <p class="text-muted max-w-xl">
-          No complicated formulas. If your referral pays $20/mo, you earn $10/mo.
-          If they pay $100/mo, you earn $50/mo. For as long as they stay subscribed.
+          No complicated formulas. Pro is $9.95/mo, so you earn $4.98/mo for every
+          referral — for as long as they stay subscribed.
         </p>
       </div>
 
@@ -155,30 +155,30 @@ import Icon from './Icon.astro';
           <div class="flex items-center gap-3">
             <span class="text-xs font-semibold px-2 py-1 rounded-full"
                   style="background:rgba(59,130,246,0.12);color:#3B82F6;">Pro</span>
-            <span class="text-sm font-medium text-text">$20/mo per subscriber</span>
+            <span class="text-sm font-medium text-text">$9.95/mo per subscriber</span>
           </div>
           <code class="font-mono text-xs bg-[#0d0d0d] border border-border rounded-lg px-4 py-3 block text-muted leading-relaxed">
-            subscribers × $20/mo × 50%<br/>
-            10 refs × $20 × 0.5 = <span class="font-bold" style="color:#3B82F6;">$100/mo</span>
+            subscribers × $9.95/mo × 50%<br/>
+            10 refs × $9.95 × 0.5 = <span class="font-bold" style="color:#3B82F6;">$49.75/mo</span>
           </code>
           <p class="text-xs text-muted">
             Recurring every month as long as they stay on Pro.
           </p>
         </div>
 
-        <!-- Pro+ referral math -->
+        <!-- Scale card -->
         <div class="bg-bg-card border border-[#818CF8]/20 rounded-2xl p-6 flex flex-col gap-4">
           <div class="flex items-center gap-3">
             <span class="text-xs font-semibold px-2 py-1 rounded-full"
-                  style="background:rgba(129,140,248,0.12);color:#818CF8;">Pro+</span>
-            <span class="text-sm font-medium text-text">$100/mo per subscriber</span>
+                  style="background:rgba(129,140,248,0.12);color:#818CF8;">At scale</span>
+            <span class="text-sm font-medium text-text">It compounds monthly</span>
           </div>
           <code class="font-mono text-xs bg-[#0d0d0d] border border-border rounded-lg px-4 py-3 block text-muted leading-relaxed">
-            subscribers × $100/mo × 50%<br/>
-            5 refs × $100 × 0.5 = <span class="font-bold" style="color:#818CF8;">$250/mo</span>
+            50 refs × $9.95 × 0.5 = <span class="font-bold" style="color:#818CF8;">$248.75/mo</span>
           </code>
           <p class="text-xs text-muted">
-            Pro+ users pay more, so your share is higher. Same 50% rate.
+            Recurring, uncapped, and it never expires. Self-hosting is free, so a
+            referral only ever pays when they want us to run it for them.
           </p>
         </div>
       </div>
@@ -187,11 +187,10 @@ import Icon from './Icon.astro';
       <div class="mt-6 bg-[#0d0d0d] border border-border rounded-2xl p-6">
         <p class="text-[10px] uppercase tracking-widest font-semibold text-muted-soft mb-4">Example scenario</p>
         <code class="font-mono text-xs text-muted leading-loose block">
-          <span class="text-muted-soft">// 10 Pro + 5 Pro+ referrals</span><br/>
-          pro_refs     = 10 × $20 × 0.5  = <span class="font-bold text-text">$100/mo</span><br/>
-          pro_plus_refs = 5 × $100 × 0.5 = <span class="font-bold text-text">$250/mo</span><br/>
+          <span class="text-muted-soft">// 25 Pro referrals</span><br/>
+          pro_refs = 25 × $9.95 × 0.5 = <span class="font-bold text-text">$124.38/mo</span><br/>
           <br/>
-          total = $100 + $250 = <span class="font-bold" style="color:#D4A017;">$350/mo recurring</span>
+          total = <span class="font-bold" style="color:#D4A017;">$124.38/mo recurring</span>
         </code>
       </div>
     </div>

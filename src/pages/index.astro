@@ -228,8 +228,8 @@ const verticals = [
 ---
 <AppShell
   mode="public"
-  title="LoopSkill — The registry for AI agents"
-  description="LoopSkill is the open-source registry of vetted, runnable agent loops. Press run and get an objective pass/fail under enforced safety bounds. Free to self-host, Pro $9.95/mo hosted."
+  title="LoopSkill — Ship agent skills into your clients' environments"
+  description="LoopSkill is the open-source control plane for people who run agents for more than one client. Deploy skills and loops per client, keep every client's credentials isolated, and get an objective pass/fail that proves a loop actually works. Free to self-host, Pro $9.95/mo hosted."
 >
   <script is:inline>
     // onechrome_0611 seam #1: returning members land on THEIR home, not marketing.
@@ -255,7 +255,10 @@ const verticals = [
           Run a loop.<br/><span class="text-gradient hero-glow">Get a verdict.</span>
         </h1>
         <p class="text-lg md:text-xl text-muted leading-relaxed max-w-2xl">
-          LoopSkill is the registry of <strong class="text-text font-semibold">vetted, runnable agent loops</strong>. Press run, and it executes under enforced safety bounds and returns an objective <span class="text-accent font-semibold">pass / fail</span> — the proof no skill marketplace gives you.
+          The open-source control plane for <strong class="text-text font-semibold">running agents for more than one client</strong>. Ship a skill into a client's environment, press run, and get an objective <span class="text-accent font-semibold">pass / fail</span> — the proof no skill marketplace gives you.
+        </p>
+        <p class="text-sm text-muted-soft leading-relaxed max-w-xl -mt-1">
+          Every client is a separate tenant. Their credentials never touch each other, and a defect from a client's agent routes straight back to <em class="text-muted">your</em> private repo.
         </p>
         <div class="flex items-center gap-3 mt-1">
           <a href="/loops" class="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-accent text-bg font-semibold text-sm hover:bg-accent-soft transition">

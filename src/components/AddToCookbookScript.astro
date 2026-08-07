@@ -127,7 +127,7 @@ const API_BASE = import.meta.env.PUBLIC_LOOPSKILL_API_BASE || import.meta.env.PU
         // this renders a SELF-CONTAINED inline wall inside the picker's own
         // menu (the `.atc-cap` node the markup already carries on every atc
         // root, previously dead/unused), wired to the SAME live
-        // POST /api/checkout/pro_plus call — inline, never a toast, never a
+        // POST /api/checkout/pro call — inline, never a toast, never a
         // dead-end redirect to /pricing.
         if (String(reason).indexOf('cap') >= 0) {
           showCapWall(root);
@@ -153,21 +153,21 @@ const API_BASE = import.meta.env.PUBLIC_LOOPSKILL_API_BASE || import.meta.env.PU
       const signin = root.querySelector('.atc-signin');
       const empty = root.querySelector('.atc-empty');
       const cap = root.querySelector('.atc-cap');
-      if (!cap) { toast('Skill cap reached — upgrade to Pro+.', 'error'); return; }
+      if (!cap) { toast('Private-bundle cap reached — see /pricing.', 'error'); return; }
       loading.classList.add('hidden');
       signin.classList.add('hidden');
       empty.classList.add('hidden');
       list.innerHTML = '';
       cap.classList.remove('hidden');
       cap.innerHTML =
-        '<p class="mb-1.5">Skill cap reached on this tier.</p>' +
-        '<button type="button" class="atc-cap-upgrade rounded-md bg-accent text-bg text-xs font-semibold px-2.5 py-1 hover:opacity-90 transition">Upgrade to Pro+ — $100/mo</button>';
+        '<p class="mb-1.5">Private-bundle cap reached on this tier.</p>' +
+        '<button type="button" class="atc-cap-upgrade rounded-md bg-accent text-bg text-xs font-semibold px-2.5 py-1 hover:opacity-90 transition">Upgrade to Pro — $9.95/mo</button>';
       const upgradeBtn = cap.querySelector('.atc-cap-upgrade');
       upgradeBtn.addEventListener('click', async function () {
         upgradeBtn.textContent = 'Loading…'; upgradeBtn.disabled = true;
         let res;
         try {
-          res = await fetch(API_BASE + '/api/checkout/pro_plus', {
+          res = await fetch(API_BASE + '/api/checkout/pro', {
             method: 'POST',
             headers: authHeaders({ 'content-type': 'application/json' }),
             credentials: 'include',
@@ -178,7 +178,7 @@ const API_BASE = import.meta.env.PUBLIC_LOOPSKILL_API_BASE || import.meta.env.PU
           let d; try { d = await res.json(); } catch (e) { d = null; }
           if (d && d.url) { window.location.href = d.url; return; }
         }
-        upgradeBtn.textContent = 'Upgrade to Pro+ — $100/mo'; upgradeBtn.disabled = false;
+        upgradeBtn.textContent = 'Upgrade to Pro — $9.95/mo'; upgradeBtn.disabled = false;
         toast('Checkout unavailable — try again or use /pricing.', 'error');
       });
     }

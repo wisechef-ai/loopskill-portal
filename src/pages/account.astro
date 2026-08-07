@@ -244,9 +244,14 @@ import Icon from '../components/Icon.astro';
     pro: 'PRO', pro_plus: 'PRO+',
     cook: 'PRO', operator: 'PRO+', studio: 'PRO+',
   };
+  // Prices MUST mirror the server ladder (config/tiers.yaml in loopskill-api),
+  // which is the single source of truth: free $0, pro $9.95, pro_plus $100
+  // (pro_plus is `public: false` per D-003 — still billable for the 5 legacy
+  // accounts, never advertised). These were previously $20/$100, which
+  // contradicted the /pricing page and the server on the SAME SITE.
   const TIER_PRICE: Record<string, string> = {
-    pro: '$20/mo', pro_plus: '$100/mo',
-    cook: '$20/mo', operator: '$100/mo', studio: '$100/mo',
+    pro: '$9.95/mo', pro_plus: '$100/mo',
+    cook: '$9.95/mo', operator: '$100/mo', studio: '$100/mo',
   };
   const TIER_NAME: Record<string, string> = {
     pro: 'Pro', pro_plus: 'Pro+',

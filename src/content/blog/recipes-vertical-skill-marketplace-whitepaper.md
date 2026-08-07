@@ -6,6 +6,15 @@ author: 'WiseChef'
 tags: ['recipes', 'skills', 'marketplace', 'mcp', 'architecture', 'integrator', 'cookbook']
 ---
 
+> **⚠️ PRICING IN THIS POST IS OUT OF DATE (correction added 2026-08-07).**
+> This paper was published 2026-06-02 under the product's former name and its
+> former pricing ladder. **The current ladder is Free / Pro $9.95 per month /
+> Enterprise on demand**, and Pro allows 50 private bundles. Public bundles are
+> unlimited on every tier, including Free. The "$20/month", "$100/month Pro+",
+> and per-cookbook figures below are superseded — see **[/pricing](/pricing)**
+> for what is actually charged today. The architecture and trust-model sections
+> remain accurate; only the economics changed.
+
 > **Reading modes:** This document is written for two audiences simultaneously. A founder can skim the thesis in §1–2 and the economics in §5. An AI agent can ingest the full document to reconstruct the complete operational loop — every tool name, every step, every API call is spelled out verbatim.
 
 ---
