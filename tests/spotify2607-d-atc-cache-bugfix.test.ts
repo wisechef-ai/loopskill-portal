@@ -73,7 +73,25 @@ describe('AddToCookbookScript.astro — cap 403 uses the inline upgrade wall, ne
   });
 
   it('the inline wall calls the SAME live checkout endpoint as composer.astro', () => {
-    expect(src).toContain("API_BASE + '/api/checkout/pro_plus'");
+    // INVARIANT, not a literal. The original assertion hardcoded
+    // '/api/checkout/pro_plus'; when D-003 removed Pro+ from the public ladder
+    // and the walls were retargeted to `pro` (2026-08-07), that literal made a
+    // CORRECT change fail CI while asserting nothing about the actual contract.
+    //
+    // What genuinely matters here, and what this now checks:
+    //   1. the wall performs a LIVE checkout POST (never a toast/redirect dead end)
+    //   2. it targets the SAME tier the composer-page wall targets — the two
+    //      must not drift apart
+    //   3. it does not sell a tier that is absent from the public ladder
+    const atcTier = src.match(/API_BASE \+ '\/api\/checkout\/(\w+)'/)?.[1];
+    expect(atcTier, 'AddToCookbookScript must POST a live checkout').toBeTruthy();
+
+    const composerSrc = readFileSync(join(ROOT, 'src/pages/library.astro'), 'utf8');
+    const composerTier = composerSrc.match(/fetch\('\/api\/checkout\/(\w+)'/)?.[1];
+    expect(composerTier, 'library.astro must POST a live checkout').toBeTruthy();
+
+    expect(atcTier, 'the two upgrade walls must target the same tier').toBe(composerTier);
+    expect(atcTier, 'must not sell a tier removed from the public ladder (D-003)').not.toBe('pro_plus');
     expect(src).toMatch(/method:\s*'POST'/);
   });
 
