@@ -43,7 +43,7 @@ import AppShell from '../../layouts/AppShell.astro';
         </li>
         <li class="flex items-start gap-2">
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none" class="text-yellow-400 mt-0.5 shrink-0"><path d="M8 3V8.5M8 11.5V12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
-          <span><strong class="text-text">Your client data</strong> — if you're on Pro and have deployed a bundle to a client's agent, the client's data stays entirely on the client's machine.</span>
+          <span><strong class="text-text">Your client data</strong> — when a client's agent pulls a bundle you published, the client's data stays entirely on the client's machine.</span>
         </li>
         <li class="flex items-start gap-2">
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none" class="text-yellow-400 mt-0.5 shrink-0"><path d="M8 3V8.5M8 11.5V12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
@@ -63,7 +63,7 @@ import AppShell from '../../layouts/AppShell.astro';
         <span class="flex-none w-7 h-7 rounded-full bg-accent/10 text-accent text-xs font-bold flex items-center justify-center mt-0.5">1</span>
         <div>
           <p class="font-semibold text-text mb-0.5">Manifest fetch</p>
-          <p>At the configured poll interval (default: every 15 minutes), the LoopSkill meta-skill calls <code class="text-xs bg-bg-elev rounded px-1">GET /api/skills/manifest</code> with your API key. The server returns a signed manifest listing current versions and SHA256 hashes for every skill you have access to.</p>
+          <p>Each time the cron you installed fires — the self-host guide's example runs every 30 minutes; there is no product-side default — the LoopSkill meta-skill calls <code class="text-xs bg-bg-elev rounded px-1">GET /api/skills/manifest</code> with your API key. The server returns a signed manifest listing current versions and SHA256 hashes for every skill you have access to.</p>
         </div>
       </li>
       <li class="flex gap-4">

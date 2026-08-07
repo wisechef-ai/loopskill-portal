@@ -2,7 +2,20 @@
 import AppShell from '../../layouts/AppShell.astro';
 import CrossSell from '../../components/CrossSell.astro';
 
-const onboarding = [
+// Typed explicitly rather than inferred. Every card used to carry a `badge`,
+// so the inferred union happened to have one; when mesh0408 W3 removed the two
+// stale badges ("Coming soon" on bundles, which are live, and "Not shipped" on
+// the rewritten delivery page) the inference collapsed and `s.badge` stopped
+// type-checking. The badge affordance is worth keeping for the next genuinely
+// unshipped page — an annotation keeps it available without a value.
+type DocCard = {
+  title: string;
+  href: string;
+  body: string;
+  badge?: string | null;
+};
+
+const onboarding: DocCard[] = [
   {
     title: 'Getting started',
     href: '/docs/getting-started',
@@ -25,7 +38,7 @@ const onboarding = [
   },
 ];
 
-const concepts = [
+const concepts: DocCard[] = [
   {
     title: 'How it works',
     href: '/docs/how-it-works',
@@ -38,15 +51,15 @@ const concepts = [
   },
   {
     title: 'Bundles',
-    href: '/docs/bundles',
+    // The page lives at /docs/cookbooks — the file kept its pre-rename slug.
+    // /docs/bundles has never existed and 404'd here for months.
+    href: '/docs/cookbooks',
     body: 'Stack skills into a named, versioned bundle. Personal or org-scoped. Agents pull it and converge — LoopSkill never pushes.',
-    badge: 'Coming soon',
   },
   {
-    title: 'Client deployment',
+    title: 'Client delivery',
     href: '/docs/deployment',
-    body: 'NOT SHIPPED. Delivery is PULL-only today — an agent reconciles its own bundle; LoopSkill never pushes to a machine. This page documents the intended design, not current behaviour.',
-    badge: 'Not shipped',
+    body: 'Scope a key to a bundle, hand a client one install command, and their agent reconciles itself on its own cron. Pull-only — LoopSkill never reaches a machine, so there is no apply job to watch.',
   },
   {
     title: 'What LoopSkill does & does not do',
@@ -56,7 +69,7 @@ const concepts = [
   },
 ];
 
-const api = [
+const api: DocCard[] = [
   {
     title: 'API keys',
     href: '/docs/api-keys',

@@ -61,7 +61,8 @@ const telemetryBodyEx = `{
       <p>Rate limit: 60 req/min per key (burst 10). Exceeding returns <code>429</code> with
       a <code>Retry-After</code> header.</p>
       <p>
-        Machine-readable: <a href="/openapi.json">openapi.json</a> (OpenAPI 3.1, regenerated on each deploy).
+        There is no public machine-readable spec endpoint today. This page is the
+        reference.
       </p>
 
       <!-- ────────────────────────────────── SKILLS ── -->
@@ -206,10 +207,12 @@ const telemetryBodyEx = `{
 
       <h2>OpenAPI spec</h2>
       <p>
-        The full OpenAPI 3.1 spec is available at
-        <a href="/openapi.json"><code>https://app.loopskill.io/openapi.json</code></a>
-        and is regenerated on each API deploy. Import it into Postman, Insomnia, or use
-        it to generate typed client SDKs.
+        <strong>Not published today.</strong> This page used to point at
+        <code>/openapi.json</code>; that URL returns <code>404</code> and always did.
+        The API is FastAPI-based, so a spec exists inside the running service, but
+        nothing serves it to an unauthenticated caller — so there is currently no
+        URL we can honestly give you for Postman, Insomnia, or SDK generation.
+        Until there is, the endpoint tables above are the reference.
       </p>
     </div>
     <CrossSell />

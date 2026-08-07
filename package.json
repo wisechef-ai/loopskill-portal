@@ -7,11 +7,12 @@
   },
   "scripts": {
     "dev": "astro dev",
-    "build": "astro build && bash scripts/assert-dist.sh",
+    "build": "astro build && bash scripts/assert-dist.sh && node scripts/audit-links.mjs dist && node scripts/audit-claims.mjs dist",
     "preview": "astro preview",
     "astro": "astro",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "audit:mobile": "python3 scripts/audit/assert-no-mobile-overflow.py"
   },
   "dependencies": {
     "@astrojs/react": "^5.0.4",

@@ -36,7 +36,14 @@ const layers = [
 ];
 
 const guarantees = [
-  { label: 'Apache-2.0 licensed',         body: 'You can read, fork, audit, or replace anything you install.' },
+  // Probed 2026-08-07 via `gh api repos/<repo> --jq .license.spdx_id`:
+  //   awesome-agent-recipes (the free skills catalog) → MIT
+  //   loopskill-api + loopskill-portal (the platform) → MPL-2.0
+  //   the standalone meta-skill repo                  → Apache-2.0
+  // This row said "Apache-2.0 licensed" about everything you install, which
+  // was true of none of them. A licence is the one claim on this page a reader
+  // may act on legally — name the real ones.
+  { label: 'MIT skills, MPL-2.0 platform', body: 'The free skills catalog is MIT; the registry, runner and this site are MPL-2.0. You can read, fork, audit, or replace anything you install.' },
   { label: 'No telemetry by default',     body: 'Skills run on your machine. We see install events; we do not see your data.' },
   { label: 'Reproducible tarballs',       body: 'Mtime/uid/gid stripped. Two packs of the same source produce byte-identical archives.' },
   { label: 'Public review log',           body: 'Every audit decision is in the GitHub issue/PR history of the awesome-agent-recipes monorepo.' },
@@ -123,7 +130,7 @@ const guarantees = [
       Last full audit pass: <time datetime={lastAuditedAt} class="text-text">{lastAuditedAt}</time> ·
       Source on
       <a href="https://github.com/wisechef-ai/loopskill-api" class="text-accent hover:underline">GitHub</a> ·
-      Apache-2.0 licensed
+      MPL-2.0 licensed
     </p>
   </section>
 </AppShell>

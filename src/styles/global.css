@@ -113,6 +113,29 @@ body {
   overflow-x: auto;
 }
 .prose pre code { background: transparent; border: none; padding: 0; }
+
+/* mesh0408 W3 — prose authored in markdown must not push the page sideways on
+   a phone. Measured at 390px before this rule: the whitepaper's claims table
+   overflowed 85px and a long API path in an inline <code> overflowed 157px, so
+   the whole document scrolled horizontally and the right edge of every
+   paragraph sat off-screen.
+
+   Inline code breaks anywhere — a URL or a Windows path has no spaces to break
+   at, and `overflow-wrap: break-word` will not split an unbroken token.
+   `.prose pre` above already scrolls, so this deliberately does not touch it:
+   a fenced block should scroll, not reflow, or the code stops being copyable. */
+.prose :not(pre) > code { overflow-wrap: anywhere; }
+
+/* A markdown table has no width it can shrink to. Making it its own scroll
+   container is the standard treatment and keeps the columns readable. */
+.prose table { display: block; max-width: 100%; overflow-x: auto; }
+
+/* Docs headings are often a bare API path — `DELETE /api/cookbooks/{cookbook_id}/skills/{slug}`
+   is one token with no break opportunity, and it overflowed /docs/api-reference
+   by 19px at 390px. `break-word` rather than `anywhere`: it only splits a word
+   that cannot fit on a line by itself, so ordinary headings still wrap on
+   spaces. */
+.prose h1, .prose h2, .prose h3, .prose h4 { overflow-wrap: break-word; }
 .prose a { color: var(--color-accent); text-decoration: underline; text-underline-offset: 3px; }
 .prose ul li { padding-left: 1.25rem; position: relative; margin-bottom: 0.375rem; }
 .prose ul li::before { content: '—'; position: absolute; left: 0; color: var(--color-muted); }
@@ -268,6 +291,13 @@ body {
 .seg-tabs {
   display: inline-flex; height: 36px; border-radius: 999px; background: rgba(255,255,255,0.04);
   border: 1px solid rgba(255,255,255,0.08); padding: 3px; gap: 2px; overflow-x: auto; scrollbar-width: none;
+  /* mesh0408 W3. `overflow-x: auto` on an inline-flex does nothing without a
+     width cap: the box sizes to its content, so the five Browse tabs measured
+     397px inside a 390px viewport and "Personalities" was clipped by the page
+     edge on every phone. max-width is what lets the scroll this rule always
+     intended actually engage. Same class on /library, so this is the class
+     fixed, not the one page it was noticed on. */
+  max-width: 100%;
 }
 .seg-tabs::-webkit-scrollbar { display: none; }
 .seg-tab {

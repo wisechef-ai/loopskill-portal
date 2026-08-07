@@ -10,6 +10,60 @@
     }
 }
 
+# ─────────────────────────────────────────────────────────────────────────
+# APEX REDIRECT (mesh0408 W3) — NOT ACTIVE UNTIL DNS MOVES. See below.
+#
+# THE DEFECT THIS ENDS. loopskill.io (GitHub Pages, repo
+# wisechef-ai/loopskill-landing) served a SECOND storefront with the retired
+# "open registry" positioning, a superseded pricing ladder, and three nav
+# targets that 404'd — /docs, /pricing, /llms.txt — because those pages only
+# ever existed on app.loopskill.io. The apex is the hostname people type, and
+# it was the stale one. Adam's call, 2026-08-07: app.loopskill.io is canonical.
+#
+# The interim fix is a meta-refresh redirector shipped in loopskill-landing.
+# It works for humans but GitHub Pages cannot emit an HTTP 301, and it serves
+# the path-preserving case with a 404 status. THIS block is the durable fix:
+# a real 301, path and query preserved.
+#
+# ACTIVATION ORDER — do not reorder, the middle step is what avoids downtime:
+#   1. Merge the loopskill-landing redirector PR (apex stops contradicting
+#      the app while still on Pages).
+#   2. Paste this block into /etc/caddy/Caddyfile on the portal host, then
+#      `caddy validate --config /etc/caddy/Caddyfile` and
+#      `sudo systemctl reload caddy`. Caddy provisions the certificate for
+#      loopskill.io on first request, so it must be live BEFORE DNS moves.
+#   3. Repoint DNS: replace the four GitHub Pages A records for loopskill.io
+#      with a single A record to this host, and repoint the www CNAME.
+#      Exact values are in /tmp/ISSUES-w3.md.
+#   4. Probe /docs, /pricing and /llms.txt at the apex and confirm 301 —
+#      NOT just `/`. Trap E7: a root-path check would have passed throughout
+#      the entire period this defect existed.
+#
+# Keep the two path exceptions. `curl -fsSL loopskill.io/install | sh` is
+# published in the wild and must keep returning the script, not a redirect to
+# an HTML page that a shell would then try to execute.
+# ─────────────────────────────────────────────────────────────────────────
+# loopskill.io, www.loopskill.io {
+#     encode gzip zstd
+#
+#     # Published install one-liner — serve, never redirect.
+#     handle /install {
+#         root * /home/wisechef/loopskill-portal/dist
+#         rewrite * /install.sh
+#         file_server
+#     }
+#
+#     # Social cards already shared against apex URLs.
+#     handle /og.png {
+#         root * /home/wisechef/loopskill-portal/dist
+#         rewrite * /og-default.png
+#         file_server
+#     }
+#
+#     # Everything else: one storefront, permanently.
+#     redir https://app.loopskill.io{uri} permanent
+# }
+
 :3001 {
     encode gzip zstd
 
@@ -31,10 +85,36 @@
         reverse_proxy localhost:8200
     }
 
+    # The site's own 404 page. WITHOUT THIS, a mistyped URL on app.loopskill.io
+    # returns Caddy's bare 404 with a ZERO-BYTE BODY — a blank page — even
+    # though the build has emitted a designed dist/404.html the whole time.
+    # Probed 2026-08-07:
+    #   curl -sI https://app.loopskill.io/this-page-does-not-exist-xyz
+    #     → 404, size_download=0
+    #   curl -sI https://app.loopskill.io/404   → 200 (the page exists; nothing serves it)
+    #
+    # `file_server` without `browse` here, and the 404 status is preserved
+    # rather than laundered into a 200 — a soft-404 would tell crawlers a dead
+    # URL is a real page, which is the opposite of what this repo just spent a
+    # phase fixing.
+    handle_errors {
+        @notfound expression {err.status_code} == 404
+        handle @notfound {
+            root * /home/wisechef/loopskill-portal/dist
+            rewrite * /404.html
+            file_server
+        }
+        respond "{err.status_code} {err.status_text}"
+    }
+
     # Static multi-page site. Astro emits per-route index.html files.
     # try_files resolves: /skills -> /skills/index.html (NOT homepage fallback).
     handle {
-        root * /home/wisechef/recipes-portal/dist
+        # 2026-08-07: was /home/wisechef/recipes-portal/dist, which has not been
+        # the served root since the loopskill rename. A reference file naming the
+        # wrong root is how the 2026-07-17→25 deploys stayed green while shipping
+        # nothing; CLAUDE.md has the real path and this file now agrees with it.
+        root * /home/wisechef/loopskill-portal/dist
         try_files {path} {path}/index.html {path}.html
         file_server
     }

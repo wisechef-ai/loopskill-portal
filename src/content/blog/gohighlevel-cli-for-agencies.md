@@ -93,6 +93,6 @@ The GHL skill uses your existing API key. Credentials are stored in your agent's
 
 ## Pricing
 
-The GoHighLevel skill is part of Recipes Pro ($29/month). It includes access to the full skill catalog -- client reporting, SEO auditing, proposal generation, content calendar management, and 50+ other agency skills. The free tier includes Client Reporter and super-memory as gateway skills.
+The GoHighLevel skill is part of Pro, then priced at $29/month — that figure is superseded; the current ladder is Free / Pro $9.95 per month / Enterprise on demand (see [/pricing](/pricing)). It includes access to the full skill catalog -- client reporting, SEO auditing, proposal generation, content calendar management, and 50+ other agency skills. The free tier includes Client Reporter and super-memory as gateway skills.
 
 [Install the GoHighLevel skill](https://recipes.wisechef.ai/skills/gohighlevel)
