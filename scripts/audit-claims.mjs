@@ -169,6 +169,62 @@ export const RULES = [
       { when: /\bwhen\b|\bif\b|\bprovided\b|\bas long as\b|\botherwise\b|\bfalls? back\b|\bwithout\b/i },
     ],
   },
+  {
+    id: 'unlocked-price',
+    // hub §4 D-003 fixes the PUBLIC ladder at exactly three rungs: Free,
+    // Pro $9.95, and Enterprise-on-demand. D-005 adds that anything above Pro
+    // is "a sales conversation, never an automated meter" — so a number above
+    // Pro is not merely unapproved copy, it contradicts a locked decision by
+    // publishing what is deliberately unpublished.
+    //
+    // This rule exists because /intent shipped a public page headlined
+    // "$100/mo" with an "Operator plan" (a banned legacy tier slug), on a
+    // question D-003 had already settled. It was orphaned and unindexed, so no
+    // link check and no human review saw it for weeks. Adam, 2026-08-07:
+    // "$100 is on demand — remove it from the website, it should stay invite
+    // only (manual tier up when someone tells us Pro isn't enough)."
+    //
+    // Matches any dollar amount carrying a monthly/annual cadence, then
+    // exonerates the two the ladder actually publishes. Deliberately NOT
+    // limited to $100: the failure mode is "a price nobody approved reached a
+    // public surface", and the next one will be a different number.
+    pattern: /\$\s?\d[\d,]*(?:\.\d{2})?\s*(?:\/\s*(?:mo|month|yr|year)\b|per\s+(?:month|year|seat|agent|client)\b)/i,
+    claim: 'hub §4 D-003/D-005 — the public ladder is Free / Pro $9.95 / Enterprise-on-demand',
+    why:
+      'Only two prices may appear on a public surface: $0 (Free) and $9.95/mo (Pro). ' +
+      'Everything above Pro is on-demand and invite-only by decision, so publishing a ' +
+      'number for it pre-empts a sales conversation and creates a third pricing story. ' +
+      'If a new price is genuinely approved, add a hub §4 decision row FIRST, then ' +
+      'exonerate it here — never soften this pattern.',
+    exonerations: [
+      // The two published rungs. Tolerant of the space Astro emits between the
+      // amount and the cadence ("$9.95 /month"), which is a rendering artifact,
+      // not a different price.
+      { when: /\$\s?9\.95\s*(?:\/\s*(?:mo|month)|per\s+month)\b/i },
+      { when: /\$\s?0(?:\.00)?\s*(?:\/\s*(?:mo|month)|per\s+month)\b/i },
+      // Referral EARNINGS are what a user RECEIVES, not what LoopSkill charges,
+      // and every figure is derived from the legitimate $9.95 Pro price:
+      //   "10 refs × $9.95 × 0.5 = $49.75/mo"   "Pro referral $4.98"
+      // Scoped to sentences that either show the arithmetic (×, =) or name the
+      // referral programme, because a bare price claim contains neither. Per
+      // this file's own doctrine: when the gate flags a TRUE sentence,
+      // exonerate NARROWLY — never widen the pattern, or it goes blind to the
+      // $20/$100 Pro+ claims sitting one page over.
+      {
+        when: /[×x*]\s*\$|\$[\d.,]+\s*[×x*]|\btotal\s*=|\brefer(?:ral|rer|s)?\b/i,
+        unlessAlso: /\bplans?\b|\btiers?\b|\bper\s+(seat|agent|client)\b|\bsubscription\b/i,
+      },
+      // A dated CORRECTION must be able to quote the price it is retracting.
+      // Without this the gate flags the very disclosure it demands — the same
+      // trap the API script's first version hit (see this file's header), and
+      // the reason the DENIAL exoneration exists for the push rules.
+      //
+      // Deliberately requires an explicit retraction word IN THE SENTENCE.
+      // "Pro is $20/month" cannot exonerate itself; only
+      // "the $20/month figure is superseded" can.
+      { when: /\b(out of date|outdated|superseded|no longer|former|previously|correction|was priced|historical|withdrawn|retired|discontinued|then priced)\b/i },
+    ],
+  },
 ];
 
 /** Files whose rendered prose is product copy. Everything the build emits. */

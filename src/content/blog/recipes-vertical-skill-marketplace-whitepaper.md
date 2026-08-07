@@ -10,8 +10,9 @@ tags: ['recipes', 'skills', 'marketplace', 'mcp', 'architecture', 'integrator', 
 > This paper was published 2026-06-02 under the product's former name and its
 > former pricing ladder. **The current ladder is Free / Pro $9.95 per month /
 > Enterprise on demand**, and Pro allows 50 private bundles. Public bundles are
-> unlimited on every tier, including Free. The "$20/month", "$100/month Pro+",
-> and per-cookbook figures below are superseded — see **[/pricing](/pricing)**
+> unlimited on every tier, including Free. Every price figure below is
+> superseded — including the former $20/month Pro and $100/month Pro+ tiers and
+> the per-cookbook numbers — see **[/pricing](/pricing)**
 > for what is actually charged today.
 
 > **⚠️ ONE CAPABILITY CLAIM WAS ALSO WRONG (correction added 2026-08-07).**
@@ -46,7 +47,7 @@ The core thesis: **a database-of-record for skills, with optional git feedback r
 
 - A curated, signed, versioned catalog of installable AI agent skills — 62 skills as of 2026-06-02, verified against the live system at `GET /api/marketing/snapshot`.
 - A native MCP server with 28 dedicated tools (not a generic REST wrapper). Verified live from `GET /skill`.
-- A subscription platform where Pro ($20/month) gives access to all 61 paid skills with up to 10 cookbooks, and Pro+ ($100/month) scales to 200 cookbooks for integrators who deploy agents at client scale.
+- A subscription platform where Pro (then priced at $20/month — superseded, see the correction above) gives access to all 61 paid skills with up to 10 cookbooks, and Pro+ (then $100/month — a tier since withdrawn from the public ladder) scales to 200 cookbooks for integrators who deploy agents at client scale.
 - A complete tailor-and-deploy loop: fork a public skill, version it privately, attach it to a cookbook, deploy it — entirely through MCP tool calls, without leaving the agent conversation.
 - A feedback routing system where agent field feedback lands as GitHub issues in *whichever repo the integrator configures* — not necessarily ours.
 
@@ -162,8 +163,8 @@ Recipes exposes 28 MCP tools via StreamableHTTP at `GET /api/mcp/http/`. Verifie
 
 **Pricing (live as of 2026-06-02, verified against `GET /api/marketing/snapshot`):**
 
-- **Pro — $20/month.** Every paid skill in the catalog (61 today, growing weekly). Up to 10 cookbooks. Fleet sync. Cross-vendor install (Claude Code, Cursor, Cline, OpenClaw, Hermes, Windsurf). Recurring, cancel anytime.
-- **Pro+ — $100/month.** Everything in Pro. Up to 200 cookbooks. Per-cookbook scoped API keys (up to 20). ~~Deploy cookbooks to client agents.~~ *(struck 2026-08-07 — never true; delivery is pull-only.)* Private org-only catalog. Priority skill review.
+- **Pro — then $20/month (superseded; Pro is now $9.95/mo).** Every paid skill in the catalog (61 today, growing weekly). Up to 10 cookbooks. Fleet sync. Cross-vendor install (Claude Code, Cursor, Cline, OpenClaw, Hermes, Windsurf). Recurring, cancel anytime.
+- **Pro+ — then $100/month (a tier since withdrawn; above Pro is on-demand only).** Everything in Pro. Up to 200 cookbooks. Per-cookbook scoped API keys (up to 20). ~~Deploy cookbooks to client agents.~~ *(struck 2026-08-07 — never true; delivery is pull-only.)* Private org-only catalog. Priority skill review.
 - **Free.** One permanently free skill (`super-memory`). No credit card required. No time limit.
 
 There is no founding tier, no lifetime purchase, and no per-skill charge. The DB identifiers are `cook` (Pro) and `operator` (Pro+) — stable, not changed by display label updates. The portal UI shows "Pro" and "Pro+".
@@ -357,8 +358,8 @@ All quantitative claims in this document are sourced. The complete claim ledger 
 | 1 free skill | `GET /api/marketing/snapshot` → `counts.free_skills` | 2026-06-02 |
 | 61 Pro skills | `GET /api/marketing/snapshot` → `counts.pro_skills` | 2026-06-02 |
 | 28 MCP tools | `GET /skill` grep of `recipes_*` tool names | 2026-06-02 |
-| Pro $20/month | `GET /api/marketing/snapshot` → `tiers.pro.price_usd` | 2026-06-02 |
-| Pro+ $100/month | `GET /api/marketing/snapshot` → `tiers.pro_plus.price_usd` | 2026-06-02 |
+| Pro, then $20/month (superseded) | `GET /api/marketing/snapshot` → `tiers.pro.price_usd` | 2026-06-02 |
+| Pro+, then $100/month (withdrawn) | `GET /api/marketing/snapshot` → `tiers.pro_plus.price_usd` | 2026-06-02 |
 | Pro: 10 cookbooks | `GET /api/marketing/snapshot` → `counts.pro_cookbooks` | 2026-06-02 |
 | Pro+: 200 cookbooks | `GET /api/marketing/snapshot` → `counts.pro_plus_cookbooks` | 2026-06-02 |
 | Tailor loop complete + byte-identical | `app/mcp/tools/fork_deploy.py` + Phase C test | 2026-06-02 |
