@@ -33,9 +33,12 @@ import AppShell from '../../layouts/AppShell.astro';
 
     <!-- Per-bundle scoping -->
     <h2 class="text-xl font-semibold text-text mb-4">Per-bundle scoping <span class="text-xs text-muted-soft font-normal">(Pro)</span></h2>
-    <div class="bg-yellow-500/10 border border-yellow-500/40 rounded p-4 mb-6">
-      <p class="text-sm text-yellow-200">
-        <strong>Coming with bundle deployment, Q2 2026.</strong> Per-bundle scoped keys are part of the Phase C release. The description below documents the intended behavior so you can plan integrations.
+    <div class="bg-bg-card border border-border rounded p-4 mb-6">
+      <p class="text-sm text-muted">
+        <strong class="text-text">Live.</strong> A key can be bound to a single bundle
+        (<code class="text-xs">api_keys.bundle_id</code>). What that key does <em>not</em> do is
+        put the bundle on a machine: the agent holding it pulls, on its own schedule. There is
+        no deployment step to wait for.
       </p>
     </div>
     <p class="text-muted mb-4">

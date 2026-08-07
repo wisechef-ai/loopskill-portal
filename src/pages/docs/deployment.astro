@@ -3,30 +3,33 @@ import AppShell from '../../layouts/AppShell.astro';
 ---
 
 <AppShell mode="public"
-  title="Client deployment — LoopSkill Docs"
-  description="How Pro customers push bundles to client agents: create bundle, assign endpoint API key, client installs meta-skill, bundle auto-syncs."
+  title="Getting a bundle onto a client agent — LoopSkill Docs"
+  description="Delivery is pull-based: you create a bundle, scope an API key to it, the client's agent installs the meta-skill once and reconciles against the bundle on its own schedule. LoopSkill never pushes."
 >
   <section class="max-w-3xl mx-auto px-6 pt-16 pb-24">
-    <p class="eyebrow mb-3">Docs · Deployment</p>
-
-    <!-- Phase C gating banner -->
-    <div class="bg-yellow-500/10 border border-yellow-500/40 rounded p-4 mb-8">
-      <p class="text-sm text-yellow-200">
-        <strong>Per-bundle API keys are live. A bundle is delivered by the agent PULLING it — there is no push, and no client-deployment surface.</strong>
-        The deployment pipeline described here ships as part of Phase C.
-        This page documents the intended flow so you can plan your client onboarding.
-        Everything described below is forward-looking and will be updated when Phase C ships.
-      </p>
-    </div>
+    <p class="eyebrow mb-3">Docs · Delivery</p>
 
     <h1 class="text-4xl md:text-5xl font-semibold tracking-tight mb-6">
-      Deploying bundles to client agents
+      Getting a bundle onto a client agent
     </h1>
-    <p class="text-muted text-lg leading-relaxed mb-12">
-      Pro lets you push a pre-built skill bundle straight into an agent you
-      operate for a client. One install command. Stays in sync. No LoopSkill branding on the
-      client side unless you want it.
+    <p class="text-muted text-lg leading-relaxed mb-6">
+      You build a bundle, scope an API key to it, and hand your client one install
+      command. Their agent holds the key and reconciles itself against the bundle
+      from then on. Nothing on the client side carries LoopSkill branding unless
+      you put it there.
     </p>
+
+    <!-- The shape of the mechanism, stated before the steps rather than hedged after them -->
+    <div class="bg-bg-card border border-border rounded-xl p-5 mb-12">
+      <p class="text-sm text-text font-semibold mb-2">LoopSkill never pushes.</p>
+      <p class="text-sm text-muted">
+        There is no button here that reaches a client's machine, and no job whose
+        completion you wait on. The control plane cannot open a connection to an
+        agent — every change travels the other way, when the agent next asks.
+        Practically: after you edit a bundle, expect the client's agent to be
+        running the new version within one poll cycle, not within a second.
+      </p>
+    </div>
 
     <!-- Prerequisites -->
     <h2 class="text-xl font-semibold text-text mb-4">Prerequisites</h2>
@@ -50,7 +53,7 @@ import AppShell from '../../layouts/AppShell.astro';
     </ul>
 
     <!-- Step-by-step -->
-    <h2 class="text-xl font-semibold text-text mb-6">Step-by-step deployment</h2>
+    <h2 class="text-xl font-semibold text-text mb-6">Step by step</h2>
 
     <div class="flex flex-col gap-6 mb-12">
 
@@ -118,11 +121,14 @@ import AppShell from '../../layouts/AppShell.astro';
           <div class="w-px flex-1 bg-border mt-2"></div>
         </div>
         <div class="pb-6">
-          <h3 class="text-base font-semibold text-text mb-2">Bundle auto-syncs</h3>
+          <h3 class="text-base font-semibold text-text mb-2">The agent reconciles on its own cron</h3>
           <p class="text-sm text-muted">
-            The meta-skill fetches the bundle manifest on every poll cycle (default: every 15 minutes).
-            When you push an update — adding a skill, bumping a version, removing something outdated —
-            all agents using that key receive the change on their next sync automatically.
+            The meta-skill re-fetches the bundle manifest each time the client's cron
+            fires and installs the difference. The cadence is whatever cron the client
+            installed — the self-host guide's example is
+            <code class="text-xs bg-bg-elev rounded px-1">*/30 * * * *</code>, so half an
+            hour is the number to plan around unless you agreed on something else.
+            There is no product-side default and nothing to configure here.
           </p>
         </div>
       </div>
@@ -130,15 +136,22 @@ import AppShell from '../../layouts/AppShell.astro';
     </div>
 
     <!-- Updates -->
-    <h2 class="text-xl font-semibold text-text mb-4">Pushing updates</h2>
+    <h2 class="text-xl font-semibold text-text mb-4">Shipping an update</h2>
     <p class="text-muted mb-4">
       Edit the bundle in your library: add skills, remove skills, or change version pins.
-      Save. Done. Every agent that installed via the bundle-scoped key picks up the update
-      within one poll cycle — there is no push command, no client-side action required.
+      Save. That is the whole operator-side action — every agent holding the
+      bundle-scoped key picks the change up on its next cron fire. There is no push
+      command, and nothing for the client to do.
+    </p>
+    <p class="text-muted mb-4">
+      Rolling back is the same motion in reverse: pin the previous version and the
+      agents converge back on their next fire.
     </p>
     <p class="text-muted mb-10">
-      If you want to roll back, pin the previous version in the bundle. The agents revert on
-      the next sync.
+      What you do <em>not</em> get is a per-agent confirmation. LoopSkill has no
+      terminal "applied" state for a bundle and no callback from the client's machine,
+      so you cannot tell from here whether a given agent has picked up a change. If
+      you need that, the client's cron log is the source of truth.
     </p>
 
     <!-- Whitelabel -->
@@ -166,7 +179,7 @@ import AppShell from '../../layouts/AppShell.astro';
         <p class="text-sm font-semibold text-text">Learn about bundles first</p>
         <p class="text-sm text-muted mt-1">See what a bundle is, visibility options, and how versions work.</p>
       </div>
-      <a href="/docs/bundles" class="shrink-0 inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold border border-border hover:border-accent text-text transition">
+      <a href="/docs/cookbooks" class="shrink-0 inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold border border-border hover:border-accent text-text transition">
         Bundles →
       </a>
     </div>

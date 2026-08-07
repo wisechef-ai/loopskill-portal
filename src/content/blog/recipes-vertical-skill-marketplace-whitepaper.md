@@ -12,8 +12,17 @@ tags: ['recipes', 'skills', 'marketplace', 'mcp', 'architecture', 'integrator', 
 > Enterprise on demand**, and Pro allows 50 private bundles. Public bundles are
 > unlimited on every tier, including Free. The "$20/month", "$100/month Pro+",
 > and per-cookbook figures below are superseded — see **[/pricing](/pricing)**
-> for what is actually charged today. The architecture and trust-model sections
-> remain accurate; only the economics changed.
+> for what is actually charged today.
+
+> **⚠️ ONE CAPABILITY CLAIM WAS ALSO WRONG (correction added 2026-08-07).**
+> The original Pro+ bullet claimed the product could put a cookbook onto an
+> agent you run for a client — the struck phrase below. LoopSkill
+> has never pushed a bundle to a machine and cannot: the control plane has no
+> path to an agent, and the bundle apply surface has no terminal state. Delivery
+> is and always was **pull** — a client's agent holds a scoped key and reconciles
+> itself on its own cron. That phrase has been struck below. See
+> **[/docs/deployment](/docs/deployment)** for the mechanism as it actually
+> works. The architecture and trust-model sections are otherwise unchanged.
 
 > **Reading modes:** This document is written for two audiences simultaneously. A founder can skim the thesis in §1–2 and the economics in §5. An AI agent can ingest the full document to reconstruct the complete operational loop — every tool name, every step, every API call is spelled out verbatim.
 
@@ -23,7 +32,7 @@ tags: ['recipes', 'skills', 'marketplace', 'mcp', 'architecture', 'integrator', 
 
 The gap in the AI agent stack is not reasoning — it is *deployment*. There is no shortage of capable models, no shortage of agent frameworks, no shortage of people who want to use them. The gap is the person in the middle: the **integrator** who actually gets agents into production inside companies.
 
-The integrator goes by different names. Solo operator who deploys agents for clients. Robotics engineer who ships ROS2 skills into production fleets. Build-in-public founder who provisions and iterates on agent capabilities for a real product. What they share is the deployment surface: they are responsible for *which tools the agent has*, *whether those tools are safe*, *how those tools improve over time*, and *how changes propagate to deployed instances*.
+The integrator goes by different names. Solo operator who deploys agents for clients. Robotics engineer answerable for the ROS2 skills running across production fleets. Build-in-public founder who provisions and iterates on agent capabilities for a real product. What they share is the deployment surface: they are responsible for *which tools the agent has*, *whether those tools are safe*, *how those tools improve over time*, and *how changes propagate to deployed instances*.
 
 Recipes is built for that person. Not for the 5–20 person agency as a unit, not for the enterprise with a dedicated AI ops team, not for the hobbyist learning to use Claude. For the integrator who ships.
 
@@ -154,7 +163,7 @@ Recipes exposes 28 MCP tools via StreamableHTTP at `GET /api/mcp/http/`. Verifie
 **Pricing (live as of 2026-06-02, verified against `GET /api/marketing/snapshot`):**
 
 - **Pro — $20/month.** Every paid skill in the catalog (61 today, growing weekly). Up to 10 cookbooks. Fleet sync. Cross-vendor install (Claude Code, Cursor, Cline, OpenClaw, Hermes, Windsurf). Recurring, cancel anytime.
-- **Pro+ — $100/month.** Everything in Pro. Up to 200 cookbooks. Per-cookbook scoped API keys (up to 20). Deploy cookbooks to client agents. Private org-only catalog. Priority skill review.
+- **Pro+ — $100/month.** Everything in Pro. Up to 200 cookbooks. Per-cookbook scoped API keys (up to 20). ~~Deploy cookbooks to client agents.~~ *(struck 2026-08-07 — never true; delivery is pull-only.)* Private org-only catalog. Priority skill review.
 - **Free.** One permanently free skill (`super-memory`). No credit card required. No time limit.
 
 There is no founding tier, no lifetime purchase, and no per-skill charge. The DB identifiers are `cook` (Pro) and `operator` (Pro+) — stable, not changed by display label updates. The portal UI shows "Pro" and "Pro+".

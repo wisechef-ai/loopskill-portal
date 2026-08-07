@@ -7,7 +7,7 @@
   },
   "scripts": {
     "dev": "astro dev",
-    "build": "astro build && bash scripts/assert-dist.sh",
+    "build": "astro build && bash scripts/assert-dist.sh && node scripts/audit-links.mjs dist && node scripts/audit-claims.mjs dist",
     "preview": "astro preview",
     "astro": "astro",
     "test": "vitest run",

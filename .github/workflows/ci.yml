@@ -96,7 +96,12 @@ jobs:
         # clone doesn't report a false failure), which would make them silently
         # no-op in CI if run pre-build. Running them here is what makes the
         # render assertions real rather than decorative.
-        run: npx vitest run tests/spotify-2607-browse-renders.test.ts
+        # mesh0408 W3 adds the storefront guards for the same reason: their
+        # dist-dependent cases (audit-links / audit-claims over the real build)
+        # self-skip when dist/ is absent, so they only mean something here.
+        run: |
+          npx vitest run tests/spotify-2607-browse-renders.test.ts
+          npx vitest run tests/mesh0408-w3-storefront-guards.test.ts
 
       - name: Stamp build id into dist (deploy-identity canary source)
         # ponytail_0725. The deploy job asserts that the LIVE origin serves THIS
