@@ -12,15 +12,14 @@ import Icon from '../../components/Icon.astro';
       or as a plain Markdown <strong class="text-text">meta-skill</strong> any agent can read.
       <strong class="text-text">Free skills install with no API key.</strong>
       Pro skills require a key from your <a href="/library" class="text-accent hover:underline">library</a>.
+      The MCP server itself requires an API key for every call, including free-tier lookups —
+      see the note below.
     </p>
 
     <!-- MCP path — recommended -->
     <div class="bg-bg-card border border-accent/30 rounded-2xl p-6 mb-10">
       <div class="flex items-center justify-between gap-3 mb-3 flex-wrap">
-        <p class="eyebrow text-accent">Recommended · MCP server</p>
-        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold tracking-wider bg-success/15 text-success border border-success/30">
-          No auth for free skills
-        </span>
+        <p class="eyebrow text-accent">Recommended · MCP server (StreamableHTTP)</p>
       </div>
       <h2 class="text-xl font-semibold tracking-tight mb-3">Connect your agent in one config block</h2>
       <p class="text-sm text-muted mb-4 leading-relaxed">
@@ -30,28 +29,23 @@ import Icon from '../../components/Icon.astro';
         and <code class="text-[11px] bg-bg-elev border border-border-soft rounded px-1 py-0.5">loopskill_recall</code>
         as tools it can call mid-conversation.
       </p>
+      <p class="text-xs text-muted-soft leading-relaxed mb-4">
+        <strong class="text-text">MCP server requires an API key for all operations</strong> — including
+        free-tier skill lookups. If you want a truly keyless path, use the meta-skill or raw REST paths below instead.
+      </p>
 
       <p class="text-xs text-muted-soft uppercase tracking-wider font-semibold mb-2">Claude Desktop / Cursor / Cline</p>
       <pre class="text-xs bg-[#0d0d0d] border border-border rounded-lg p-4 overflow-x-auto mb-4"><code>{`{
   "mcpServers": {
     "loopskill": {
-      "url": "https://app.loopskill.io/api/mcp/sse"
-    }
-  }
-}`}</code></pre>
-
-      <p class="text-xs text-muted-soft uppercase tracking-wider font-semibold mb-2 mt-5">Unlock Pro skills (optional)</p>
-      <pre class="text-xs bg-[#0d0d0d] border border-border rounded-lg p-4 overflow-x-auto mb-3"><code>{`{
-  "mcpServers": {
-    "loopskill": {
-      "url": "https://app.loopskill.io/api/mcp/sse",
+      "url": "https://app.loopskill.io/api/mcp/http/",
       "headers": { "x-api-key": "rec_live_…" }
     }
   }
 }`}</code></pre>
       <p class="text-xs text-muted-soft leading-relaxed">
-        Get your key from <a href="/library" class="text-accent hover:underline">your library</a> after subscribing.
-        Free skills install whether the header is present or not — the key only gates Pro catalog access.
+        Get your key from <a href="/library" class="text-accent hover:underline">your library</a> — free signup
+        gives you a free-tier key immediately.
       </p>
       <div class="mt-4 pt-4 border-t border-border-soft">
         <a href="/docs/mcp" class="text-xs text-accent hover:underline inline-flex items-center gap-1">

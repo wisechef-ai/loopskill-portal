@@ -56,15 +56,15 @@ curl -sL https://app.loopskill.io/skill \
 
       <h3>Claude Desktop (MCP)</h3>
       <p>
-        Claude Desktop uses the Model Context Protocol. Add the LoopSkill MCP server to your
+        Claude Desktop uses the Model Context Protocol. LoopSkill is a <strong>hosted</strong> MCP
+        server — no local install. Add it to your
         <code>claude_desktop_config.json</code>:
       </p>
       <pre><code>{`{
   "mcpServers": {
     "loopskill": {
-      "command": "uvx",
-      "args": ["loopskill-mcp"],
-      "env": { "RECIPES_API_KEY": "rec_xx..." }
+      "url": "https://app.loopskill.io/api/mcp/http/",
+      "headers": { "x-api-key": "rec_xx..." }
     }
   }
 }`}</code></pre>
@@ -77,8 +77,8 @@ curl -sL https://app.loopskill.io/skill \
       <p>Open Cursor Settings → MCP → Add Server:</p>
       <pre><code>{`{
   "name": "loopskill",
-  "command": "uvx loopskill-mcp",
-  "env": { "RECIPES_API_KEY": "rec_xx..." }
+  "url": "https://app.loopskill.io/api/mcp/http/",
+  "headers": { "x-api-key": "rec_xx..." }
 }`}</code></pre>
 
       <h2>Step 2 — Search the catalog</h2>
@@ -125,7 +125,8 @@ curl -sL https://app.loopskill.io/skill \
 
       <h2>What's in the catalog</h2>
       <p>
-        60+ skills across marketing, code, web scraping, ops, and sales. Every skill carries
+        Skills across marketing, code, web scraping, ops, and sales — see the live count on
+        <a href="/skills">the catalog page</a> or <code>GET /api/stats</code>. Every skill carries
         a <code>quality_score</code>, install count, and last-verified date.
       </p>
       <p>

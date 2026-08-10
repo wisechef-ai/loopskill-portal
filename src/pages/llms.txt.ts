@@ -342,7 +342,8 @@ ${personalityLines.join('\n')}`
 ## Connectors — MCP-server config fragments
 A connector is a named, versioned MCP-server config template (stdio/http/sse) — literal secrets never transit the server, only \${VAR} env refs. Catalogued alongside skills and bundles.
 - List public connectors (no key): \`GET ${SITE}/api/connectors\`
-- Detail: \`GET ${SITE}/api/connectors/{slug}\``;
+- Detail: \`GET ${SITE}/api/connectors/{slug}\`
+> Note: the public connector catalog is intentionally empty until a human promotes an entry — connectors are staged behind a review gate. See ${SITE}/docs/scope.`;
 
   const body = `# LoopSkill — the vertical skill marketplace for AI agents
 
@@ -356,7 +357,7 @@ Or hit the public REST API directly (no key for read/search):
 - Search: \`GET ${SITE}/api/skills/search?q=<query>\`
 - Detail: \`GET ${SITE}/api/skills/{slug}\`
 - Trending: \`GET ${SITE}/api/skills/trending\`
-- Install (returns a signed tarball): \`GET ${SITE}/api/skills/install\`${supersetSection}${loopsSection}${compositesSection}${bundlesSection}${personalitiesSection}${connectorsSection}
+- Install (returns a signed tarball): \`GET ${SITE}/api/skills/install?slug=<slug>\`${supersetSection}${loopsSection}${compositesSection}${bundlesSection}${personalitiesSection}${connectorsSection}
 
 ## Start free
 ${freeLine}
