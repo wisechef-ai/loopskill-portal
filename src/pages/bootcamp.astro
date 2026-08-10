@@ -40,6 +40,22 @@ type TrackSummary = {
 let tracks: Track[] = [];
 let fetchError: string | null = null;
 
+// bundles_0811 P0 (#219 sibling — the same "hardcoded 60+/72 skills" defect
+// class, caught here by the docsci hardcoded-count gate, tests/p0-no-
+// hardcoded-skill-counts.test.ts). "Browse all 72 skills →" below used to be
+// a literal string; the catalog is 57 today and that number drifts on every
+// publish. Mirrors index.astro's liveSkillCount pattern: live /api/skills/
+// search total, honest non-numeric fallback (never an invented number) if
+// the build-time fetch fails.
+const skillCountResult = await fetchApi<{ total: number }>('/api/skills/search?page_size=1', {
+  authed: false,
+});
+const liveSkillCount: number | null =
+  skillCountResult.ok && typeof skillCountResult.data?.total === 'number' && skillCountResult.data.total > 0
+    ? skillCountResult.data.total
+    : null;
+const skillCountLabel = liveSkillCount !== null ? `all ${liveSkillCount} skills` : 'the full catalog';
+
 const list = await fetchApi<{ version: number; tracks: TrackSummary[] }>(
   '/api/bootcamp',
   { authed: false, maxAttempts: 7, timeoutMs: 15000 },
@@ -121,7 +137,7 @@ function firstPaidPosition(t: Track): number | null {
 
 <AppShell mode="public"
   title="Agent Bootcamp — the opinionated install path | LoopSkill"
-  description="Don't browse 72 skills — follow the install path. Three curated bootcamp tracks take your agent from zero to a production setup. Start free, upgrade when it earns it."
+  description={`Don't browse the catalog one by one — follow the install path. Three curated bootcamp tracks take your agent from zero to a production setup. Start free, upgrade when it earns it.`}
 >
   <main class="max-w-5xl mx-auto px-6 py-16">
     <header class="mb-14 text-center">
@@ -191,7 +207,7 @@ function firstPaidPosition(t: Track): number | null {
       </p>
       <div class="flex items-center justify-center gap-4 flex-wrap">
         <a href="/skills/super-memory?ref=bootcamp-cta" class="bg-accent text-bg px-6 py-3 rounded-lg font-semibold hover:bg-accent-soft transition">Start free → super-memory</a>
-        <a href="/skills?ref=bootcamp-cta" class="px-6 py-3 rounded-lg font-semibold border border-border hover:border-accent">Browse all 72 skills →</a>
+        <a href="/skills?ref=bootcamp-cta" class="px-6 py-3 rounded-lg font-semibold border border-border hover:border-accent">Browse {skillCountLabel} →</a>
       </div>
     </section>
   </main>
