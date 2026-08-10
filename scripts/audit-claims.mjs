@@ -365,9 +365,17 @@ export function firesOn(rule, fragment) {
  * being dark for weeks. Set LOOPSKILL_API_DIR when the API is not a sibling.
  */
 function bundleLimitPattern() {
+  // Ordered by specificity. The absolute entries are the SELF-HOSTED RUNNER
+  // layout, verified on wisechef-hq 2026-08-10: the portal builds under
+  // actions-runner-portal/_work/, which does NOT contain the API repo — the API
+  // lives under a SEPARATE runner instance. A relative `../loopskill-api` alone
+  // therefore resolves locally but NOT in CI, which would have turned this
+  // guard into a permanent red build.
   const candidates = [
     process.env.LOOPSKILL_API_DIR && join(process.env.LOOPSKILL_API_DIR, 'config/tiers.yaml'),
     join('..', 'loopskill-api', 'config', 'tiers.yaml'),
+    '/home/wisechef/loopskill-api/config/tiers.yaml',
+    '/home/wisechef/actions-runner/_work/loopskill-api/loopskill-api/config/tiers.yaml',
   ].filter(Boolean);
 
   const found = candidates.find((c) => existsSync(c));
