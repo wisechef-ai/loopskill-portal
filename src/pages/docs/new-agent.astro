@@ -61,51 +61,30 @@ export RECIPES_API_KEY=rec_xx...</code></pre>
       <h2>MCP server integrations</h2>
       <p>
         These runtimes use the <a href="https://modelcontextprotocol.io">Model Context Protocol</a>.
-        Install the LoopSkill MCP server once; your agent gets <code>loopskill_search</code>,
-        <code>loopskill_install</code>, <code>loopskill_sync</code>, and all other LoopSkill tools.
+        LoopSkill is a <strong>hosted</strong> MCP server — no local install, no clone, no <code>pip install</code>.
+        Point your client at the StreamableHTTP endpoint with your key in the <code>x-api-key</code> header
+        and your agent gets <code>loopskill_search</code>, <code>loopskill_install</code>,
+        <code>loopskill_sync</code>, and all other LoopSkill tools.
       </p>
-      <p>Install the MCP server:</p>
-      <pre><code>pip install loopskill-mcp   # or: uvx loopskill-mcp (no install, runs directly)</code></pre>
+      <pre><code>{`{
+  "mcpServers": {
+    "loopskill": {
+      "url": "https://app.loopskill.io/api/mcp/http/",
+      "headers": { "x-api-key": "rec_xx..." }
+    }
+  }
+}`}</code></pre>
 
       <h3>Claude Desktop</h3>
       <p>Edit <code>~/Library/Application Support/Claude/claude_desktop_config.json</code>
-      (macOS) or <code>%APPDATA%\Claude\claude_desktop_config.json</code> (Windows):</p>
-      <pre><code>{`{
-  "mcpServers": {
-    "loopskill": {
-      "command": "uvx",
-      "args": ["loopskill-mcp"],
-      "env": {
-        "RECIPES_API_KEY": "rec_xx..."
-      }
-    }
-  }
-}`}</code></pre>
+      (macOS) or <code>%APPDATA%\Claude\claude_desktop_config.json</code> (Windows) with the config above.</p>
       <p>Restart Claude Desktop. The LoopSkill tools appear in the tool picker.</p>
 
       <h3>Cursor</h3>
-      <p>Open Cursor Settings → MCP → Add Server, or edit <code>.cursor/mcp.json</code>:</p>
-      <pre><code>{`{
-  "mcpServers": {
-    "loopskill": {
-      "command": "uvx",
-      "args": ["loopskill-mcp"],
-      "env": { "RECIPES_API_KEY": "rec_xx..." }
-    }
-  }
-}`}</code></pre>
+      <p>Open Cursor Settings → MCP → Add Server, or edit <code>.cursor/mcp.json</code> with the same config.</p>
 
       <h3>Cline (VS Code extension)</h3>
-      <p>In VS Code, open Cline settings → MCP Servers → Edit JSON:</p>
-      <pre><code>{`{
-  "mcpServers": {
-    "loopskill": {
-      "command": "uvx",
-      "args": ["loopskill-mcp"],
-      "env": { "RECIPES_API_KEY": "rec_xx..." }
-    }
-  }
-}`}</code></pre>
+      <p>In VS Code, open Cline settings → MCP Servers → Edit JSON with the same config.</p>
       <p>Skills installed via the <code>loopskill_install</code> tool are written to
       <code>~/.claude/skills/</code> by default; Cline picks them up.</p>
 
@@ -116,10 +95,9 @@ export RECIPES_API_KEY=rec_xx...</code></pre>
     "modelContextProtocolServers": [
       {
         "transport": {
-          "type": "stdio",
-          "command": "uvx",
-          "args": ["loopskill-mcp"],
-          "env": { "RECIPES_API_KEY": "rec_xx..." }
+          "type": "streamable-http",
+          "url": "https://app.loopskill.io/api/mcp/http/",
+          "headers": { "x-api-key": "rec_xx..." }
         }
       }
     ]
@@ -131,11 +109,9 @@ export RECIPES_API_KEY=rec_xx...</code></pre>
       <pre><code>{`{
   "context_servers": {
     "loopskill": {
-      "command": {
-        "path": "uvx",
-        "args": ["loopskill-mcp"],
-        "env": { "RECIPES_API_KEY": "rec_xx..." }
-      }
+      "source": "custom",
+      "url": "https://app.loopskill.io/api/mcp/http/",
+      "headers": { "x-api-key": "rec_xx..." }
     }
   }
 }`}</code></pre>
