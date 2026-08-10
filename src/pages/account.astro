@@ -84,7 +84,7 @@ import Icon from '../components/Icon.astro';
           <div class="flex items-center justify-between gap-3 mb-4">
             <div>
               <h2 class="text-lg font-semibold tracking-tight">API keys</h2>
-              <p class="text-xs text-muted mt-1">For the LoopSkill meta-skill and direct API access. <span id="key-tier-note" class="hidden">Pro: 1 key · Pro+: up to 20 keys.</span></p>
+              <p class="text-xs text-muted mt-1">For the LoopSkill meta-skill and direct API access. <span id="key-tier-note" class="hidden">Pro: 1 key.</span></p>
             </div>
             <button id="new-key-btn" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-accent text-bg text-xs font-semibold hover:bg-accent-soft transition">
               + New key
@@ -199,7 +199,7 @@ import Icon from '../components/Icon.astro';
           <div class="flex items-center justify-between gap-3">
             <div>
               <h2 class="text-lg font-semibold tracking-tight">Refer &amp; Earn</h2>
-              <p class="text-xs text-muted mt-1">Share your link, earn 50% recurring on every Pro / Pro+ subscriber you bring in.</p>
+              <p class="text-xs text-muted mt-1">Share your link, earn 50% recurring on every Pro subscriber you bring in.</p>
             </div>
             <a href="/referrals" class="text-sm text-accent hover:opacity-80 shrink-0">Open referrals →</a>
           </div>
@@ -339,17 +339,20 @@ import Icon from '../components/Icon.astro';
       const isPro = ['pro', 'cook'].includes(tier);
       const cap = typeof billing.cookbook_limit === 'number' ? billing.cookbook_limit : null;
       if (isProPlus) {
-        const capPhrase = cap !== null ? `up to ${cap} bundles` : 'multiple bundles';
+        // Pro+ is hidden/on-demand only (never self-serve) — this branch only
+        // ever renders for the handful of already-billed legacy/on-demand
+        // accounts. It must never read as an upsell CTA to a general visitor.
+        const capPhrase = cap !== null ? `up to ${cap} private bundles` : 'multiple private bundles';
         cookbookSubtitleText.textContent =
           `You have ${capPhrase} available. Each can be named after a client (e.g. acme-corp-bundle) and deployed to their agent fleet. Use bundle scoping below to map each API key to a client.`;
         cookbookSubtitle.classList.remove('hidden');
-        // Show the Pro+ client-naming hint in the create-key modal
+        // Show the on-demand client-naming hint in the create-key modal
         const proPlusHint = document.getElementById('modal-label-pro-plus-hint');
         if (proPlusHint) proPlusHint.classList.remove('hidden');
       } else if (isPro) {
-        const capPhrase = cap !== null ? `up to ${cap} bundles` : 'your personal bundles';
+        const capPhrase = cap !== null ? `up to ${cap} private bundles` : 'your personal private bundles';
         cookbookSubtitleText.textContent =
-          `You have ${capPhrase}. Use them to bundle your private skills and sync them across your agent fleet. Upgrade to Pro+ for many more client-named bundles.`;
+          `You have ${capPhrase}. Public bundles stay unlimited on every tier. Running agents for many clients at once? Contact us — hello@loopskill.io — for an on-demand plan.`;
         cookbookSubtitle.classList.remove('hidden');
       }
     }
