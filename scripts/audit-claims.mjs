@@ -225,6 +225,38 @@ export const RULES = [
       { when: /\b(out of date|outdated|superseded|no longer|former|previously|correction|was priced|historical|withdrawn|retired|discontinued|then priced)\b/i },
     ],
   },
+  {
+    id: 'bundle-limit-ssot-drift',
+    // The SISTER of `unlocked-price`. That rule pins the two published PRICES;
+    // this one pins the two published BUNDLE LIMITS, which drift the same way
+    // and are the only functional difference between Free and Pro (D-025).
+    //
+    // pricing.astro hardcodes "2 private bundles" and "50 private bundles" in
+    // seven places. That is CORRECT architecture — AGENTS.md bans build-time
+    // API fetches (WIS-737: couples the build to API uptime) — but it makes the
+    // portal↔server agreement a manual contract with no enforcement. Change
+    // `pro.bundle_limit` in the API's config/tiers.yaml and this repo keeps
+    // advertising the old cap until a human notices.
+    //
+    // This rule reads the SERVER SSOT and fails when rendered copy contradicts
+    // it, so the two repos cannot silently diverge. It is the same defect class
+    // as D-011, where a bundle cap counted the wrong thing in one place and the
+    // UI reported a number the API did not enforce.
+    //
+    // Numbers are injected at scan time by `bundleLimitRule()` below, NOT typed
+    // here — a hand-typed limit in the guard would be a third copy of the very
+    // number the guard exists to keep singular.
+    dynamic: 'bundle-limits',
+    claim: 'server SSOT — loopskill-api config/tiers.yaml bundle_limit',
+    why:
+      'Free and Pro differ ONLY by private-bundle cap (D-025), so a stale number here ' +
+      'misprices the entire ladder. Public bundles are unlimited on every tier (D-011) — ' +
+      'copy that says a bare "N bundles" without "private" also understates Free. ' +
+      'Fix the COPY to match config/tiers.yaml; never edit this rule to match the copy.',
+    exonerations: [
+      { when: /\b(out of date|outdated|superseded|no longer|former|previously|correction|historical)\b/i },
+    ],
+  },
 ];
 
 /** Files whose rendered prose is product copy. Everything the build emits. */
@@ -300,6 +332,16 @@ export function fragments(text) {
  * matches and NO exoneration applies.
  */
 export function firesOn(rule, fragment) {
+  // Dynamic rules carry no literal `pattern` — their matcher is compiled from
+  // an external source of truth at scan time (see bundleLimitPattern()).
+  if (rule.dynamic === 'bundle-limits') {
+    if (!BUNDLE_LIMITS.test) return false; // unavailability is reported in main(), not silently here
+    if (!BUNDLE_LIMITS.test(fragment)) return false;
+    for (const ex of rule.exonerations || []) {
+      if (ex.when.test(fragment)) return false;
+    }
+    return true;
+  }
   if (!rule.pattern.test(fragment)) return false;
   for (const ex of rule.exonerations || []) {
     if (!ex.when.test(fragment)) continue;
@@ -308,6 +350,73 @@ export function firesOn(rule, fragment) {
   }
   return true;
 }
+
+/**
+ * Resolve the SERVER bundle-limit SSOT and compile the drift pattern for the
+ * `bundle-limit-ssot-drift` rule.
+ *
+ * Reads loopskill-api's config/tiers.yaml directly rather than restating the
+ * numbers, so this guard can never become a third copy of the value it exists
+ * to keep singular.
+ *
+ * FAILS LOUDLY when the SSOT is unreachable. A guard that silently skips is
+ * worse than no guard: it reports green while enforcing nothing, which is the
+ * exact failure shape (`indexed_count=0, last_error=NULL`) that hid github-oss
+ * being dark for weeks. Set LOOPSKILL_API_DIR when the API is not a sibling.
+ */
+function bundleLimitPattern() {
+  // Ordered by specificity. The absolute entries are the SELF-HOSTED RUNNER
+  // layout, verified on wisechef-hq 2026-08-10: the portal builds under
+  // actions-runner-portal/_work/, which does NOT contain the API repo — the API
+  // lives under a SEPARATE runner instance. A relative `../loopskill-api` alone
+  // therefore resolves locally but NOT in CI, which would have turned this
+  // guard into a permanent red build.
+  const candidates = [
+    process.env.LOOPSKILL_API_DIR && join(process.env.LOOPSKILL_API_DIR, 'config/tiers.yaml'),
+    join('..', 'loopskill-api', 'config', 'tiers.yaml'),
+    '/home/wisechef/loopskill-api/config/tiers.yaml',
+    '/home/wisechef/actions-runner/_work/loopskill-api/loopskill-api/config/tiers.yaml',
+  ].filter(Boolean);
+
+  const found = candidates.find((c) => existsSync(c));
+  if (!found) {
+    return { unavailable: candidates };
+  }
+
+  // Minimal scan — no YAML dep. We want two integers, not a parser.
+  const raw = readFileSync(found, 'utf8');
+  const limits = {};
+  let tier = null;
+  for (const line of raw.split('\n')) {
+    const t = line.match(/^\s{2}([a-z_]+):\s*$/);
+    if (t) tier = t[1];
+    const l = line.match(/^\s+bundle_limit:\s*(\d+)/);
+    if (l && tier) limits[tier] = Number(l[1]);
+  }
+  if (typeof limits.free !== 'number' || typeof limits.pro !== 'number') {
+    return { unparsed: found };
+  }
+
+  // Fire on a private-bundle cap that is NOT one of the two the server serves.
+  // Deliberately not limited to the current wrong numbers: the failure mode is
+  // "a cap nobody approved reached a public surface", and the next one will be
+  // a different integer.
+  const ok = new Set([limits.free, limits.pro]);
+  return {
+    source: found,
+    limits,
+    test: (fragment) => {
+      const re = /(\d[\d,]*)\s*private\s+bundles?/gi;
+      let m;
+      while ((m = re.exec(fragment)) !== null) {
+        if (!ok.has(Number(m[1].replace(/,/g, '')))) return true;
+      }
+      return false;
+    },
+  };
+}
+
+const BUNDLE_LIMITS = bundleLimitPattern();
 
 export function scanText(text, relPath) {
   const out = [];
@@ -335,6 +444,27 @@ function main() {
   const distDir = process.argv[2] || 'dist';
   if (!existsSync(distDir) || !statSync(distDir).isDirectory()) {
     console.error(`audit-claims: ${distDir}/ does not exist — run the build first.`);
+    return 1;
+  }
+
+  // The bundle-limit rule reads an EXTERNAL source of truth. If that source is
+  // unreachable the rule cannot run, and a guard that quietly enforces nothing
+  // while printing OK is the failure shape this whole file exists to prevent.
+  // Report it as a hard error, never a warning.
+  if (BUNDLE_LIMITS.unavailable) {
+    console.error(
+      'audit-claims: cannot reach the bundle-limit SSOT (loopskill-api config/tiers.yaml).\n' +
+        `  looked in: ${BUNDLE_LIMITS.unavailable.join(', ')}\n` +
+        '  Set LOOPSKILL_API_DIR=/path/to/loopskill-api, or check out the API repo as a sibling.\n' +
+        '  Refusing to report OK while the pricing-drift rule is unenforced.'
+    );
+    return 1;
+  }
+  if (BUNDLE_LIMITS.unparsed) {
+    console.error(
+      `audit-claims: found ${BUNDLE_LIMITS.unparsed} but could not read free/pro bundle_limit from it.\n` +
+        '  The SSOT format changed — fix this parser rather than deleting the rule.'
+    );
     return 1;
   }
 
