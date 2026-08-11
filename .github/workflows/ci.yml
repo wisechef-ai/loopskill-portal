@@ -118,6 +118,27 @@ jobs:
           npx vitest run tests/spotify-2607-browse-renders.test.ts
           npx vitest run tests/mesh0408-w3-storefront-guards.test.ts
 
+      - name: Executable-docs gate — run every documented llms.txt / docs/* command
+        # bundles_0811 P0. tests/p0-docs-commands-execute.test.ts consumes
+        # tests/lib/doc-command-extract.ts (PR #52) and EXECUTES every
+        # extracted HTTP command against live prod, asserting a 2xx or an
+        # explicit documented non-2xx contract (auth-gated endpoints, the
+        # deliberately-dead /openapi.json link, the MCP-401-anonymous
+        # contract from issue #217). "A reviewed doc rots, a tested doc
+        # cannot" — this is the test that makes that literally true: a
+        # stale slug, a renamed param, or a changed status contract now
+        # fails the BUILD, not a changelog nobody reads.
+        #
+        # Placement: deliberately BEFORE the deploy steps below, in the same
+        # gating position as the other pre-deploy checks in this job (astro
+        # check, unit tests, dist-render tests). This job builds AND deploys
+        # in one run (see the concurrency-group comment above) specifically
+        # so a check failure here fails the whole job before any dist ever
+        # reaches dist.incoming/the atomic swap — prod is never left with a
+        # half-swapped or docs-broken dist because the deploy steps simply
+        # never execute when this step is red.
+        run: npx vitest run tests/p0-docs-commands-execute.test.ts
+
       - name: Stamp build id into dist (deploy-identity canary source)
         # ponytail_0725. The deploy job asserts that the LIVE origin serves THIS
         # exact build. Guessing at content-hash asset names is unreliable: Astro
