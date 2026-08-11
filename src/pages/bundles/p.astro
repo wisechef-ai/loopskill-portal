@@ -61,23 +61,44 @@ const API_BASE = import.meta.env.PUBLIC_LOOPSKILL_API_BASE || import.meta.env.PU
         <div id="bd-stats" class="text-sm text-muted-soft flex items-center gap-4 flex-wrap"></div>
       </header>
 
-      <!-- THE GTM GATE: one copy-paste line that composes the whole stack. -->
+      <!-- THE GTM GATE: one copy-paste line that composes the whole stack.
+           bundles_0811 P1 (F1/F2): the HERO line is now the AUTH-FREE shell
+           command. It was `clone_line` — an MCP call that returns 401 for
+           anonymous visitors — so the single "take it" affordance a stranger
+           saw could not be executed by that stranger. The API ships
+           `install_command` + `install_command_requires_auth: false`
+           (api#226); this renders it and demotes the MCP line to a clearly
+           key-gated alternative. -->
       <section class="bg-bg-card border border-accent/30 rounded-2xl p-6 mb-10">
         <div class="flex items-center justify-between gap-3 mb-3 flex-wrap">
           <h2 class="text-base font-semibold">Install this whole stack — one line</h2>
-          <span class="text-[11px] text-muted-soft">paste to your agent</span>
+          <span class="text-[11px] text-muted-soft">no account needed</span>
         </div>
         <div class="relative">
-          <pre class="bg-[#0d0d0d] border border-border rounded-xl p-4 pr-12 text-sm text-accent overflow-x-auto"><code id="clone-line">loopskill_bundle_install from "bundle://…"</code></pre>
-          <button id="copy-btn" class="absolute top-3 right-3 px-2.5 py-1 rounded-md bg-bg-elev border border-border text-xs text-muted hover:text-accent hover:border-accent/40 transition" type="button">Copy</button>
+          <pre class="bg-[#0d0d0d] border border-border rounded-xl p-4 pr-12 text-sm text-accent overflow-x-auto"><code id="install-line">curl -fsSL https://app.loopskill.io/api/bundles/install.sh | bash -s -- …</code></pre>
+          <button id="copy-install-btn" class="absolute top-3 right-3 px-2.5 py-1 rounded-md bg-bg-elev border border-border text-xs text-muted hover:text-accent hover:border-accent/40 transition" type="button">Copy</button>
         </div>
+        <p class="text-xs text-muted-soft mt-3">
+          Runs in any shell. Every free skill in this bundle installs verbatim with <strong>no account and no API key</strong>; paid-tier members are reported by name rather than silently skipped.
+        </p>
 
         <details class="mt-5">
           <summary class="text-sm font-semibold text-muted-soft cursor-pointer hover:text-text transition">Other ways to install</summary>
 
-          <p class="text-xs text-muted-soft mt-3">
-            Your agent runs the install over MCP (StreamableHTTP at <code>app.loopskill.io/api/mcp/http</code>) and pulls every skill below in a single call. No account required to install free skills.
-          </p>
+          <!-- Authenticated MCP install — honestly labelled as key-gated. -->
+          <div class="mt-5">
+            <div class="flex items-center justify-between gap-3 mb-2 flex-wrap">
+              <h3 class="text-sm font-semibold text-text">…or install over MCP</h3>
+              <span id="clone-auth-badge" class="text-[11px] px-2 py-0.5 rounded-md border border-border text-muted-soft">requires a free API key</span>
+            </div>
+            <div class="relative">
+              <pre class="bg-[#0d0d0d] border border-border rounded-xl p-4 pr-12 text-sm text-accent overflow-x-auto"><code id="clone-line">loopskill_bundle_install from "bundle://…"</code></pre>
+              <button id="copy-btn" class="absolute top-3 right-3 px-2.5 py-1 rounded-md bg-bg-elev border border-border text-xs text-muted hover:text-accent hover:border-accent/40 transition" type="button">Copy</button>
+            </div>
+            <p class="text-xs text-muted-soft mt-3">
+              Your agent runs the install over MCP (StreamableHTTP at <code>app.loopskill.io/api/mcp/http</code>) and pulls every skill below in a single call. The MCP endpoint <strong>authenticates every request</strong> — <a href="/pricing" class="text-accent hover:underline">get a free key</a> first, or use the shell command above, which needs no account.
+            </p>
+          </div>
 
           <!-- Native skill-bundle install (agentskills.io / .well-known) -->
           <div class="mt-5 pt-5 border-t border-border-soft">
@@ -189,10 +210,42 @@ const API_BASE = import.meta.env.PUBLIC_LOOPSKILL_API_BASE || import.meta.env.PU
     if (typeof bd.installs_7d === "number" && bd.installs_7d > 0) parts.push(`${bd.installs_7d} this week`);
     $("bd-stats").textContent = parts.join("  ·  ");
 
+    // bundles_0811 P1 (F1/F2) — THE auth-free install line, rendered first.
+    // Prefer the server-provided install_command; it is the path proven to work
+    // for a stranger with no account and no key. Only fall back to constructing
+    // it if an older API build did not send one.
+    const installLine =
+      bd.install_command ||
+      `curl -fsSL https://app.loopskill.io/api/bundles/install.sh | bash -s -- ${bd.slug}`;
+    const installEl = $("install-line");
+    if (installEl) installEl.textContent = installLine;
+    const copyInstallBtn = $("copy-install-btn");
+    if (copyInstallBtn) {
+      copyInstallBtn.addEventListener("click", async () => {
+        try {
+          await navigator.clipboard.writeText(installLine);
+          copyInstallBtn.textContent = "Copied";
+          setTimeout(() => { copyInstallBtn.textContent = "Copy"; }, 1600);
+        } catch {
+          copyInstallBtn.textContent = "Select & copy";
+        }
+      });
+    }
+
     // The one-line clone — prefer the server-provided clone_line (carries ?ref),
     // fall back to a constructed line if the API didn't send one.
     const cloneLine = bd.clone_line || `loopskill_bundle_install from "bundle://${bd.slug}"`;
     $("clone-line").textContent = cloneLine;
+
+    // Label the MCP line with the TRUTH the API reports. Presenting an
+    // auth-requiring line as though it were open is the F1 defect itself, so the
+    // badge is driven by the server flag rather than hardcoded copy.
+    const cloneBadge = $("clone-auth-badge");
+    if (cloneBadge && bd.clone_line_requires_auth === false) {
+      cloneBadge.textContent = "no key required";
+    } else if (cloneBadge) {
+      cloneBadge.textContent = bd.clone_line_label || "requires a free API key";
+    }
     const copyBtn = $("copy-btn");
     copyBtn.addEventListener("click", async () => {
       try {
