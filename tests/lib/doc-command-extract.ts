@@ -214,7 +214,7 @@ export function dedupeCommands(cmds: DocCommand[]): DocCommand[] {
  * task asks for on 401-gated auth endpoints.
  */
 export function extractOpenApiDeadLinkClaim(fileText: string): DocCommand | null {
-  if (!/\/openapi\.json[\s\S]{0,80}returns\s+.?404.?\s+and\s+always\s+did/i.test(fileText)) {
+  if (!/\/openapi\.json[\s\S]{0,120}returns[\s\S]{0,20}404[\s\S]{0,20}and\s+always\s+did/i.test(fileText)) {
     return null;
   }
   return {
