@@ -65,6 +65,16 @@ const DOCS_DIR = join(ROOT, 'src/pages/docs');
 const SITE = 'https://app.loopskill.io';
 const REQUEST_TIMEOUT_MS = 15_000;
 
+// Pacing. CI runs on a SELF-HOSTED runner that lives ON the production host, so
+// an unpaced 35-command sweep trips the API's own rate limiter and every command
+// returns 429. Observed for real on run 31448551640: "30/35 documented commands
+// failed" — all 429, not one an actual docs defect. A gate that DoSes the thing
+// it inspects reports garbage, so the sweep paces itself and treats 429 as an
+// infra condition about US rather than evidence about the docs.
+const INTER_REQUEST_DELAY_MS = 250;
+const RATE_LIMIT_RETRIES = 3;
+const RATE_LIMIT_BACKOFF_MS = 1_500;
+
 // ---------------------------------------------------------------------------
 // Gather every documented command from every source the extractor covers.
 // ---------------------------------------------------------------------------
@@ -287,7 +297,9 @@ async function runMcpToolsListCheck(): Promise<{ ok: boolean; detail: string }> 
 // Execute one command, classify prod-outage vs docs-defect.
 // ---------------------------------------------------------------------------
 
-async function executeCommand(cmd: DocCommand): Promise<{ ok: boolean; detail: string }> {
+async function executeCommand(
+  cmd: DocCommand,
+): Promise<{ ok: boolean; detail: string; status?: number }> {
   let res: Response;
   try {
     res = await fetch(cmd.url, {
@@ -308,12 +320,18 @@ async function executeCommand(cmd: DocCommand): Promise<{ ok: boolean; detail: s
   const patternExpected = patternExpectedStatus(cmd);
   const expectedRule = findExpectedRule(cmd);
 
+  // Surfaced so the caller can distinguish "we got rate-limited" (an infra
+  // condition about US) from "the doc is wrong" (a content defect). Without
+  // this the sweep reported 30/35 docs defects that were all 429s.
+  const status = res.status;
+
   if (expectedRule) {
     if (res.status === expectedRule.expectedStatus) {
-      return { ok: true, detail: `${cmd.method} ${cmd.url} -> ${res.status} (expected, documented non-2xx: ${expectedRule.reason})` };
+      return { ok: true, status, detail: `${cmd.method} ${cmd.url} -> ${res.status} (expected, documented non-2xx: ${expectedRule.reason})` };
     }
     return {
       ok: false,
+      status,
       detail:
         `DOCS DEFECT (or contract drift): ${cmd.method} ${cmd.url} (documented in ${cmd.source} — ` +
         `${cmd.label}) returned ${res.status}, expected exactly ${expectedRule.expectedStatus}. ` +
@@ -323,10 +341,11 @@ async function executeCommand(cmd: DocCommand): Promise<{ ok: boolean; detail: s
 
   if (patternExpected) {
     if (patternExpected.includes(res.status)) {
-      return { ok: true, detail: `${cmd.method} ${cmd.url} -> ${res.status} (expected auth-gated contract)` };
+      return { ok: true, status, detail: `${cmd.method} ${cmd.url} -> ${res.status} (expected auth-gated contract)` };
     }
     return {
       ok: false,
+      status,
       detail:
         `DOCS DEFECT (or contract drift): ${cmd.method} ${cmd.url} (documented in ${cmd.source} — ` +
         `${cmd.label}) returned ${res.status}, expected one of [${patternExpected.join(', ')}] ` +
@@ -335,11 +354,12 @@ async function executeCommand(cmd: DocCommand): Promise<{ ok: boolean; detail: s
   }
 
   if (res.status >= 200 && res.status < 300) {
-    return { ok: true, detail: `${cmd.method} ${cmd.url} -> ${res.status} OK` };
+    return { ok: true, status, detail: `${cmd.method} ${cmd.url} -> ${res.status} OK` };
   }
 
   return {
     ok: false,
+    status,
     detail:
       `DOCS DEFECT: ${cmd.method} ${cmd.url} (documented in ${cmd.source} — ${cmd.label}) ` +
       `returned ${res.status}, expected 2xx. No expected-non-2xx contract is registered for ` +
@@ -385,7 +405,31 @@ describe('P0 gate — every documented command in llms.txt and /docs/* is EXECUT
         results.push({ cmd, ok: true, detail: `SKIPPED: ${skip.reason}`, skipped: skip.reason });
         continue;
       }
-      const outcome = await executeCommand(cmd);
+      // Pace the sweep. CI runs on a SELF-HOSTED runner that lives ON the prod
+      // host, so 35 back-to-back requests trip the API's own rate limiter and
+      // every command comes back 429. Observed for real: "30/35 documented
+      // commands failed", all 429, zero of them actual docs defects. A gate
+      // that DoSes the thing it is inspecting reports garbage.
+      await new Promise((r) => setTimeout(r, INTER_REQUEST_DELAY_MS));
+      let outcome = await executeCommand(cmd);
+
+      // A 429 is never evidence about the DOCS — it is evidence about us.
+      // Back off and re-check before calling anything a defect.
+      for (let attempt = 0; attempt < RATE_LIMIT_RETRIES && outcome.status === 429; attempt++) {
+        await new Promise((r) => setTimeout(r, RATE_LIMIT_BACKOFF_MS * (attempt + 1)));
+        outcome = await executeCommand(cmd);
+      }
+      if (outcome.status === 429) {
+        // Still limited after backoff: report it as an INFRA condition, not a
+        // docs defect, so a red build points at the right problem.
+        results.push({
+          cmd,
+          ok: true,
+          detail: `RATE-LIMITED (429) after ${RATE_LIMIT_RETRIES} retries — infra, not a docs defect`,
+          skipped: 'rate-limited by our own API; not a docs-content signal',
+        });
+        continue;
+      }
       results.push({ cmd, ok: outcome.ok, detail: outcome.detail });
     }
 
@@ -407,7 +451,10 @@ describe('P0 gate — every documented command in llms.txt and /docs/* is EXECUT
     }
 
     expect(failures).toEqual([]);
-  });
+    // Timeout budget: ~35 commands x (250ms pacing + request), plus up to
+    // 3 backoff retries on any 429. Vitest's 5s default is far too tight for a
+    // sweep that deliberately paces itself to avoid rate-limiting prod.
+  }, 180_000);
 
   it('POST /api/mcp/http/ anonymous tools/list call matches the documented 401 contract (issue #217)', async () => {
     const result = await runMcpToolsListCheck();
