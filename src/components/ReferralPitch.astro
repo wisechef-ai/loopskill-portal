@@ -22,7 +22,7 @@ import Icon from './Icon.astro';
           <span class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border text-xs font-semibold"
                 style="background:rgba(212,160,23,0.12);border-color:rgba(212,160,23,0.4);color:#D4A017;">
             <svg width="10" height="10" viewBox="0 0 10 10" fill="currentColor" aria-hidden="true"><circle cx="5" cy="5" r="5"/></svg>
-            50% recurring · no cap · no expiry
+            50% recurring (first 50) · no cap · no expiry
           </span>
         </div>
 
@@ -34,7 +34,7 @@ import Icon from './Icon.astro';
         <p class="text-lg text-muted leading-relaxed max-w-2xl">
           For every person who subscribes to Pro through your referral link,
           you earn <strong class="text-text">50% of their subscription every single month</strong>
-          — for as long as they stay subscribed. No complicated tiers. No expiry.
+          — for your first 50 referrals (30% after that) — for as long as they stay subscribed. No expiry.
         </p>
 
         <div class="flex flex-col sm:flex-row gap-3 mt-2">
@@ -53,7 +53,7 @@ import Icon from './Icon.astro';
         <div class="flex items-center gap-6 pt-6 border-t border-border">
           <div class="flex flex-col gap-0.5 items-center">
             <span class="text-2xl font-bold text-text tabular-nums">50%</span>
-            <span class="text-[10px] text-muted-soft uppercase tracking-wider">Recurring share</span>
+            <span class="text-[10px] text-muted-soft uppercase tracking-wider">First 50 referrals (30% after)</span>
           </div>
           <div class="w-px h-10 bg-border"></div>
           <div class="flex flex-col gap-0.5 items-center">
@@ -123,7 +123,8 @@ import Icon from './Icon.astro';
           </div>
           <h3 class="text-base font-semibold text-text">Earn every month</h3>
           <p class="text-sm text-muted leading-relaxed">
-            Each time your referral's subscription renews, 50% lands in your account.
+            Each time your referral's subscription renews, 50% lands in your account (30% once you
+            pass 50 all-time referrals).
             Track referrals and lifetime earnings in your dashboard. Payouts are monthly.
           </p>
           <a href="/signin?mode=signup&next=/referrals"
@@ -141,11 +142,11 @@ import Icon from './Icon.astro';
       <div class="flex flex-col gap-3 mb-10 text-center items-center">
         <p class="eyebrow text-accent">The math</p>
         <h2 class="text-3xl font-bold tracking-tight" style="letter-spacing:-0.03em;">
-          50% recurring. Every month.
+          50% recurring for your first 50. Every month.
         </h2>
         <p class="text-muted max-w-xl">
-          No complicated formulas. Pro is $9.95/mo, so you earn $4.98/mo for every
-          referral — for as long as they stay subscribed.
+          Pro is $9.95/mo. You earn $4.98/mo (50%) for each of your first 50 referrals, then
+          $2.99/mo (30%) for every referral after that — for as long as they stay subscribed.
         </p>
       </div>
 
@@ -158,11 +159,12 @@ import Icon from './Icon.astro';
             <span class="text-sm font-medium text-text">$9.95/mo per subscriber</span>
           </div>
           <code class="font-mono text-xs bg-[#0d0d0d] border border-border rounded-lg px-4 py-3 block text-muted leading-relaxed">
-            subscribers × $9.95/mo × 50%<br/>
+            subscribers × $9.95/mo × 50% (first 50 referrals)<br/>
             10 refs × $9.95 × 0.5 = <span class="font-bold" style="color:#3B82F6;">$49.75/mo</span>
           </code>
           <p class="text-xs text-muted">
-            Recurring every month as long as they stay on Pro.
+            Recurring every month as long as they stay on Pro. Rate drops to 30% on your
+            51st referral onward.
           </p>
         </div>
 
@@ -174,10 +176,11 @@ import Icon from './Icon.astro';
             <span class="text-sm font-medium text-text">It compounds monthly</span>
           </div>
           <code class="font-mono text-xs bg-[#0d0d0d] border border-border rounded-lg px-4 py-3 block text-muted leading-relaxed">
-            50 refs × $9.95 × 0.5 = <span class="font-bold" style="color:#818CF8;">$248.75/mo</span>
+            50 refs (max at 50%) × $9.95 × 0.5 = <span class="font-bold" style="color:#818CF8;">$248.75/mo</span>
           </code>
           <p class="text-xs text-muted">
-            Recurring, uncapped, and it never expires. Self-hosting is free, so a
+            Recurring and it never expires — referrals beyond 50 keep earning at 30%.
+            Self-hosting is free, so a
             referral only ever pays when they want us to run it for them.
           </p>
         </div>
@@ -187,7 +190,7 @@ import Icon from './Icon.astro';
       <div class="mt-6 bg-[#0d0d0d] border border-border rounded-2xl p-6">
         <p class="text-[10px] uppercase tracking-widest font-semibold text-muted-soft mb-4">Example scenario</p>
         <code class="font-mono text-xs text-muted leading-loose block">
-          <span class="text-muted-soft">// 25 Pro referrals</span><br/>
+          <span class="text-muted-soft">// 25 Pro referrals (under the 50-referral 50% cap)</span><br/>
           pro_refs = 25 × $9.95 × 0.5 = <span class="font-bold text-text">$124.38/mo</span><br/>
           <br/>
           total = <span class="font-bold" style="color:#D4A017;">$124.38/mo recurring</span>
@@ -218,7 +221,7 @@ import Icon from './Icon.astro';
           },
           {
             q: "Is there a cap on how many people I can refer?",
-            a: "No cap. Refer 1 person or 1,000 people — you earn 50% on all of them, every month."
+            a: "No cap on how many people you can refer. You earn 50% on your first 50 referrals; every referral after that earns 30%, every month."
           },
           {
             q: "Do I need to be a Pro subscriber to refer?",

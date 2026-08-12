@@ -4,29 +4,39 @@ import AppShell from '../../layouts/AppShell.astro';
 
 <AppShell mode="public"
   title="Referral program — LoopSkill Docs"
-  description="Earn 50% recurring revenue share on every Pro subscriber you bring to LoopSkill. Monthly payouts via Stripe Connect."
->
+  description="Earn 50% recurring revenue share on your first 50 Pro referrals (30% after) at LoopSkill. Monthly payouts via Stripe Connect.">
+  <!--
+    Rates verified live 2026-08-13 against app/referral.py:78-81 (rate tier) and
+    app/payout_engine.py:167-170 (payout floor). 50% applies to a referrer's
+    first 50 all-time referrals; the 51st+ referral pays 30%. There is no $25
+    minimum anywhere in the payout code — the only floor is Stripe's own
+    sub-$1 payout skip. Do not restore the flat-50%/$25-minimum framing without
+    re-probing the two files above.
+  -->
   <section class="max-w-3xl mx-auto px-6 pt-16 pb-24">
     <p class="eyebrow mb-3">Docs · Referrals</p>
     <h1 class="text-4xl md:text-5xl font-semibold tracking-tight mb-6">
       Refer once. Earn forever.
     </h1>
     <p class="text-muted text-lg leading-relaxed mb-12">
-      Bring a paying customer to LoopSkill and earn <strong class="text-text">50% of every monthly payment</strong>
-      they make — for as long as they stay subscribed. No cap, no cliff, no expiry.
+      Bring a paying customer to LoopSkill and earn a recurring share of every monthly payment
+      they make — for as long as they stay subscribed. <strong class="text-text">50%</strong> for your
+      first 50 referrals, <strong class="text-text">30%</strong> after that. No cliff, no expiry.
     </p>
 
     <!-- How it works -->
     <h2 class="text-xl font-semibold text-text mb-4">How the rev-share works</h2>
     <p class="text-muted mb-4">
       When someone subscribes to Pro ($9.95/mo) using your referral link, you earn
-      50% of every invoice they pay — month after month.
+      50% of every invoice they pay — month after month — for your first 50 referrals.
+      Once you pass 50 all-time referrals, new referrals earn 30% instead. Both rates
+      apply for as long as the referred customer stays subscribed.
     </p>
     <div class="bg-bg-card border border-border rounded-2xl p-6 mb-10 grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
       <div>
         <p class="text-muted-soft uppercase text-[10px] tracking-widest font-semibold mb-1">Pro referral</p>
         <p class="text-2xl font-semibold text-text">$4.98<span class="text-base font-normal text-muted">/mo per referral</span></p>
-        <p class="text-muted mt-1">50% of $9.95/mo, every month they stay</p>
+        <p class="text-muted mt-1">50% of $9.95/mo (first 50 referrals; 30% — $2.99/mo — after), every month they stay</p>
       </div>
 
     </div>
@@ -63,7 +73,7 @@ import AppShell from '../../layouts/AppShell.astro';
       </li>
       <li class="flex items-start gap-2">
         <svg width="16" height="16" viewBox="0 0 16 16" fill="none" class="text-success mt-0.5 shrink-0"><path d="M3 8.5L6 11.5L13 4.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
-        <span><strong class="text-text">$25 minimum</strong> — if your balance is below $25, earnings roll over to the next payout cycle.</span>
+        <span><strong class="text-text">$1 minimum</strong> — Stripe's payout floor. If your balance is below $1, earnings roll over to the next payout cycle.</span>
       </li>
       <li class="flex items-start gap-2">
         <svg width="16" height="16" viewBox="0 0 16 16" fill="none" class="text-success mt-0.5 shrink-0"><path d="M3 8.5L6 11.5L13 4.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
@@ -131,7 +141,7 @@ import AppShell from '../../layouts/AppShell.astro';
           </svg>
         </summary>
         <p class="text-sm text-muted leading-relaxed mt-3">
-          Monthly on the 15th, with a $25 minimum balance. Connect Stripe Express from your dashboard and the first payout lands within 1–3 business days of the 15th. If you haven't connected Stripe, earnings accumulate until you do.
+          Monthly on the 15th, with a $1 minimum balance (Stripe's payout floor). Connect Stripe Express from your dashboard and the first payout lands within 1–3 business days of the 15th. If you haven't connected Stripe, earnings accumulate until you do.
         </p>
       </details>
 
