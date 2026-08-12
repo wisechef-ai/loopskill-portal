@@ -98,6 +98,10 @@ async function fetchLlmsTxt(): Promise<string> {
   return res.text();
 }
 
+function readSrc(path: string): string {
+  return readFileSync(path, 'utf-8');
+}
+
 function collectAstroDocCommands(): DocCommand[] {
   const out: DocCommand[] = [];
   for (const f of readdirSync(DOCS_DIR)) {
@@ -372,6 +376,163 @@ async function executeCommand(
 // ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------
+
+// ---------------------------------------------------------------------------
+// #216 re-rot guard — /docs/mcp's stated tool COUNT must match the live MCP
+// tools/list surface, not just avoid naming specific dead tools.
+//
+// WHY THIS WAS MISSING (root-cause of the #216-class regression that shipped
+// AFTER #216 was closed): mcp-docs-consolidation-215-216-217-218-219.test.ts
+// only asserts NEGATIVE string absence (`loopskill_detail` etc. don't
+// appear) plus two POSITIVE presence checks (`loopskill_search`,
+// `loopskill_install` appear). Nothing in that suite — or anywhere else in
+// CI — ever compared the literal "<N> dedicated tools" / "(<N> total)"
+// number against a live source. So when P3.5 (#223, loopskill_propose_registry)
+// added a 46th tool on 2026-08-11, the doc's hardcoded "45" went stale and
+// NO CI check caught it — the exact re-rot class #216 was filed to prevent.
+//
+// FIX: assert the doc's stated count against /api/marketing/snapshot's
+// `counts.mcp_tools_count` / `mcp_tools` — a PUBLIC, keyless, live endpoint
+// (no MCP session handshake needed in CI) that the API computes DIRECTLY
+// from the live MCP tool registry every request (see
+// `_live_mcp_tool_names()` / `app/marketing_routes.py` on loopskill-api —
+// it overlays `mcp_tools_count = len(live_tools)` on top of the yaml
+// fallback specifically so this number can't go stale). This is the same
+// endpoint llms.txt.ts already builds its own tool list from — so this
+// guard and the live llms.txt page can never independently drift from each
+// other, only both drift from the real server (which THIS check catches).
+// ---------------------------------------------------------------------------
+
+interface MarketingSnapshot {
+  counts?: { mcp_tools_count?: number };
+  mcp_tools?: string[];
+}
+
+// Cache: both tests in this block ask for the same live snapshot; fetching
+// it twice back-to-back needlessly doubles the chance of tripping the API's
+// own rate limiter (this CI runner lives on the prod host — see
+// INTER_REQUEST_DELAY_MS comment below for why that matters here too).
+let _marketingSnapshotCache: MarketingSnapshot | null = null;
+
+async function fetchMarketingSnapshot(): Promise<MarketingSnapshot> {
+  if (_marketingSnapshotCache) return _marketingSnapshotCache;
+  const url = `${SITE}/api/marketing/snapshot`;
+  // The endpoint itself is public/keyless, but sending a real key (when
+  // available) routes this request past prod's ANONYMOUS per-IP rate
+  // limiter (app/middleware/rate_limit.py on loopskill-api bypasses the
+  // 60/min bucket entirely for any authenticated scope) — this self-hosted
+  // runner shares an outbound IP with the rest of the prod host's traffic,
+  // so the anonymous bucket can be contended by more than just this job
+  // (observed live: 429 on PR #55's first two CI runs). Falls back to an
+  // anonymous request (still correct, just contended) when no key is set,
+  // e.g. a local run without RECIPES_API_KEY exported.
+  const apiKey =
+    (globalThis as any).process?.env?.RECIPES_API_KEY ||
+    (globalThis as any).process?.env?.LOOPSKILL_API_KEY;
+  const headers: Record<string, string> = apiKey ? { 'x-api-key': apiKey } : {};
+  let lastStatus: number | undefined;
+  for (let attempt = 0; attempt <= RATE_LIMIT_RETRIES; attempt++) {
+    let res: Response;
+    try {
+      res = await fetch(url, { headers, signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS) });
+    } catch (err) {
+      throw new Error(
+        `PROD UNREACHABLE (network/timeout): GET ${url} — ${(err as Error).message}. ` +
+          `Cannot verify #216 tool-count parity without the live snapshot.`,
+      );
+    }
+    if (res.ok) {
+      const body = (await res.json()) as MarketingSnapshot;
+      _marketingSnapshotCache = body;
+      return body;
+    }
+    lastStatus = res.status;
+    // A 429 is evidence about US (our own rate limiter), not the docs — back
+    // off and retry before treating it as an outage, same discipline the
+    // main sweep below uses for exactly the same reason (see
+    // INTER_REQUEST_DELAY_MS / RATE_LIMIT_RETRIES comment above).
+    if (res.status === 429 && attempt < RATE_LIMIT_RETRIES) {
+      await new Promise((r) => setTimeout(r, RATE_LIMIT_BACKOFF_MS * (attempt + 1)));
+      continue;
+    }
+    break;
+  }
+  throw new Error(
+    `PROD UNREACHABLE (status ${lastStatus}) after retries: GET ${url} — cannot verify #216 tool-count parity.`,
+  );
+}
+
+describe('#216 re-rot guard — /docs/mcp tool count matches live /api/marketing/snapshot', () => {
+  // Explicit timeout: fetchMarketingSnapshot() can burn up to
+  // RATE_LIMIT_RETRIES * RATE_LIMIT_BACKOFF_MS-ish (~4.5s worst case) on
+  // retries before it even resolves — vitest's 5s default leaves no margin
+  // and was observed timing out for real in CI (run 31589174229).
+  const SNAPSHOT_TEST_TIMEOUT_MS = 30_000;
+
+  it(
+    'the doc-stated tool count equals the live mcp_tools_count',
+    async () => {
+      const snapshot = await fetchMarketingSnapshot();
+      const liveCount = snapshot.counts?.mcp_tools_count;
+      expect(
+        typeof liveCount === 'number' && liveCount > 0,
+        'live /api/marketing/snapshot did not return a usable counts.mcp_tools_count — cannot run the #216 parity check',
+      ).toBe(true);
+
+      const mcpDocSrc = readSrc(join(DOCS_DIR, 'mcp.astro'));
+      const matches = [...mcpDocSrc.matchAll(/(\d+)\s+(?:dedicated tool|total)\b/gi)].map((m) => Number(m[1]));
+      expect(
+        matches.length,
+        'docs/mcp.astro does not state a tool count near "<N> dedicated tools"/"(<N> total)" — #216 wording regressed',
+      ).toBeGreaterThan(0);
+
+      // Every stated count on the page must agree with each other AND with live.
+      const distinct = [...new Set(matches)];
+      expect(
+        distinct,
+        `docs/mcp.astro states inconsistent tool counts on the page itself: ${JSON.stringify(matches)}`,
+      ).toEqual([distinct[0]]);
+
+      expect(
+        distinct[0],
+        `docs/mcp.astro states ${distinct[0]} tools, live /api/marketing/snapshot reports ${liveCount} ` +
+          `(#216 tool-count drift — see counts.mcp_tools_count / mcp_tools at ${SITE}/api/marketing/snapshot). ` +
+          `Update the "<N> dedicated tools" / "(<N> total)" literals in src/pages/docs/mcp.astro to match.`,
+      ).toBe(liveCount);
+    },
+    SNAPSHOT_TEST_TIMEOUT_MS,
+  );
+
+  it(
+    'every loopskill_/bundle_ tool name referenced in docs/mcp.astro exists in the live tool list',
+    async () => {
+      const snapshot = await fetchMarketingSnapshot();
+      const liveTools = new Set(snapshot.mcp_tools ?? []);
+      expect(
+        liveTools.size,
+        'live snapshot mcp_tools list is empty — cannot verify referenced tool names',
+      ).toBeGreaterThan(0);
+
+      const mcpDocSrc = readSrc(join(DOCS_DIR, 'mcp.astro'));
+      const referenced = new Set(
+        [...mcpDocSrc.matchAll(/\b((?:loopskill|bundle)_[a-z0-9_]+)\b/g)]
+          .map((m) => m[1])
+          // Drop wildcard family references like `loopskill_fleet_*` — the doc
+          // legitimately says "plus fleet ops (loopskill_fleet_*)" to mean the
+          // whole loopskill_fleet_ family, not a literal tool named
+          // "loopskill_fleet_". A trailing underscore is never a real tool name.
+          .filter((name) => !name.endsWith('_')),
+      );
+      const ghosts = [...referenced].filter((name) => !liveTools.has(name));
+      expect(
+        ghosts,
+        `docs/mcp.astro names tool(s) that do not exist on the live MCP server: ${ghosts.join(', ')} ` +
+          `(#216 regression: a doc claiming a nonexistent tool).`,
+      ).toEqual([]);
+    },
+    SNAPSHOT_TEST_TIMEOUT_MS,
+  );
+});
 
 describe('P0 gate — every documented command in llms.txt and /docs/* is EXECUTED', () => {
   it('extracts a non-trivial number of commands (extractor sanity)', async () => {

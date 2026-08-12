@@ -137,6 +137,19 @@ jobs:
         # reaches dist.incoming/the atomic swap — prod is never left with a
         # half-swapped or docs-broken dist because the deploy steps simply
         # never execute when this step is red.
+        env:
+          # fix/216-tool-count-drift-46: the new #216 re-rot guard's
+          # GET /api/marketing/snapshot call was hitting live prod's
+          # ANONYMOUS 60/min-per-IP rate limiter (app/middleware/rate_limit.py
+          # on loopskill-api) and 429ing — this self-hosted runner shares an
+          # outbound IP with the rest of the prod host's own traffic, so the
+          # anonymous bucket is contended by more than just this job.
+          # RateLimitMiddleware.dispatch bypasses the IP bucket entirely for
+          # any authenticated scope (`if scope and scope != "anonymous":
+          # return await call_next(...)`), so sending a real key sidesteps
+          # the contention instead of racing it. The endpoint itself needs
+          # no key (it's public) — this is purely a rate-limit bypass.
+          RECIPES_API_KEY: ${{ secrets.RECIPES_API_KEY }}
         run: npx vitest run tests/p0-docs-commands-execute.test.ts
 
       - name: Stamp build id into dist (deploy-identity canary source)
