@@ -450,55 +450,75 @@ async function fetchMarketingSnapshot(): Promise<MarketingSnapshot> {
 }
 
 describe('#216 re-rot guard — /docs/mcp tool count matches live /api/marketing/snapshot', () => {
-  it('the doc-stated tool count equals the live mcp_tools_count', async () => {
-    const snapshot = await fetchMarketingSnapshot();
-    const liveCount = snapshot.counts?.mcp_tools_count;
-    expect(
-      typeof liveCount === 'number' && liveCount > 0,
-      'live /api/marketing/snapshot did not return a usable counts.mcp_tools_count — cannot run the #216 parity check',
-    ).toBe(true);
+  // Explicit timeout: fetchMarketingSnapshot() can burn up to
+  // RATE_LIMIT_RETRIES * RATE_LIMIT_BACKOFF_MS-ish (~4.5s worst case) on
+  // retries before it even resolves — vitest's 5s default leaves no margin
+  // and was observed timing out for real in CI (run 31589174229).
+  const SNAPSHOT_TEST_TIMEOUT_MS = 30_000;
 
-    const mcpDocSrc = readSrc(join(DOCS_DIR, 'mcp.astro'));
-    const matches = [...mcpDocSrc.matchAll(/(\d+)\s+(?:dedicated tool|total)\b/gi)].map((m) => Number(m[1]));
-    expect(matches.length, 'docs/mcp.astro does not state a tool count near "<N> dedicated tools"/"(<N> total)" — #216 wording regressed').toBeGreaterThan(0);
+  it(
+    'the doc-stated tool count equals the live mcp_tools_count',
+    async () => {
+      const snapshot = await fetchMarketingSnapshot();
+      const liveCount = snapshot.counts?.mcp_tools_count;
+      expect(
+        typeof liveCount === 'number' && liveCount > 0,
+        'live /api/marketing/snapshot did not return a usable counts.mcp_tools_count — cannot run the #216 parity check',
+      ).toBe(true);
 
-    // Every stated count on the page must agree with each other AND with live.
-    const distinct = [...new Set(matches)];
-    expect(
-      distinct,
-      `docs/mcp.astro states inconsistent tool counts on the page itself: ${JSON.stringify(matches)}`,
-    ).toEqual([distinct[0]]);
+      const mcpDocSrc = readSrc(join(DOCS_DIR, 'mcp.astro'));
+      const matches = [...mcpDocSrc.matchAll(/(\d+)\s+(?:dedicated tool|total)\b/gi)].map((m) => Number(m[1]));
+      expect(
+        matches.length,
+        'docs/mcp.astro does not state a tool count near "<N> dedicated tools"/"(<N> total)" — #216 wording regressed',
+      ).toBeGreaterThan(0);
 
-    expect(
-      distinct[0],
-      `docs/mcp.astro states ${distinct[0]} tools, live /api/marketing/snapshot reports ${liveCount} ` +
-        `(#216 tool-count drift — see counts.mcp_tools_count / mcp_tools at ${SITE}/api/marketing/snapshot). ` +
-        `Update the "<N> dedicated tools" / "(<N> total)" literals in src/pages/docs/mcp.astro to match.`,
-    ).toBe(liveCount);
-  });
+      // Every stated count on the page must agree with each other AND with live.
+      const distinct = [...new Set(matches)];
+      expect(
+        distinct,
+        `docs/mcp.astro states inconsistent tool counts on the page itself: ${JSON.stringify(matches)}`,
+      ).toEqual([distinct[0]]);
 
-  it('every loopskill_/bundle_ tool name referenced in docs/mcp.astro exists in the live tool list', async () => {
-    const snapshot = await fetchMarketingSnapshot();
-    const liveTools = new Set(snapshot.mcp_tools ?? []);
-    expect(liveTools.size, 'live snapshot mcp_tools list is empty — cannot verify referenced tool names').toBeGreaterThan(0);
+      expect(
+        distinct[0],
+        `docs/mcp.astro states ${distinct[0]} tools, live /api/marketing/snapshot reports ${liveCount} ` +
+          `(#216 tool-count drift — see counts.mcp_tools_count / mcp_tools at ${SITE}/api/marketing/snapshot). ` +
+          `Update the "<N> dedicated tools" / "(<N> total)" literals in src/pages/docs/mcp.astro to match.`,
+      ).toBe(liveCount);
+    },
+    SNAPSHOT_TEST_TIMEOUT_MS,
+  );
 
-    const mcpDocSrc = readSrc(join(DOCS_DIR, 'mcp.astro'));
-    const referenced = new Set(
-      [...mcpDocSrc.matchAll(/\b((?:loopskill|bundle)_[a-z0-9_]+)\b/g)]
-        .map((m) => m[1])
-        // Drop wildcard family references like `loopskill_fleet_*` — the doc
-        // legitimately says "plus fleet ops (loopskill_fleet_*)" to mean the
-        // whole loopskill_fleet_ family, not a literal tool named
-        // "loopskill_fleet_". A trailing underscore is never a real tool name.
-        .filter((name) => !name.endsWith('_')),
-    );
-    const ghosts = [...referenced].filter((name) => !liveTools.has(name));
-    expect(
-      ghosts,
-      `docs/mcp.astro names tool(s) that do not exist on the live MCP server: ${ghosts.join(', ')} ` +
-        `(#216 regression: a doc claiming a nonexistent tool).`,
-    ).toEqual([]);
-  });
+  it(
+    'every loopskill_/bundle_ tool name referenced in docs/mcp.astro exists in the live tool list',
+    async () => {
+      const snapshot = await fetchMarketingSnapshot();
+      const liveTools = new Set(snapshot.mcp_tools ?? []);
+      expect(
+        liveTools.size,
+        'live snapshot mcp_tools list is empty — cannot verify referenced tool names',
+      ).toBeGreaterThan(0);
+
+      const mcpDocSrc = readSrc(join(DOCS_DIR, 'mcp.astro'));
+      const referenced = new Set(
+        [...mcpDocSrc.matchAll(/\b((?:loopskill|bundle)_[a-z0-9_]+)\b/g)]
+          .map((m) => m[1])
+          // Drop wildcard family references like `loopskill_fleet_*` — the doc
+          // legitimately says "plus fleet ops (loopskill_fleet_*)" to mean the
+          // whole loopskill_fleet_ family, not a literal tool named
+          // "loopskill_fleet_". A trailing underscore is never a real tool name.
+          .filter((name) => !name.endsWith('_')),
+      );
+      const ghosts = [...referenced].filter((name) => !liveTools.has(name));
+      expect(
+        ghosts,
+        `docs/mcp.astro names tool(s) that do not exist on the live MCP server: ${ghosts.join(', ')} ` +
+          `(#216 regression: a doc claiming a nonexistent tool).`,
+      ).toEqual([]);
+    },
+    SNAPSHOT_TEST_TIMEOUT_MS,
+  );
 });
 
 describe('P0 gate — every documented command in llms.txt and /docs/* is EXECUTED', () => {
