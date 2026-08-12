@@ -408,21 +408,45 @@ interface MarketingSnapshot {
   mcp_tools?: string[];
 }
 
+// Cache: both tests in this block ask for the same live snapshot; fetching
+// it twice back-to-back needlessly doubles the chance of tripping the API's
+// own rate limiter (this CI runner lives on the prod host — see
+// INTER_REQUEST_DELAY_MS comment below for why that matters here too).
+let _marketingSnapshotCache: MarketingSnapshot | null = null;
+
 async function fetchMarketingSnapshot(): Promise<MarketingSnapshot> {
+  if (_marketingSnapshotCache) return _marketingSnapshotCache;
   const url = `${SITE}/api/marketing/snapshot`;
-  let res: Response;
-  try {
-    res = await fetch(url, { signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS) });
-  } catch (err) {
-    throw new Error(
-      `PROD UNREACHABLE (network/timeout): GET ${url} — ${(err as Error).message}. ` +
-        `Cannot verify #216 tool-count parity without the live snapshot.`,
-    );
+  let lastStatus: number | undefined;
+  for (let attempt = 0; attempt <= RATE_LIMIT_RETRIES; attempt++) {
+    let res: Response;
+    try {
+      res = await fetch(url, { signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS) });
+    } catch (err) {
+      throw new Error(
+        `PROD UNREACHABLE (network/timeout): GET ${url} — ${(err as Error).message}. ` +
+          `Cannot verify #216 tool-count parity without the live snapshot.`,
+      );
+    }
+    if (res.ok) {
+      const body = (await res.json()) as MarketingSnapshot;
+      _marketingSnapshotCache = body;
+      return body;
+    }
+    lastStatus = res.status;
+    // A 429 is evidence about US (our own rate limiter), not the docs — back
+    // off and retry before treating it as an outage, same discipline the
+    // main sweep below uses for exactly the same reason (see
+    // INTER_REQUEST_DELAY_MS / RATE_LIMIT_RETRIES comment above).
+    if (res.status === 429 && attempt < RATE_LIMIT_RETRIES) {
+      await new Promise((r) => setTimeout(r, RATE_LIMIT_BACKOFF_MS * (attempt + 1)));
+      continue;
+    }
+    break;
   }
-  if (!res.ok) {
-    throw new Error(`PROD UNREACHABLE (status ${res.status}): GET ${url} — cannot verify #216 tool-count parity.`);
-  }
-  return res.json();
+  throw new Error(
+    `PROD UNREACHABLE (status ${lastStatus}) after retries: GET ${url} — cannot verify #216 tool-count parity.`,
+  );
 }
 
 describe('#216 re-rot guard — /docs/mcp tool count matches live /api/marketing/snapshot', () => {
