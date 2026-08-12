@@ -84,7 +84,7 @@ import Icon from '../components/Icon.astro';
           <div class="flex items-center justify-between gap-3 mb-4">
             <div>
               <h2 class="text-lg font-semibold tracking-tight">API keys</h2>
-              <p class="text-xs text-muted mt-1">For the LoopSkill meta-skill and direct API access. <span id="key-tier-note" class="hidden">Pro: 1 key.</span></p>
+              <p class="text-xs text-muted mt-1">For the LoopSkill meta-skill and direct API access. <span id="key-tier-note" class="hidden"></span></p>
             </div>
             <button id="new-key-btn" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-accent text-bg text-xs font-semibold hover:bg-accent-soft transition">
               + New key
@@ -228,6 +228,7 @@ import Icon from '../components/Icon.astro';
   type Billing = { user_id: string; stripe_customer_id: string | null;
                    subscription_status: string | null; subscription_tier: string | null;
                    cookbook_limit?: number | null;
+                   api_key_cap?: number | null;
                    subscription_current_period_end: string | null };
   type ApiKey = {
     id: string; prefix: string;
@@ -325,9 +326,16 @@ import Icon from '../components/Icon.astro';
       $('wisechef-cta-card').classList.remove('hidden');
     }
 
-    // Show key tier note
+    // Show key tier note — render the SSOT cap (GET /api/billing/me -> api_key_cap),
+    // never a hardcoded literal (issue-57: this used to say "Pro: 1 key." for
+    // every tier, understating Pro's real 10-key entitlement 10x).
     const note = $('key-tier-note');
-    if (note) note.classList.remove('hidden');
+    if (note) {
+      const cap = typeof billing.api_key_cap === 'number' ? billing.api_key_cap : null;
+      const tierLabel = tier ? (TIER_LABEL[tier] || tier) : 'Free';
+      note.textContent = cap !== null ? `${tierLabel}: ${cap} key${cap === 1 ? '' : 's'}.` : '';
+      note.classList.remove('hidden');
+    }
 
     // quality_1705 Phase E — show tier-appropriate bundle subtitle
     // loopclose_3005 Phase X — cap numbers come from billing.cookbook_limit
