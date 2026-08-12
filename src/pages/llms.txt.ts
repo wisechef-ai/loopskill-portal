@@ -219,10 +219,29 @@ export const GET: APIRoute = async () => {
   // Free-skill intro copy — degrades honestly. If the live catalog has no
   // free-tier skills right now, don't claim a specific count; point at the
   // self-host path instead (which is always free regardless of catalog tier mix).
+  //
+  // issue-58 fix: this count MUST come from the full-catalog snapshot
+  // (snapRes.counts.free_skills, backed by marketing_counts()'s unfiltered DB
+  // query), never from freeSkillsFromCatalog.length — that array is capped at
+  // the 24-row search slice used to build the sample listing below, so its
+  // length silently undercounts the moment the catalog exceeds 24 skills.
+  const freeSkillsTotal =
+    snapRes.ok && typeof counts?.free_skills === 'number' ? counts.free_skills : null;
   const freeIntro =
+    // Two independent live sources fix the same defect (main's first-impression
+    // pass bound this to /api/stats.by_tier.free; issue-58 bound it to the
+    // marketing snapshot's unfiltered free_skills). Keeping both as ONE
+    // fallback chain rather than two competing expressions: whichever source
+    // answers first wins, the paginated catalog slice is the last resort, and
+    // if nothing is reachable we claim no number at all. Never two variables
+    // that can disagree about the same published figure.
     liveFreeCount > 0
       ? `${liveFreeCount} skill${liveFreeCount === 1 ? ' is' : 's are'} free to use hosted`
-      : 'Self-hosting the whole platform is always free';
+      : freeSkillsTotal !== null && freeSkillsTotal > 0
+        ? `${freeSkillsTotal} skill${freeSkillsTotal === 1 ? ' is' : 's are'} free to use hosted`
+        : freeSkillsFromCatalog.length > 0
+          ? `${freeSkillsFromCatalog.length} skill${freeSkillsFromCatalog.length === 1 ? ' is' : 's are'} free to use hosted`
+          : 'Self-hosting the whole platform is always free';
 
   // Featured = a representative spread of paid skills. One per category where
   // possible, so an agent skimming the manifest sees the catalog's breadth,

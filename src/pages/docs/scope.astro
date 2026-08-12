@@ -14,13 +14,15 @@ import AppShell from '../../layouts/AppShell.astro';
 // the row AND name the probe that proves it. Never soften a "Not built" row
 // into a hedge; a hedge is still a claim.
 //
-// Evidence for the current state was verified live on 2026-08-07.
+// Evidence for the current state was verified live on 2026-08-13 (previously
+// 2026-08-07 — see issue #58, the install-count proof had gone stale: 223 →
+// 490 recorded installs in the same window).
 
 const works = [
   {
     title: 'Browse and install skills from any agent',
     body: 'Search the public catalog and install a skill into Claude Code, Codex, Cursor, OpenClaw, Hermes, or anything else that speaks MCP. Installation is a pull: your agent fetches the skill. Nothing is pushed to your machine.',
-    proof: '223 recorded installs in production.',
+    proof: '492 recorded installs in production (verified 2026-08-13 via /api/stats).',
   },
   {
     title: 'Run a loop and get an objective pass/fail',
