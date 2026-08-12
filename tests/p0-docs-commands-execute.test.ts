@@ -417,11 +417,24 @@ let _marketingSnapshotCache: MarketingSnapshot | null = null;
 async function fetchMarketingSnapshot(): Promise<MarketingSnapshot> {
   if (_marketingSnapshotCache) return _marketingSnapshotCache;
   const url = `${SITE}/api/marketing/snapshot`;
+  // The endpoint itself is public/keyless, but sending a real key (when
+  // available) routes this request past prod's ANONYMOUS per-IP rate
+  // limiter (app/middleware/rate_limit.py on loopskill-api bypasses the
+  // 60/min bucket entirely for any authenticated scope) — this self-hosted
+  // runner shares an outbound IP with the rest of the prod host's traffic,
+  // so the anonymous bucket can be contended by more than just this job
+  // (observed live: 429 on PR #55's first two CI runs). Falls back to an
+  // anonymous request (still correct, just contended) when no key is set,
+  // e.g. a local run without RECIPES_API_KEY exported.
+  const apiKey =
+    (globalThis as any).process?.env?.RECIPES_API_KEY ||
+    (globalThis as any).process?.env?.LOOPSKILL_API_KEY;
+  const headers: Record<string, string> = apiKey ? { 'x-api-key': apiKey } : {};
   let lastStatus: number | undefined;
   for (let attempt = 0; attempt <= RATE_LIMIT_RETRIES; attempt++) {
     let res: Response;
     try {
-      res = await fetch(url, { signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS) });
+      res = await fetch(url, { headers, signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS) });
     } catch (err) {
       throw new Error(
         `PROD UNREACHABLE (network/timeout): GET ${url} — ${(err as Error).message}. ` +
