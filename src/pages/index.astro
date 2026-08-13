@@ -310,10 +310,18 @@ const verticals = [
           </div>
         )}
 
-        {/* Demoted: the direct install command an agent copies. Not the centerpiece — the rails are. */}
-        <details class="w-full max-w-xl mt-8 group">
+        {/* ah0813 onboarding-friction fix: this IS the product's actual conversion
+            action (paste one phrase into your agent) but was collapsed behind a
+            <details> disclosure a visitor had to notice and click before ever
+            seeing it — on a page whose whole point is "here's how you install
+            this". Opening it by default costs nothing (still collapsible, same
+            markup, same assert-dist.sh checks) and removes one click from the
+            single highest-intent action on the homepage. Rails stay the
+            visual centerpiece above it; this is no longer demoted below a
+            fold-behind-a-click. */}
+        <details class="w-full max-w-xl mt-8 group" open>
           <summary class="list-none cursor-pointer text-xs text-muted-soft hover:text-accent transition text-center">
-            Install LoopSkill into your agent → <span class="underline underline-offset-2">copy the command</span>
+            Install LoopSkill into your agent <span class="underline underline-offset-2">— the command below</span>
           </summary>
           <div class="mt-3"><InstallWidget skillCount={liveSkillCount} /></div>
         </details>
