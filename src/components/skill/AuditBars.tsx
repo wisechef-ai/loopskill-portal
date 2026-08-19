@@ -116,13 +116,29 @@ export function AuditBars({
   const tests = testsPct(unhappyPaths);
   const freshness = freshnessPct(lastVerifiedAt);
 
-  // If all metrics are at their zero/floor values (audit not yet populated),
-  // show a calm neutral state instead of alarming 0% bars.
-  const allZero = sec === 0 && docs === 10 && tests === 0 && freshness === 0;
-  if (allZero) {
+  // first-impression fix (4): the OLD gate below (`sec===0 && docs===10 &&
+  // tests===0 && freshness===0`) only fired when a skill had NO readme at
+  // all — but most published skills DO have a readme (docsPct returns 70),
+  // so for the common case of "audit never run" (qualityScore=null,
+  // unhappyPaths=0, lastVerifiedAt=null) the gate stayed false and the
+  // widget rendered three literal "0%" bars — verified live on
+  // /skills/super-memory: "Security 0% / Tests 0% / Freshness 0%" for a
+  // skill that has simply never been scored, indistinguishable from a skill
+  // that scored an actual zero on a real audit.
+  //
+  // Fix: audit-unrun is a property of the three AUDIT-DERIVED signals
+  // (security/tests/freshness) — docs is a readme-presence check, not part
+  // of the audit, so it must not gate this message. Render "Not yet
+  // audited" whenever none of the three real signals has ever been
+  // populated, regardless of readme presence.
+  const neverAudited =
+    (qualityScore === null || qualityScore === undefined) &&
+    !unhappyPaths &&
+    !lastVerifiedAt;
+  if (neverAudited) {
     return (
       <p className="text-xs text-muted-soft">
-        Audit pending.{' '}
+        Not yet audited.{' '}
         <a href="/security" className="text-accent hover:underline">
           How we audit →
         </a>

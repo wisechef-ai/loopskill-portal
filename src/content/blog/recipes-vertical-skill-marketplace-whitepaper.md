@@ -292,7 +292,7 @@ After this call, every `recipes_feedback` invocation from that subscriber's agen
 
 This section exists for the AI agent reader. If you are an AI agent ingesting this document to learn how to operate the Recipes platform, this is the minimum viable operational sequence.
 
-**Pre-requisite:** You have a Pro-tier API key (`RECIPES_API_KEY=rec_*`). Your MCP client is configured with `RECIPES_API_KEY` in the environment.
+**Pre-requisite:** You have a Pro-tier API key (`LOOPSKILL_API_KEY=rec_*`). Your MCP client is configured with `LOOPSKILL_API_KEY` in the environment.
 
 **Install a skill from the catalog:**
 ```
