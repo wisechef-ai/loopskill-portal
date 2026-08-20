@@ -75,8 +75,24 @@ if (list.error || !list.data) {
     .filter((d): d is Track => d !== null && Array.isArray(d.steps));
 }
 
-// Honest fallback (API-verified slugs only) so an API-offline build still renders
-// a real, non-empty page instead of an empty shell.
+// Honest fallback so an API-offline build still renders a real, non-empty page
+// instead of an empty shell.
+//
+// ROT TRAP (fixed 2026-08-20): this list used to hardcode `available: true` on
+// every step, with a comment claiming "API-verified slugs only". That claim
+// went stale — 6 of the 12 hardcoded slugs (scrapling-official, cognee,
+// comfyui, chef, maestro, framework-v0) now 404 and are absent from the live
+// 57-skill catalog. Worse, the failure was INVERTED: the fallback only fires
+// when the API is unreachable at build time, and it then emitted dead links
+// that `audit-links` correctly refuses to ship — so the safety net turned a
+// DEGRADED build into NO build. It was verified by three separate failed
+// builds during the 2026-08-20 gap-closure run.
+//
+// Fix: never trust a hardcoded `available`. Resolve it against the live
+// catalog at build time, and if the catalog itself is unreachable (the exact
+// situation this fallback exists for) fail CLOSED — render every step as
+// plain text rather than a link that might 404. The curriculum copy still
+// renders in full either way; only the linkiness degrades.
 if (tracks.length === 0) {
   fetchError = fetchError ?? 'bootcamp API returned no tracks';
   tracks = [
@@ -122,6 +138,23 @@ if (tracks.length === 0) {
       ],
     },
   ];
+
+  // Resolve `available` against the REAL catalog rather than trusting the
+  // literals above. Fails closed: if the catalog can't be read, nothing links.
+  const catalogSlugs = new Set<string>();
+  try {
+    const cat = await fetchApi<{ results?: { slug?: string }[] }>(
+      '/api/skills/search?page_size=100',
+      { authed: false, maxAttempts: 2, timeoutMs: 8000 },
+    );
+    for (const s of cat.data?.results ?? []) if (s?.slug) catalogSlugs.add(s.slug);
+  } catch {
+    /* fail closed — catalogSlugs stays empty, so every step renders as text */
+  }
+  tracks = tracks.map((t) => ({
+    ...t,
+    steps: t.steps.map((s) => ({ ...s, available: !!s.slug && catalogSlugs.has(s.slug) })),
+  }));
 }
 
 function tierLabel(s: Step): string {
