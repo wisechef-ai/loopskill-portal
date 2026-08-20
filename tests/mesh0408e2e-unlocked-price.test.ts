@@ -114,6 +114,27 @@ describe('audit-claims rule: unlocked-price', () => {
     }
   });
 
+  describe('MUST NOT FLAG — plural/inflected referral forms (regression, issue-61)', () => {
+    // `\brefer(?:ral|rer|s)?\b` looked right but never actually matches
+    // "referrals" or "referrers": the "ral"/"rer" alternatives leave a
+    // trailing letter ("l"/"r") right before the plural "s", and \b does not
+    // hold there — it is not a word boundary. That silently un-exonerated
+    // the exact copy on referrals.astro ("...for each of your first 50
+    // referrals, then $2.99/mo...") and red-built the portal (PR #64).
+    const inflections = [
+      'You earn $4.98/mo (50%) for each of your first 50 referrals, then $2.99/mo (30%) for every referral after that.',
+      'Top referrers earn $9.95/mo in credits.',
+      'Anyone who referred you keeps earning $4.98/mo.',
+      'We track everyone referring new signups at $4.98/mo.',
+      '50% of $9.95/mo (first 50 referrals; 30% — $2.99/mo — after), every month they stay',
+    ];
+    for (const s of inflections) {
+      it(`allows: ${s.slice(0, 56)}`, () => {
+        expect(flags(s)).toBe(false);
+      });
+    }
+  });
+
   describe('the earnings exoneration is NARROW — it cannot launder a price', () => {
     // The whole risk of any exoneration is that it becomes a bypass. These
     // pin that a price claim does not escape by sitting near a multiplication.

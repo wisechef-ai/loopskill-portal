@@ -211,7 +211,19 @@ export const RULES = [
       // exonerate NARROWLY — never widen the pattern, or it goes blind to the
       // $20/$100 Pro+ claims sitting one page over.
       {
-        when: /[×x*]\s*\$|\$[\d.,]+\s*[×x*]|\btotal\s*=|\brefer(?:ral|rer|s)?\b/i,
+        // NOTE (2026-08-20): the old `\brefer(?:ral|rer|s)?\b` never actually
+        // matched "referrals" or "referrers" — for "referrals" the engine
+        // matches "refer" + the "ral" alternative (consuming "referral"),
+        // then \b has to hold between the trailing "l" and the plural "s",
+        // which is not a word boundary, so the whole alternative backtracks
+        // and fails; the "s"-only alternative can't match either because the
+        // literal after "refer" is "r", not "s". Net effect: the plural forms
+        // this exoneration exists FOR were silently unexonerated — e.g. the
+        // exact copy on referrals.astro ("...for each of your first 50
+        // referrals, then...") tripped `unlocked-price` and red-built the
+        // portal. Enumerate every real inflection explicitly (no catch-all
+        // \w* — that would also swallow unrelated words like "reference").
+        when: /[×x*]\s*\$|\$[\d.,]+\s*[×x*]|\btotal\s*=|\brefer(?:red|ring|rals?|rers?|s)?\b/i,
         unlessAlso: /\bplans?\b|\btiers?\b|\bper\s+(seat|agent|client)\b|\bsubscription\b/i,
       },
       // A dated CORRECTION must be able to quote the price it is retracting.
