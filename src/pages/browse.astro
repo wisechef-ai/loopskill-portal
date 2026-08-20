@@ -18,6 +18,8 @@
 // four different pages are the same page).
 
 import AppShell from '../layouts/AppShell.astro';
+import { fetchApi } from '../lib/api';
+import { artifactCardHTML as libArtifactCardHTML, artifactMeta as libArtifactMeta, type ArtifactType } from '../lib/artifactCard';
 
 const API_BASE = import.meta.env.PUBLIC_LOOPSKILL_API_BASE || import.meta.env.PUBLIC_RECIPES_API_BASE || 'https://app.loopskill.io';
 // NOTE: this is a static (SSG) page — Astro.request.url carries no query
@@ -29,6 +31,110 @@ const API_BASE = import.meta.env.PUBLIC_LOOPSKILL_API_BASE || import.meta.env.PU
 // on a query string. We deliberately do NOT emit a second static
 // <link rel="canonical"> here — AppShell already emits exactly one, and
 // scripts/assert-dist.sh's canonical guard expects exactly one per page.
+
+// ── Build-time catalog prerender (bugfix, 2026-08-20) ──────────────────────
+// This is a STATIC site — there is no server-render-per-request, so the ONLY
+// way for a non-JS reader (curl, a crawler that does not execute JS, or a
+// visitor whose JS is slow/blocked) to see a real catalog is to bake the
+// first screen of it into the built HTML, same sanctioned pattern as
+// src/pages/index.astro and skills/[slug].astro's getStaticPaths (see
+// AGENTS.md "Build-time fetch ban" — public catalog data only, WITH
+// fallback, never user data). This mirrors exactly the "All tab, empty
+// query" defaults the client script computes in fetchBrowseDefaults() below,
+// so what a non-JS visitor sees matches what JS immediately re-fetches and
+// replaces (progressive enhancement, not a fork of behavior).
+//
+// Previously #browse-loading/#browse-error shipped their real "Loading…" /
+// "Couldn't load results." text in the static HTML, hidden only via the
+// `hidden` attribute — a tag-stripping reader (curl, most crawlers) doesn't
+// respect CSS/attribute-driven visibility and saw those literal strings as
+// the page's entire visible content. Fixed by (a) prerendering real cards
+// into #browse-results, and (b) moving the loading/error TEXT itself out of
+// the static markup entirely — it is now injected by client JS only at the
+// moment it becomes true, never baked in ahead of time.
+type RawItem = Record<string, any>;
+
+async function fetchLoopsPrebuilt(): Promise<RawItem[]> {
+  const composite = await fetchApi<any>('/api/composite-loops', { authed: false });
+  if (composite.ok && composite.data) {
+    const rows = Array.isArray(composite.data)
+      ? composite.data
+      : (composite.data.composite_loops || composite.data.loops || composite.data.results || []);
+    if (rows.length) return rows;
+  }
+  const verifiers = await fetchApi<any>('/api/loops', { authed: false });
+  if (verifiers.ok && verifiers.data) {
+    const rows = Array.isArray(verifiers.data) ? verifiers.data : (verifiers.data.loops || verifiers.data.results || []);
+    return rows.map((v: RawItem) => ({ ...v, is_fallback_verifier: true }));
+  }
+  return [];
+}
+
+let byType: Record<string, RawItem[]> = { loops: [], skills: [], bundles: [], personalities: [] };
+try {
+  const [loopsRows, skillsR, bundlesR, persR] = await Promise.all([
+    fetchLoopsPrebuilt(),
+    fetchApi<any>('/api/skills/search?page_size=24', { authed: false }),
+    fetchApi<any>('/api/cookbooks/discover?sort=installs&limit=6', { authed: false }),
+    fetchApi<any>('/api/personalities', { authed: false }),
+  ]);
+  byType = {
+    loops: loopsRows,
+    skills: skillsR.ok && skillsR.data ? (skillsR.data.results || []) : [],
+    bundles: bundlesR.ok && bundlesR.data ? (bundlesR.data.cookbooks || bundlesR.data.bundles || bundlesR.data.items || []) : [],
+    personalities: persR.ok && persR.data
+      ? (Array.isArray(persR.data) ? persR.data : (persR.data.personalities || persR.data.results || []))
+      : [],
+  };
+} catch {
+  // Offline build / API unreachable at build time — groups stay empty. The
+  // #browse-empty static fallback below covers this; we NEVER ship fictional
+  // catalog data (scripts/assert-dist.sh's identity guard forbids it) and we
+  // never fall back to the bare "Loading…"/error placeholder either.
+}
+
+const GROUP_ORDER_SSR = ['loops', 'skills', 'bundles', 'personalities'] as const;
+const TYPE_SINGULAR_SSR: Record<string, ArtifactType> = { loops: 'loop', skills: 'skill', bundles: 'bundle', personalities: 'personality' };
+const GROUP_LABEL_SSR: Record<string, string> = { loops: 'Popular loops', skills: 'Curated skills', bundles: 'Public bundles', personalities: 'Personalities' };
+const MAX_PREBUILT = 6;
+
+function hrefForSSR(type: string, item: RawItem): string {
+  if (type === 'loops') {
+    return item.is_fallback_verifier
+      ? `/loops/run?slug=${encodeURIComponent(item.slug)}`
+      : `/loops/view?slug=${encodeURIComponent(item.slug)}`;
+  }
+  if (type === 'skills') return `/skills/${encodeURIComponent(item.slug)}`;
+  if (type === 'bundles') return `/bundles/p?slug=${encodeURIComponent(item.slug)}`;
+  return '/browse?type=personalities';
+}
+
+function renderPrebuiltGroup(type: string, items: RawItem[]): string {
+  if (!items || !items.length) return '';
+  const singular = TYPE_SINGULAR_SSR[type];
+  const shown = items.slice(0, MAX_PREBUILT);
+  const cards = shown
+    .map((raw) => {
+      const item = {
+        slug: raw.slug || '',
+        title: raw.title || raw.name || raw.slug || 'Untitled',
+        meta: libArtifactMeta(singular, raw),
+        href: hrefForSSR(type, raw),
+      };
+      return `<div class="artifact-slot">${libArtifactCardHTML(singular, item, 'shelf')}</div>`;
+    })
+    .join('');
+  return `<section class="ls-section">
+      <div class="flex items-center justify-between ls-section-header">
+        <h2 class="ls-section-title text-text">${GROUP_LABEL_SSR[type]}</h2>
+        <a href="/browse?type=${type}" class="text-xs text-accent hover:opacity-80 shrink-0">See all ${type} →</a>
+      </div>
+      <div class="shelf-row">${cards}</div>
+    </section>`;
+}
+
+const prebuiltGroupsHtml = GROUP_ORDER_SSR.map((t) => renderPrebuiltGroup(t, byType[t])).join('');
+const hasPrebuilt = prebuiltGroupsHtml.trim().length > 0;
 ---
 
 <AppShell mode="public"
@@ -71,17 +177,36 @@ const API_BASE = import.meta.env.PUBLIC_LOOPSKILL_API_BASE || import.meta.env.PU
       </div>
     </div>
 
-    <div id="browse-loading" class="ls-body text-muted py-12 text-center">Loading…</div>
+    <!-- bugfix 2026-08-20: #browse-loading/#browse-error used to carry their
+         literal "Loading…" / "Couldn't load results." text in static HTML,
+         only ever hidden via the `hidden` attribute. A tag-stripping reader
+         (curl, most non-JS crawlers) ignores that attribute and saw those
+         strings as the page's ENTIRE visible content — the "apparently
+         broken catalog" defect. Both containers now ship EMPTY in static
+         HTML; the client script injects the actual text only at the moment
+         each state becomes true (see show()/hide() and the load() error
+         branch below), so a non-JS reader never sees error/loading copy at
+         all, only the real pre-rendered cards below. -->
+    <div id="browse-loading" class="ls-body text-muted py-12 text-center" hidden></div>
     <div id="browse-tag-chips" hidden class="tag-chips mb-6" role="group" aria-label="Filter loops by tag"></div>
-    <div id="browse-error" hidden class="ls-body text-muted py-12 text-center">
-      Couldn't load results. <button id="browse-retry" type="button" class="text-accent hover:underline">Retry</button>
-    </div>
+    <div id="browse-error" hidden class="ls-body text-muted py-12 text-center"></div>
     <div id="browse-empty" hidden class="ls-body text-muted py-16 text-center"></div>
-    <div id="browse-results"></div>
+    <!-- Build-time prerendered "All tab, empty query" catalog (bugfix
+         2026-08-20 — see frontmatter above). This is real public catalog
+         data baked at build time so curl/non-JS crawlers see an actual
+         catalog, not a spinner or an error string. The client-side load()
+         below OVERWRITES this innerHTML as soon as it resolves (progressive
+         enhancement — same content, freshened) via Trap-C-safe replacement:
+         both the prebuilt markup and the JS-fill target are the SAME node,
+         never a build-time ternary branching JS away from it. When the
+         build-time fetch itself failed/returned nothing, this is empty and
+         #browse-empty is NOT statically shown either (Trap C) — the client
+         load() decides the terminal state the same as it always did. -->
+    <div id="browse-results" set:html={prebuiltGroupsHtml}></div>
   </main>
 </AppShell>
 
-<script define:vars={{ API_BASE }}>
+<script define:vars={{ API_BASE, hasPrebuilt }}>
   const $ = (id) => document.getElementById(id);
   const TYPES = ['all', 'loops', 'skills', 'bundles', 'personalities'];
   const TYPE_LABEL = { all: 'All', loops: 'Loops', skills: 'Skills', bundles: 'Bundles', personalities: 'Personalities' };
@@ -400,6 +525,39 @@ const API_BASE = import.meta.env.PUBLIC_LOOPSKILL_API_BASE || import.meta.env.PU
   function show(id) { const e = $(id); if (e) e.hidden = false; }
   function hide(id) { const e = $(id); if (e) e.hidden = true; }
 
+  // bugfix 2026-08-20: #browse-loading/#browse-error ship EMPTY in static
+  // HTML (see the frontmatter + markup comments above) — the "Loading…" and
+  // "Couldn't load results." strings are injected HERE, client-side, only at
+  // the instant each state actually becomes true. A curl/non-JS reader never
+  // executes this script, so it never sees either string; a real visitor
+  // whose JS runs still gets the exact same UX as before.
+  function showLoading() {
+    const e = $('browse-loading');
+    if (!e) return;
+    e.textContent = 'Loading…';
+    e.hidden = false;
+  }
+  function hideLoading() {
+    const e = $('browse-loading');
+    if (!e) return;
+    e.hidden = true;
+    e.textContent = '';
+  }
+  function showError() {
+    const e = $('browse-error');
+    if (!e) return;
+    e.innerHTML = "Couldn't load results. <button id=\"browse-retry\" type=\"button\" class=\"text-accent hover:underline\">Retry</button>";
+    e.hidden = false;
+    const btn = $('browse-retry');
+    if (btn) btn.addEventListener('click', load);
+  }
+  function hideError() {
+    const e = $('browse-error');
+    if (!e) return;
+    e.hidden = true;
+    e.innerHTML = '';
+  }
+
   async function fetchSearch(q) {
     // API caps limit at 20 (le=20) — limit=50 422'd EVERY search on this page
     // since the Spotify-IA restructure (fc0d01f). Silent-broken: the page
@@ -511,8 +669,8 @@ const API_BASE = import.meta.env.PUBLIC_LOOPSKILL_API_BASE || import.meta.env.PU
 
   async function load() {
     const mySeq = ++seq;
-    hide('browse-error'); hide('browse-empty');
-    show('browse-loading');
+    hideError(); hide('browse-empty');
+    showLoading();
     $('browse-results').innerHTML = '';
 
     let data;
@@ -529,11 +687,11 @@ const API_BASE = import.meta.env.PUBLIC_LOOPSKILL_API_BASE || import.meta.env.PU
       // Internal search failed but federation answered — degrade, don't blank.
       data = { loops: [], skills: [], bundles: [], personalities: [] };
     } else {
-      hide('browse-loading');
-      show('browse-error');
+      hideLoading();
+      showError();
       return;
     }
-    hide('browse-loading');
+    hideLoading();
 
     const byType = {
       loops: data.loops || [],
@@ -631,7 +789,8 @@ const API_BASE = import.meta.env.PUBLIC_LOOPSKILL_API_BASE || import.meta.env.PU
     refreshLikes();
   }
 
-  $('browse-retry').addEventListener('click', load);
+  // Retry button is created dynamically by showError() (it does not exist
+  // in static HTML — bugfix 2026-08-20); its click listener is wired there.
 
   // ── Like wiring — ponytail_0724 ───────────────────────────────────────────
   // Delegated so it survives every innerHTML re-render in load(). Optimistic
