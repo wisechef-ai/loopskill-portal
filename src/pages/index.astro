@@ -208,6 +208,37 @@ try {
 } catch {}
 if (bootcampTracks.length === 0) bootcampTracks = bootcampFallback;
 
+// ROT GUARD (2026-08-20) — see the same fix in bootcamp.astro.
+// `bootcampFallback` hardcodes `available: true` under a comment claiming its
+// slugs were "all confirmed 200 ... 2026-06-07". That verification EXPIRED:
+// 6 of the 12 slugs (scrapling-official, cognee, comfyui, chef, maestro,
+// framework-v0) now 404 and are absent from the live 57-skill catalog. Because
+// the fallback only fires when the API is unreachable at build time, it turned
+// a degraded build into a FAILED one — `audit-links` rightly refuses dead links.
+// A dated "verified" comment is not a guarantee; it is a guarantee with an
+// expiry date nobody checks.
+//
+// Resolve `available` against the real catalog, fail CLOSED when it can't be
+// read. `available: false` renders the step as text (see the template's
+// `step.available && step.install_link` gate), so the curriculum copy always
+// survives — only the link does not.
+{
+  const catalogSlugs = new Set<string>();
+  try {
+    const cat = await fetchApi<{ results?: { slug?: string }[] }>(
+      '/api/skills/search?page_size=100',
+      { authed: false, maxAttempts: 2, timeoutMs: 8000 },
+    );
+    for (const s of cat.data?.results ?? []) if (s?.slug) catalogSlugs.add(s.slug);
+  } catch {
+    /* Rationale: fail closed — empty set means nothing links, never a 404 */
+  }
+  bootcampTracks = bootcampTracks.map((t) => ({
+    ...t,
+    steps: t.steps.map((s) => ({ ...s, available: !!s.slug && catalogSlugs.has(s.slug) })),
+  }));
+}
+
 // Track accent colors — visual differentiation per track
 const trackAccents: Record<string, { badge: string; dot: string; label: string }> = {
   'zero-to-agent':   { badge: 'bg-accent/10 border-accent/30 text-accent', dot: 'bg-accent', label: 'Foundation' },
