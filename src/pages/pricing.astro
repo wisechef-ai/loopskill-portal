@@ -1,6 +1,7 @@
 ---
 import AppShell from '../layouts/AppShell.astro';
 import CrossSell from '../components/CrossSell.astro';
+import { buildFaqPageSchema, buildAggregateOfferSchema } from '../lib/schema';
 
 // FOUR-WAY HONEST LADDER (Adam, 2026-08-07):
 //   "for the pricing i would go on loopskill with the honest info: self host,
@@ -153,10 +154,40 @@ const faqs = [
     a: 'Real monthly subscription handled by Stripe. EU pricing includes Stripe Tax / VAT MOSS. Receipts come from Stripe — we never custody your money.',
   },
 ];
+
+// JSON-LD: FAQPage, built FROM the `faqs` array above that ALSO renders the
+// visible <details>/<summary> list below — one edit updates both, so the
+// schema can never drift from what a visitor reads (AGENTS.md claim-drift
+// discipline; see src/lib/schema.ts header).
+const faqSchema = buildFaqPageSchema(faqs);
+
+// JSON-LD: AggregateOffer for the PUBLIC price ladder only. HARD CONSTRAINT
+// (hub §4 D-003/D-005, enforced by scripts/audit-claims.mjs `unlocked-price`):
+// only $0 (Free) and $9.95/mo (Pro) may ever be emitted here. Self-host is a
+// genuine $0 offer (the whole platform, MPL-2.0) so it is included; On-demand
+// has `price: null` on purpose (hub §4 D-005: "a sales conversation, never an
+// automated meter") and is deliberately EXCLUDED — filtering happens here,
+// not by trusting the tiers array to stay shaped this way forever.
+const siteURL = 'https://app.loopskill.io';
+const publicTiers = tiers.filter((t) => t.price !== null);
+const offerSchema = buildAggregateOfferSchema(
+  publicTiers.map((t) => ({
+    name: t.name,
+    price: t.price as string,
+    priceCurrency: 'USD',
+    url: `${siteURL}/pricing`,
+    description: t.tagline,
+  })),
+  `${siteURL}/pricing`,
+);
 ---
 
 
 <AppShell title="Pricing — LoopSkill" description="Self-host free forever (MPL-2.0), a free hosted account, Pro at $9.95/mo for 50 private bundles, or talk to us for anything bespoke. The only difference between Free and Pro is private bundles: 2 vs 50." mode="public">
+  <Fragment slot="head">
+    <script type="application/ld+json" set:html={JSON.stringify(offerSchema)}></script>
+    <script type="application/ld+json" set:html={JSON.stringify(faqSchema)}></script>
+  </Fragment>
   <section class="max-w-6xl mx-auto px-6 pt-16 pb-12">
     <div class="text-center max-w-2xl mx-auto flex flex-col gap-3 mb-10">
       <p class="eyebrow">Pricing</p>
