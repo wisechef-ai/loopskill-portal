@@ -1,0 +1,344 @@
+---
+// gap/pages — real static per-slug bundle pages: /bundles/{slug}.
+//
+// PROBLEM (live-verified 2026-08-20): sitemap.xml carried ZERO /bundles/*
+// entries despite 10 public bundles actively sold and listed in llms.txt.
+// The only reachable bundle URL was /bundles/p/?slug=<slug> — a query-string
+// route, which crawlers/GEO answer-engines do not reliably index or cite.
+//
+// Fix: getStaticPaths() enumerates public bundles from GET /api/bundles/discover
+// (mirrors skills/[slug].astro's pattern exactly — build-time fetch WITH a
+// seed fallback so the build survives an API blip; this is public CATALOG
+// data, which AGENTS.md's build-time-fetch-ban sanctions for index/skills
+// pages). /bundles/p/?slug= keeps working (D6 page-cut policy — never
+// hard-404 a formerly-live URL) — it now redirects to the canonical
+// /bundles/{slug} route instead of duplicating the render logic.
+//
+// requires_pro (API field, verified live 2026-08-20): two bundles
+// (research-and-report, dev-agent-essentials) are 100% Pro-gated. Previously
+// a visitor could paste the bundle's install line and have it silently
+// install nothing. This page renders an explicit Pro-locked state and
+// suppresses the "no account needed" install line for those bundles.
+import AppShell from '../../layouts/AppShell.astro';
+import Icon from '../../components/Icon.astro';
+import QuickInstall from '../../components/QuickInstall.astro';
+import { fetchApi } from '../../lib/api';
+
+interface BundleSkill {
+  slug: string;
+  title?: string;
+  is_public?: boolean;
+  source_url?: string | null;
+  loopskill_url?: string | null;
+  source?: string;
+  scan_status?: string;
+}
+
+interface Bundle {
+  slug: string;
+  name?: string;
+  description?: string | null;
+  visibility?: string;
+  theme?: { label?: string; accent?: string; icon?: string } | null;
+  skill_count?: number;
+  installs_total?: number;
+  installs_7d?: number;
+  is_verified?: boolean;
+  is_editorial?: boolean;
+  ref?: string;
+  requires_pro?: boolean;
+  skills?: BundleSkill[];
+  clone_line?: string;
+  install_command?: string;
+  install_command_requires_auth?: boolean;
+  clone_line_requires_auth?: boolean;
+  clone_line_label?: string;
+}
+
+// SEED_BUNDLES — the 10 public bundles confirmed live 2026-08-20 (GET
+// /api/bundles/discover). Only used when the discover call fails at build
+// time; the real fetch always wins when it succeeds. requires_pro carried
+// here too so the Pro-lock render never silently drops if the API blips.
+//
+// NOTE: this MUST be declared INSIDE getStaticPaths (not as a module-level
+// const/function referenced by it) — Astro's build splits getStaticPaths
+// into its own chunk, and a top-level declaration only referenced inside
+// that function was silently dropped by the chunk splitter ("SEED_BUNDLES
+// is not defined" / "getSeedBundles is not defined" at build time, both
+// verified during this fix). skills/[slug].astro's seedSlugs follows this
+// same inline-inside-the-function pattern for the same reason.
+export async function getStaticPaths() {
+  const SEED_BUNDLES: Bundle[] = [
+    { slug: 'research-and-report', name: 'Research & Report', description: 'A client-ready report, on a schedule. Search the web, summarise what matters, and publish a formatted deliverable your agent hands off without you touching a doc.', skill_count: 2, requires_pro: true },
+    { slug: 'coreys-marketing', name: "Corey's Marketing", description: 'The complete marketing operating system for your agent — 40+ conversion, SEO, copywriting, paid, growth, and RevOps skills that work together.', skill_count: 49, requires_pro: false },
+    { slug: 'loopskill-essentials', name: 'LoopSkill Essentials', description: 'The curated first-party catalog in one install: every skill published and quality-gated by the LoopSkill team.', skill_count: 53, requires_pro: false },
+    { slug: 'agent-marketing', name: 'agent_marketing', description: null, skill_count: 25, requires_pro: false },
+    { slug: 'dev-agent-essentials', name: 'Dev Agent Essentials', description: 'Ship a PR without supervision. Code review, CI fix, and PR draft automation, wired together.', skill_count: 3, requires_pro: true },
+    { slug: 'seo-and-search-growth', name: 'SEO & Search Growth', description: 'Grow organic traffic without a marketing team. On-page audits, programmatic SEO, local SEO, and AI-search optimization.', skill_count: 8, requires_pro: false },
+    { slug: 'copywriting-and-humanizer', name: 'Copywriting & Content Humanizer', description: 'Write copy that converts, then make it sound human.', skill_count: 8, requires_pro: false },
+    { slug: 'cold-outreach-and-email', name: 'Cold Outreach & Email Sequences', description: 'Write the emails that get replies.', skill_count: 8, requires_pro: false },
+    { slug: 'terraform-and-kubernetes-ops', name: 'Terraform & Kubernetes Infra Ops', description: 'Provision and run infrastructure without leaving the agent loop.', skill_count: 8, requires_pro: false },
+    { slug: 'proactive-and-autonomous-agent-ops', name: 'Proactive & Autonomous Agent Ops', description: 'Agents that act before you ask, and improve on their own runs.', skill_count: 8, requires_pro: false },
+  ];
+  const result = await fetchApi<{ cookbooks: Bundle[] }>('/api/bundles/discover', { authed: false });
+  let bundles: Bundle[] = (result.ok && Array.isArray(result.data?.cookbooks)) ? result.data!.cookbooks : [];
+
+  // Only public bundles get a page — discover already filters to
+  // visibility=public, but guard explicitly in case that ever changes.
+  bundles = bundles.filter((b) => !b.visibility || b.visibility === 'public');
+
+  if (bundles.length === 0) bundles = SEED_BUNDLES;
+
+  // Merge in any seed bundle not present in the live response, so a
+  // partial/degraded discover payload still yields the known catalog.
+  for (const s of SEED_BUNDLES) {
+    if (!bundles.find((b) => b.slug === s.slug)) bundles.push(s);
+  }
+
+  return bundles.map((bundle) => ({
+    params: { slug: bundle.slug },
+    props: { initialBundle: bundle },
+  }));
+}
+
+const { slug } = Astro.params;
+const { initialBundle } = Astro.props as { initialBundle: Bundle };
+
+// Full detail (skills[], install_command, clone_line) — public endpoint,
+// no auth, same trust boundary as skills/[slug].astro's per-page detail
+// fetch. Falls back to the discover-summary props if this 404s/errors so
+// the page still renders something real rather than a blank shell.
+const detail = await fetchApi<Bundle>(`/api/bundles/public/${slug}`, { authed: false });
+const bundle: Bundle = detail.ok && detail.data ? { ...initialBundle, ...detail.data } : initialBundle;
+
+// Which member skills actually HAVE a /skills/{slug} page?
+//
+// A bundle member is not guaranteed to be a public catalog skill: members can
+// be Pro-locked, unlisted, or federated (which live at their origin, not here).
+// Linking every member to `/skills/{slug}` therefore mints dead links — the
+// build's own audit-links gate caught exactly one on the first run
+// (`/skills/code-reviewer` from dev-agent-essentials, 404) and refused to ship
+// it. That gate is right: "a link to nowhere is a defect the visitor sees
+// before anyone else does."
+//
+// So resolve the set of slugs that genuinely have a page (the same
+// /api/skills/search enumeration skills/[slug].astro builds its routes from)
+// and only emit an internal link for those. Everything else renders as plain
+// text — honest about what it is, rather than a promise that 404s. An external
+// source_url still wins where one exists, since that member really does live
+// there.
+const publicSkillSlugs = new Set<string>();
+{
+  let page = 1;
+  for (;;) {
+    const r = await fetchApi<{ results?: { slug?: string }[]; total?: number }>(
+      `/api/skills/search?page_size=100&page=${page}`,
+      { authed: false },
+    );
+    const rows = (r.ok && r.data?.results) || [];
+    for (const s of rows) if (s?.slug) publicSkillSlugs.add(s.slug);
+    const total = r.data?.total ?? 0;
+    if (rows.length < 100 || publicSkillSlugs.size >= total || page >= 10) break;
+    page += 1;
+  }
+}
+
+const display = {
+  slug: slug as string,
+  name: bundle.name || (slug as string).replace(/-/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase()),
+  description: bundle.description || 'A public, security-vetted skill stack for AI agents.',
+  skillCount: bundle.skill_count ?? bundle.skills?.length ?? 0,
+  skills: bundle.skills || [],
+  requiresPro: bundle.requires_pro === true,
+  installsTotal: bundle.installs_total ?? 0,
+  installs7d: bundle.installs_7d ?? 0,
+  isVerified: bundle.is_verified === true,
+  isEditorial: bundle.is_editorial === true,
+  installCommand: bundle.install_command || `curl -fsSL https://app.loopskill.io/api/bundles/install.sh | bash -s -- ${slug}`,
+  installCommandRequiresAuth: bundle.install_command_requires_auth === true,
+  cloneLine: bundle.clone_line || `loopskill_bundle_install from "bundle://${slug}"`,
+};
+
+const siteURL = 'https://app.loopskill.io';
+
+// JSON-LD: CollectionPage — a bundle is a curated collection of skills, not
+// itself an installable application. Follows the honesty rule from
+// skills/[slug].astro: never fabricate interactionStatistic below the "New"
+// threshold (installs_total === 0 in this catalog snapshot for every
+// bundle — see HONESTY note below — so it is simply omitted).
+const bundleSchema = {
+  '@context': 'https://schema.org',
+  '@type': 'CollectionPage',
+  name: display.name,
+  description: display.description,
+  url: `${siteURL}/bundles/${display.slug}`,
+  ...(display.skillCount > 0 ? {
+    mainEntity: {
+      '@type': 'ItemList',
+      numberOfItems: display.skillCount,
+    },
+  } : {}),
+  ...(display.installsTotal >= 1 ? {
+    interactionStatistic: {
+      '@type': 'InteractionCounter',
+      interactionType: 'https://schema.org/DownloadAction',
+      userInteractionCount: display.installsTotal,
+    },
+  } : {}),
+};
+---
+
+<AppShell title={`${display.name} — LoopSkill`} description={display.description} mode="public" active="search">
+  <Fragment slot="head">
+    <script type="application/ld+json" set:html={JSON.stringify(bundleSchema)}></script>
+  </Fragment>
+  <main class="max-w-3xl mx-auto px-6 pt-12 pb-20">
+    <a href="/browse?type=bundles" class="text-xs text-muted hover:text-accent transition inline-flex items-center gap-1.5 mb-6">
+      <Icon name="chevron-left" size={12} />
+      Discover bundles
+    </a>
+
+    <header class="flex flex-col gap-3 mb-8">
+      <div class="flex items-center gap-2 flex-wrap">
+        <span class="badge badge-public">Public bundle</span>
+        {display.requiresPro && (
+          <span class="badge badge-pro" title="Every skill in this bundle requires a Pro subscription — the install command will not work without one.">
+            Pro required
+          </span>
+        )}
+        {display.isVerified && <span class="badge badge-verified">Verified</span>}
+        {display.isEditorial && <span class="badge badge-editorial">Editorial</span>}
+      </div>
+      <h1 class="text-3xl md:text-5xl font-bold tracking-tight" style="letter-spacing: -0.03em;">{display.name}</h1>
+      <p class="text-text leading-relaxed mt-1">{display.description}</p>
+      <div class="text-sm text-muted-soft flex items-center gap-3 flex-wrap">
+        <span>{display.skillCount} skill{display.skillCount === 1 ? '' : 's'}</span>
+        {/* HONESTY: never render a literal "0 installs" — reads as a dead
+            bundle. Only a real >0 count is shown; below that, "New". */}
+        {display.installsTotal > 0 ? (
+          <span>· {display.installsTotal.toLocaleString()} install{display.installsTotal === 1 ? '' : 's'}{display.installs7d > 0 && ` (+${display.installs7d}/wk)`}</span>
+        ) : (
+          <span>· New</span>
+        )}
+      </div>
+    </header>
+
+    {display.requiresPro ? (
+      <!-- Pro-locked state — MUST be visibly flagged (two bundles previously
+           let a visitor paste an install line that silently installed
+           nothing because every skill inside required Pro). -->
+      <section class="bg-bg-card border border-accent/30 rounded-2xl p-6 mb-10">
+        <div class="flex items-center gap-2 mb-2">
+          <Icon name="shield" size={14} class="text-accent" />
+          <h2 class="text-base font-semibold">This bundle requires Pro</h2>
+        </div>
+        <p class="text-sm text-muted mb-4">Every skill in this bundle is Pro-tier. The one-line install below will not work without an active Pro subscription and API key — there is no free path through this bundle.</p>
+        <a href="/pricing" class="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-accent text-bg font-semibold text-sm hover:bg-accent-soft transition">
+          See Pro plans →
+        </a>
+      </section>
+    ) : (
+      <section class="bg-bg-card border border-accent/30 rounded-2xl p-6 mb-10">
+        <div class="flex items-center justify-between gap-3 mb-3 flex-wrap">
+          <h2 class="text-base font-semibold">Install this whole stack — one line</h2>
+          <span class="text-[11px] text-muted-soft">{display.installCommandRequiresAuth ? 'requires an API key' : 'no account needed'}</span>
+        </div>
+        <div class="relative">
+          <pre class="bg-[#0d0d0d] border border-border rounded-xl p-4 pr-12 text-sm text-accent overflow-x-auto"><code id="install-line">{display.installCommand}</code></pre>
+          <button id="copy-install-btn" class="absolute top-3 right-3 px-2.5 py-1 rounded-md bg-bg-elev border border-border text-xs text-muted hover:text-accent hover:border-accent/40 transition" type="button" data-copy={display.installCommand}>Copy</button>
+        </div>
+        <p class="text-xs text-muted-soft mt-3">
+          Runs in any shell. Every free skill in this bundle installs verbatim with <strong>no account and no API key</strong>; paid-tier members are reported by name rather than silently skipped.
+        </p>
+      </section>
+    )}
+
+    <!-- Quick install (MCP + signed URL forms) -->
+    <div class="mb-10">
+      <QuickInstall kind="cookbook" slug={display.slug} cookbookId={display.slug} visibility="public" ref="bundle-page" />
+    </div>
+
+    <!-- Member list -->
+    <section>
+      <h2 class="text-sm font-medium text-muted-soft uppercase tracking-wide mb-3">Skills in this bundle</h2>
+      {display.skills.length === 0 ? (
+        <div class="bg-bg-card border border-border rounded-2xl p-8 text-center text-sm text-muted">
+          {display.skillCount > 0
+            ? `This bundle has ${display.skillCount} skill${display.skillCount === 1 ? '' : 's'} — detail is loading; see the install command above to pull the full list.`
+            : 'This bundle has no skills yet.'}
+        </div>
+      ) : (
+        <ul class="grid grid-cols-1 md:grid-cols-2 gap-3">
+          {display.skills.map((s) => {
+            // CAREFUL: `source_url` is NOT always external. Live data for
+            // dev-agent-essentials returns source_url="/skills/code-reviewer"
+            // — a RELATIVE internal path — for a skill that does not exist
+            // (404 on the page, 404 on /api/skills/{slug}, absent from the
+            // 57-row public enumeration). A phantom member in the bundle's own
+            // data. So an internal-looking url gets the same existence check as
+            // a bare slug; only a genuine http(s) origin is trusted as-is.
+            const raw = s.source_url || s.loopskill_url || '';
+            const isExternal = /^https?:\/\//.test(raw);
+            const internalSlug = isExternal
+              ? ''
+              : (raw.startsWith('/skills/') ? raw.slice('/skills/'.length) : (s.slug ?? ''));
+            const hasLocalPage = !!internalSlug && publicSkillSlugs.has(internalSlug);
+            const href = isExternal ? raw : hasLocalPage ? `/skills/${internalSlug}` : '';
+            const label = s.title || s.slug;
+            return (
+              <li class="skill-row">
+                {href ? (
+                  <a href={href} target={isExternal ? '_blank' : undefined} rel={isExternal ? 'noopener' : undefined} class="font-medium text-text hover:text-accent transition">
+                    {label}
+                  </a>
+                ) : (
+                  /* No public page and no real origin url — render the name as
+                     text rather than a link that 404s. */
+                  <span class="font-medium text-text">{label}</span>
+                )}
+                {s.source && <span class="skill-source-badge">{s.source}</span>}
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </section>
+
+    <section class="mt-12 bg-bg-card border border-border rounded-2xl p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+      <div>
+        <p class="font-semibold mb-1">Build your own bundle</p>
+        <p class="text-sm text-muted">Compose a security-vetted skill stack and share it as one link.</p>
+      </div>
+      <a href="/pricing" class="shrink-0 inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-accent text-bg font-semibold text-sm hover:bg-accent-soft transition">Get started</a>
+    </section>
+  </main>
+</AppShell>
+
+<style>
+  .badge { display: inline-flex; align-items: center; gap: .25rem; font-size: 10px; text-transform: uppercase; letter-spacing: .04em; padding: .15rem .5rem; border-radius: 999px; border: 1px solid; }
+  .badge-public { color: #4ade80; background: rgba(74,222,128,.1); border-color: rgba(74,222,128,.3); }
+  .badge-pro { color: #f5a623; background: rgba(245,166,35,.1); border-color: rgba(245,166,35,.35); }
+  .badge-verified { color: #5b9bf5; background: rgba(91,155,245,.1); border-color: rgba(91,155,245,.35); }
+  .badge-editorial { color: #c084fc; background: rgba(192,132,252,.1); border-color: rgba(192,132,252,.35); }
+  .skill-row { display: flex; align-items: center; justify-content: space-between; gap: .5rem; padding: .9rem 1rem; background: var(--bg-card, #14171d); border: 1px solid var(--border, #2a2f3a); border-radius: .85rem; transition: border-color .15s ease; }
+  .skill-row:hover { border-color: var(--accent, #5b9bf5); }
+  .skill-source-badge { display: inline-flex; align-items: center; font-size: 10px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted-soft, #9aa3b2); background: var(--bg-elev, #1b1f27); border: 1px solid var(--border-soft, #2a2f3a); border-radius: 999px; padding: .1rem .5rem; shrink: 0; }
+</style>
+
+<script is:inline>
+  (function () {
+    var btn = document.getElementById('copy-install-btn');
+    if (!btn) return;
+    btn.addEventListener('click', async function () {
+      var txt = btn.getAttribute('data-copy') || '';
+      try {
+        await navigator.clipboard.writeText(txt);
+        var orig = btn.textContent;
+        btn.textContent = 'Copied';
+        setTimeout(function () { btn.textContent = orig; }, 1600);
+      } catch (e) {
+        btn.textContent = 'Select & copy';
+      }
+    });
+  })();
+</script>
