@@ -1,33 +1,173 @@
 ---
-// gap/pages — /bundles/p/?slug=<slug> is now a REDIRECT to the canonical
-// static /bundles/{slug} page (see src/pages/bundles/[slug].astro).
+// P0 fix (2026-07-05, feat/bundles-public-pages) — PUBLIC bundle page: /bundles/p
 //
-// D6 page-cut policy: never hard-404 a formerly-live URL. This query-param
-// route was the only reachable bundle URL before gap/pages — it is not
-// removed, it now forwards to the real per-slug page so old shared links
-// keep working while new links/citations use the indexable canonical path.
+// Fixes the P0 defect: the homepage's two bundle cards linked to the path
+// form /bundles/p/{slug}, which 404'd because no /bundles pages existed at
+// all in this portal. This page is the query-param permalink target
+// (mirrors cookbooks/p.astro exactly) — the homepage cards now link here as
+// /bundles/p?slug={slug} (see index.astro change in this same PR).
+//
+// Data source: GET /api/bundles/public/{slug} (anonymous; verified live
+// 2026-07-05 — HTTP 200 JSON {slug,name,description,skill_count,skills[],
+// ref,...} for dev-agent-essentials and research-and-report, the exact two
+// slugs the homepage cards reference). 404 unless the bundle's
+// visibility='public'.
+//
+// Static Astro can't pre-render per-slug routes without a build-time fetch
+// (AGENTS.md build-time fetch ban — no getStaticPaths enumeration here), so
+// the page lives at /bundles/p/?slug=<slug>. A Caddy rewrite
+// (/bundles/p/<slug> → /bundles/p/?slug=<slug>) would additionally support
+// the OLD path-form URL for any already-shared links (see PR body for the
+// exact Caddyfile lines — out of repo scope). The client also resolves the
+// slug from the trailing path segment as a fallback.
+
 import AppShell from "../../layouts/AppShell.astro";
+
+const API_BASE = import.meta.env.PUBLIC_LOOPSKILL_API_BASE || import.meta.env.PUBLIC_RECIPES_API_BASE || "https://app.loopskill.io";
 ---
 
 <AppShell mode="public"
   title="Bundle — LoopSkill"
-  description="Redirecting to the bundle page."
+  description="A public, security-vetted skill stack for AI agents. Compose the whole bundle into your agent with one MCP line."
   pageType="product"
 >
-  <main class="max-w-3xl mx-auto px-6 pt-12 pb-20">
-    <section id="state-redirecting" class="text-muted text-sm py-10">Redirecting to the bundle page…</section>
+  <main class="bd-pub max-w-3xl mx-auto px-6 pt-12 pb-20">
+    <a href="/bundles" class="text-xs text-muted hover:text-accent transition inline-flex items-center gap-1.5 mb-6">← Discover bundles</a>
+
+    <!-- States -->
+    <section id="state-loading" class="text-muted text-sm py-10">Loading bundle…</section>
+
     <section id="state-notfound" hidden class="bg-bg-card border border-border rounded-2xl p-8 text-center">
       <h1 class="text-2xl font-semibold mb-2">Bundle not found</h1>
-      <p class="text-sm text-muted mb-5">No bundle slug was given in this link.</p>
-      <a href="/browse?type=bundles" class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-accent text-bg font-semibold text-sm hover:bg-accent-soft transition">Browse public bundles</a>
+      <p class="text-sm text-muted mb-5">This bundle doesn't exist or isn't public.</p>
+      <a href="/bundles" class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-accent text-bg font-semibold text-sm hover:bg-accent-soft transition">Browse public bundles</a>
     </section>
+
+    <!-- Honest failure state — never fabricate bundle content when the fetch fails. -->
+    <section id="state-error" hidden class="bg-bg-card border border-red-500/40 rounded-2xl p-6">
+      <h2 class="text-lg font-semibold mb-2">Couldn't load bundle</h2>
+      <p id="error-detail" class="text-sm text-muted"></p>
+    </section>
+
+    <!-- Loaded -->
+    <div id="content" hidden>
+      <header class="flex flex-col gap-3 mb-8">
+        <div class="flex items-center gap-2">
+          <span class="badge badge-public">Public bundle</span>
+          <!-- first-impression fix (8): shown only when every skill in this
+               bundle is a GitHub deep-link (zero hosted) — computed client-side
+               from the bundle payload, see render()/deepLinkBadge below. -->
+          <span id="bd-deeplink-badge" class="badge badge-deeplink" hidden title="Skills in this bundle are not rehosted — each installs straight from its origin GitHub repo.">Deep-link bundle — installs from the original GitHub repo</span>
+          <span id="bd-by" class="text-xs text-muted-soft"></span>
+        </div>
+        <h1 id="bd-name" class="text-3xl md:text-4xl font-semibold tracking-tight">Bundle</h1>
+        <p id="bd-desc" class="text-muted leading-relaxed"></p>
+        <div id="bd-stats" class="text-sm text-muted-soft flex items-center gap-4 flex-wrap"></div>
+      </header>
+
+      <!-- THE GTM GATE: one copy-paste line that composes the whole stack.
+           bundles_0811 P1 (F1/F2): the HERO line is now the AUTH-FREE shell
+           command. It was `clone_line` — an MCP call that returns 401 for
+           anonymous visitors — so the single "take it" affordance a stranger
+           saw could not be executed by that stranger. The API ships
+           `install_command` + `install_command_requires_auth: false`
+           (api#226); this renders it and demotes the MCP line to a clearly
+           key-gated alternative. -->
+      <section class="bg-bg-card border border-accent/30 rounded-2xl p-6 mb-10">
+        <div class="flex items-center justify-between gap-3 mb-3 flex-wrap">
+          <h2 class="text-base font-semibold">Install this whole stack — one line</h2>
+          <span class="text-[11px] text-muted-soft">no account needed</span>
+        </div>
+        <div class="relative">
+          <pre class="bg-[#0d0d0d] border border-border rounded-xl p-4 pr-12 text-sm text-accent overflow-x-auto"><code id="install-line">curl -fsSL https://app.loopskill.io/api/bundles/install.sh | bash -s -- …</code></pre>
+          <button id="copy-install-btn" class="absolute top-3 right-3 px-2.5 py-1 rounded-md bg-bg-elev border border-border text-xs text-muted hover:text-accent hover:border-accent/40 transition" type="button">Copy</button>
+        </div>
+        <p class="text-xs text-muted-soft mt-3">
+          Runs in any shell. Every free skill in this bundle installs verbatim with <strong>no account and no API key</strong>; paid-tier members are reported by name rather than silently skipped.
+        </p>
+
+        <details class="mt-5">
+          <summary class="text-sm font-semibold text-muted-soft cursor-pointer hover:text-text transition">Other ways to install</summary>
+
+          <!-- Authenticated MCP install — honestly labelled as key-gated. -->
+          <div class="mt-5">
+            <div class="flex items-center justify-between gap-3 mb-2 flex-wrap">
+              <h3 class="text-sm font-semibold text-text">…or install over MCP</h3>
+              <span id="clone-auth-badge" class="text-[11px] px-2 py-0.5 rounded-md border border-border text-muted-soft">requires a free API key</span>
+            </div>
+            <div class="relative">
+              <pre class="bg-[#0d0d0d] border border-border rounded-xl p-4 pr-12 text-sm text-accent overflow-x-auto"><code id="clone-line">loopskill_bundle_install from "bundle://…"</code></pre>
+              <button id="copy-btn" class="absolute top-3 right-3 px-2.5 py-1 rounded-md bg-bg-elev border border-border text-xs text-muted hover:text-accent hover:border-accent/40 transition" type="button">Copy</button>
+            </div>
+            <p class="text-xs text-muted-soft mt-3">
+              Your agent runs the install over MCP (StreamableHTTP at <code>app.loopskill.io/api/mcp/http</code>) and pulls every skill below in a single call. The MCP endpoint <strong>authenticates every request</strong> — <a href="/pricing" class="text-accent hover:underline">get a free key</a> first, or use the shell command above, which needs no account.
+            </p>
+          </div>
+
+          <!-- Native skill-bundle install (agentskills.io / .well-known) -->
+          <div class="mt-5 pt-5 border-t border-border-soft">
+            <div class="flex items-center justify-between gap-3 mb-2 flex-wrap">
+              <h3 class="text-sm font-semibold text-text">…or install as a skill bundle</h3>
+              <span class="text-[11px] text-muted-soft">Hermes · Claude Code · any agentskills.io agent</span>
+            </div>
+            <div class="relative">
+              <pre class="bg-[#0d0d0d] border border-border rounded-xl p-4 pr-12 text-sm text-cool overflow-x-auto"><code id="wellknown-line">Install the agentskills.io skill bundle from app.loopskill.io/api/bundles/public/…</code></pre>
+              <button id="copy-wk-btn" class="absolute top-3 right-3 px-2.5 py-1 rounded-md bg-bg-elev border border-border text-xs text-muted hover:text-cool hover:border-cool/40 transition" type="button">Copy</button>
+            </div>
+            <p class="text-xs text-muted-soft mt-3">
+              Standards-based install via the open <a href="https://agentskills.io/specification" class="text-cool hover:underline" target="_blank" rel="noopener">agentskills.io</a> <code>.well-known/skills</code> convention — the whole bundle lands as native skills in your agent. Free skills install verbatim; paid skills ship a locked pointer until you install with a LoopSkill key.
+            </p>
+          </div>
+        </details>
+      </section>
+
+      <!-- Skill list -->
+      <section>
+        <h2 class="text-sm font-medium text-muted-soft uppercase tracking-wide mb-3">Skills in this bundle</h2>
+        <div id="bd-empty" hidden class="bg-bg-card border border-border rounded-2xl p-8 text-center text-sm text-muted">
+          This bundle has no skills yet.
+        </div>
+        <ul id="skills-list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3"></ul>
+      </section>
+
+      <!-- CTA footer -->
+      <section class="mt-12 bg-bg-card border border-border rounded-2xl p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div>
+          <p class="font-semibold mb-1">Build your own bundle</p>
+          <p class="text-sm text-muted">Compose a security-vetted skill stack and share it as one link.</p>
+        </div>
+        <a href="/pricing" class="shrink-0 inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-accent text-bg font-semibold text-sm hover:bg-accent-soft transition">Get started</a>
+      </section>
+    </div>
   </main>
 </AppShell>
 
-<script>
-  // Resolve slug the same way the old handler did: ?slug=<slug> primary,
-  // trailing path segment fallback (belt-and-suspenders for any link form
-  // that predates this redirect).
+<style>
+  .badge { display: inline-flex; align-items: center; gap: .25rem; font-size: 10px; text-transform: uppercase; letter-spacing: .04em; padding: .15rem .5rem; border-radius: 999px; border: 1px solid; }
+  .badge-public { color: #4ade80; background: rgba(74,222,128,.1); border-color: rgba(74,222,128,.3); }
+  /* first-impression fix (8): distinct from badge-public — signals the whole
+     bundle deep-links to origin rather than being hosted/rehosted. */
+  .badge-deeplink { color: #c084fc; background: rgba(192,132,252,.1); border-color: rgba(192,132,252,.35); }
+  .badge-scan { color: #5b9bf5; background: rgba(91,155,245,.1); border-color: rgba(91,155,245,.35); }
+  .badge-unscanned { color: #9aa3b2; background: transparent; border-color: var(--border-soft, #2a2f3a); }
+  .skill-row { position: relative; display: flex; flex-direction: column; gap: .5rem; padding: .9rem 1rem; background: var(--bg-card, #14171d); border: 1px solid var(--border, #2a2f3a); border-radius: .85rem; transition: border-color .15s ease, transform .1s ease; }
+  .skill-row:hover { border-color: var(--accent, #5b9bf5); transform: translateY(-1px); }
+  /* Stretched-link pattern: the primary <a> covers the whole card so the
+     entire card is clickable, while the secondary "View on LoopSkill" <a>
+     stays independently clickable above it (no nested <a>, which is invalid
+     HTML and unreliable across browsers). */
+  .skill-row-link { position: absolute; inset: 0; z-index: 1; border-radius: inherit; }
+  .skill-row > * { position: relative; z-index: 2; pointer-events: none; }
+  .skill-row a.skill-loopskill-link { pointer-events: auto; }
+  .skill-source-badge { display: inline-flex; align-items: center; font-size: 10px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted-soft, #9aa3b2); background: var(--bg-elev, #1b1f27); border: 1px solid var(--border-soft, #2a2f3a); border-radius: 999px; padding: .1rem .5rem; }
+  .skill-view-source { font-size: 11px; color: var(--accent, #5b9bf5); }
+  .skill-loopskill-link { font-size: 11px; color: var(--muted-soft, #9aa3b2); text-decoration: none; }
+  .skill-loopskill-link:hover { color: var(--accent, #5b9bf5); }
+</style>
+
+<script define:vars={{ API_BASE }}>
+  // Resolve slug: ?slug=<slug> (primary, via query-param URL or a future
+  // Caddy rewrite) or trailing path segment (fallback).
   const slug = (() => {
     const q = new URLSearchParams(location.search).get("slug");
     if (q) return q.trim();
@@ -36,12 +176,241 @@ import AppShell from "../../layouts/AppShell.astro";
     return last && last !== "p" && last !== "bundles" ? last : "";
   })();
 
-  if (slug) {
-    window.location.replace(`/bundles/${encodeURIComponent(slug)}`);
-  } else {
-    const loading = document.getElementById("state-redirecting");
-    const notfound = document.getElementById("state-notfound");
-    if (loading) loading.hidden = true;
-    if (notfound) notfound.hidden = false;
+  const $ = (id) => document.getElementById(id);
+  const show = (id) => { const e = $(id); if (e) e.hidden = false; };
+  const hide = (id) => { const e = $(id); if (e) e.hidden = true; };
+
+  function fail(state, detail) {
+    hide("state-loading");
+    if (detail) { const d = $("error-detail"); if (d) d.textContent = detail; }
+    show(state);
   }
+
+  async function load() {
+    if (!slug) { fail("state-notfound"); return; }
+    let res;
+    try {
+      res = await fetch(`${API_BASE}/api/bundles/public/${encodeURIComponent(slug)}`);
+    } catch (e) {
+      fail("state-error", "Network error: " + (e && e.message ? e.message : e));
+      return;
+    }
+    if (res.status === 404) { hide("state-loading"); show("state-notfound"); return; }
+    if (!res.ok) { fail("state-error", `API returned ${res.status}.`); return; }
+    let bd;
+    try { bd = await res.json(); } catch { fail("state-error", "Malformed API response."); return; }
+    render(bd);
+  }
+
+  function render(bd) {
+    hide("state-loading");
+    show("content");
+
+    document.title = (bd.name || "Bundle") + " — LoopSkill";
+    $("bd-name").textContent = bd.name || "Bundle";
+    if (bd.description) $("bd-desc").textContent = bd.description;
+    if (bd.ref) $("bd-by").textContent = "shared by a creator on LoopSkill";
+
+    const skills = bd.skills || [];
+    const parts = [`${skills.length} skill${skills.length === 1 ? "" : "s"}`];
+    // first-impression fix: a literal "0 installs" reads as a dead/abandoned
+    // bundle to a first-time visitor — every one of the 10 public bundles
+    // showed this on 2026-08-19. Only surface a real install count (>0);
+    // below that threshold render "New" instead, same convention as the
+    // skill-detail install badge (polish_1805 item — never a badge of shame).
+    if (typeof bd.installs_total === "number" && bd.installs_total > 0) {
+      parts.push(`${bd.installs_total} install${bd.installs_total === 1 ? "" : "s"}`);
+    } else {
+      parts.push("New");
+    }
+    if (typeof bd.installs_7d === "number" && bd.installs_7d > 0) parts.push(`${bd.installs_7d} this week`);
+    $("bd-stats").textContent = parts.join("  ·  ");
+
+    // first-impression fix (8): deep-link-only bundles (e.g. coreys-marketing:
+    // 49 GitHub deep-link skills, zero hosted) install straight from the
+    // origin repo rather than being rehosted — a visitor comparing bundles
+    // needs to know that before they click install. Computed from data
+    // already in the payload (every skill lacks a loopskill_url), no new API.
+    const deepLinkBadge = $("bd-deeplink-badge");
+    if (deepLinkBadge) {
+      const allDeepLink = skills.length > 0 && skills.every((s) => !s.loopskill_url);
+      deepLinkBadge.hidden = !allDeepLink;
+    }
+
+    // bundles_0811 P1 (F1/F2) — THE auth-free install line, rendered first.
+    // Prefer the server-provided install_command; it is the path proven to work
+    // for a stranger with no account and no key. Only fall back to constructing
+    // it if an older API build did not send one.
+    const installLine =
+      bd.install_command ||
+      `curl -fsSL https://app.loopskill.io/api/bundles/install.sh | bash -s -- ${bd.slug}`;
+    const installEl = $("install-line");
+    if (installEl) installEl.textContent = installLine;
+    const copyInstallBtn = $("copy-install-btn");
+    if (copyInstallBtn) {
+      copyInstallBtn.addEventListener("click", async () => {
+        try {
+          await navigator.clipboard.writeText(installLine);
+          copyInstallBtn.textContent = "Copied";
+          setTimeout(() => { copyInstallBtn.textContent = "Copy"; }, 1600);
+        } catch {
+          copyInstallBtn.textContent = "Select & copy";
+        }
+      });
+    }
+
+    // The one-line clone — prefer the server-provided clone_line (carries ?ref),
+    // fall back to a constructed line if the API didn't send one.
+    const cloneLine = bd.clone_line || `loopskill_bundle_install from "bundle://${bd.slug}"`;
+    $("clone-line").textContent = cloneLine;
+
+    // Label the MCP line with the TRUTH the API reports. Presenting an
+    // auth-requiring line as though it were open is the F1 defect itself, so the
+    // badge is driven by the server flag rather than hardcoded copy.
+    const cloneBadge = $("clone-auth-badge");
+    if (cloneBadge && bd.clone_line_requires_auth === false) {
+      cloneBadge.textContent = "no key required";
+    } else if (cloneBadge) {
+      cloneBadge.textContent = bd.clone_line_label || "requires a free API key";
+    }
+    const copyBtn = $("copy-btn");
+    copyBtn.addEventListener("click", async () => {
+      try {
+        await navigator.clipboard.writeText(cloneLine);
+        copyBtn.textContent = "Copied";
+        setTimeout(() => { copyBtn.textContent = "Copy"; }, 1600);
+      } catch {
+        copyBtn.textContent = "Select & copy";
+      }
+    });
+
+    // Open-standard bundle install (agentskills.io). Plain-English, cross-vendor —
+    // no leaked "well-known:" token, no vendor-locked CLI. Any agentskills.io-aware
+    // agent resolves the /.well-known/skills bundle from this base URL.
+    const wkLine = `Install the agentskills.io skill bundle from app.loopskill.io/api/bundles/public/${bd.slug}`;
+    const wkEl = $("wellknown-line");
+    if (wkEl) wkEl.textContent = wkLine;
+    const copyWkBtn = $("copy-wk-btn");
+    if (copyWkBtn) {
+      copyWkBtn.addEventListener("click", async () => {
+        try {
+          await navigator.clipboard.writeText(wkLine);
+          copyWkBtn.textContent = "Copied";
+          setTimeout(() => { copyWkBtn.textContent = "Copy"; }, 1600);
+        } catch {
+          copyWkBtn.textContent = "Select & copy";
+        }
+      });
+    }
+
+    if (skills.length === 0) { show("bd-empty"); return; }
+
+    const list = $("skills-list");
+    list.innerHTML = "";
+    for (const s of skills) {
+      // Primary CLICKABLE target: source_url (always non-null per the API
+      // contract — external skills resolve to their GitHub tree URL, internal
+      // skills to their own origin or /skills/<slug>). Falls back to the
+      // LoopSkill detail page only if source_url is somehow absent (defensive;
+      // the API guarantees it's always truthy).
+      const href = s.source_url || s.loopskill_url || `/skills/${s.slug}`;
+      const isExternalHref = /^https?:\/\//.test(href);
+
+      const li = document.createElement("li");
+      li.className = "skill-row";
+
+      // Full-card clickable overlay (stretched-link pattern — no nested <a>).
+      const cardLink = document.createElement("a");
+      cardLink.className = "skill-row-link";
+      cardLink.href = href;
+      cardLink.setAttribute("aria-label", s.title || s.slug);
+      if (isExternalHref) {
+        cardLink.target = "_blank";
+        cardLink.rel = "noopener";
+      }
+      li.appendChild(cardLink);
+
+      const top = document.createElement("div");
+      top.className = "flex items-start justify-between gap-2";
+
+      const nameEl = document.createElement("span");
+      nameEl.className = "font-medium text-text";
+      nameEl.textContent = s.title || s.slug;
+      top.appendChild(nameEl);
+
+      if (s.source) {
+        const badge = document.createElement("span");
+        badge.className = "skill-source-badge shrink-0";
+        badge.textContent = s.source;
+        top.appendChild(badge);
+      }
+      li.appendChild(top);
+
+      const bottom = document.createElement("div");
+      bottom.className = "flex items-center justify-between gap-2 flex-wrap";
+
+      const viewSource = document.createElement("span");
+      viewSource.className = "skill-view-source";
+      viewSource.textContent = "view source ↗";
+      bottom.appendChild(viewSource);
+
+      // Trust badge — Ph C scan status when present.
+      const scan = (s.scan_status || "").toLowerCase();
+      if (scan && scan !== "unscanned") {
+        const b = document.createElement("span");
+        b.className = "badge badge-scan";
+        b.textContent = scan === "clean" ? "scanned" : scan;
+        bottom.appendChild(b);
+      } else if (s.is_public === false) {
+        const b = document.createElement("span");
+        b.className = "badge badge-unscanned";
+        b.textContent = "community · as-is";
+        bottom.appendChild(b);
+      }
+      li.appendChild(bottom);
+
+      // Secondary "View on LoopSkill" link — rendered ONLY when loopskill_url
+      // is non-null. Hard "never 404" rule: no affordance at all when null
+      // (external skills have no LoopSkill detail page yet). Sits ABOVE the
+      // full-card overlay (z-index + pointer-events) so it's independently
+      // clickable without triggering the primary source_url navigation.
+      if (s.loopskill_url) {
+        const lsLink = document.createElement("a");
+        lsLink.className = "skill-loopskill-link";
+        lsLink.href = s.loopskill_url;
+        lsLink.textContent = "View on LoopSkill →";
+        li.appendChild(lsLink);
+      }
+
+      list.appendChild(li);
+    }
+  }
+
+  load();
+
+  // gap/pages: /bundles/{slug} is now a REAL static, indexable page (see
+  // src/pages/bundles/[slug].astro). This query-param route stays fully
+  // functional — D6 says never hard-404 a formerly-live URL, and it is the
+  // form every already-shared link uses — but crawlers should attribute the
+  // content to the canonical path, not to ?slug=. Point the canonical link at
+  // the static page once we know the slug.
+  //
+  // Deliberately NOT a redirect: this page is a working surface with its own
+  // tested install block, and replacing it with a forwarding stub would delete
+  // shipped behaviour (10 tests in bundles0811-p1-install-block.test.ts and
+  // spotify-0608-f-cookbooks.test.ts assert on exactly that markup).
+  (function pointCanonicalAtStaticPage() {
+    try {
+      const q = new URLSearchParams(location.search).get("slug");
+      const seg = location.pathname.replace(/\/+$/, "").split("/").pop();
+      const slug = q || (seg && seg !== "p" ? seg : "");
+      if (!slug) return;
+      const link =
+        document.querySelector('link[rel="canonical"]') ||
+        document.head.appendChild(Object.assign(document.createElement("link"), { rel: "canonical" }));
+      link.setAttribute("href", `https://app.loopskill.io/bundles/${slug}`);
+    } catch {
+      /* canonical is an optimisation, never a reason to break the page */
+    }
+  })();
 </script>
