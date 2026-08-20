@@ -1,6 +1,7 @@
 ---
 import { getCollection, render } from 'astro:content';
 import AppShell from '../../layouts/AppShell.astro';
+import { buildBlogPostingSchema } from '../../lib/schema';
 
 export async function getStaticPaths() {
   const posts = await getCollection('blog');
@@ -12,6 +13,15 @@ export async function getStaticPaths() {
 
 const { post } = Astro.props;
 const { Content } = await render(post);
+
+// JSON-LD: BlogPosting, sourced ONLY from this post's own content-collection
+// frontmatter (post.data — src/content.config.ts `blog` schema). Never
+// invented — headline/dates/author are exactly what the .md frontmatter
+// declares (gap/schema; AGENTS.md claim-drift discipline extended to
+// structured data, not just visible prose).
+const siteURL = 'https://app.loopskill.io';
+const postURL = `${siteURL}/blog/${post.id}`;
+const blogSchema = buildBlogPostingSchema(post.data, postURL, siteURL);
 ---
 
 <AppShell mode="public"
@@ -19,6 +29,9 @@ const { Content } = await render(post);
   description={post.data.description}
   pageType="article"
 >
+  <Fragment slot="head">
+    <script type="application/ld+json" set:html={JSON.stringify(blogSchema)}></script>
+  </Fragment>
   <article class="max-w-3xl mx-auto px-6 pt-12 pb-24">
     <header class="mb-10">
       <time class="text-xs text-muted font-mono" datetime={post.data.pubDate.toISOString()}>

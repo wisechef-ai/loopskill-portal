@@ -11,6 +11,10 @@ const blog = defineCollection({
     title: z.string(),
     description: z.string(),
     pubDate: z.coerce.date(),
+    // Optional — only set when a post frontmatter actually declares a later
+    // edit date. buildBlogPostingSchema() falls back to pubDate when absent
+    // rather than inventing a "last updated" signal (gap/schema).
+    updatedDate: z.coerce.date().optional(),
     author: z.string().default('WiseChef'),
     tags: z.array(z.string()).default([]),
   }),

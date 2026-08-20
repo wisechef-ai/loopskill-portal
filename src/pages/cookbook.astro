@@ -2,12 +2,40 @@
 import AppShell from '../layouts/AppShell.astro';
 import CrossSell from '../components/CrossSell.astro';
 import Icon from '../components/Icon.astro';
+import { buildFaqPageSchema, type FaqItem } from '../lib/schema';
+
+// Single source of truth for BOTH the visible "Questions" FAQ list below AND
+// the FAQPage JSON-LD — refactored from an inline literal array (gap/schema)
+// into a typed FaqItem[] so both share one definition (AGENTS.md claim-drift
+// discipline).
+const faqs: FaqItem[] = [
+  {
+    q: 'When is my Bundle created?',
+    a: 'Automatically when you install your first skill on Pro tier. You never need to set it up manually.',
+  },
+  {
+    q: 'What does "customized" mean?',
+    a: "If you have modified a skill's configuration or parameters, it's marked as customized. Your version is preserved even when the base catalog updates.",
+  },
+  {
+    q: 'What does "hidden" mean?',
+    a: "Skills you've chosen not to run. They stay in your Bundle but won't be installed on your agents during sync.",
+  },
+  {
+    q: 'How does syncing work across agents?',
+    a: "Each agent in your fleet syncs from your personal Bundle. Install a skill once and it propagates everywhere. Remove or hide it and it's gone from all agents on the next sync.",
+  },
+];
+const faqSchema = buildFaqPageSchema(faqs);
 ---
 
 <AppShell mode="public"
   title="Your Bundle — LoopSkill"
   description="Your personal Bundle syncs skills across all your agents. Auto-created when you install your first skill on Pro tier."
 >
+  <Fragment slot="head">
+    <script type="application/ld+json" set:html={JSON.stringify(faqSchema)}></script>
+  </Fragment>
   <section class="max-w-4xl mx-auto px-6 pt-16 pb-12">
     <div class="flex flex-col gap-3 mb-10">
       <p class="eyebrow">Pro tier</p>
@@ -110,24 +138,7 @@ import Icon from '../components/Icon.astro';
     <div class="mt-14 border-t border-border pt-10">
       <h2 class="text-2xl font-semibold tracking-tight mb-6">Questions</h2>
       <div class="flex flex-col gap-3">
-        {[
-          {
-            q: 'When is my Bundle created?',
-            a: 'Automatically when you install your first skill on Pro tier. You never need to set it up manually.',
-          },
-          {
-            q: 'What does "customized" mean?',
-            a: 'If you have modified a skill\'s configuration or parameters, it\'s marked as customized. Your version is preserved even when the base catalog updates.',
-          },
-          {
-            q: 'What does "hidden" mean?',
-            a: 'Skills you\'ve chosen not to run. They stay in your Bundle but won\'t be installed on your agents during sync.',
-          },
-          {
-            q: 'How does syncing work across agents?',
-            a: 'Each agent in your fleet syncs from your personal Bundle. Install a skill once and it propagates everywhere. Remove or hide it and it\'s gone from all agents on the next sync.',
-          },
-        ].map(faq => (
+        {faqs.map(faq => (
           <details class="group bg-bg-card border border-border rounded-xl px-5 py-4 open:border-accent/40 transition">
             <summary class="cursor-pointer list-none flex items-center justify-between gap-4 text-sm font-semibold text-text">
               <span>{faq.q}</span>

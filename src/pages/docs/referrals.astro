@@ -1,10 +1,41 @@
 ---
 import AppShell from '../../layouts/AppShell.astro';
+import { buildFaqPageSchema, type FaqItem } from '../../lib/schema';
+
+// Single source of truth for BOTH the visible FAQ list below AND the
+// FAQPage JSON-LD — refactored from hand-written <details> blocks (gap/schema)
+// so the two can never drift (AGENTS.md claim-drift discipline).
+const faqs: FaqItem[] = [
+  {
+    q: 'Can I refer myself?',
+    a: 'No. Self-referral is detected and disqualified automatically. The referrer and subscriber accounts must be different people with different payment methods.',
+  },
+  {
+    q: 'What happens if the customer downgrades?',
+    a: 'Earnings scale with their actual paid amount. If a referred customer cancels, earnings stop. If they resubscribe, earnings resume the following billing cycle.',
+  },
+  {
+    q: 'What about refunds?',
+    a: 'If a referred customer receives a refund, the corresponding commission is clawed back from your next payout. If your balance goes negative, it carries forward and offsets future earnings — you are never charged out-of-pocket.',
+  },
+  {
+    q: 'Can I share via affiliate networks?',
+    a: 'Yes. You can paste your referral link anywhere — affiliate networks, newsletters, Twitter/X, Discord, YouTube descriptions. As long as the user clicks your link and subscribes within 30 days, attribution is yours.',
+  },
+  {
+    q: 'When do I get paid?',
+    a: "Monthly on the 15th, with a $1 minimum balance (Stripe's payout floor). Connect Stripe Express from your dashboard and the first payout lands within 1–3 business days of the 15th. If you haven't connected Stripe, earnings accumulate until you do.",
+  },
+];
+const faqSchema = buildFaqPageSchema(faqs);
 ---
 
 <AppShell mode="public"
   title="Referral program — LoopSkill Docs"
   description="Earn 50% recurring revenue share on your first 50 Pro referrals (30% after) at LoopSkill. Monthly payouts via Stripe Connect.">
+  <Fragment slot="head">
+    <script type="application/ld+json" set:html={JSON.stringify(faqSchema)}></script>
+  </Fragment>
   <!--
     Rates verified live 2026-08-13 against app/referral.py:78-81 (rate tier) and
     app/payout_engine.py:167-170 (payout floor). 50% applies to a referrer's
@@ -81,70 +112,22 @@ import AppShell from '../../layouts/AppShell.astro';
       </li>
     </ul>
 
-    <!-- FAQ -->
+    <!-- FAQ — rendered FROM the `faqs` array above (gap/schema); the same
+         array feeds the FAQPage JSON-LD in <head>, so this list can never
+         drift from what the schema claims. -->
     <h2 class="text-xl font-semibold text-text mb-6">FAQ</h2>
     <div class="flex flex-col gap-3 mb-12">
-
-      <details class="group bg-bg-card border border-border rounded-xl px-5 py-4 open:border-accent/40 transition">
-        <summary class="cursor-pointer list-none flex items-center justify-between gap-4 text-sm font-semibold text-text">
-          <span>Can I refer myself?</span>
-          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" class="shrink-0 text-muted-soft transition-transform group-open:rotate-180" aria-hidden="true">
-            <path d="M3 5L7 9L11 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-          </svg>
-        </summary>
-        <p class="text-sm text-muted leading-relaxed mt-3">
-          No. Self-referral is detected and disqualified automatically. The referrer and subscriber accounts must be different people with different payment methods.
-        </p>
-      </details>
-
-      <details class="group bg-bg-card border border-border rounded-xl px-5 py-4 open:border-accent/40 transition">
-        <summary class="cursor-pointer list-none flex items-center justify-between gap-4 text-sm font-semibold text-text">
-          <span>What happens if the customer downgrades?</span>
-          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" class="shrink-0 text-muted-soft transition-transform group-open:rotate-180" aria-hidden="true">
-            <path d="M3 5L7 9L11 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-          </svg>
-        </summary>
-        <p class="text-sm text-muted leading-relaxed mt-3">
-          Earnings scale with their actual paid amount. If a referred customer cancels, earnings stop. If they resubscribe, earnings resume the following billing cycle.
-        </p>
-      </details>
-
-      <details class="group bg-bg-card border border-border rounded-xl px-5 py-4 open:border-accent/40 transition">
-        <summary class="cursor-pointer list-none flex items-center justify-between gap-4 text-sm font-semibold text-text">
-          <span>What about refunds?</span>
-          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" class="shrink-0 text-muted-soft transition-transform group-open:rotate-180" aria-hidden="true">
-            <path d="M3 5L7 9L11 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-          </svg>
-        </summary>
-        <p class="text-sm text-muted leading-relaxed mt-3">
-          If a referred customer receives a refund, the corresponding commission is clawed back from your next payout. If your balance goes negative, it carries forward and offsets future earnings — you are never charged out-of-pocket.
-        </p>
-      </details>
-
-      <details class="group bg-bg-card border border-border rounded-xl px-5 py-4 open:border-accent/40 transition">
-        <summary class="cursor-pointer list-none flex items-center justify-between gap-4 text-sm font-semibold text-text">
-          <span>Can I share via affiliate networks?</span>
-          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" class="shrink-0 text-muted-soft transition-transform group-open:rotate-180" aria-hidden="true">
-            <path d="M3 5L7 9L11 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-          </svg>
-        </summary>
-        <p class="text-sm text-muted leading-relaxed mt-3">
-          Yes. You can paste your referral link anywhere — affiliate networks, newsletters, Twitter/X, Discord, YouTube descriptions. As long as the user clicks your link and subscribes within 30 days, attribution is yours.
-        </p>
-      </details>
-
-      <details class="group bg-bg-card border border-border rounded-xl px-5 py-4 open:border-accent/40 transition">
-        <summary class="cursor-pointer list-none flex items-center justify-between gap-4 text-sm font-semibold text-text">
-          <span>When do I get paid?</span>
-          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" class="shrink-0 text-muted-soft transition-transform group-open:rotate-180" aria-hidden="true">
-            <path d="M3 5L7 9L11 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-          </svg>
-        </summary>
-        <p class="text-sm text-muted leading-relaxed mt-3">
-          Monthly on the 15th, with a $1 minimum balance (Stripe's payout floor). Connect Stripe Express from your dashboard and the first payout lands within 1–3 business days of the 15th. If you haven't connected Stripe, earnings accumulate until you do.
-        </p>
-      </details>
-
+      {faqs.map((faq) => (
+        <details class="group bg-bg-card border border-border rounded-xl px-5 py-4 open:border-accent/40 transition">
+          <summary class="cursor-pointer list-none flex items-center justify-between gap-4 text-sm font-semibold text-text">
+            <span>{faq.q}</span>
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" class="shrink-0 text-muted-soft transition-transform group-open:rotate-180" aria-hidden="true">
+              <path d="M3 5L7 9L11 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </summary>
+          <p class="text-sm text-muted leading-relaxed mt-3">{faq.a}</p>
+        </details>
+      ))}
     </div>
 
     <div class="mt-4 p-6 bg-bg-card border border-border rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
