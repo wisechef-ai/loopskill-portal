@@ -218,6 +218,41 @@ import AppShell from '../layouts/AppShell.astro';
     </div>
   </div>
 
+  <!-- Enroll-agent modal (money-path-audit hop 4b, issue #247) -->
+  <div id="agent-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-bg/80 backdrop-blur-sm p-4" role="dialog" aria-modal="true">
+    <div class="bg-bg-card border border-border rounded-2xl p-6 w-full max-w-sm flex flex-col gap-4 shadow-2xl">
+      <div class="flex items-center justify-between gap-3">
+        <h3 id="agent-modal-title" class="text-base font-semibold">Add an agent</h3>
+        <button id="agent-modal-close" class="text-muted hover:text-text text-lg leading-none" aria-label="Close">✕</button>
+      </div>
+      <input id="agent-host" type="text" maxlength="255" placeholder="e.g. adam-xps"
+             class="w-full px-3 py-2 text-sm bg-bg-elev border border-border rounded-lg text-text placeholder:text-muted focus:outline-none focus:border-accent" />
+      <input id="agent-profile" type="text" maxlength="100" placeholder="profile (default)" value="default"
+             class="w-full px-3 py-2 text-sm bg-bg-elev border border-border rounded-lg text-text placeholder:text-muted focus:outline-none focus:border-accent" />
+      <input id="agent-skills-dir" type="text" maxlength="255" placeholder="~/.hermes/loopskill" value="~/.hermes/loopskill"
+             class="w-full px-3 py-2 text-sm bg-bg-elev border border-border rounded-lg text-text placeholder:text-muted focus:outline-none focus:border-accent" />
+      <div id="agent-modal-error" class="hidden text-xs text-red-400 bg-red-500/10 border border-red-500/30 rounded-lg p-2"></div>
+      <div class="flex gap-2">
+        <button id="agent-create-submit" class="flex-1 px-4 py-2 rounded-lg bg-accent text-bg text-sm font-semibold hover:bg-accent-soft transition">Add agent</button>
+        <button id="agent-modal-cancel" class="px-4 py-2 rounded-lg border border-border text-text text-sm hover:border-accent transition">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- New agent's dedicated API key reveal (shown once) -->
+  <div id="agent-key-reveal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-bg/80 backdrop-blur-sm p-4" role="dialog" aria-modal="true">
+    <div class="bg-bg-card border border-accent/40 rounded-2xl p-6 w-full max-w-md flex flex-col gap-3 shadow-2xl">
+      <h3 class="text-base font-semibold text-accent">⚠ Save this agent's key now</h3>
+      <p class="text-xs text-muted">It will not be shown again. Set it as <code class="text-accent">x-api-key</code> on that agent to enroll it.</p>
+      <div class="flex items-center gap-2">
+        <code id="agent-reveal-key" class="font-mono text-xs bg-bg-elev border border-border rounded px-3 py-2 flex-1 break-all"></code>
+        <button id="agent-reveal-copy" class="px-3 py-2 rounded-lg bg-accent text-bg text-xs font-semibold shrink-0">Copy</button>
+      </div>
+      <button id="agent-reveal-done" class="text-xs text-muted hover:text-text underline self-start">I've saved it</button>
+    </div>
+  </div>
+
+
   <!-- Client handoff key-reveal modal (Delivery tab) -->
   <div id="tok-reveal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-bg/80 backdrop-blur-sm p-4" role="dialog" aria-modal="true">
     <div class="bg-bg-card border border-accent/40 rounded-2xl p-6 w-full max-w-md flex flex-col gap-3 shadow-2xl">
@@ -832,10 +867,12 @@ import AppShell from '../layouts/AppShell.astro';
         <div class="flex items-center gap-1.5 shrink-0">
           <a href="/fleet-map?fleet=${encodeURIComponent(f.fleet_id)}" class="text-xs px-3 py-1.5 rounded-lg border border-border hover:border-accent text-text transition">Map ▸</a>
           <a href="/mesh?fleet=${encodeURIComponent(f.fleet_id)}" class="text-xs px-3 py-1.5 rounded-lg border border-border hover:border-accent text-text transition">Mesh ▸</a>
+          <button class="fleet-add-agent text-xs px-3 py-1.5 rounded-lg border border-border hover:border-accent text-text transition" data-fleet="${esc(f.fleet_id)}" data-fleet-name="${esc(f.name)}">+ Agent</button>
           <button class="fleet-sync text-xs px-3 py-1.5 rounded-lg border border-border hover:border-accent text-text transition" data-fleet="${esc(f.fleet_id)}">Sync ▸</button>
         </div>
       </div>
       <div class="flex flex-col gap-1.5 mb-3">${subsHtml}</div>
+      <div class="agent-upgrade-slot" data-fleet="${esc(f.fleet_id)}"></div>
       <form class="fleet-sub-form flex items-center gap-1.5 pt-3 border-t border-border-soft" data-fleet="${esc(f.fleet_id)}">
         <select class="sub-cb flex-1 px-2 py-1.5 text-xs bg-bg-elev border border-border rounded-lg text-text focus:outline-none focus:border-accent">
           <option value="">Subscribe a bundle…</option>${cbOptions}
@@ -873,7 +910,106 @@ import AppShell from '../layouts/AppShell.astro';
     wireFleetCards();
   }
 
+  // ── Enroll-agent flow (money-path-audit hop 4b, issue #247) ──────────────
+  // Mirrors showUpgradeWall()'s in-context pattern: 402 tier_key_cap_exceeded
+  // from POST /api/fleets/{id}/members renders an inline upgrade wall on the
+  // fleet card (never a bare toast, never a redirect) — the bundle-cap 403
+  // wall already does this; the key-cap 402 previously had zero UI consumer.
+  let agentTargetFleet = '';
+  function openAgentModal(fleetId: string, fleetName: string) {
+    agentTargetFleet = fleetId;
+    ($('agent-modal-title') as HTMLElement).textContent = `Add an agent to ${fleetName}`;
+    ($('agent-host') as HTMLInputElement).value = '';
+    ($('agent-profile') as HTMLInputElement).value = 'default';
+    ($('agent-skills-dir') as HTMLInputElement).value = '~/.hermes/loopskill';
+    $('agent-modal-error').classList.add('hidden');
+    $('agent-modal').classList.remove('hidden');
+    ($('agent-host') as HTMLElement).focus();
+  }
+  function closeAgentModal() { $('agent-modal').classList.add('hidden'); }
+  $('agent-modal-close').addEventListener('click', closeAgentModal);
+  $('agent-modal-cancel').addEventListener('click', closeAgentModal);
+  $('agent-modal').addEventListener('click', (e) => { if (e.target === $('agent-modal')) closeAgentModal(); });
+
+  function showKeyCapUpgradeWall(fleetId: string, cap: number, current: number) {
+    const slot = document.querySelector<HTMLElement>(`.agent-upgrade-slot[data-fleet="${CSS.escape(fleetId)}"]`);
+    if (!slot) { fleetToast(`Key cap reached (${current}/${cap}) — see /pricing.`, 'error'); return; }
+    if (slot.querySelector('.agent-upgrade-wall')) return;
+    const wall = document.createElement('div');
+    wall.className = 'agent-upgrade-wall mb-3 rounded-xl border border-accent/40 bg-accent/8 p-4 flex flex-col gap-2.5';
+    wall.innerHTML = `
+      <p class="text-xs font-semibold text-text">You've hit the agent-key cap (${current}/${cap}).</p>
+      <p class="text-xs text-muted leading-relaxed">Pro raises it to 200 keys per fleet. Every enrolled agent gets its own dedicated key.</p>
+      <div class="flex items-center gap-2">
+        <button class="agent-upgrade-go px-3 py-1.5 rounded-lg bg-accent text-bg text-xs font-semibold hover:bg-accent-soft transition">Upgrade to Pro — $9.95/mo</button>
+        <button class="agent-upgrade-dismiss text-xs text-muted-soft hover:text-text transition">Not now</button>
+      </div>`;
+    slot.appendChild(wall);
+    wall.querySelector('.agent-upgrade-dismiss')?.addEventListener('click', () => wall.remove());
+    wall.querySelector('.agent-upgrade-go')?.addEventListener('click', async () => {
+      const btn = wall.querySelector('.agent-upgrade-go') as HTMLButtonElement;
+      btn.textContent = 'Loading…'; btn.disabled = true;
+      try {
+        const res = await api('/api/checkout/pro', { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' });
+        if (res.ok) { const d = await res.json(); window.location.href = d.url; return; }
+      } catch { /* fall through */ }
+      btn.textContent = 'Upgrade to Pro — $9.95/mo'; btn.disabled = false;
+      fleetToast('Checkout unavailable — try again or use /pricing.', 'error');
+    });
+  }
+
+  $('agent-create-submit').addEventListener('click', async () => {
+    const host = ($('agent-host') as HTMLInputElement).value.trim();
+    const profile = ($('agent-profile') as HTMLInputElement).value.trim() || 'default';
+    const skillsDir = ($('agent-skills-dir') as HTMLInputElement).value.trim();
+    const err = $('agent-modal-error');
+    err.classList.add('hidden');
+    if (!host) { err.textContent = 'Host is required.'; err.classList.remove('hidden'); return; }
+    if (!skillsDir) { err.textContent = 'Skills dir is required.'; err.classList.remove('hidden'); return; }
+    const submitBtn = $('agent-create-submit') as HTMLButtonElement;
+    submitBtn.disabled = true; submitBtn.textContent = 'Adding…';
+    let r: Response;
+    try {
+      r = await api(`/api/fleets/${encodeURIComponent(agentTargetFleet)}/members`, {
+        method: 'POST', headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ host, profile, skills_dir: skillsDir }),
+      });
+    } catch {
+      submitBtn.disabled = false; submitBtn.textContent = 'Add agent';
+      err.textContent = 'Network error — try again.'; err.classList.remove('hidden'); return;
+    }
+    submitBtn.disabled = false; submitBtn.textContent = 'Add agent';
+    if (r.status === 201 || r.status === 200) {
+      const d = await r.json();
+      closeAgentModal();
+      ($('agent-reveal-key') as HTMLElement).textContent = d.api_key || '(key not returned)';
+      $('agent-key-reveal').classList.remove('hidden');
+      await loadFleets();
+      return;
+    }
+    if (r.status === 402) {
+      let body: any = {};
+      try { body = await r.json(); } catch {}
+      const detail = body.detail || body;
+      closeAgentModal();
+      showKeyCapUpgradeWall(agentTargetFleet, detail.cap ?? 1, detail.current ?? 0);
+      return;
+    }
+    if (r.status === 409) { err.textContent = 'An agent with that host/profile already exists on this fleet.'; err.classList.remove('hidden'); return; }
+    if (r.status === 401) { err.textContent = 'Sign in to add an agent.'; err.classList.remove('hidden'); return; }
+    if (r.status === 404) { err.textContent = 'Fleet not found — refresh and try again.'; err.classList.remove('hidden'); return; }
+    err.textContent = `Could not add agent (HTTP ${r.status}).`; err.classList.remove('hidden');
+  });
+
+  $('agent-reveal-copy').addEventListener('click', async () => {
+    try { await navigator.clipboard.writeText(($('agent-reveal-key') as HTMLElement).textContent || ''); const b = $('agent-reveal-copy'); b.textContent = 'Copied ✓'; setTimeout(() => b.textContent = 'Copy', 1500); } catch {}
+  });
+  $('agent-reveal-done').addEventListener('click', () => $('agent-key-reveal').classList.add('hidden'));
+
   function wireFleetCards() {
+    document.querySelectorAll<HTMLButtonElement>('.fleet-add-agent').forEach(btn => {
+      btn.addEventListener('click', () => openAgentModal(btn.dataset.fleet!, btn.dataset.fleetName || 'this fleet'));
+    });
     document.querySelectorAll<HTMLFormElement>('.fleet-sub-form').forEach(form => {
       form.addEventListener('submit', async (e) => {
         e.preventDefault();
