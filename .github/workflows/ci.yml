@@ -281,75 +281,108 @@ jobs:
           echo "Built pages: $PAGE_COUNT"
           test "$PAGE_COUNT" -ge 5 || { echo "ERR: only $PAGE_COUNT pages, expected more"; exit 1; }
 
-      - name: Stage build into dist.incoming (local)
+      - name: Stage build into releases/.incoming (local)
         if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-        # Never write --delete straight onto the live "dist" dir — that serves a
-        # half-synced site during transfer. Land in dist.incoming first; the swap
-        # step below promotes it atomically.
+        # issue #34 (approved 2026-08-19): never write --delete straight onto
+        # anything the origin can serve. Land in a staging dir first; the swap
+        # step below promotes it with a single atomic rename(2).
         run: |
           set -euo pipefail
-          rsync -a --delete dist/ "${APP_DIR}/dist.incoming/"
-          test -f "${APP_DIR}/dist.incoming/index.html" \
+          REL="${APP_DIR}/releases"
+          mkdir -p "${REL}"
+          # .incoming- prefix marks it NOT-yet-live; the promote step renames
+          # it (atomic) to ${GITHUB_SHA} before the symlink flip.
+          rsync -a --delete dist/ "${REL}/.incoming-${GITHUB_SHA}/"
+          test -f "${REL}/.incoming-${GITHUB_SHA}/index.html" \
             || { echo "ERR: staging did not land"; exit 1; }
 
-      - name: Atomic swap + backup rotation
+      - name: Atomic symlink swap + release rotation
         id: swap
         if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        # issue #34: the old two-mv swap had a window (mv dist dist.bak; mv
+        # dist.incoming dist) in which the origin had NO document root — the
+        # EXIT/TERM/HUP trap from PR #31 narrowed it but cannot cover SIGKILL,
+        # OOM-kill, or hard host failure. rename(2) on a symlink IS atomic at
+        # the syscall level: there is no window at all. Caddy's root stays
+        # ${APP_DIR}/dist (unchanged) — Caddy follows the symlink transparently,
+        # so no Caddyfile edit and no ordering dependency on the Caddy side.
+        # Rollback = repoint the symlink at the previous release. Instant.
         run: |
           set -euo pipefail
           cd "${APP_DIR}"
+          REL="releases"
+          NEW="${REL}/${GITHUB_SHA}"
 
-          test -d dist.incoming || { echo "ERR: dist.incoming missing — staging step did not land"; exit 1; }
-          test -f dist.incoming/index.html || { echo "ERR: dist.incoming/index.html missing"; exit 1; }
+          test -d "${REL}/.incoming-${GITHUB_SHA}" || { echo "ERR: staging dir missing — staging step did not land"; exit 1; }
+          test -f "${REL}/.incoming-${GITHUB_SHA}/index.html" || { echo "ERR: staged build has no index.html"; exit 1; }
 
-          STAMP=$(date -u +%Y%m%d-%H%M%S)
+          # Promote staging -> release dir. Same-filesystem mv of a directory
+          # is a single rename(2): a release dir is either fully present or
+          # absent, never half-written.
+          if [ -d "${NEW}" ]; then
+            echo "release ${GITHUB_SHA} already exists — replacing (re-run of same SHA)"
+            rm -rf "${REL}/.old-${GITHUB_SHA}"
+            mv "${NEW}" "${REL}/.old-${GITHUB_SHA}"
+          fi
+          mv "${REL}/.incoming-${GITHUB_SHA}" "${NEW}"
 
-          # artifactfree_0730 (codex adversarial review, item 5): the window
-          # between `mv dist dist.bak` and `mv dist.incoming dist` leaves the
-          # origin with NO dist at all. The inline `if ! mv` below only covers a
-          # FAILED move; it cannot cover the process being KILLED mid-window —
-          # job cancellation, the job timeout, or a runner/host failure all send
-          # a signal that skips straight past it. Concurrency prevents a
-          # superseding run from cancelling us, but not a manual cancel or a
-          # timeout. This trap closes that window: on any exit path (including
-          # TERM/INT/HUP), if `dist` is absent and our backup exists, put it back.
-          #
-          # Deliberately NOT a `set -e` self-trigger: the trap re-checks state
-          # rather than assuming failure, so a clean success path is a no-op.
-          restore_on_abort() {
-            rc=$?
-            if [ ! -d dist ] && [ -d "dist.bak-${STAMP}" ]; then
-              echo "::error::Swap aborted mid-window (rc=${rc}) — restoring dist.bak-${STAMP}"
-              mv "dist.bak-${STAMP}" dist || echo "::error::RESTORE FAILED — origin has no dist, manual intervention required"
-            fi
-            exit "${rc}"
-          }
-          trap restore_on_abort EXIT INT TERM HUP
+          # Remember what the origin serves right now (for rollback + prune).
+          if [ -L dist ]; then
+            PREV_RELEASE=$(readlink dist)
+          else
+            PREV_RELEASE=""
+          fi
+          echo "previous dist target: ${PREV_RELEASE:-<real directory, legacy layout>}"
 
-          if [ -d dist ]; then
-            mv dist "dist.bak-${STAMP}"
+          # ONE-TIME bootstrap from the legacy layout: dist is a real
+          # directory. rename(2) cannot atomically replace a directory with a
+          # symlink, so this path keeps the PR #31 trap semantics (sub-second,
+          # one-time; every deploy after this is pure symlink math).
+          if [ -d dist ] && [ ! -L dist ]; then
+            STAMP=$(date -u +%Y%m%d-%H%M%S)
+            restore_on_abort() {
+              rc=$?
+              if [ ! -e dist ] && [ -d "releases/legacy-${STAMP}" ]; then
+                echo "::error::bootstrap aborted mid-window (rc=${rc}) — restoring legacy dist"
+                mv "releases/legacy-${STAMP}" dist || echo "::error::RESTORE FAILED — manual intervention required"
+              fi
+              exit "${rc}"
+            }
+            trap restore_on_abort EXIT INT TERM HUP
+            mv dist "releases/legacy-${STAMP}"
+            PREV_RELEASE="releases/legacy-${STAMP}"
           fi
 
-          if ! mv dist.incoming dist; then
-            echo "ERR: promote of dist.incoming failed — restoring previous dist"
-            if [ -d "dist.bak-${STAMP}" ]; then
-              mv "dist.bak-${STAMP}" dist
-            fi
-            exit 1
-          fi
+          # The atomic swap itself: create the new symlink under a temp name,
+          # then rename(2) it over `dist`. rename of a symlink over a symlink
+          # (or over nothing) never exposes a missing root. (Orphaned
+          # dist.next.* from a previous killed run are cleaned here first —
+          # only this job creates them, guarded by the concurrency group.)
+          rm -f dist.next.* 2>/dev/null || true
+          ln -s "${NEW}" dist.next.$$
+          mv -T dist.next.$$ dist
 
-          # Prune backups — keep newest 5 only. NON-FATAL: a permission error
-          # on an old/foreign-owned backup dir must never fail a deploy whose
-          # content swap already succeeded. Try plain rm, then sudo, then warn.
-          for old in $(ls -1dt dist.bak-* 2>/dev/null | tail -n +6); do
+          # Sanity: the origin's root must resolve to the new release.
+          test -f dist/index.html || { echo "ERR: dist symlink does not resolve to the new release"; exit 1; }
+
+          # Prune: keep the 5 newest releases plus anything the current/prev
+          # symlinks still reference. NON-FATAL, same policy as the old
+          # dist.bak-* prune.
+          KEEP=$(ls -1dt "${REL}"/*/ 2>/dev/null | grep -v '\.incoming-\|\.old-' | head -5 || true)
+          for old in $(ls -1dt "${REL}"/*/ 2>/dev/null | grep -v '\.incoming-\|\.old-' | tail -n +6); do
+            name="${old%/}"
+            [ "${name#./}" = "${NEW#./}" ] && continue
+            [ -n "${PREV_RELEASE}" ] && [ "${old%/}" = "${PREV_RELEASE%/}" ] && continue
             if ! rm -rf "$old" 2>/dev/null; then
               sudo rm -rf "$old" 2>/dev/null \
-                || echo "::warning::could not prune stale backup $old (permission denied) — leaving it; deploy is unaffected"
+                || echo "::warning::could not prune stale release $old (permission denied) — leaving it; deploy is unaffected"
             fi
           done
+          rm -rf "${REL}"/.old-* 2>/dev/null || true
 
-          echo "Swap complete. Backups now on disk:"
-          ls -1dt dist.bak-* 2>/dev/null | head -5
+          echo "Swap complete. Live release: ${NEW}"
+          echo "Recent releases on disk:"
+          ls -1dt "${REL}"/*/ 2>/dev/null | head -5
 
       - name: Post-deploy readiness gate (public routes)
         id: verify
@@ -427,17 +460,36 @@ jobs:
         # Only fires when the swap actually landed (dist was touched) AND a
         # later step (the readiness gate) failed. If the swap itself failed,
         # it already self-healed inline above — nothing to roll back here.
+        # issue #34: rollback = repoint the dist symlink at the previous
+        # release (one rename(2)), never move live directories.
         if: failure() && steps.swap.outcome == 'success'
         run: |
           set -euo pipefail
           cd "${APP_DIR}"
-          STAMP=$(date -u +%Y%m%d-%H%M%S)
-          LATEST_BAK=$(ls -1dt dist.bak-* 2>/dev/null | head -1)
-          if [ -z "${LATEST_BAK}" ]; then
-            echo "ERR: no backup available to roll back to"
-            exit 1
+          if [ -L dist ]; then
+            CURRENT=$(readlink dist)
+            # The newest release EXCLUDING the one we just promoted is the
+            # previous live one.
+            PREV=$(ls -1dt releases/*/ 2>/dev/null | grep -v '\.incoming-\|\.old-' | grep -v "^${CURRENT}/$" | head -1 || true)
+            if [ -z "${PREV}" ]; then
+              echo "ERR: no previous release available to roll back to"
+              exit 1
+            fi
+            rm -f dist.next.* 2>/dev/null || true  # orphaned siblings from a killed run
+            ln -s "${PREV%/}" dist.next.$$
+            mv -T dist.next.$$ dist
+            echo "Rolled back dist -> ${PREV%/}"
+            echo "::error::Deploy readiness gate failed — rolled back to previous release on prod."
+          else
+            # Legacy layout (pre-symlink bootstrap) — keep the old behavior.
+            STAMP=$(date -u +%Y%m%d-%H%M%S)
+            LATEST_BAK=$(ls -1dt dist.bak-* 2>/dev/null | head -1)
+            if [ -z "${LATEST_BAK}" ]; then
+              echo "ERR: no backup available to roll back to"
+              exit 1
+            fi
+            mv dist "dist.broken-${STAMP}"
+            mv "${LATEST_BAK}" dist
+            echo "Rolled back to ${LATEST_BAK}"
+            echo "::error::Deploy readiness gate failed — rolled back to previous dist on prod."
           fi
-          mv dist "dist.broken-${STAMP}"
-          mv "${LATEST_BAK}" dist
-          echo "Rolled back to ${LATEST_BAK}"
-          echo "::error::Deploy readiness gate failed — rolled back to previous dist on prod."
