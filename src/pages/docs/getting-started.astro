@@ -105,7 +105,8 @@ curl -sL https://app.loopskill.io/skill \
       </ul>
       <p>
         The agent calls <code>GET /api/skills/install?slug=super-memory&amp;mode=files</code>,
-        downloads the signed tarball, verifies the ed25519 signature, and writes the files locally.
+        downloads the tarball via an expiring signed URL, verifies its <code>checksum_sha256</code>,
+        and writes the files locally.
         A <code>_meta.json</code> records the install for future syncs.
       </p>
       <p>
