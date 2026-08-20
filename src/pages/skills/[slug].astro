@@ -375,7 +375,23 @@ const skillSchema = {
           <QuickInstall kind="skill" slug={display.slug} ref="skill-page" />
         </div>
 
-        <!-- Auth-aware install gate (WIS-647) — hidden by default, populated by client-side script -->
+        <!-- Auth-aware install gate (WIS-647) — hidden by default, populated by client-side script.
+             first-impression fix (3): this gate used to render UNCONDITIONALLY
+             for every skill, including free ones — but a free skill installs
+             with NO account and NO API key at all (see QuickInstall / the
+             bundle install.sh copy above: "no account and no API key"). For
+             a free skill the gate's own copy ("Sign in to get your API key…"
+             / "This skill requires Pro. Upgrade to install.") was simply
+             WRONG, and it rendered alongside the sidebar's correct static
+             "Install free" CTA — verified live on /skills/super-memory
+             (tier=free): both "Install free / Free forever" AND "This skill
+             requires Pro. Upgrade to install." were on the page at once, a
+             conditional-render bug where two independent tier gates (this
+             one + the sidebar ternary below) disagreed. Fix: only mount this
+             gate for non-free skills, where it is the sole source of truth
+             for the install command; free skills rely solely on the sidebar
+             CTA + the Quick Install banner above, both already auth-free. -->
+        {!isFree && (
         <div id="install-auth-gate" data-skill-slug={display.slug} data-skill-tier={display.tier} class="hidden bg-bg-card border border-border rounded-2xl p-5">
           <p class="eyebrow mb-3">Your install command</p>
 
@@ -400,7 +416,7 @@ const skillSchema = {
             <p class="text-sm text-muted mb-3">Copy and paste into your agent's environment:</p>
             <div class="space-y-2">
               <div class="flex items-center gap-2">
-                <code class="font-mono text-xs bg-bg-elev border border-border rounded px-3 py-2 flex-1">export RECIPES_API_KEY=<span data-key-prefix>rec_live_…</span></code>
+                <code class="font-mono text-xs bg-bg-elev border border-border rounded px-3 py-2 flex-1">export LOOPSKILL_API_KEY=<span data-key-prefix>rec_live_…</span></code>
                 <a href="/library" class="text-xs text-accent hover:opacity-80 underline shrink-0">Get key →</a>
               </div>
               <code class="block font-mono text-xs bg-bg-elev border border-border rounded px-3 py-2">loopskill install <span data-skill-slug-display>{display.slug}</span></code>
@@ -410,6 +426,7 @@ const skillSchema = {
 
           <div data-state="loading" class="text-xs text-muted">Checking…</div>
         </div>
+        )}
 
         <!-- Required environment variables -->
         {display.requires_env && display.requires_env.length > 0 && (

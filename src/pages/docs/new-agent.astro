@@ -11,7 +11,7 @@ import AppShell from '../../layouts/AppShell.astro';
       <p>
         LoopSkill supports 10 agent runtimes out of the box. Pick your runtime below for the
         exact install command and config snippet. All paths need your
-        <code>RECIPES_API_KEY</code> environment variable set.
+        <code>LOOPSKILL_API_KEY</code> environment variable set.
         See <a href="/docs/getting-started">Getting started</a> for key setup.
       </p>
       <p>
@@ -33,14 +33,14 @@ import AppShell from '../../layouts/AppShell.astro';
       <pre><code>mkdir -p ~/.hermes/skills/loopskill
 curl -sL https://app.loopskill.io/skill \
      -o ~/.hermes/skills/loopskill/SKILL.md
-export RECIPES_API_KEY=rec_xx...</code></pre>
+export LOOPSKILL_API_KEY=rec_xx...</code></pre>
 
       <h3>Claude Code</h3>
       <p>Claude Code reads skills from <code>~/.claude/skills/</code>:</p>
       <pre><code>mkdir -p ~/.claude/skills/loopskill
 curl -sL https://app.loopskill.io/skill \
      -o ~/.claude/skills/loopskill/SKILL.md
-export RECIPES_API_KEY=rec_xx...</code></pre>
+export LOOPSKILL_API_KEY=rec_xx...</code></pre>
 
       <h3>OpenClaw</h3>
       <p>OpenClaw mounts the same skill directory layout as Claude Code. Drop the meta-skill in once;
@@ -48,14 +48,14 @@ export RECIPES_API_KEY=rec_xx...</code></pre>
       <pre><code>mkdir -p ~/.openclaw/skills/loopskill
 curl -sL https://app.loopskill.io/skill \
      -o ~/.openclaw/skills/loopskill/SKILL.md
-export RECIPES_API_KEY=rec_xx...</code></pre>
+export LOOPSKILL_API_KEY=rec_xx...</code></pre>
 
       <h3>Codex CLI</h3>
       <p>OpenAI Codex CLI uses the same format:</p>
       <pre><code>mkdir -p ~/.codex/skills/loopskill
 curl -sL https://app.loopskill.io/skill \
      -o ~/.codex/skills/loopskill/SKILL.md
-export RECIPES_API_KEY=rec_xx...</code></pre>
+export LOOPSKILL_API_KEY=rec_xx...</code></pre>
 
       <!-- ─────────────── MCP (config snippet) ─────────────── -->
       <h2>MCP server integrations</h2>
@@ -144,7 +144,7 @@ curl -H "x-api-key: $RECIPES_API_KEY" \
           or started. Re-check your config file and restart the agent.
         </li>
         <li>
-          <strong>"401 Unauthorized"</strong> — your <code>RECIPES_API_KEY</code> env var isn't
+          <strong>"401 Unauthorized"</strong> — your <code>LOOPSKILL_API_KEY</code> env var isn't
           being passed to the MCP server process. Check the <code>env</code> block in your config.
         </li>
         <li>

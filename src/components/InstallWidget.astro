@@ -7,9 +7,16 @@
 
 interface Props {
   skillCount?: number;
+  // first-impression fix (5): the dialogue below asserted a literal
+  // "80,000+ skills" regardless of the caller — bind it to the live
+  // federation count (see index.astro's federatedSkillLabel, sourced from
+  // /api/skills/external at build time) so it can never drift from the
+  // homepage hero/stats strip that uses the same number. Falls back to the
+  // last-verified honest floor if a caller doesn't pass one.
+  federatedCount?: string;
 }
 
-const { skillCount } = Astro.props;
+const { skillCount, federatedCount = '80,000+' } = Astro.props;
 const countLabel = skillCount && skillCount > 0 ? `${skillCount}+ skills` : 'the full catalog';
 
 // The single phrase the user pastes into their agent. This IS the install.
@@ -47,7 +54,7 @@ const installPhrase = 'Install the loopskill skill from app.loopskill.io/skill p
     <div class="text-muted mb-1">→ Fetching SKILL.md from app.loopskill.io/skill</div>
     <div class="text-muted mb-1">→ Wiring LoopSkill MCP — run loops · search · install · bundles</div>
     <div class="text-success font-semibold">
-      ✓ LoopSkill installed. The runnable registry + <span class="text-text">80,000+ skills</span> — ready.
+      ✓ LoopSkill installed. The runnable registry + <span class="text-text">{federatedCount} skills</span> — ready.
     </div>
     <div class="text-muted mt-2 mb-3">Just tell me what you need.</div>
 

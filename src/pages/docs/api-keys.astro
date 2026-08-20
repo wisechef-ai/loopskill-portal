@@ -72,7 +72,7 @@ import AppShell from '../../layouts/AppShell.astro';
     </p>
     <p class="text-muted mb-10">
       The new key is shown once. Copy it immediately and update your
-      <code class="text-xs bg-bg-elev rounded px-1">RECIPES_API_KEY</code> environment variable
+      <code class="text-xs bg-bg-elev rounded px-1">LOOPSKILL_API_KEY</code> environment variable
       on every agent that uses that key. There is no grace period — the old key stops working as
       soon as you confirm regeneration.
     </p>
@@ -93,7 +93,7 @@ import AppShell from '../../layouts/AppShell.astro';
     <!-- Environment variable -->
     <h2 class="text-xl font-semibold text-text mb-4">Setting your key</h2>
     <p class="text-muted mb-4">Export it as an environment variable before running your agent:</p>
-    <pre class="bg-[#0d0d0d] border border-border rounded-xl p-4 text-sm text-text overflow-x-auto mb-4"><code>export RECIPES_API_KEY=rec_live_your_key_here</code></pre>
+    <pre class="bg-[#0d0d0d] border border-border rounded-xl p-4 text-sm text-text overflow-x-auto mb-4"><code>export LOOPSKILL_API_KEY=rec_live_your_key_here</code></pre>
     <p class="text-muted mb-10">
       For MCP server setups (Claude Desktop, Cursor, Cline, Continue), pass the key in the
       <code class="text-xs bg-bg-elev rounded px-1">env</code> block of your MCP config — see

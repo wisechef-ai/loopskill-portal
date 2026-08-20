@@ -95,7 +95,7 @@ curl -X POST -H "x-api-key: $RECIPES_API_KEY" \\
       <p>
         Each agent that should be part of the fleet needs the fleet key as an environment variable:
       </p>
-      <pre><code>export RECIPES_API_KEY=rec_fleet_a1b2c3d4_e5f6...</code></pre>
+      <pre><code>export LOOPSKILL_API_KEY=rec_fleet_a1b2c3d4_e5f6...</code></pre>
       <p>
         Fleet keys are bundle-scoped. An agent using a fleet key can only install skills that
         are in the fleet's subscribed bundles — it cannot browse or install from the general catalog.
@@ -157,7 +157,7 @@ loopskill sync`}</code></pre>
         systemd timer:
       </p>
       <pre><code>{`# crontab entry (runs daily at 05:30 UTC)
-30 5 * * * RECIPES_API_KEY=rec_fleet_... loopskill sync >> /var/log/recipes-sync.log 2>&1`}</code></pre>
+30 5 * * * LOOPSKILL_API_KEY=rec_fleet_... loopskill sync >> /var/log/recipes-sync.log 2>&1`}</code></pre>
 
       <h2>Security considerations</h2>
       <ul>

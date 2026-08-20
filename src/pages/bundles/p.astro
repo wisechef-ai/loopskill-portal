@@ -54,6 +54,10 @@ const API_BASE = import.meta.env.PUBLIC_LOOPSKILL_API_BASE || import.meta.env.PU
       <header class="flex flex-col gap-3 mb-8">
         <div class="flex items-center gap-2">
           <span class="badge badge-public">Public bundle</span>
+          <!-- first-impression fix (8): shown only when every skill in this
+               bundle is a GitHub deep-link (zero hosted) — computed client-side
+               from the bundle payload, see render()/deepLinkBadge below. -->
+          <span id="bd-deeplink-badge" class="badge badge-deeplink" hidden title="Skills in this bundle are not rehosted — each installs straight from its origin GitHub repo.">Deep-link bundle — installs from the original GitHub repo</span>
           <span id="bd-by" class="text-xs text-muted-soft"></span>
         </div>
         <h1 id="bd-name" class="text-3xl md:text-4xl font-semibold tracking-tight">Bundle</h1>
@@ -141,6 +145,9 @@ const API_BASE = import.meta.env.PUBLIC_LOOPSKILL_API_BASE || import.meta.env.PU
 <style>
   .badge { display: inline-flex; align-items: center; gap: .25rem; font-size: 10px; text-transform: uppercase; letter-spacing: .04em; padding: .15rem .5rem; border-radius: 999px; border: 1px solid; }
   .badge-public { color: #4ade80; background: rgba(74,222,128,.1); border-color: rgba(74,222,128,.3); }
+  /* first-impression fix (8): distinct from badge-public — signals the whole
+     bundle deep-links to origin rather than being hosted/rehosted. */
+  .badge-deeplink { color: #c084fc; background: rgba(192,132,252,.1); border-color: rgba(192,132,252,.35); }
   .badge-scan { color: #5b9bf5; background: rgba(91,155,245,.1); border-color: rgba(91,155,245,.35); }
   .badge-unscanned { color: #9aa3b2; background: transparent; border-color: var(--border-soft, #2a2f3a); }
   .skill-row { position: relative; display: flex; flex-direction: column; gap: .5rem; padding: .9rem 1rem; background: var(--bg-card, #14171d); border: 1px solid var(--border, #2a2f3a); border-radius: .85rem; transition: border-color .15s ease, transform .1s ease; }
@@ -206,9 +213,29 @@ const API_BASE = import.meta.env.PUBLIC_LOOPSKILL_API_BASE || import.meta.env.PU
 
     const skills = bd.skills || [];
     const parts = [`${skills.length} skill${skills.length === 1 ? "" : "s"}`];
-    if (typeof bd.installs_total === "number") parts.push(`${bd.installs_total} install${bd.installs_total === 1 ? "" : "s"}`);
+    // first-impression fix: a literal "0 installs" reads as a dead/abandoned
+    // bundle to a first-time visitor — every one of the 10 public bundles
+    // showed this on 2026-08-19. Only surface a real install count (>0);
+    // below that threshold render "New" instead, same convention as the
+    // skill-detail install badge (polish_1805 item — never a badge of shame).
+    if (typeof bd.installs_total === "number" && bd.installs_total > 0) {
+      parts.push(`${bd.installs_total} install${bd.installs_total === 1 ? "" : "s"}`);
+    } else {
+      parts.push("New");
+    }
     if (typeof bd.installs_7d === "number" && bd.installs_7d > 0) parts.push(`${bd.installs_7d} this week`);
     $("bd-stats").textContent = parts.join("  ·  ");
+
+    // first-impression fix (8): deep-link-only bundles (e.g. coreys-marketing:
+    // 49 GitHub deep-link skills, zero hosted) install straight from the
+    // origin repo rather than being rehosted — a visitor comparing bundles
+    // needs to know that before they click install. Computed from data
+    // already in the payload (every skill lacks a loopskill_url), no new API.
+    const deepLinkBadge = $("bd-deeplink-badge");
+    if (deepLinkBadge) {
+      const allDeepLink = skills.length > 0 && skills.every((s) => !s.loopskill_url);
+      deepLinkBadge.hidden = !allDeepLink;
+    }
 
     // bundles_0811 P1 (F1/F2) — THE auth-free install line, rendered first.
     // Prefer the server-provided install_command; it is the path proven to work

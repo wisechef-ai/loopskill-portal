@@ -112,7 +112,7 @@ export const GET: APIRoute = async () => {
   // install-based trending is too thin to be representative (only a couple
   // of skills have install traction yet), whereas an empty-query search
   // returns a broad, current catalog slice across categories.
-  const [snapRes, catRes, fedRes, loopsRes, compositeRes, bundlesRes, personalitiesRes] = await Promise.all([
+  const [snapRes, catRes, fedRes, loopsRes, compositeRes, bundlesRes, personalitiesRes, statsRes] = await Promise.all([
     fetchApi<Snapshot>('/api/marketing/snapshot', { authed: false }),
     fetchApi<{ results?: CatalogSkill[] }>(
       '/api/skills/search?q=&limit=24',
@@ -141,6 +141,17 @@ export const GET: APIRoute = async () => {
     fetchApi<{ cookbooks?: CatalogBundle[] }>('/api/cookbooks/discover?limit=24', { authed: false }),
     // mesh0408 T1-D: personalities — public, no key.
     fetchApi<CatalogPersonality[]>('/api/personalities', { authed: false }),
+    // first-impression fix (2): the free-skill COUNT below used to be derived
+    // from the `/api/skills/search?limit=24` slice above — a hard page_size
+    // cap, so the count silently tracked "free skills within the first 24
+    // results" rather than the true catalog total. Verified live 2026-08-19:
+    // llms.txt said "23 skills are free" while /api/stats.by_tier.free=56.
+    // Bind the free-COUNT specifically to the live, unpaginated /api/stats
+    // endpoint (public, no key) so it can never drift with catalog growth or
+    // page-size changes; the free-skill LISTING below still samples from the
+    // 24-item catalog fetch (a full 56-line listing would balloon the file),
+    // but the number quoted in prose is now the honest total.
+    fetchApi<{ by_tier?: Record<string, number> }>('/api/stats', { authed: false }),
   ]);
 
   // Honest degradation: only trust counts we actually fetched. No invented
@@ -194,12 +205,23 @@ export const GET: APIRoute = async () => {
         .join('\n')
     : `- Self-host the whole platform for free (MPL-2.0) — see [/pricing](${SITE}/pricing) for details.`;
 
+  // first-impression fix (2): the free-skill COUNT quoted in prose is bound
+  // to the live, unpaginated /api/stats.by_tier.free — NOT to
+  // freeSkillsFromCatalog.length, which only reflects free skills inside the
+  // first 24 catalog results (see the fetchApi call above). Falls back to the
+  // paginated count only if /api/stats is unreachable at build time (honest
+  // degradation, never a fabricated number).
+  const liveFreeCount =
+    statsRes.ok && typeof statsRes.data?.by_tier?.free === 'number'
+      ? statsRes.data.by_tier.free
+      : freeSkillsFromCatalog.length;
+
   // Free-skill intro copy — degrades honestly. If the live catalog has no
   // free-tier skills right now, don't claim a specific count; point at the
   // self-host path instead (which is always free regardless of catalog tier mix).
   const freeIntro =
-    freeSkillsFromCatalog.length > 0
-      ? `${freeSkillsFromCatalog.length} skill${freeSkillsFromCatalog.length === 1 ? ' is' : 's are'} free to use hosted`
+    liveFreeCount > 0
+      ? `${liveFreeCount} skill${liveFreeCount === 1 ? ' is' : 's are'} free to use hosted`
       : 'Self-hosting the whole platform is always free';
 
   // Featured = a representative spread of paid skills. One per category where
@@ -230,7 +252,7 @@ export const GET: APIRoute = async () => {
 
 ## Beyond the curated catalog — the superset
 LoopSkill is a superset of the public agent-skill ecosystem, not just its curated catalog. The federation layer indexes **${fedHeadline}** community skills across ${fedSources} sources (every skill the Hermes Skills Hub lists, plus GitHub provider taps — Anthropic, OpenAI, Hugging Face, NVIDIA, gstack, Superpowers — and aggregators like skills.sh and ClawHub). Counts are honest and never conflated: **${fedIndexed.toLocaleString()} indexed**, **${fedInstallable.toLocaleString()} installable** today (redistributable-licensed skills install straight from origin into a bundle; supply-chain-unvetted or source-available ones deep-link to origin and are never rehosted).
-- Browse/search the superset (no key): \`GET ${SITE}/api/skills/external?sources=<comma-separated>\`
+- Browse/search the superset (no key): \`GET ${SITE}/api/skills/external?sources=hermes-hub,skills-sh,clawhub\` (comma-separated source ids — see the provider-facet list below for every valid value)
 - Provider facets: \`github-anthropic\`, \`github-openai\`, \`github-huggingface\`, \`github-nvidia\`, \`github-gstack\`, \`github-superpowers\`; aggregators: \`hermes-hub\`, \`skills-sh\`, \`clawhub\`, \`lobehub\`, \`browse-sh\`, \`well-known\`
 - Install a redistributable external skill (real SKILL.md from origin): \`GET ${SITE}/api/skills/external/{source}/{slug}/install\`
 - One library: the curated catalog is the quality-gated headline; the federation is community/as-is underneath. You never need to open the Hermes Hub separately — LoopSkill indexes it.`

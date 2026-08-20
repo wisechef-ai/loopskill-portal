@@ -29,6 +29,24 @@ try {
   }
 } catch {}
 
+// first-impression fix (5): the hero/stats-strip/spotlight copy hardcoded
+// "80,000+" / "80k-skill universe" in five places while the live federation
+// count (/api/skills/external, public/no-key — the same endpoint llms.txt
+// already binds to) had grown to 91,170. Bind the headline the same way
+// llms.txt does: round DOWN to a defensible "+" figure so the claim stays
+// true as the count drifts between crawler walks, and degrade to the last
+// verified honest floor (80,000+, still true — 91k > 80k) rather than a
+// hardcoded literal if the build-time fetch fails.
+let federatedSkillCount = 80000;
+try {
+  const result = await fetchApi<{ counts?: { external_indexed?: number } }>('/api/skills/external', { authed: false });
+  const indexed = result.ok ? result.data?.counts?.external_indexed : undefined;
+  if (typeof indexed === 'number' && indexed >= 80000) {
+    federatedSkillCount = Math.floor(indexed / 1000) * 1000;
+  }
+} catch {}
+const federatedSkillLabel = `${federatedSkillCount.toLocaleString()}+`;
+
 // Cook-tier strip — gated public skills, surfaces what Pro unlocks.
 // Live filter on tier=cook AND is_public=true. identity-guards fix
 // (2026-07-05): the hardcoded fallback list below was FICTIONAL —
@@ -205,7 +223,7 @@ const howItWorks = [
 ];
 
 const stats = [
-  { num: '80,000+', label: 'Skills across federated registries' },
+  { num: federatedSkillLabel, label: 'Skills across federated registries' },
   { num: `${liveSkillCount}`, label: 'Curated & signed in our catalog' },
   { num: 'pass / fail', label: 'Every loop run, objective + bounded' },
 ];
@@ -214,7 +232,7 @@ const heroPillars = [
   { title: 'Runnable + verified', body: 'Every loop runs under enforced bounds and returns an objective pass/fail. Proof, not a prompt.', icon: 'lightning' },
   { title: 'MCP-native', body: 'Dedicated tools. Your agent runs loops, searches, and installs from inside its own conversation.', icon: 'box' },
   { title: 'Open source', body: 'MPL-2.0. Self-host the whole registry for free. Pro is hosted convenience, never a feature gate.', icon: 'check' },
-  { title: 'Curated + signed', body: 'Small trusted core, audited every push, ed25519-signed delivery — inside the 80k-skill universe.', icon: 'calendar' },
+  { title: 'Curated + signed', body: `Small trusted core, audited every push, ed25519-signed delivery — inside the ${federatedSkillLabel} skill universe.`, icon: 'calendar' },
 ];
 
 const verticals = [
@@ -323,7 +341,7 @@ const verticals = [
           <summary class="list-none cursor-pointer text-xs text-muted-soft hover:text-accent transition text-center">
             Install LoopSkill into your agent <span class="underline underline-offset-2">— the command below</span>
           </summary>
-          <div class="mt-3"><InstallWidget skillCount={liveSkillCount} /></div>
+          <div class="mt-3"><InstallWidget skillCount={liveSkillCount} federatedCount={federatedSkillLabel} /></div>
         </details>
 
 
@@ -415,7 +433,7 @@ const verticals = [
         <div class="flex flex-col gap-5">
           <p class="eyebrow text-accent">How it works</p>
           <h2 class="text-3xl md:text-5xl font-bold tracking-tight" style="letter-spacing: -0.03em;">Your agent already does this — it just doesn't know about us yet.</h2>
-          <p class="text-muted text-lg leading-relaxed">LoopSkill is a single Markdown file. Drop it into your agent's skills directory. From then on your agent can run vetted loops (objective pass/fail under enforced bounds), search 80,000+ skills across federated registries, install the right one locally, and group your picks into a shareable bundle — versioned, signed, auto-rolled-back.</p>
+          <p class="text-muted text-lg leading-relaxed">LoopSkill is a single Markdown file. Drop it into your agent's skills directory. From then on your agent can run vetted loops (objective pass/fail under enforced bounds), search {federatedSkillLabel} skills across federated registries, install the right one locally, and group your picks into a shareable bundle — versioned, signed, auto-rolled-back.</p>
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">
             {howItWorks.map(s => (
               <div class="flex flex-col gap-2 p-4 bg-bg-card/50 border border-border-soft rounded-xl hover:border-border transition">
@@ -446,7 +464,7 @@ const verticals = [
             <div class="text-text mb-3">install the loopskill skill from app.loopskill.io</div>
             <div class="text-accent">$ agent</div>
             <div class="text-muted mb-1">→ Fetching SKILL.md · wiring MCP (run loops · search · install · bundles)</div>
-            <div class="text-muted mb-3">✓ LoopSkill installed. <span class="text-text">Runnable registry + 80,000+ skills</span> — ready.</div>
+            <div class="text-muted mb-3">✓ LoopSkill installed. <span class="text-text">Runnable registry + {federatedSkillLabel} skills</span> — ready.</div>
             <div class="text-success">$ you</div>
             <div class="text-text mb-3">build my agents a memory + scraping stack and keep them all in sync</div>
             <div class="text-accent">$ agent</div>
@@ -471,7 +489,7 @@ const verticals = [
       <div class="flex flex-col gap-3 mb-12 max-w-2xl">
         <p class="eyebrow text-accent">Skill spotlight</p>
         <h2 class="text-3xl md:text-5xl font-bold tracking-tight" style="letter-spacing: -0.03em;">These are not prompts.<br/>They are <span class="text-accent">products</span>.</h2>
-        <p class="text-muted text-lg">Our curated skills are signed, audited, and ready — the trusted core inside the 80,000-skill universe. Every one replaces a SaaS subscription or a freelancer hour, run locally by your agent.</p>
+        <p class="text-muted text-lg">Our curated skills are signed, audited, and ready — the trusted core inside the {federatedSkillLabel}-skill universe. Every one replaces a SaaS subscription or a freelancer hour, run locally by your agent.</p>
       </div>
       <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
         {spotlight.map(s => {
