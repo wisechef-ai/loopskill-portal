@@ -137,14 +137,52 @@ async function fetchAllCompositeLoopSlugs(): Promise<{ slug: string; updatedAt: 
   }));
 }
 
+// gap/pages: enumerate public bundles (/bundles/{slug}) — same no-hard-500
+// contract as fetchAllSkillSlugs/fetchAllLoopSlugs above. Before this,
+// sitemap.xml carried ZERO /bundles/* entries despite 10 public bundles
+// actively sold and listed in llms.txt (live-verified 2026-08-20).
+async function fetchAllBundleSlugs(): Promise<{ slug: string; updatedAt: string }[]> {
+  const res = await fetchApi<{ cookbooks: { slug: string; visibility?: string; created_at?: string }[] }>(
+    '/api/bundles/discover',
+    { authed: false, maxAttempts: 8, initialDelayMs: 600, maxDelayMs: 12000 },
+  );
+  if (!res.ok || !Array.isArray(res.data?.cookbooks)) return [];
+  return res.data.cookbooks
+    .filter((b) => !b.visibility || b.visibility === 'public')
+    .map((b) => ({
+      slug: b.slug,
+      updatedAt: b.created_at ? new Date(b.created_at).toISOString().slice(0, 10) : '',
+    }));
+}
+
+// gap/pages: enumerate public personalities (/personalities/{slug}). Before
+// this, sitemap.xml carried ZERO /personalities/* entries despite 2 public
+// personalities actively sold and listed in llms.txt (live-verified
+// 2026-08-20). Same no-hard-500 contract — empty list on API failure.
+async function fetchAllPersonalitySlugs(): Promise<{ slug: string; updatedAt: string }[]> {
+  const res = await fetchApi<{ slug: string; is_public?: boolean; updated_at?: string }[]>(
+    '/api/personalities',
+    { authed: false, maxAttempts: 8, initialDelayMs: 600, maxDelayMs: 12000 },
+  );
+  if (!res.ok || !Array.isArray(res.data)) return [];
+  return res.data
+    .filter((p) => p.is_public !== false)
+    .map((p) => ({
+      slug: p.slug,
+      updatedAt: p.updated_at ? new Date(p.updated_at).toISOString().slice(0, 10) : '',
+    }));
+}
+
 export const GET: APIRoute = async () => {
   const today = new Date().toISOString().slice(0, 10);
 
-  const [posts, skillSlugs, loopSlugs, compositeLoopSlugs] = await Promise.all([
+  const [posts, skillSlugs, loopSlugs, compositeLoopSlugs, bundleSlugs, personalitySlugs] = await Promise.all([
     getCollection('blog'),
     fetchAllSkillSlugs(),
     fetchAllLoopSlugs(),
     fetchAllCompositeLoopSlugs(),
+    fetchAllBundleSlugs(),
+    fetchAllPersonalitySlugs(),
   ]);
 
   const blogUrls = posts.map((p) => {
@@ -192,9 +230,32 @@ export const GET: APIRoute = async () => {
   </url>`,
   );
 
+  // gap/pages: per-bundle detail pages — one <loc> per public bundle.
+  // Priority 0.7: same tier as loops — a curated collection, not the
+  // primary catalog, but a real buyer-facing, GEO-citable product page.
+  const bundleUrls = bundleSlugs.map(
+    (b: { slug: string; updatedAt: string }) => `  <url>
+    <loc>${SITE}/bundles/${b.slug}</loc>
+    <lastmod>${b.updatedAt || today}</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>`,
+  );
+
+  // gap/pages: per-personality detail pages — one <loc> per public
+  // personality. Small, stable catalog (2 today) — same tier as bundles.
+  const personalityUrls = personalitySlugs.map(
+    (p: { slug: string; updatedAt: string }) => `  <url>
+    <loc>${SITE}/personalities/${p.slug}</loc>
+    <lastmod>${p.updatedAt || today}</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>`,
+  );
+
   const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-${[...staticUrls, ...skillUrls, ...loopUrls, ...blogUrls].join('\n')}
+${[...staticUrls, ...skillUrls, ...loopUrls, ...bundleUrls, ...personalityUrls, ...blogUrls].join('\n')}
 </urlset>
 `;
 

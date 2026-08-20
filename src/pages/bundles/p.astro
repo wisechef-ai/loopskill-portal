@@ -387,4 +387,30 @@ const API_BASE = import.meta.env.PUBLIC_LOOPSKILL_API_BASE || import.meta.env.PU
   }
 
   load();
+
+  // gap/pages: /bundles/{slug} is now a REAL static, indexable page (see
+  // src/pages/bundles/[slug].astro). This query-param route stays fully
+  // functional — D6 says never hard-404 a formerly-live URL, and it is the
+  // form every already-shared link uses — but crawlers should attribute the
+  // content to the canonical path, not to ?slug=. Point the canonical link at
+  // the static page once we know the slug.
+  //
+  // Deliberately NOT a redirect: this page is a working surface with its own
+  // tested install block, and replacing it with a forwarding stub would delete
+  // shipped behaviour (10 tests in bundles0811-p1-install-block.test.ts and
+  // spotify-0608-f-cookbooks.test.ts assert on exactly that markup).
+  (function pointCanonicalAtStaticPage() {
+    try {
+      const q = new URLSearchParams(location.search).get("slug");
+      const seg = location.pathname.replace(/\/+$/, "").split("/").pop();
+      const slug = q || (seg && seg !== "p" ? seg : "");
+      if (!slug) return;
+      const link =
+        document.querySelector('link[rel="canonical"]') ||
+        document.head.appendChild(Object.assign(document.createElement("link"), { rel: "canonical" }));
+      link.setAttribute("href", `https://app.loopskill.io/bundles/${slug}`);
+    } catch {
+      /* canonical is an optimisation, never a reason to break the page */
+    }
+  })();
 </script>

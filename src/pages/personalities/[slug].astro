@@ -1,0 +1,220 @@
+---
+// gap/pages — real static per-slug personality pages: /personalities/{slug}.
+//
+// PROBLEM (live-verified 2026-08-20): sitemap.xml carried ZERO
+// /personalities/* entries despite 2 public personalities being sold and
+// listed in llms.txt (research-analyst, focused-dev-agent). There was no
+// per-slug personality route at all — /personalities/index.astro is a thin
+// client-side redirect stub to /browse?type=personalities (never indexed —
+// carries robots noindex), so a personality could never be independently
+// cited by Google or an LLM answer engine.
+//
+// Endpoint (confirmed live 2026-08-20, no auth required):
+//   GET https://app.loopskill.io/api/personalities        -> JSON array
+//   GET https://app.loopskill.io/api/personalities/{slug} -> JSON object
+// Same build-time-fetch-with-fallback pattern as skills/[slug].astro and
+// bundles/[slug].astro — public CATALOG data, sanctioned by AGENTS.md.
+import AppShell from '../../layouts/AppShell.astro';
+import Icon from '../../components/Icon.astro';
+import { fetchApi } from '../../lib/api';
+import { tierBadge as tierBadgeText, tierBadgeClass } from '../../lib/tiers';
+
+interface Personality {
+  id?: string;
+  slug: string;
+  title?: string;
+  description?: string | null;
+  category?: string;
+  tier?: string;
+  is_public?: boolean;
+  creator_name?: string | null;
+  creator_handle?: string | null;
+  latest_version?: string | null;
+  install_count?: number;
+  rating_avg?: number | null;
+  created_at?: string;
+  updated_at?: string;
+  readme?: string;
+  license?: string;
+  system_prompt?: string;
+  config?: { model?: string; temperature?: number; default_tools?: string[] };
+}
+
+// SEED_PERSONALITIES — the 2 public personalities confirmed live
+// 2026-08-20 (GET /api/personalities). Only used if the API is briefly down
+// at build time; the real fetch always wins when it succeeds.
+//
+// NOTE: declared INSIDE getStaticPaths, not as a module-level const — see
+// bundles/[slug].astro's SEED_BUNDLES comment for why (Astro's chunk
+// splitter silently drops a top-level declaration only referenced inside
+// getStaticPaths).
+export async function getStaticPaths() {
+  const SEED_PERSONALITIES: Personality[] = [
+    { slug: 'research-analyst', title: 'Research Analyst', description: 'A methodical research persona. Cross-references multiple sources, flags uncertainty, and cites everything. Great for due-diligence, competitive analysis, and literature review tasks.', category: 'research', tier: 'free' },
+    { slug: 'focused-dev-agent', title: 'Focused Dev Agent', description: 'A disciplined software engineer persona. Ships clean, tested code, asks clarifying questions before writing, and never hallucinates library APIs. Ideal for code-generation and refactor tasks.', category: 'engineering', tier: 'free' },
+  ];
+  const result = await fetchApi<Personality[]>('/api/personalities', { authed: false });
+  let personalities: Personality[] = (result.ok && Array.isArray(result.data)) ? result.data : [];
+
+  personalities = personalities.filter((p) => p.is_public !== false);
+
+  if (personalities.length === 0) personalities = SEED_PERSONALITIES;
+  for (const s of SEED_PERSONALITIES) {
+    if (!personalities.find((p) => p.slug === s.slug)) personalities.push(s);
+  }
+
+  return personalities.map((personality) => ({
+    params: { slug: personality.slug },
+    props: { initialPersonality: personality },
+  }));
+}
+
+const { slug } = Astro.params;
+const { initialPersonality } = Astro.props as { initialPersonality: Personality };
+
+const detail = await fetchApi<Personality>(`/api/personalities/${slug}`, { authed: false });
+const personality: Personality = detail.ok && detail.data ? { ...initialPersonality, ...detail.data } : initialPersonality;
+
+const display = {
+  slug: slug as string,
+  title: personality.title || (slug as string).replace(/-/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase()),
+  description: personality.description || 'A LoopSkill personality — a versioned system-prompt archetype for your agent.',
+  category: personality.category || 'general',
+  tier: personality.tier || 'free',
+  version: personality.latest_version || '0.1.0',
+  installCount: personality.install_count ?? 0,
+  author: personality.creator_name || 'LoopSkill community',
+  authorHandle: personality.creator_handle || null,
+  license: personality.license || null,
+  systemPrompt: personality.system_prompt || null,
+  model: personality.config?.model || null,
+};
+
+const tierBadgeClassName = tierBadgeClass(display.tier);
+const tierDisplayText = tierBadgeText(display.tier);
+const isFree = display.tier === 'free';
+
+const siteURL = 'https://app.loopskill.io';
+
+// JSON-LD: SoftwareApplication, mirroring skills/[slug].astro's convention.
+// A personality installs onto an agent much like a skill does. HONESTY:
+// interactionStatistic only emitted when install_count >= 1 — never a
+// literal "0 installs" signal baked into structured data.
+const personalitySchema = {
+  '@context': 'https://schema.org',
+  '@type': 'SoftwareApplication',
+  name: display.title,
+  description: display.description,
+  url: `${siteURL}/personalities/${display.slug}`,
+  applicationCategory: 'DeveloperApplication',
+  operatingSystem: 'Any',
+  offers: {
+    '@type': 'Offer',
+    price: display.tier === 'free' ? '0' : '20',
+    priceCurrency: 'USD',
+    url: display.tier === 'free'
+      ? `${siteURL}/personalities/${display.slug}`
+      : `${siteURL}/pricing`,
+  },
+  ...(display.installCount >= 1 ? {
+    interactionStatistic: {
+      '@type': 'InteractionCounter',
+      interactionType: 'https://schema.org/DownloadAction',
+      userInteractionCount: display.installCount,
+    },
+  } : {}),
+};
+---
+
+<AppShell title={`${display.title} — LoopSkill`} description={display.description} mode="public" active="search">
+  <Fragment slot="head">
+    <script type="application/ld+json" set:html={JSON.stringify(personalitySchema)}></script>
+  </Fragment>
+  <section class="max-w-4xl mx-auto px-6 pt-12 pb-12">
+    <a href="/browse?type=personalities" class="inline-flex items-center gap-1.5 text-xs text-muted hover:text-text transition mb-8">
+      <Icon name="chevron-left" size={12} />
+      All personalities
+    </a>
+
+    <div class="flex flex-col gap-8">
+      <header class="flex flex-col gap-3">
+        <div class="flex items-center gap-2 flex-wrap">
+          <span class={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold tracking-wider ${tierBadgeClassName}`}>
+            {tierDisplayText}
+          </span>
+          <span class="text-[10px] text-muted-soft uppercase tracking-wider">{display.category}</span>
+          <span class="text-[10px] text-muted-soft font-mono">v{display.version}</span>
+          {display.license && <span class="text-[10px] text-muted-soft uppercase tracking-wider">· {display.license}</span>}
+          {/* HONESTY: never a literal "0 installs" badge of shame — same
+              convention as skills/[slug].astro's install badge. */}
+          {display.installCount >= 1 ? (
+            <span class="inline-flex items-center gap-1 text-[10px] text-muted font-medium" title="Total installs since publish">
+              {display.installCount.toLocaleString()} install{display.installCount === 1 ? '' : 's'}
+            </span>
+          ) : (
+            <span class="inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] font-semibold tracking-wider bg-accent/10 text-accent border border-accent/20" title="Published recently, no install telemetry yet">
+              NEW
+            </span>
+          )}
+        </div>
+        <h1 class="text-3xl md:text-5xl font-bold tracking-tight" style="letter-spacing: -0.03em;">{display.title}</h1>
+        <p class="text-xs text-muted-soft inline-flex items-center gap-1.5">
+          <span>by</span>
+          <span class="text-muted font-medium">{display.author}</span>
+          {display.authorHandle && <span class="text-muted-soft">@{display.authorHandle.replace(/^@/, '')}</span>}
+        </p>
+        <p class="text-text leading-relaxed mt-2">{display.description}</p>
+      </header>
+
+      <!-- Quick install banner -->
+      <div class="bg-[#0d0d0d] border border-border rounded-xl p-5 flex flex-col gap-3">
+        <div class="flex items-center gap-2">
+          <Icon name="terminal" size={14} class="text-accent" />
+          <p class="eyebrow">Install in your agent</p>
+        </div>
+        <div class="relative">
+          <pre class="bg-[#0d0d0d] border border-border rounded-xl p-0 text-xs text-accent overflow-x-auto"><code id="install-line">loopskill_get_personality(slug="{display.slug}")</code></pre>
+        </div>
+        <p class="text-xs text-muted-soft">
+          Call the MCP tool <code class="text-accent">loopskill_get_personality</code> with this slug, or fetch <code class="text-accent">{`${siteURL}/api/personalities/${display.slug}`}</code> directly (no key required for free personalities) to pull the system prompt into your agent.
+        </p>
+      </div>
+
+      {!isFree && (
+        <div class="bg-bg-card border border-border rounded-2xl p-5">
+          <p class="eyebrow mb-2">Requires {tierDisplayText}</p>
+          <p class="text-sm text-muted mb-3">This personality requires a subscription to install.</p>
+          <a href="/pricing" class="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-accent text-bg text-sm font-semibold hover:bg-accent-soft transition">
+            See plans →
+          </a>
+        </div>
+      )}
+
+      {display.systemPrompt && (
+        <section class="bg-bg-card border border-border rounded-2xl p-6">
+          <div class="flex items-center gap-2 mb-3">
+            <Icon name="document" size={14} class="text-accent" />
+            <p class="eyebrow">System prompt</p>
+          </div>
+          <pre class="text-xs text-muted whitespace-pre-wrap leading-relaxed font-mono bg-[#0d0d0d] border border-border rounded-lg p-4 overflow-x-auto">{display.systemPrompt}</pre>
+          {display.model && <p class="text-[11px] text-muted-soft mt-3">Tuned for <span class="text-accent-soft font-mono">{display.model}</span></p>}
+        </section>
+      )}
+
+      <aside class="bg-bg-card border border-border rounded-2xl p-5 flex flex-col gap-3">
+        {isFree ? (
+          <a href="/docs/install" class="block text-center px-4 py-2.5 rounded-lg font-semibold text-sm bg-accent text-bg hover:bg-accent-soft transition">
+            Install free
+          </a>
+        ) : (
+          <a href="/pricing" class="block text-center px-4 py-2.5 rounded-lg font-semibold text-sm bg-accent text-bg hover:bg-accent-soft transition">
+            Subscribe to install
+          </a>
+        )}
+        <div class="text-[11px] text-muted-soft text-center">
+          {isFree ? 'Free forever. No subscription required.' : `Requires ${tierDisplayText} subscription`}
+        </div>
+      </aside>
+    </div>
+  </section>
+</AppShell>
