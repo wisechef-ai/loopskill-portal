@@ -188,6 +188,46 @@ async function waitFor(win: any, cond: () => boolean, timeoutMs: number): Promis
   return cond();
 }
 
+describe('/browse ships real content in its RAW served HTML (no-JS / curl reader)', () => {
+  // bugfix 2026-08-20: the previous defect was invisible to every prior test
+  // in this file, because they all execute the page's JS in jsdom first —
+  // exactly what a plain `curl` or a non-JS crawler never does. This suite
+  // reads dist/browse/index.html RAW, strips tags the same way the live
+  // bug was verified (fetch + strip tags, no JS engine at all), and asserts
+  // on the plain visible text a non-JS reader actually receives.
+  function stripTags(html: string): string {
+    const noScript = html.replace(/<script[^>]*>[\s\S]*?<\/script>/g, ' ').replace(/<style[^>]*>[\s\S]*?<\/style>/g, ' ');
+    return noScript.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+  }
+
+  it.runIf(built)('does not contain the literal error-placeholder text "Couldn\'t load results"', () => {
+    const visible = stripTags(readFileSync(BROWSE_DIST, 'utf-8'));
+    expect(visible).not.toContain("Couldn't load results");
+  });
+
+  it.runIf(built)('does not contain the literal loading-placeholder text as page content', () => {
+    const visible = stripTags(readFileSync(BROWSE_DIST, 'utf-8'));
+    expect(visible).not.toContain('Loading…');
+  });
+
+  it.runIf(built)('contains at least one real prerendered catalog card (title text) with no JS executed', () => {
+    const visible = stripTags(readFileSync(BROWSE_DIST, 'utf-8'));
+    // Any of the four artifact-type group headers is proof real catalog
+    // sections were baked into the static HTML, not just chrome/nav copy.
+    const hasGroupHeader = /Popular loops|Curated skills|Public bundles|Personalities/.test(visible);
+    expect(hasGroupHeader, `no prerendered catalog group found in raw HTML — visible text was: ${visible.slice(0, 500)}`).toBe(true);
+  });
+
+  it.runIf(built)('#browse-results is non-empty in the RAW (unexecuted) served HTML', () => {
+    const html = readFileSync(BROWSE_DIST, 'utf-8');
+    const m = html.match(/<div id="browse-results"[^>]*>([\s\S]*?)<\/div>\s*<\/main>/);
+    // The results container itself may have nested content; a coarse but
+    // reliable proxy is that its innerHTML (as shipped, before any JS runs)
+    // contains an artifact-card class, which only the prerender emits.
+    expect(html, '#browse-results has no artifact-card markup in the raw build output').toMatch(/id="browse-results"[\s\S]{0,50}>[\s\S]*artifact-card/);
+  });
+});
+
 describe('/browse renders its catalog (not just references the endpoint)', () => {
   it.runIf(built)('ships at least one inline script that executes without throwing', async () => {
     const { scriptCount, errors } = await renderBrowse();
@@ -286,11 +326,41 @@ describe('/browse source contract', () => {
   // signal, and they pin the specific regressions this page has already shipped.
   const src = readFileSync(BROWSE_SRC, 'utf-8');
 
-  it('keeps the catalog fetch on the client, never in frontmatter', () => {
+  it('build-time prerender (if any) only ever calls fetchApi (retry+fallback), never a raw fetch', () => {
+    // bugfix 2026-08-20: /browse now DOES do a build-time catalog prerender
+    // in frontmatter — the sanctioned pattern AGENTS.md carves out for
+    // catalog pages (see index.astro, skills/[slug].astro getStaticPaths),
+    // added specifically so curl/non-JS crawlers see a real catalog instead
+    // of the literal strings "Loading…" / "Couldn't load results." that used
+    // to ship in static HTML. AGENTS.md's ban is on RAW, un-retried,
+    // fallback-less fetches for USER data — not on this. The guard that
+    // still matters: frontmatter must never call the bare `fetch(` directly
+    // (which has no retry/backoff/timeout and no ok/error discriminated
+    // result), only the wrapped `fetchApi()` helper from ../lib/api, which
+    // has both — and the whole prerender block must be wrapped so a failure
+    // degrades to empty groups, never an unhandled build failure.
     const frontmatter = (src.match(/^---\s*([\s\S]*?)\s*---/m) || [])[1] || '';
-    // A build-time fetch here bakes stale data into a static page and couples
-    // the build to API uptime (WIS-737 class; see AGENTS.md "Build-time fetch ban").
-    expect(frontmatter).not.toMatch(/await\s+fetch/);
+    // No bare `fetch(` call — only through the fetchApi wrapper.
+    const rawFetchCalls = frontmatter.match(/(?<!\.)\bawait\s+fetch\(/g) || [];
+    expect(rawFetchCalls, 'frontmatter calls the raw fetch() directly instead of the retry+fallback fetchApi() wrapper').toEqual([]);
+    // The prerender fetches must be inside a try/catch so an API-down build
+    // degrades to empty groups rather than failing the whole build (WIS-737
+    // class — see AGENTS.md "Build-time fetch ban").
+    if (/fetchApi/.test(frontmatter)) {
+      expect(frontmatter, 'frontmatter calls fetchApi without a surrounding try/catch fallback').toMatch(/try\s*{[\s\S]*fetchApi[\s\S]*}\s*catch/);
+    }
+  });
+
+  it('keeps the LIVE re-fetch on the client (progressive enhancement stays intact)', () => {
+    // The build-time prerender above is a first paint only — load() in the
+    // client <script> must still exist and still hit the live endpoints, so
+    // JS-capable visitors get freshened/live data, not a frozen build-time
+    // snapshot forever.
+    const scriptMatch = src.match(/<script[^>]*define:vars[\s\S]*?<\/script>/);
+    expect(scriptMatch, 'client <script> block not found').toBeTruthy();
+    const clientScript = scriptMatch![0];
+    expect(clientScript, 'client script lost its live catalog fetch (fetchBrowseDefaults)').toMatch(/fetchBrowseDefaults/);
+    expect(clientScript, 'client script lost its live search fetch (fetchSearch)').toMatch(/fetchSearch/);
   });
 
   it('does not request more than the API caps (limit<=20 on /api/search)', () => {
