@@ -81,7 +81,7 @@ import AppShell from '../../layouts/AppShell.astro';
     <p class="text-muted mb-6">
       Sign in at <a href="/library" class="text-accent hover:opacity-80 underline">app.loopskill.io/library</a>
       and generate one. Every MCP call needs a key — including free-tier lookups (free signup gives a free key).
-      Premium skills need <strong>Pro ($9.95/mo)</strong>. Pro unlocks the full catalog, 50 private bundles, and fleet sync.
+      The catalog installs the same on Free and Pro; <strong>Pro ($9.95/mo)</strong> raises limits — 50 private bundles and fleet sync.
     </p>
 
     <h2 class="text-xl font-semibold text-text mb-3">2. Configure your client</h2>
@@ -166,7 +166,7 @@ import AppShell from '../../layouts/AppShell.astro';
     <p class="text-muted mb-6">
       By default, <code class="text-xs bg-bg-elev rounded px-1">loopskill_install</code> writes to
       <code class="text-xs bg-bg-elev rounded px-1">~/.claude/skills/&lt;slug&gt;/</code>.
-      Override with <code class="text-xs bg-bg-elev rounded px-1">RECIPES_INSTALL_DIR</code> env var
+      Override with <code class="text-xs bg-bg-elev rounded px-1">LOOPSKILL_INSTALL_DIR</code> env var
       (e.g. <code class="text-xs bg-bg-elev rounded px-1">~/.codex/skills</code> for Codex,
       <code class="text-xs bg-bg-elev rounded px-1">./skills</code> for project-local installs in Cursor or Cline).
     </p>
