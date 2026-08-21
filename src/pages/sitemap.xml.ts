@@ -14,6 +14,7 @@
 import type { APIRoute } from 'astro';
 import { getCollection } from 'astro:content';
 import { fetchApi } from '../lib/api';
+import { getFederationSourcePages } from '../lib/federation';
 
 const SITE = 'https://app.loopskill.io';
 
@@ -54,6 +55,12 @@ const STATIC_ROUTES: { path: string; priority: string; changefreq: string }[] = 
   { path: '/publish', priority: '0.5', changefreq: 'monthly' },
   { path: '/security', priority: '0.4', changefreq: 'monthly' },
   { path: '/privacy', priority: '0.3', changefreq: 'monthly' },
+  // G2-federation: the federation overview index. Per-source pages are
+  // enumerated separately below (federationUrls) — same no-hard-500
+  // contract, built from the same getFederationSourcePages() call the
+  // pages themselves use, so the sitemap can never list a source page the
+  // build didn't actually emit.
+  { path: '/federation', priority: '0.6', changefreq: 'weekly' },
 ].filter((r) => !CUT_PATHS.has(r.path));
 
 // WIS-949: Walk the full public skill catalog and emit one <loc> per skill
@@ -176,14 +183,20 @@ async function fetchAllPersonalitySlugs(): Promise<{ slug: string; updatedAt: st
 export const GET: APIRoute = async () => {
   const today = new Date().toISOString().slice(0, 10);
 
-  const [posts, skillSlugs, loopSlugs, compositeLoopSlugs, bundleSlugs, personalitySlugs] = await Promise.all([
-    getCollection('blog'),
-    fetchAllSkillSlugs(),
-    fetchAllLoopSlugs(),
-    fetchAllCompositeLoopSlugs(),
-    fetchAllBundleSlugs(),
-    fetchAllPersonalitySlugs(),
-  ]);
+  const [posts, skillSlugs, loopSlugs, compositeLoopSlugs, bundleSlugs, personalitySlugs, federationSources] =
+    await Promise.all([
+      getCollection('blog'),
+      fetchAllSkillSlugs(),
+      fetchAllLoopSlugs(),
+      fetchAllCompositeLoopSlugs(),
+      fetchAllBundleSlugs(),
+      fetchAllPersonalitySlugs(),
+      // G2-federation: same source of truth the pages themselves build
+      // from (getStaticPaths in federation/[source]/index.astro) — empty
+      // array on API failure, same no-hard-500 contract as every other
+      // fetch* helper in this file.
+      getFederationSourcePages(),
+    ]);
 
   const blogUrls = posts.map((p) => {
     const lastmod = p.data.pubDate
@@ -253,9 +266,24 @@ export const GET: APIRoute = async () => {
   </url>`,
   );
 
+  // G2-federation: per-source federation pages — one <loc> per upstream
+  // source that actually got a /federation/{source}/ page built (see
+  // federation.ts getFederationOverview — a source only qualifies with a
+  // real total AND at least one sample entry carrying a resolvable origin
+  // link). Priority 0.6: a real, citable metadata surface, but one tier
+  // below the primary skill/loop/bundle catalog pages.
+  const federationUrls = federationSources.map(
+    (s: { slug: string }) => `  <url>
+    <loc>${SITE}/federation/${s.slug}/</loc>
+    <lastmod>${today}</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>`,
+  );
+
   const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-${[...staticUrls, ...skillUrls, ...loopUrls, ...bundleUrls, ...personalityUrls, ...blogUrls].join('\n')}
+${[...staticUrls, ...skillUrls, ...loopUrls, ...bundleUrls, ...personalityUrls, ...federationUrls, ...blogUrls].join('\n')}
 </urlset>
 `;
 

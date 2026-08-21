@@ -1,0 +1,116 @@
+---
+// /federation/{source}/ — per-source GEO detail page (G2-federation).
+//
+// See /federation/index.astro and ../../lib/federation.ts for the full
+// design rationale. This page is built ONLY for sources that
+// getFederationOverview() resolved with both a real total AND at least one
+// sample entry carrying a resolvable http(s) origin_url — so every page
+// this file emits has real, citable content, and the index page never
+// links to a source page that didn't get built (audit-links would refuse
+// that anyway; this is belt-and-suspenders at the source).
+//
+// D-035 (proxy-never-rehost): every entry link below points at origin_url —
+// the skill's real home (a GitHub repo, ClawHub listing, LobeHub page,
+// etc.) — never at a rehosted copy. We show metadata (title, tags,
+// license, trust level) only.
+import AppShell from '../../../layouts/AppShell.astro';
+import Icon from '../../../components/Icon.astro';
+import { getFederationSourcePages } from '../../../lib/federation';
+
+export async function getStaticPaths() {
+  const sources = await getFederationSourcePages();
+  return sources.map((s) => ({
+    params: { source: s.slug },
+    props: { page: s },
+  }));
+}
+
+const { page } = Astro.props as { page: Awaited<ReturnType<typeof getFederationSourcePages>>[number] };
+
+const title = `${page.meta.name} — federated skills — LoopSkill`;
+const description = `${page.total.toLocaleString()} agent skills indexed from ${page.meta.name} via LoopSkill's federation crawl. ${page.meta.description}`;
+
+// JSON-LD: ItemList over the real sample entries actually rendered below —
+// numberOfItems is the LIVE total (the true source size), while
+// itemListElement enumerates only the sample this page shows, each backed
+// by its real origin_url. No fabricated entries, no rehosted content.
+const itemListSchema = {
+  '@context': 'https://schema.org',
+  '@type': 'ItemList',
+  name: `${page.meta.name} — federated skills on LoopSkill`,
+  description,
+  numberOfItems: page.total,
+  itemListElement: page.sample.map((entry, i) => ({
+    '@type': 'ListItem',
+    position: i + 1,
+    name: entry.title || entry.slug,
+    url: entry.origin_url,
+  })),
+};
+---
+
+<AppShell title={title} description={description} mode="public" active="browse">
+  <Fragment slot="head">
+    <script type="application/ld+json" set:html={JSON.stringify(itemListSchema)}></script>
+  </Fragment>
+  <main class="max-w-4xl mx-auto px-6 pt-12 pb-20">
+    <a href="/federation/" class="text-xs text-muted hover:text-accent transition inline-flex items-center gap-1.5 mb-6">
+      <Icon name="chevron-left" size={12} />
+      Federated skill index
+    </a>
+
+    <header class="mb-8">
+      <div class="flex items-center gap-2 flex-wrap mb-3">
+        <span class="badge badge-source">Federated source</span>
+      </div>
+      <h1 class="text-3xl md:text-5xl font-bold tracking-tight mb-3" style="letter-spacing: -0.03em;">{page.meta.name}</h1>
+      <p class="text-text leading-relaxed max-w-2xl">{page.meta.description}</p>
+      <p class="mt-4 text-sm text-muted-soft">
+        <strong class="text-text">{page.total.toLocaleString()}</strong> skills indexed from this source (live count, this build) ·
+        showing a sample of <strong class="text-text">{page.sample.length}</strong> below, each linked to its real origin.
+      </p>
+    </header>
+
+    <section class="bg-bg-card border border-border rounded-2xl p-5 mb-8 text-sm text-muted leading-relaxed">
+      These are external skills. LoopSkill indexes their metadata (title, tags, license,
+      trust level) so they're searchable here, but the content itself — the README, the
+      code, the install instructions — lives at the source. Every entry below links to
+      that origin, never to a copy hosted by LoopSkill.
+    </section>
+
+    <section>
+      <h2 class="text-sm font-medium text-muted-soft uppercase tracking-wide mb-3">Sample entries</h2>
+      <ul class="grid grid-cols-1 md:grid-cols-2 gap-3">
+        {page.sample.map((entry) => (
+          <li class="entry-row">
+            <a href={entry.origin_url} target="_blank" rel="noopener nofollow" class="font-medium text-text hover:text-accent transition block truncate">
+              {entry.title || entry.slug}
+            </a>
+            <div class="flex items-center gap-2 flex-wrap mt-1.5">
+              {entry.trust_level && <span class="entry-badge">{entry.trust_level}</span>}
+              {entry.license && <span class="entry-badge">{entry.license}</span>}
+              {(entry.tags || []).slice(0, 3).map((t) => <span class="entry-tag">{t}</span>)}
+            </div>
+          </li>
+        ))}
+      </ul>
+    </section>
+
+    <section class="mt-12 bg-bg-card border border-border rounded-2xl p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+      <div>
+        <p class="font-semibold mb-1">Search the full federated index</p>
+        <p class="text-sm text-muted">Every skill in {page.meta.name} — and every other source — is searchable inside LoopSkill.</p>
+      </div>
+      <a href={`/browse?type=skills&q=${encodeURIComponent(page.slug)}`} class="shrink-0 inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-accent text-bg font-semibold text-sm hover:bg-accent-soft transition">Search {page.meta.name}</a>
+    </section>
+  </main>
+</AppShell>
+
+<style>
+  .badge { display: inline-flex; align-items: center; gap: .25rem; font-size: 10px; text-transform: uppercase; letter-spacing: .04em; padding: .15rem .5rem; border-radius: 999px; border: 1px solid; }
+  .badge-source { color: #5b9bf5; background: rgba(91,155,245,.1); border-color: rgba(91,155,245,.35); }
+  .entry-row { display: flex; flex-direction: column; gap: .2rem; padding: .9rem 1rem; background: var(--bg-card, #14171d); border: 1px solid var(--border, #2a2f3a); border-radius: .85rem; transition: border-color .15s ease; min-width: 0; }
+  .entry-row:hover { border-color: var(--accent, #5b9bf5); }
+  .entry-badge { display: inline-flex; align-items: center; font-size: 10px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted-soft, #9aa3b2); background: var(--bg-elev, #1b1f27); border: 1px solid var(--border-soft, #2a2f3a); border-radius: 999px; padding: .1rem .5rem; }
+  .entry-tag { display: inline-flex; align-items: center; font-size: 10px; color: var(--muted-soft, #9aa3b2); padding: .1rem .35rem; }
+</style>
