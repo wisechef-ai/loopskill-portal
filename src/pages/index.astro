@@ -57,8 +57,10 @@ try {
   const r = await fetchApi<{ tools?: string[] }>('/api/mcp/healthz', { authed: false });
   if (r.ok && Array.isArray(r.data?.tools) && r.data.tools.length > 0) {
     mcpToolCount = r.data.tools.length;
+  } else {
+    console.log('[proof-bar] mcp healthz miss:', JSON.stringify({ ok: r.ok, status: r.status, error: r.error, keys: r.data ? Object.keys(r.data) : null }));
   }
-} catch {}
+} catch (e) { console.log('[proof-bar] mcp healthz threw:', (e as Error).message); }
 let hostedSkillCount: number | null = null;
 try {
   const r = await fetchApi<{ total_skills?: number }>('/api/stats', { authed: false });
