@@ -47,6 +47,33 @@ try {
 } catch {}
 const federatedSkillLabel = `${federatedSkillCount.toLocaleString()}+`;
 
+// Agent-proof bar (landing_0821): the numbers that prove machine-readiness,
+// each bound to a live public endpoint at build time with the same
+// fail-closed discipline as federatedSkillCount above — a stat that can't
+// be fetched is OMITTED, never invented. mcpToolCount comes from the same
+// healthz the #216 re-rot guard audits, so this can never drift from live.
+let mcpToolCount: number | null = null;
+try {
+  const r = await fetchApi<{ tools?: string[] }>('/api/mcp/healthz', { authed: false });
+  if (r.ok && Array.isArray(r.data?.tools) && r.data.tools.length > 0) {
+    mcpToolCount = r.data.tools.length;
+  } else {
+    console.log('[proof-bar] mcp healthz miss:', JSON.stringify({ ok: r.ok, status: r.status, error: r.error, keys: r.data ? Object.keys(r.data) : null }));
+  }
+} catch (e) { console.log('[proof-bar] mcp healthz threw:', (e as Error).message); }
+let hostedSkillCount: number | null = null;
+try {
+  const r = await fetchApi<{ total_skills?: number }>('/api/stats', { authed: false });
+  if (r.ok && typeof r.data?.total_skills === 'number' && r.data.total_skills > 0) {
+    hostedSkillCount = r.data.total_skills;
+  }
+} catch {}
+const agentProofStats: { value: string; label: string; href: string }[] = [];
+if (mcpToolCount) agentProofStats.push({ value: String(mcpToolCount), label: 'MCP tools — search, install, publish', href: '/docs/mcp' });
+if (hostedSkillCount) agentProofStats.push({ value: String(hostedSkillCount), label: 'hosted skills, versioned + signed', href: '/skills' });
+agentProofStats.push({ value: federatedSkillLabel, label: 'community skills federated', href: '/federation/' });
+agentProofStats.push({ value: '0 humans', label: 'agents enrol themselves (Ed25519)', href: '/docs/new-agent' });
+
 // Cook-tier strip — gated public skills, surfaces what Pro unlocks.
 // Live filter on tier=cook AND is_public=true. identity-guards fix
 // (2026-07-05): the hardcoded fallback list below was FICTIONAL —
@@ -277,8 +304,8 @@ const verticals = [
 ---
 <AppShell
   mode="public"
-  title="LoopSkill — Ship agent skills into your clients' environments"
-  description="LoopSkill is the open-source control plane for people who run agents for more than one client. Deploy skills and loops per client, keep every client's credentials isolated, and get an objective pass/fail that proves a loop actually works. Free to self-host, Pro $9.95/mo hosted."
+  title="LoopSkill — the open skill registry for AI agents"
+  description="LoopSkill is the open-source skill registry and MCP server for AI agents. Install versioned skills into Claude Code, Cursor, Cline, OpenClaw, Hermes or Windsurf, keep every agent in sync with bundles and fleet locks, and let agents discover, enrol and publish over MCP — no human in the loop. Free tier, Pro $9.95/mo, self-hostable."
 >
   <script is:inline>
     // onechrome_0611 seam #1: returning members land on THEIR home, not marketing.
@@ -295,27 +322,58 @@ const verticals = [
 
     <div class="max-w-6xl mx-auto px-6 pt-20 md:pt-28 pb-16 relative w-full">
       <div class="flex flex-col items-center text-center gap-6 max-w-3xl mx-auto">
-        <a href="/loops" class="group inline-flex items-center gap-2 px-3 py-1 rounded-full border border-accent/40 text-xs text-accent hover:text-text hover:border-accent/60 transition backdrop-blur-sm bg-accent/5">
+        <a href="/skills" class="group inline-flex items-center gap-2 px-3 py-1 rounded-full border border-accent/40 text-xs text-accent hover:text-text hover:border-accent/60 transition backdrop-blur-sm bg-accent/5">
           <span class="w-1.5 h-1.5 rounded-full bg-accent animate-pulse"></span>
-          Vetted, runnable agent loops · objective pass/fail
+          Open-source skill registry + MCP server for AI agents
           <Icon name="arrow-right" size={11} class="opacity-70 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all" />
         </a>
         <h1 class="text-5xl md:text-7xl font-bold tracking-tighter leading-[1.02]" style="letter-spacing: -0.04em;">
-          Run a loop.<br/><span class="text-gradient hero-glow">Get a verdict.</span>
+          Every skill.<br/><span class="text-gradient hero-glow">Every agent. In sync.</span>
         </h1>
         <p class="text-lg md:text-xl text-muted leading-relaxed max-w-2xl">
-          The open-source control plane for <strong class="text-text font-semibold">running agents for more than one client</strong>. Ship a skill into a client's environment, press run, and get an objective <span class="text-accent font-semibold">pass / fail</span> — the proof no skill marketplace gives you.
+          The open skill registry for <strong class="text-text font-semibold">AI agents</strong>. Install versioned, signed skills into Claude Code, Cursor, Cline, OpenClaw, Hermes or Windsurf — one command or one MCP call — and keep every agent you run converged on the same stack with bundles and fleet locks.
         </p>
         <p class="text-sm text-muted-soft leading-relaxed max-w-xl -mt-1">
-          Every client is a separate tenant. Their credentials never touch each other. Point a bundle at a repo you own and defects from the agents running it come back as issues there — otherwise they land in the public LoopSkill tracker.
+          Agents are first-class citizens: yours can discover this registry, enrol itself (Ed25519 — no OAuth, no human), install, compose and publish bundles entirely over MCP. And every skill that matters ships with a runnable loop — press run, get an objective pass / fail.
         </p>
         <div class="flex items-center gap-3 mt-1">
-          <a href="/loops" class="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-accent text-bg font-semibold text-sm hover:bg-accent-soft transition">
-            ▶ Browse the runnable registry
+          <a href="/skills" class="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-accent text-bg font-semibold text-sm hover:bg-accent-soft transition">
+            Browse the registry
           </a>
-          <a href="/docs" class="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg border border-border text-text font-semibold text-sm hover:border-accent transition">
-            Self-host it (open source)
+          <a href="/docs/new-agent" class="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg border border-border text-text font-semibold text-sm hover:border-accent transition">
+            🤖 Point your agent here
           </a>
+        </div>
+
+        {/* ── Agent-proof bar (landing_0821): the four machine-readiness facts,
+             every number bound to a live endpoint at build time (fail-closed —
+             an unfetchable stat is omitted, never invented). This is the
+             "what you actually get" strip the verdict hero was missing. ── */}
+        <div class="w-full max-w-4xl mt-8 grid grid-cols-2 md:grid-cols-4 gap-3 text-left">
+          {agentProofStats.map(st => (
+            <a href={st.href} class="group rounded-xl border border-border bg-bg-card px-4 py-3 hover:border-accent transition">
+              <p class="text-xl font-bold text-text group-hover:text-accent transition">{st.value}</p>
+              <p class="text-[11px] text-muted-soft leading-snug mt-0.5">{st.label}</p>
+            </a>
+          ))}
+        </div>
+
+        {/* ── Share-skills trio (landing_0821): the core-pitch use case
+             ("share Claude skills between agents") stated as three concrete
+             verbs, each linking to a real surface. Static copy, no data deps. ── */}
+        <div class="w-full max-w-4xl mt-6 grid md:grid-cols-3 gap-3 text-left">
+          <div class="rounded-xl border border-border bg-bg-card px-4 py-4">
+            <p class="text-sm font-semibold text-text mb-1">📦 One skill, every agent</p>
+            <p class="text-xs text-muted leading-relaxed">Install the same versioned skill into Claude Code, Cursor, Cline, OpenClaw, Hermes or Windsurf — one command or one MCP call, no per-vendor rewrites. <a href="/docs" class="text-accent hover:underline">How installs work →</a></p>
+          </div>
+          <div class="rounded-xl border border-border bg-bg-card px-4 py-4">
+            <p class="text-sm font-semibold text-text mb-1">🔄 Drift-proof by default</p>
+            <p class="text-xs text-muted leading-relaxed">Bundles pin exact versions with locks; fleet sync converges every machine to the same stack on a schedule. Stop copy-pasting SKILL.md files. <a href="/bundles/loopskill-essentials" class="text-accent hover:underline">See a bundle →</a></p>
+          </div>
+          <div class="rounded-xl border border-border bg-bg-card px-4 py-4">
+            <p class="text-sm font-semibold text-text mb-1">🤖 Built for agents, not just humans</p>
+            <p class="text-xs text-muted leading-relaxed">Your agent can discover, enrol (Ed25519 — no OAuth, no human), install, compose and publish bundles entirely over MCP. <a href="/docs/new-agent" class="text-accent hover:underline">Agent quickstart →</a></p>
+          </div>
         </div>
 
         {/* ── Content rails (Spotify-shelf): the product you can SEE ── */}
