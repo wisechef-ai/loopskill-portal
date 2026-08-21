@@ -1,0 +1,145 @@
+---
+// /federation/ — G2-federation GEO index page.
+//
+// PROBLEM (GEO audit 2026-08-19, live-confirmed): LoopSkill's federation
+// crawl indexes ~91k external skills across the upstream registries
+// configured in loopskill-api's config/federation_sources.yaml — the
+// single biggest catalog claim on the site — and it was 100% API-only.
+// Zero crawlable URLs; Google/LLM crawlers could not see it, so the "91k+"
+// claim was uncitable. This page (+ /federation/{source}/) fixes that.
+//
+// D-035 (proxy-never-rehost): metadata ONLY — name, description, upstream
+// source, license/trust, tags, and a link to the entry's ORIGIN. Never
+// rehost external skill content.
+//
+// COUNT-BINDING: the headline number is bound to a real build-time read of
+// GET /api/federation/filter (getFederationOverview() in ../lib/federation).
+// When the API is unreachable at build time, `overview.ok` is false and the
+// page renders explanatory copy with the count OMITTED — never a hardcoded
+// "91k" fallback literal. Per-source counts follow the same rule: a source
+// only gets a table row (and only gets a /federation/{source}/ page) when
+// it returned BOTH a real total and at least one sample entry with a real
+// origin link (see federation.ts's getFederationOverview for the exact
+// gate) — this keeps the index table and the emitted detail pages in
+// lockstep so audit-links never sees a link to a page the build skipped.
+import AppShell from '../../layouts/AppShell.astro';
+import Icon from '../../components/Icon.astro';
+import { getFederationOverview } from '../../lib/federation';
+
+const overview = await getFederationOverview();
+const siteURL = 'https://app.loopskill.io';
+
+const title = 'Federated skill index — LoopSkill';
+const description = overview.ok && overview.total
+  ? `Browse the ${overview.total.toLocaleString()} externally indexed agent skills LoopSkill's federation crawl surfaces across ${overview.sources.length} upstream registries.`
+  : "Browse the externally indexed agent skills LoopSkill's federation crawl surfaces across multiple upstream registries.";
+
+// JSON-LD: ItemList over the source buckets (real data only — one item per
+// source that actually has a page here), + a Dataset node describing the
+// federated index as a whole when we have a live, real total to attach to
+// it (never emit a Dataset claiming a size we didn't actually measure this
+// build).
+const itemListSchema = overview.sources.length > 0 ? {
+  '@context': 'https://schema.org',
+  '@type': 'ItemList',
+  name: 'LoopSkill federated skill sources',
+  numberOfItems: overview.sources.length,
+  itemListElement: overview.sources.map((s, i) => ({
+    '@type': 'ListItem',
+    position: i + 1,
+    name: s.meta.name,
+    url: `${siteURL}/federation/${s.slug}/`,
+  })),
+} : null;
+
+const datasetSchema = (overview.ok && overview.total && overview.sources.length > 0) ? {
+  '@context': 'https://schema.org',
+  '@type': 'Dataset',
+  name: 'LoopSkill federated agent-skill index',
+  description,
+  url: `${siteURL}/federation/`,
+  creator: { '@type': 'Organization', name: 'LoopSkill', url: siteURL },
+  distribution: overview.sources.map((s) => ({
+    '@type': 'DataDownload',
+    name: s.meta.name,
+    contentUrl: `${siteURL}/federation/${s.slug}/`,
+  })),
+  variableMeasured: 'Indexed external agent skill count',
+} : null;
+---
+
+<AppShell title={title} description={description} mode="public" active="browse">
+  <Fragment slot="head">
+    {itemListSchema && <script type="application/ld+json" set:html={JSON.stringify(itemListSchema)}></script>}
+    {datasetSchema && <script type="application/ld+json" set:html={JSON.stringify(datasetSchema)}></script>}
+  </Fragment>
+  <main class="max-w-4xl mx-auto px-6 pt-12 pb-20">
+    <a href="/browse" class="text-xs text-muted hover:text-accent transition inline-flex items-center gap-1.5 mb-6">
+      <Icon name="chevron-left" size={12} />
+      Back to Browse
+    </a>
+
+    <header class="mb-10">
+      <h1 class="text-3xl md:text-5xl font-bold tracking-tight mb-3" style="letter-spacing: -0.03em;">Federated skill index</h1>
+      <p class="text-text leading-relaxed max-w-2xl">
+        LoopSkill's own catalog is curated and quality-gated. Alongside it, our federation
+        crawl indexes agent skills published across a set of external community and
+        vendor registries — searchable inside LoopSkill (<a href="/browse?type=skills" class="text-accent hover:underline">try the unified search</a>),
+        but each one still lives, is licensed, and is maintained at its own origin. We link to that origin, never rehost it.
+      </p>
+      {overview.ok && overview.total !== null ? (
+        <p class="mt-4 text-sm text-muted-soft">
+          <strong class="text-text">{overview.total.toLocaleString()}</strong> externally indexed skills across
+          <strong class="text-text"> {overview.sources.length}</strong> upstream {overview.sources.length === 1 ? 'source' : 'sources'} (live count, this build).
+        </p>
+      ) : (
+        <p class="mt-4 text-sm text-muted-soft">
+          The federation index total is temporarily unavailable — the count below reflects only what this build could verify live. Refresh later for the current number.
+        </p>
+      )}
+    </header>
+
+    {overview.sources.length === 0 ? (
+      <div class="bg-bg-card border border-border rounded-2xl p-8 text-center text-sm text-muted">
+        The federation index could not be reached at build time. No source pages are listed here right now — this page will repopulate on the next successful build. Nothing below is fabricated; this is an honest "unavailable", not a stale or invented catalog.
+      </div>
+    ) : (
+      <section>
+        <h2 class="text-sm font-medium text-muted-soft uppercase tracking-wide mb-3">Upstream sources</h2>
+        <div class="overflow-x-auto rounded-2xl border border-border">
+          <table class="w-full text-sm">
+            <thead>
+              <tr class="border-b border-border bg-bg-card/50 text-left text-xs uppercase tracking-wide text-muted-soft">
+                <th class="px-4 py-3 font-medium">Source</th>
+                <th class="px-4 py-3 font-medium">Description</th>
+                <th class="px-4 py-3 font-medium text-right">Indexed skills</th>
+              </tr>
+            </thead>
+            <tbody>
+              {overview.sources.map((s) => (
+                <tr class="border-b border-border-soft last:border-0 hover:bg-bg-card/40 transition">
+                  <td class="px-4 py-3 font-medium text-text whitespace-nowrap">
+                    <a href={`/federation/${s.slug}/`} class="hover:text-accent transition">{s.meta.name}</a>
+                  </td>
+                  <td class="px-4 py-3 text-muted-soft">{s.meta.description}</td>
+                  <td class="px-4 py-3 text-right text-text tabular-nums">{s.total.toLocaleString()}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
+    )}
+
+    <section class="mt-12 bg-bg-card border border-border rounded-2xl p-6">
+      <h2 class="text-base font-semibold mb-2">How this index works</h2>
+      <p class="text-sm text-muted leading-relaxed">
+        Each source page lists a representative sample of entries with a link to the
+        skill's origin (its real hosting repository or registry page) — never a copy of
+        its content. Counts are read live from LoopSkill's federation API at build time;
+        if a source is briefly unreachable, its row and page are simply omitted from that
+        build rather than showing a stale or invented number.
+      </p>
+    </section>
+  </main>
+</AppShell>
