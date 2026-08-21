@@ -59,6 +59,58 @@ import AppShell from '../layouts/AppShell.astro';
       </div>
     </div>
 
+    <!-- Connect-your-agent onboarding card (flywheel F1.2). Shown ONLY when
+         the member has ≥1 API key and has never verified a connection
+         (data resolved client-side from GET /api/auth/me -> has_api_keys /
+         connection_verified — Trap B: no build-time user fetch). Renders
+         BOTH the "key just minted, reveal available" and the "you have a
+         key but haven't tried it yet" copy states in static HTML per Trap C;
+         JS only toggles which one is visible + fills in the reveal data.
+         Dismissible: hides for the session via sessionStorage so a member
+         who closes it doesn't see it resurrect on every /library visit
+         before they've actually connected (localStorage would hide it
+         forever even across devices/browsers, which is too aggressive for
+         a card whose whole point is nudging toward first connection). -->
+    <div id="connect-agent-card" hidden class="mb-10 rounded-2xl border border-accent/30 bg-bg-card p-6">
+      <div class="flex items-start justify-between gap-4">
+        <div class="min-w-0 flex-1">
+          <h2 class="ls-section-title text-text mb-2">Connect your agent</h2>
+          <p id="connect-agent-copy-reveal" hidden class="ls-body text-muted mb-4 max-w-xl">
+            We generated your first API key when you signed up. Paste one of the config blocks
+            below into your agent so it can talk to LoopSkill over MCP.
+          </p>
+          <p id="connect-agent-copy-generic" hidden class="ls-body text-muted mb-4 max-w-xl">
+            You have an API key but your agent hasn't connected yet. Paste one of the config
+            blocks below to wire it up over MCP.
+          </p>
+
+          <div id="connect-agent-key-wrap" hidden class="mb-4 flex items-center gap-2">
+            <code id="connect-agent-key" class="font-mono text-xs bg-bg-elev border border-border rounded px-3 py-2 flex-1 break-all"></code>
+            <button id="connect-agent-key-copy" type="button" class="px-3 py-2 rounded-lg bg-accent text-bg text-xs font-semibold shrink-0">Copy key</button>
+          </div>
+
+          <div class="flex flex-col gap-3 max-w-2xl">
+            <div>
+              <div class="flex items-center justify-between gap-2 mb-1">
+                <span class="text-[10px] uppercase tracking-wider text-muted-soft">Hermes config.yaml</span>
+                <button data-copy="connect-agent-hermes-yaml" class="connect-agent-copy-btn text-[11px] px-2.5 py-1 rounded bg-accent text-bg font-semibold shrink-0">Copy</button>
+              </div>
+              <pre id="connect-agent-hermes-yaml" class="font-mono text-[11px] bg-bg-elev border border-border rounded px-3 py-2 overflow-x-auto whitespace-pre"></pre>
+            </div>
+            <div>
+              <div class="flex items-center justify-between gap-2 mb-1">
+                <span class="text-[10px] uppercase tracking-wider text-muted-soft">Claude Desktop JSON</span>
+                <button data-copy="connect-agent-claude-json" class="connect-agent-copy-btn text-[11px] px-2.5 py-1 rounded bg-accent text-bg font-semibold shrink-0">Copy</button>
+              </div>
+              <pre id="connect-agent-claude-json" class="font-mono text-[11px] bg-bg-elev border border-border rounded px-3 py-2 overflow-x-auto whitespace-pre"></pre>
+            </div>
+          </div>
+        </div>
+        <button id="connect-agent-dismiss" type="button" class="text-muted-soft hover:text-text text-lg leading-none px-1 shrink-0" aria-label="Dismiss">✕</button>
+      </div>
+    </div>
+
+
     <!-- ══════════════════════ LIBRARY TAB ══════════════════════ -->
     <section id="tab-panel-library">
       <header class="mb-6 flex items-end justify-between gap-4 flex-wrap">
@@ -369,6 +421,81 @@ import AppShell from '../layouts/AppShell.astro';
     const el = $('lib-first-login');
     el.hidden = !(libraryBundleCount === 0 && libraryFleetCount === 0);
   }
+
+  // ── Connect-your-agent onboarding card (flywheel F1.2) ──────────────────
+  // Shown when the member has ≥1 API key and has never verified a
+  // connection (GET /api/auth/me -> has_api_keys / connection_verified).
+  // Dismissible for the session via sessionStorage — this is a nudge, not a
+  // gate, and it must never come back mid-session once closed.
+  const CONNECT_AGENT_DISMISS_KEY = 'loopskill_connect_agent_dismissed_v1';
+
+  async function maybeShowConnectAgentCard() {
+    if (sessionStorage.getItem(CONNECT_AGENT_DISMISS_KEY) === '1') return;
+
+    const me = await fetchJson('/api/auth/me');
+    if (!me || !me.has_api_keys || me.connection_verified) return;
+
+    const card = $('connect-agent-card');
+    const revealCopy = $('connect-agent-copy-reveal');
+    const genericCopy = $('connect-agent-copy-generic');
+    const keyWrap = $('connect-agent-key-wrap');
+    const keyEl = $('connect-agent-key');
+    const yamlEl = $('connect-agent-hermes-yaml');
+    const jsonEl = $('connect-agent-claude-json');
+
+    // Try the one-time reveal first — only succeeds once, right after
+    // signup, while the wr_first_key_reveal cookie is still present.
+    const revealRes = await fetchJson('/api/auth/first-key-reveal');
+    if (revealRes && revealRes.key) {
+      revealCopy.hidden = false;
+      genericCopy.hidden = true;
+      keyWrap.hidden = false;
+      keyEl.textContent = revealRes.key;
+      if (revealRes.config_blocks) {
+        yamlEl.textContent = revealRes.config_blocks.hermes_yaml || '';
+        jsonEl.textContent = revealRes.config_blocks.claude_desktop_json || '';
+      }
+    } else {
+      // Reveal already consumed / expired (returning session): show the
+      // generic nudge with a placeholder config block — no plaintext key
+      // is ever re-derivable, matching the "shown once" contract.
+      revealCopy.hidden = true;
+      genericCopy.hidden = false;
+      keyWrap.hidden = true;
+      const mcpEndpoint = 'https://app.loopskill.io/api/mcp/http';
+      yamlEl.textContent = `# Add to your Hermes config (hermes.yaml)\nmcp_servers:\n  loopskill:\n    url: ${mcpEndpoint}\n    headers:\n      x-api-key: YOUR_KEY_SEE_ACCOUNT_PAGE\n`;
+      jsonEl.textContent = JSON.stringify(
+        { mcpServers: { loopskill: { url: mcpEndpoint, headers: { 'x-api-key': 'YOUR_KEY_SEE_ACCOUNT_PAGE' } } } },
+        null,
+        2,
+      );
+    }
+
+    card.hidden = false;
+  }
+
+  $('connect-agent-dismiss')?.addEventListener('click', () => {
+    sessionStorage.setItem(CONNECT_AGENT_DISMISS_KEY, '1');
+    $('connect-agent-card').hidden = true;
+  });
+
+  $('connect-agent-key-copy')?.addEventListener('click', async () => {
+    const txt = $('connect-agent-key').textContent || '';
+    try { await navigator.clipboard.writeText(txt); } catch {}
+  });
+
+  document.querySelectorAll<HTMLButtonElement>('.connect-agent-copy-btn').forEach((b) => {
+    b.addEventListener('click', async () => {
+      const targetId = b.dataset.copy!;
+      const txt = document.getElementById(targetId)?.textContent || '';
+      try {
+        await navigator.clipboard.writeText(txt);
+        const original = b.textContent;
+        b.textContent = 'Copied ✓';
+        setTimeout(() => { b.textContent = original; }, 1500);
+      } catch {}
+    });
+  });
 
   // ── Liked skills shelf (ponytail_0724) ──────────────────────────────────
   // The heart on browse/home writes to GET /api/library's `shelves.skills`.
@@ -1377,6 +1504,7 @@ import AppShell from '../layouts/AppShell.astro';
 
   loadLikedSkills();
   loadLibraryBundles();
+  void maybeShowConnectAgentCard();
   if (initialTab === 'fleets') { (window as any).__fleetsLoaded = true; loadFleets(); }
   if (initialTab === 'delivery') { (window as any).__deliveryLoaded = true; loadDelivery(); }
 </script>
