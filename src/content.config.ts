@@ -17,6 +17,20 @@ const blog = defineCollection({
     updatedDate: z.coerce.date().optional(),
     author: z.string().default('WiseChef'),
     tags: z.array(z.string()).default([]),
+    // Optional — same one-data-array pattern as pricing.astro /
+    // docs/referrals.astro (src/lib/schema.ts buildFaqPageSchema): when a
+    // post declares faqs, [slug].astro renders them as the SAME visible
+    // <details>/<summary> list that feeds the FAQPage JSON-LD, so the two
+    // can never drift (AGENTS.md claim-drift discipline extended to blog
+    // posts). Posts with no faqs simply carry no FAQPage block.
+    faqs: z
+      .array(
+        z.object({
+          q: z.string(),
+          a: z.string(),
+        }),
+      )
+      .default([]),
   }),
 });
 
