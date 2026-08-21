@@ -582,12 +582,29 @@ const hasPrebuilt = prebuiltGroupsHtml.trim().length > 0;
   // "where are all the skills?" fix. Curated stays FIRST; community renders
   // below it, clearly badged.
   const FED_SOURCES = 'hermes-hub,skills-sh,well-known,clawhub,lobehub,browse-sh,github-oss';
+  // issue #82: live counts for the Community-skills header. MIRRORED from
+  // src/lib/federatedCounts.ts (the CANONICAL, unit-tested implementation)
+  // because define:vars forces is:inline — ESM imports are unavailable in
+  // this script. Keep the two in sync (same pattern as likeControl.ts).
+  function positiveInt(v) {
+    const n = Number(v);
+    if (!Number.isFinite(n) || n <= 0 || !Number.isInteger(n)) return null;
+    return n;
+  }
+  function federatedHeaderSuffix(counts) {
+    if (!counts || !(counts.sourceCount > 0)) return 'federated · install as-is';
+    const reg = `${counts.sourceCount.toLocaleString('en-US')} ${counts.sourceCount === 1 ? 'registry' : 'registries'}`;
+    const skills = counts.skillCount && counts.skillCount > 0
+      ? ` · ${counts.skillCount.toLocaleString('en-US')} ${counts.skillCount === 1 ? 'skill' : 'skills'}`
+      : '';
+    return `federated · ${reg}${skills} · install as-is`;
+  }
   async function fetchFederated(q, limit = 24) {
     try {
       const r = await fetch(`${API_BASE}/api/skills/external?sources=${FED_SOURCES}&limit=${limit}&q=${encodeURIComponent(q || '')}`);
       if (!r.ok) return [];
       const d = await r.json();
-      return (d.external || []).map((s) => ({
+      const raw = (d.external || []).map((s) => ({
         slug: s.slug,
         title: s.title || s.slug,
         description: s.description,
@@ -599,7 +616,21 @@ const hasPrebuilt = prebuiltGroupsHtml.trim().length > 0;
         // federated heart resolve as a LOCAL slug and 404.
         like_source: s.source || null,
       }));
-    } catch { return []; }
+      // issue #82: bind header counts to the payload envelope — registry
+      // count from enabled_sources (a source can be enabled yet return zero
+      // rows, so rows alone undercount), installable total from
+      // counts.external_installable. Both fail closed to omission, never to
+      // a fabricated literal. Validated numbers only — nothing from the
+      // payload reaches the DOM as a raw string.
+      let sourceCount = positiveInt(Array.isArray(d.enabled_sources) ? d.enabled_sources.length : null);
+      if (sourceCount === null) {
+        const seen = new Set();
+        raw.forEach((it) => seen.add(it.like_source || 'community'));
+        sourceCount = positiveInt(seen.size) ?? 0;
+      }
+      const skillCount = positiveInt(d && d.counts ? d.counts.external_installable : null);
+      return { rows: raw, counts: { sourceCount, skillCount } };
+    } catch { return { rows: [], counts: null }; }
   }
   // feat/composite-loops-surface: the Loops tab now shows COMPOSITE loops
   // (deployable autonomous work units: schedule + skills + sub-agents + a
@@ -675,12 +706,20 @@ const hasPrebuilt = prebuiltGroupsHtml.trim().length > 0;
 
     let data;
     let federated = [];
+    let fedCounts = null;
     const [dataR, fedR] = await Promise.allSettled([
       state.q ? fetchSearch(state.q) : fetchBrowseDefaults(),
-      (state.type === 'all' || state.type === 'skills') ? fetchFederated(state.q, state.type === 'skills' ? 48 : 24) : Promise.resolve([]),
+      (state.type === 'all' || state.type === 'skills') ? fetchFederated(state.q, state.type === 'skills' ? 48 : 24) : Promise.resolve({ rows: [], counts: null }),
     ]);
     if (mySeq !== seq) return;
-    federated = fedR.status === 'fulfilled' ? fedR.value : [];
+    // issue #82: fetchFederated now returns { rows, counts } — rows feed the
+    // cards, counts feed the header. AllSettled rejection or a non-object
+    // value degrades to empty rows + null counts (header omits numbers).
+    const fedValue = fedR.status === 'fulfilled' && fedR.value && Array.isArray(fedR.value.rows)
+      ? fedR.value
+      : { rows: [], counts: null };
+    federated = fedValue.rows;
+    fedCounts = fedValue.counts;
     if (dataR.status === 'fulfilled') {
       data = dataR.value;
     } else if (federated.length) {
@@ -710,7 +749,7 @@ const hasPrebuilt = prebuiltGroupsHtml.trim().length > 0;
     const fedGroupHTML = federated.length
       ? `<section class="ls-section">
           <div class="flex items-center justify-between ls-section-header">
-            <h2 class="ls-section-title text-text">Community skills <span class="text-xs text-muted-soft font-normal">federated · 7 registries · install as-is</span></h2>
+            <h2 class="ls-section-title text-text">Community skills <span class="text-xs text-muted-soft font-normal">${federatedHeaderSuffix(fedCounts)}</span></h2>
           </div>
           <div class="artifact-grid">
             ${federated.map((it) => artifactCardHTML('skill', it, 'grid')).join('')}
