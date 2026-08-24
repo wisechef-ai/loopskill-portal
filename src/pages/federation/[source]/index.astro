@@ -27,8 +27,23 @@ export async function getStaticPaths() {
 
 const { page } = Astro.props as { page: Awaited<ReturnType<typeof getFederationSourcePages>>[number] };
 
-const title = `${page.meta.name} — federated skills — LoopSkill`;
-const description = `${page.total.toLocaleString()} agent skills indexed from ${page.meta.name} via LoopSkill's federation crawl. ${page.meta.description}`;
+// The real upstream repos inside this bucket, derived live from the sampled
+// entries' origin_url values (never a hardcoded list). For `github` this is
+// what turns an anonymous "GitHub taps" page into one that actually NAMES
+// NVIDIA/skills, openai/skills, anthropics/skills, huggingface/skills — the
+// terms people and crawlers actually search for. Empty for registries whose
+// origins aren't repo-shaped, in which case none of the copy below renders.
+const repos = page.repos || [];
+const repoNames = repos.map((r) => r.repo);
+// Org (owner) names, de-duplicated, preserving largest-first order.
+const orgNames = [...new Set(repoNames.map((r) => r.split('/')[0]))];
+
+const title = repoNames.length > 0
+  ? `${page.meta.name} — ${orgNames.slice(0, 4).join(', ')} agent skills — LoopSkill`
+  : `${page.meta.name} — federated skills — LoopSkill`;
+const description = repoNames.length > 0
+  ? `${page.total.toLocaleString()} agent skills indexed from ${page.meta.name} via LoopSkill's federation crawl, including ${repoNames.slice(0, 4).join(', ')}. ${page.meta.description}`
+  : `${page.total.toLocaleString()} agent skills indexed from ${page.meta.name} via LoopSkill's federation crawl. ${page.meta.description}`;
 
 // JSON-LD: ItemList over the real sample entries actually rendered below —
 // numberOfItems is the LIVE total (the true source size), while
@@ -40,6 +55,18 @@ const itemListSchema = {
   name: `${page.meta.name} — federated skills on LoopSkill`,
   description,
   numberOfItems: page.total,
+  // `about` names the real upstream repos this list draws from, so a crawler
+  // can associate the page with the org terms people search. Derived from
+  // live origin_urls — omitted entirely when there are none.
+  ...(repoNames.length > 0
+    ? {
+        about: repos.map((r) => ({
+          '@type': 'SoftwareSourceCode',
+          name: r.repo,
+          codeRepository: `https://github.com/${r.repo}`,
+        })),
+      }
+    : {}),
   itemListElement: page.sample.map((entry, i) => ({
     '@type': 'ListItem',
     position: i + 1,
@@ -69,6 +96,23 @@ const itemListSchema = {
         <strong class="text-text">{page.total.toLocaleString()}</strong> skills indexed from this source (live count, this build) ·
         showing a sample of <strong class="text-text">{page.sample.length}</strong> below, each linked to its real origin.
       </p>
+      {repos.length > 0 && (
+        <div class="mt-5">
+          <h2 class="text-xs font-medium text-muted-soft uppercase tracking-wide mb-2">Upstream repositories in this source</h2>
+          <ul class="flex flex-wrap gap-2">
+            {repos.map((r) => (
+              <li>
+                <a
+                  href={`https://github.com/${r.repo}`}
+                  target="_blank"
+                  rel="noopener nofollow"
+                  class="entry-badge hover:text-accent transition"
+                >{r.repo} <span class="text-muted-soft">({r.count} sampled)</span></a>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
     </header>
 
     <section class="bg-bg-card border border-border rounded-2xl p-5 mb-8 text-sm text-muted leading-relaxed">

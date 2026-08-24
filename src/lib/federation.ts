@@ -46,6 +46,15 @@ export interface FederationEntry {
   origin_url: string | null;
 }
 
+/** One real upstream repository inside a source bucket, derived from live
+ *  origin_url values. Never a hardcoded list — see deriveRepos(). */
+export interface FederationRepo {
+  /** "owner/repo" exactly as it appears in the entries' origin_url. */
+  repo: string;
+  /** How many sampled entries resolved to this repo. Never fabricated. */
+  count: number;
+}
+
 export interface FederationSourcePage {
   /** upstream_source slug, e.g. "clawhub", "skills-sh". */
   slug: string;
@@ -54,6 +63,9 @@ export interface FederationSourcePage {
   total: number;
   /** A capped, representative sample of entries with resolvable origin links. */
   sample: FederationEntry[];
+  /** The distinct upstream repos present in `sample`, largest first. Empty
+   *  for sources whose origins aren't repo-shaped (non-github registries). */
+  repos: FederationRepo[];
 }
 
 export interface FederationOverview {
@@ -131,6 +143,82 @@ function metaFor(slug: string): SourceMeta {
 
 const SAMPLE_CAP = 80;
 
+/**
+ * Rows requested per API call while collecting a source's entries.
+ *
+ * The filter API hard-caps `limit` at 200 (measured 2026-08-24: limit=200 ->
+ * HTTP 200, limit=400 -> HTTP 422), so a bigger number does not fetch more —
+ * it fails the request outright and, under this file's fail-closed contract,
+ * silently costs the source its entire page. Never raise this above the
+ * API's own cap; page with PAGE_OFFSET_STEP instead.
+ */
+const PAGE_SIZE = 200;
+
+/**
+ * Hard bound on pagination so one huge upstream can never make the build hang
+ * on the federation API. 5 pages = 1000 rows, comfortably above the largest
+ * live bucket (`github`, 438 rows on 2026-08-24).
+ */
+const MAX_PAGES = 5;
+
+/** Extract "owner/repo" from a GitHub-shaped origin URL. Null for anything
+ *  else — non-github registries legitimately have no repo identity, and a
+ *  guess would be a fabricated attribution (D-035). */
+export function repoFromOriginUrl(originUrl: string | null | undefined): string | null {
+  if (typeof originUrl !== 'string') return null;
+  const m = originUrl.match(/^https?:\/\/(?:www\.)?github\.com\/([^/\s]+)\/([^/\s#?]+)/i);
+  if (!m) return null;
+  return `${m[1]}/${m[2].replace(/\.git$/, '')}`;
+}
+
+/** Group entries by their real upstream repo, largest first. Purely derived
+ *  from live data — never a hardcoded repo list. */
+export function deriveRepos(entries: FederationEntry[]): FederationRepo[] {
+  const counts = new Map<string, number>();
+  for (const e of entries) {
+    const repo = repoFromOriginUrl(e.origin_url);
+    if (repo) counts.set(repo, (counts.get(repo) || 0) + 1);
+  }
+  return [...counts.entries()]
+    .map(([repo, count]) => ({ repo, count }))
+    .sort((a, b) => b.count - a.count || a.repo.localeCompare(b.repo));
+}
+
+/**
+ * Pick up to `cap` entries so that every distinct upstream repo present in
+ * `entries` is represented before any single repo takes a second slot.
+ * Deterministic (stable input order, repos ordered largest-first), so the
+ * built page is reproducible across builds. Entries with no repo identity
+ * (non-github origins) share one bucket and are never dropped wholesale.
+ */
+export function roundRobinSample(entries: FederationEntry[], cap: number): FederationEntry[] {
+  if (entries.length <= cap) return entries;
+  const buckets = new Map<string, FederationEntry[]>();
+  for (const e of entries) {
+    const key = repoFromOriginUrl(e.origin_url) || '\u0000other';
+    const b = buckets.get(key);
+    if (b) b.push(e);
+    else buckets.set(key, [e]);
+  }
+  // Largest bucket first so the biggest upstream leads, but every bucket
+  // gets its first slot in round 0 — that is the invisibility fix.
+  const ordered = [...buckets.entries()].sort(
+    (a, b) => b[1].length - a[1].length || a[0].localeCompare(b[0]),
+  );
+  const out: FederationEntry[] = [];
+  for (let round = 0; out.length < cap; round++) {
+    let placedThisRound = false;
+    for (const [, bucket] of ordered) {
+      if (round >= bucket.length) continue;
+      out.push(bucket[round]);
+      placedThisRound = true;
+      if (out.length >= cap) break;
+    }
+    if (!placedThisRound) break;
+  }
+  return out;
+}
+
 /** Fetch one upstream source's total row count. Null on any failure. */
 async function fetchSourceTotal(source: string): Promise<number | null> {
   const res = await fetchApi<{ total?: number }>(
@@ -147,16 +235,44 @@ async function fetchSourceTotal(source: string): Promise<number | null> {
  * requires linking to the origin, and audit-links refuses a dead/empty href,
  * so an entry with no usable link is metadata without a citation and is
  * dropped rather than rendered with a broken or fabricated link.
+ *
+ * WHY THIS PAGES (measured live 2026-08-24, `source=github`, 438 rows):
+ * the API returns rows in slug order, so taking the first SAMPLE_CAP (80)
+ * rows yielded 53 garrytan/gstack + 17 anthropics/skills + 10
+ * huggingface/skills and ZERO rows from NVIDIA/skills — the LARGEST repo in
+ * that bucket at 299 rows — plus zero from openai/skills (44). The page
+ * rendered its two biggest upstreams as literally invisible. Even one full
+ * page (limit=200) still misses openai/skills entirely. So we collect the
+ * whole bucket (bounded by MAX_PAGES), then round-robin across the real
+ * repos so every upstream present in the data reaches the render.
+ *
+ * Fail-closed at every layer, as the rest of this file: a failed page stops
+ * pagination and we sample whatever genuinely came back — never a fabricated
+ * row, never a guessed total.
  */
-async function fetchSourceSample(source: string): Promise<FederationEntry[]> {
-  const res = await fetchApi<{ results?: FederationEntry[] }>(
-    `/api/federation/filter?source=${encodeURIComponent(source)}&limit=${SAMPLE_CAP}`,
-    { authed: false, maxAttempts: 6, initialDelayMs: 500, maxDelayMs: 8000 },
-  );
-  if (!res.ok || !res.data || !Array.isArray(res.data.results)) return [];
-  return res.data.results.filter(
+async function fetchSourceSample(
+  source: string,
+): Promise<{ sample: FederationEntry[]; repos: FederationRepo[] }> {
+  const collected: FederationEntry[] = [];
+  for (let page = 0; page < MAX_PAGES; page++) {
+    const res = await fetchApi<{ results?: FederationEntry[] }>(
+      `/api/federation/filter?source=${encodeURIComponent(source)}&limit=${PAGE_SIZE}&offset=${page * PAGE_SIZE}`,
+      { authed: false, maxAttempts: 6, initialDelayMs: 500, maxDelayMs: 8000 },
+    );
+    if (!res.ok || !res.data || !Array.isArray(res.data.results)) break;
+    collected.push(...res.data.results);
+    // A short page means we've reached the end of this source.
+    if (res.data.results.length < PAGE_SIZE) break;
+  }
+  const linkable = collected.filter(
     (e) => typeof e?.origin_url === 'string' && /^https?:\/\//.test(e.origin_url),
   );
+  // Repo counts come from the FULL collected set, not the capped sample: the
+  // sample is deliberately evened out by round-robin, so ranking by it would
+  // order the repos ~alphabetically and bury the biggest upstream in the
+  // <title>. Ranking by true size puts NVIDIA/skills (299 of 438) first,
+  // which is the entire SEO point of naming them.
+  return { sample: roundRobinSample(linkable, SAMPLE_CAP), repos: deriveRepos(linkable) };
 }
 
 /** Fetch the grand total across the whole federated index (no source filter). */
@@ -217,8 +333,8 @@ export function getFederationOverview(): Promise<FederationOverview> {
     const grandTotalPromise = fetchGrandTotal();
     const perSource = await Promise.all(
       sourceSlugs.map(async (slug) => {
-        const [total, sample] = await Promise.all([fetchSourceTotal(slug), fetchSourceSample(slug)]);
-        return { slug, total, sample };
+        const [total, entries] = await Promise.all([fetchSourceTotal(slug), fetchSourceSample(slug)]);
+        return { slug, total, sample: entries.sample, repos: entries.repos };
       }),
     );
     const grandTotal = await grandTotalPromise;
@@ -229,8 +345,11 @@ export function getFederationOverview(): Promise<FederationOverview> {
     // page's table and the set of emitted /federation/{source}/ pages in
     // lockstep — no dead links, ever, by construction.
     const sources: FederationSourcePage[] = perSource
-      .filter((s): s is { slug: string; total: number; sample: FederationEntry[] } => s.total !== null && s.sample.length > 0)
-      .map((s) => ({ slug: s.slug, meta: metaFor(s.slug), total: s.total, sample: s.sample }))
+      .filter(
+        (s): s is { slug: string; total: number; sample: FederationEntry[]; repos: FederationRepo[] } =>
+          s.total !== null && s.sample.length > 0,
+      )
+      .map((s) => ({ slug: s.slug, meta: metaFor(s.slug), total: s.total, sample: s.sample, repos: s.repos }))
       .sort((a, b) => b.total - a.total);
 
     return { ok: true, total: grandTotal, trustLevels, sources };

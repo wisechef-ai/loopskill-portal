@@ -50,8 +50,15 @@ const SKILLS_PAYLOAD = {
 const BUNDLES_PAYLOAD = { cookbooks: [{ slug: 'stub-bundle', name: 'Stub Bundle', skill_count: 2 }] };
 const PERSONALITIES_PAYLOAD = [{ slug: 'stub-persona', name: 'Stub Persona', category: 'research' }];
 const LOOPS_PAYLOAD = [{ slug: 'stub-loop', title: 'Stub Loop', schedule: 'daily', install_count: 0 }];
+// issue #82: envelope metadata the header binds to. 3 enabled sources but
+// only 'clawhub' present in rows — pins that the REGISTRY count comes from
+// enabled_sources (not distinct row sources) and the skill count from
+// counts.external_installable. On pre-fix main the header rendered the
+// hardcoded literal "7 registries" and this suite went RED.
 const FEDERATED_PAYLOAD = {
   external: [{ slug: 'stub-community', title: 'Stub Community', source: 'clawhub', origin_url: 'https://example.invalid/x' }],
+  enabled_sources: ['clawhub', 'skills-sh', 'well-known'],
+  counts: { external_installable: 1234 },
 };
 
 /**
@@ -256,6 +263,17 @@ describe('/browse renders its catalog (not just references the endpoint)', () =>
     expect(rendered, 'personalities shelf empty').toContain('stub-persona');
     expect(rendered, 'loops shelf empty').toContain('stub-loop');
     expect(rendered, 'federated/community shelf empty').toContain('stub-community');
+  });
+
+  it.runIf(built)('binds the Community-skills header to the LIVE feed envelope, not a hardcoded literal (issue #82)', async () => {
+    const { dom } = await renderBrowse();
+    const rendered = dom.window.document.getElementById('browse-results')!.innerHTML;
+    // The stub feeds 3 enabled_sources and 1234 installable — the header
+    // must echo THOSE, proving it is derived from the payload. On pre-fix
+    // main this rendered the hardcoded "federated · 7 registries ·
+    // install as-is" regardless of what the API said.
+    expect(rendered).toContain('federated · 3 registries · 1,234 skills · install as-is');
+    expect(rendered).not.toContain('7 registries');
   });
 
   it.runIf(built)('leaves the loading state and does NOT show the error state', async () => {
