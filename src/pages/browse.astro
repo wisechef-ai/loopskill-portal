@@ -677,6 +677,55 @@ const hasPrebuilt = prebuiltGroupsHtml.trim().length > 0;
     return { loops, skills, bundles, personalities };
   }
 
+  // issue #277 FIX 3 — Federated results group, sourced from the NEW
+  // `federated` key on GET /api/search (API PR in flight in parallel; rows
+  // shaped { slug, title, description, source, install_ref, origin_url,
+  // deployable } + a sibling federated_cache_status of 'warm'|'cold').
+  // Strictly defensive/additive, mirroring the exact patterns already used
+  // by fedGroupHTML above (artifactCardHTML, esc, group container markup):
+  //   - `federated` key absent (old API shape) → render nothing (returns
+  //     '') — zero regression against the current API.
+  //   - present and non-empty → a "Federated results" group whose cards
+  //     link to /skills/external/view?ref=<install_ref> (URL-encoded; the
+  //     canonical install_ref format is the colon form "source:slug").
+  //   - present but empty AND cache status is cold → a single muted line
+  //     noting the index is still warming up, instead of nothing at all.
+  //   - present but empty and NOT cold (e.g. warm-but-genuinely-empty) →
+  //     nothing, same as the absent case.
+  // The council review flagged that the API PR may land the cache-status
+  // field under either name — checked defensively; whichever key is
+  // present wins, absent means no note is shown.
+  function federatedApiGroupHTML(rows, cacheStatus) {
+    if (!Array.isArray(rows)) return ''; // key absent or malformed → old-API no-op
+    if (rows.length === 0) {
+      if (cacheStatus === 'cold') {
+        return `<p class="text-xs text-muted-soft py-2">Federated index warming up — check back shortly.</p>`;
+      }
+      return '';
+    }
+    const cards = rows
+      .map((r) => {
+        const ref = r && r.install_ref ? String(r.install_ref) : '';
+        const item = {
+          slug: (r && r.slug) || '',
+          title: (r && (r.title || r.slug)) || 'Untitled',
+          description: (r && r.description) || '',
+          meta: (r && r.source) || 'community',
+          href: ref ? `/skills/external/view?ref=${encodeURIComponent(ref)}` : '#',
+        };
+        return artifactCardHTML('skill', item, 'grid');
+      })
+      .join('');
+    return `<section class="ls-section">
+        <div class="flex items-center justify-between ls-section-header">
+          <h2 class="ls-section-title text-text">Federated results</h2>
+        </div>
+        <div class="artifact-grid">
+          ${cards}
+        </div>
+      </section>`;
+  }
+
   function renderGroup(type, items, mode, seeAllQ) {
     if (!items.length) return '';
     const max = isMobile() ? MAX_MOBILE : MAX_DESKTOP;
@@ -732,6 +781,17 @@ const hasPrebuilt = prebuiltGroupsHtml.trim().length > 0;
     }
     hideLoading();
 
+    // issue #277 FIX 3 — read the new `federated` group defensively straight
+    // off whatever /api/search (or the empty-query defaults object, which
+    // never carries this key) returned. Absent on the current API shape —
+    // apiFederatedRows stays null and federatedApiGroupHTML() below is a
+    // guaranteed no-op, so this is zero-regression until the API PR ships.
+    const apiFederatedRows = data && Array.isArray(data.federated) ? data.federated : null;
+    const apiFederatedCacheStatus = data
+      ? (data.federated_cache_status || data.federated_status || null)
+      : null;
+    const apiFederatedGroupHTML = federatedApiGroupHTML(apiFederatedRows, apiFederatedCacheStatus);
+
     const byType = {
       loops: data.loops || [],
       skills: data.skills || [],
@@ -739,7 +799,7 @@ const hasPrebuilt = prebuiltGroupsHtml.trim().length > 0;
       personalities: data.personalities || [],
     };
 
-    const totalCount = Object.values(byType).reduce((a, arr) => a + arr.length, 0) + federated.length;
+    const totalCount = Object.values(byType).reduce((a, arr) => a + arr.length, 0) + federated.length + (apiFederatedRows ? apiFederatedRows.length : 0);
     const countMsg = state.q
       ? `${totalCount} result${totalCount === 1 ? '' : 's'} for "${state.q}"${federated.length ? ` (${federated.length} community)` : ''}`
       : `${totalCount} item${totalCount === 1 ? '' : 's'}`;
@@ -760,12 +820,12 @@ const hasPrebuilt = prebuiltGroupsHtml.trim().length > 0;
     if (state.type === 'all') {
       hide('browse-tag-chips');
       $('browse-tag-chips').innerHTML = '';
-      if (totalCount === 0) {
+      if (totalCount === 0 && !apiFederatedGroupHTML) {
         show('browse-empty');
         $('browse-empty').textContent = state.q ? `No results for "${state.q}"` : 'Nothing is available right now.';
         return;
       }
-      results.innerHTML = GROUP_ORDER.map((t) => renderGroup(t, byType[t], 'all', state.q)).join('') + fedGroupHTML;
+      results.innerHTML = GROUP_ORDER.map((t) => renderGroup(t, byType[t], 'all', state.q)).join('') + fedGroupHTML + apiFederatedGroupHTML;
       refreshLikes();
       return;
     }
@@ -806,7 +866,7 @@ const hasPrebuilt = prebuiltGroupsHtml.trim().length > 0;
       chipsEl.innerHTML = '';
     }
 
-    if (!loopChipItems.length && !federated.length) {
+    if (!loopChipItems.length && !federated.length && !(apiFederatedRows && apiFederatedRows.length) && !apiFederatedGroupHTML) {
       show('browse-empty');
       // feat/composite-loops-surface: the Loops empty state explains what a
       // loop actually IS (most visitors have never heard the term) instead of
@@ -824,7 +884,7 @@ const hasPrebuilt = prebuiltGroupsHtml.trim().length > 0;
     const curatedHeader = state.type === 'skills' && federated.length
       ? `<div class="ls-section-header"><h2 class="ls-section-title text-text">LoopSkill catalog <span class="text-xs text-muted-soft font-normal">verified · signed</span></h2></div>`
       : '';
-    results.innerHTML = (loopChipItems.length ? `${curatedHeader}<div class="artifact-grid">${grid}</div>` : '') + fedGroupHTML;
+    results.innerHTML = (loopChipItems.length ? `${curatedHeader}<div class="artifact-grid">${grid}</div>` : '') + fedGroupHTML + apiFederatedGroupHTML;
     refreshLikes();
   }
 

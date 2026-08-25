@@ -1,37 +1,54 @@
 /**
  * federation.ts — build-time data layer for the /federation/* GEO surfaces
- * (G2-federation).
+ * (G2-federation, reworked issue#277).
  *
- * PROBLEM (GEO audit, 2026-08-19, live-confirmed): the federation crawl
- * indexes ~91k external skills across 14 configured upstream registries
- * (config/federation_sources.yaml in loopskill-api) — the single biggest
- * catalog claim on the site — and it is 100% API-only. Zero crawlable URLs.
- * Google/LLM crawlers cannot see it and the "91k+" claim is uncitable.
+ * PROBLEM (issue #277, live-confirmed 2026-08-25): this file's SOURCE_META
+ * hardcoded exactly 8 source slugs (clawhub, skills-sh, github, lobehub,
+ * browse-sh, official, claude-marketplace, well-known) and derived the whole
+ * source list from GET /api/federation/filter/facets, which STILL only
+ * enumerates that same stale 7-bucket taxonomy today
+ * (`["browse-sh","claude-marketplace","clawhub","github","lobehub","official",
+ * "skills-sh"]` — verified live 2026-08-25). Meanwhile loopskill-api's
+ * config/federation_sources.yaml has grown to 28 much more granular per-repo
+ * taps (github-anthropic, github-openai, github-huggingface, github-nvidia,
+ * github-gstack, github-superpowers, github-marketing, thirteen more
+ * community github-* taps, hermes-hub, well-known, ...) that GET
+ * /api/skills/external already reports via `available_sources` +
+ * `per_source`. 21 of the 28 live sources — including every named GitHub
+ * tap — never got a /federation/{source}/ page or an index-table row at all.
+ *
+ * FIX: the source list (which slugs exist) AND their live per-source counts
+ * come from ONE build-time call to GET /api/skills/external — the SAME
+ * endpoint the /skills/external browse toggle and issue#82's
+ * federatedCounts.ts already trust as the live registry list. This file no
+ * longer calls /api/federation/filter or /api/federation/filter/facets at
+ * all — that endpoint's source taxonomy has drifted from the one actually
+ * being walked and is not a source of truth for "which sources exist".
  *
  * SCOPE / D-035 (proxy-never-rehost): these pages surface METADATA ONLY —
- * name, description, upstream source, trust level, tags, and a link to the
- * entry's ORIGIN. Never rehost external skill content or files.
+ * name, description, upstream source, license, and a link to the entry's
+ * ORIGIN. Never rehost external skill content or files.
  *
- * SOURCE OF DATA: GET /api/federation/filter (loopskill-api,
- * app/federation_filter_routes.py) — public, anonymous-safe, already used by
- * the bulk-add UI. `?source=<slug>` filters to one upstream registry;
- * `&limit=1` is the cheap way to read `total` without paying for rows.
- * GET /api/federation/filter/facets returns the live list of upstream_source
- * values — the single source of truth for which source buckets exist today,
- * so this file never hardcodes a source list that can silently drift from
- * the API (the same class of bug AGENTS.md documents for the 14-source count
- * vs the 7 upstream_source buckets — see SOURCE_META below).
- *
- * FAIL-CLOSED CONTRACT (portal#75 pattern — bootcamp-fallback-rot-guard):
- * every fetch here is wrapped. On any failure (network, timeout, non-2xx,
- * malformed body) the function returns an empty/null result — NEVER a
- * fabricated count, NEVER a fabricated entry, NEVER a link built from data
- * that didn't actually come back. `getFederationSourceEntries()` is the
- * single choke point both /federation/index.astro and /federation/[source]
- * .astro build from, so a source can only ever get an index-page table row
- * AND a /federation/{source}/ page together — never a link to a page the
- * build didn't emit (audit-links would refuse it anyway, but the invariant
- * is enforced here, at the source, not discovered at the gate).
+ * FAIL-CLOSED CONTRACT (portal#75 pattern — bootcamp-fallback-rot-guard,
+ * extended for issue#277's CRITICAL rule):
+ *   - every fetch here is wrapped; a network/timeout/non-2xx/malformed-body
+ *     failure degrades, never throws and aborts the build.
+ *   - a source only gets a page when it has a real, live, non-fabricated
+ *     `total` AND at least one real sample entry with a resolvable
+ *     http(s) origin_url.
+ *   - CRITICAL (issue#277): if the build-time /api/skills/external call
+ *     itself fails outright (no data back at all), the SOURCE LIST — which
+ *     slugs to even try — falls back to FALLBACK_SOURCE_SLUGS, a full
+ *     28-slug snapshot of the live source list captured 2026-08-25. This is
+ *     NOT the old stale 8-source hardcode; it exists purely so a transient
+ *     failure of the summary call doesn't shrink the set of sources a
+ *     still-working sample call can populate. It is a list of NAMES only —
+ *     never a fabricated count, never a fabricated entry.
+ *   - `getFederationSourceEntries()`-equivalent below is the single choke
+ *     point both /federation/index.astro and /federation/[source].astro
+ *     build from, so a source can only ever get an index-page table row AND
+ *     a /federation/{source}/ page together — never a link to a page the
+ *     build didn't emit.
  */
 
 import { fetchApi } from './api';
@@ -40,8 +57,12 @@ export interface FederationEntry {
   slug: string;
   title: string;
   upstream_source: string;
+  /** GET /api/skills/external does not carry a trust_level field (that was
+   *  specific to the old /api/federation/filter shape). Always null here —
+   *  never fabricated — the template already renders it conditionally. */
   trust_level: string | null;
   license: string | null;
+  /** Not carried by /api/skills/external either. Always []. */
   tags: string[];
   origin_url: string | null;
 }
@@ -56,10 +77,13 @@ export interface FederationRepo {
 }
 
 export interface FederationSourcePage {
-  /** upstream_source slug, e.g. "clawhub", "skills-sh". */
+  /** upstream_source slug, e.g. "clawhub", "github-anthropic". */
   slug: string;
   meta: SourceMeta;
-  /** Real total row count for this source, from the live API. Never fabricated. */
+  /** Real count for this source. Live per_source[slug].indexed when the
+   *  summary call succeeded; otherwise the honest count of real sampled
+   *  entries with a resolvable origin (a true lower bound) — never a
+   *  fabricated or guessed number. */
   total: number;
   /** A capped, representative sample of entries with resolvable origin links. */
   sample: FederationEntry[];
@@ -69,44 +93,90 @@ export interface FederationSourcePage {
 }
 
 export interface FederationOverview {
-  /** true only if the facets call succeeded — gates whether ANY /federation
-   *  page content renders beyond the fail-closed explanatory copy. */
+  /** true only if the build-time GET /api/skills/external summary call
+   *  itself succeeded — gates whether the index page's live-count copy
+   *  renders (vs the honest "temporarily unavailable" explanatory text). */
   ok: boolean;
-  /** Grand total across the whole federated index, from the unfiltered
-   *  /api/federation/filter call. Null when unreachable — NEVER a fallback
-   *  literal (never hardcode "91k"; the number must always come from a live
+  /** Grand total across the whole federated index, from that same live
+   *  call's `counts.external_indexed`. Null when unreachable — NEVER a
+   *  fallback literal (never hardcode a number; it must come from a live
    *  build-time read, or not appear at all). */
   total: number | null;
-  /** trust_level facet values from the live API, for badge labels. */
+  /** Kept for interface stability; the current live API carries no
+   *  trust-level facet list distinct from per-entry trust_level (which is
+   *  itself no longer available — see FederationEntry). Always []. */
   trustLevels: string[];
-  /** One entry per upstream source that BOTH returned a total AND returned
-   *  at least one sample row with a usable origin link — i.e. exactly the
-   *  set of sources that will get a /federation/{source}/ page. */
+  /** One entry per upstream source that BOTH returned a real total AND
+   *  returned at least one sample row with a usable origin link — i.e.
+   *  exactly the set of sources that will get a /federation/{source}/ page. */
   sources: FederationSourcePage[];
 }
 
 /**
- * Static display metadata for known upstream sources. This is NOT the count
- * or the existence check (both come from the live API) — it is purely
- * display copy (name/description) for source slugs the API is already
- * telling us are live via /api/federation/filter/facets. A slug the facets
- * call returns that ISN'T in this map still gets a page — falls back to a
- * generic description built from the slug — so a new source added to
- * loopskill-api's config/federation_sources.yaml (self-serve per that
- * file's own docs) is never silently dropped from crawlability here.
+ * Full snapshot of every upstream_source slug GET /api/skills/external
+ * reported live, captured 2026-08-25 (`available_sources`, 28 entries).
+ * CRITICAL fail-closed fallback (issue#277): used ONLY when the build-time
+ * summary fetch fails outright — never displayed as a live count, never
+ * used to fabricate a total. This lets a still-working sample call populate
+ * pages for the full real source set even when the summary call is down,
+ * rather than silently reverting to a stale 8-source (or empty) list.
+ */
+export const FALLBACK_SOURCE_SLUGS: string[] = [
+  'hermes-hub',
+  'skills-sh',
+  'well-known',
+  'clawhub',
+  'lobehub',
+  'browse-sh',
+  'github-oss',
+  'github-anthropic',
+  'github-openai',
+  'github-huggingface',
+  'github-nvidia',
+  'github-gstack',
+  'github-superpowers',
+  'github-marketing',
+  'github-agentskillexchange',
+  'github-journal-skills',
+  'github-alirezarezvani-skills',
+  'github-hoangnguyen-skills-standard',
+  'github-wshobson-agents',
+  'github-kdense-scientific-skills',
+  'github-jimliu-baoyu-skills',
+  'github-thedotmack-claude-mem',
+  'github-skill-seekers',
+  'github-litestar-skills',
+  'github-runcomfy-skills',
+  'github-atc-agentic-toolkit',
+  'github-orchestra-research-skills',
+  'github-awesome-agent-skills',
+];
+
+/**
+ * Static display metadata for known upstream sources — hand-written, nicer
+ * copy for the sources we can say something specific about. This is NOT the
+ * count or the existence check (both come from the live API) — purely
+ * display copy. Ported from src/pages/skills/external.astro's SOURCE_META
+ * (the toggle-UI page authored these first) plus github-marketing, which
+ * this file's own live probe (2026-08-25) identified as
+ * coreyhaines31/marketingskills, MIT, 50 skills.
  */
 const SOURCE_META: Record<string, { name: string; description: string }> = {
-  clawhub: {
-    name: 'ClawHub',
-    description: 'A large community registry of agent skills — the biggest single upstream source in the federated index.',
+  'hermes-hub': {
+    name: 'Hermes Hub',
+    description: 'Nous Research bundled skills (MIT) — the largest single upstream source in the federated index.',
   },
   'skills-sh': {
     name: 'skills.sh',
     description: 'A community skill-discovery search engine indexing agent skills published across GitHub and beyond.',
   },
-  github: {
-    name: 'GitHub taps',
-    description: 'Individually configured GitHub repositories (Anthropic, OpenAI, Hugging Face, NVIDIA, and community collections) tapped skill-by-skill or repo-by-repo.',
+  'well-known': {
+    name: 'Well-known discovery',
+    description: 'Any site exposing /.well-known/skills/index.json — real SKILL.md files discovered via the open convention.',
+  },
+  clawhub: {
+    name: 'ClawHub',
+    description: 'A large community registry of agent skills (clawhub.ai). Deep-link only — supply-chain unvetted, as-is.',
   },
   lobehub: {
     name: 'LobeHub',
@@ -114,52 +184,89 @@ const SOURCE_META: Record<string, { name: string; description: string }> = {
   },
   'browse-sh': {
     name: 'browse.sh',
-    description: 'Browser-automation and site-specific agent skills indexed from the browse.sh registry.',
+    description: 'Browser-automation and site-specific agent skills indexed from the browse.sh (Browserbase) registry.',
   },
-  official: {
-    name: 'Official',
-    description: 'Skills published directly by agent-platform vendors and maintainers as their own first-party listings.',
+  'github-oss': {
+    name: 'GitHub OSS',
+    description: 'Open-source SKILL.md repos tapped individually. Redistributable licenses install from origin; others deep-link.',
   },
-  'claude-marketplace': {
-    name: 'Claude Marketplace',
-    description: "Skills published through Anthropic's Claude plugin/skill marketplace convention.",
+  'github-anthropic': {
+    name: 'GitHub · Anthropic',
+    description: "Official Anthropic-maintained agent skills. Apache-2.0 entries install from origin; source-available ones deep-link.",
   },
-  'well-known': {
-    name: 'Well-known discovery',
-    description: 'Skills discovered via the `.well-known` agent-skill discovery convention.',
+  'github-openai': {
+    name: 'GitHub · OpenAI',
+    description: 'Curated OpenAI agent skills. The redistributable subset installs from origin.',
+  },
+  'github-huggingface': {
+    name: 'GitHub · Hugging Face',
+    description: 'Hugging Face Hub skills (Apache-2.0) — install straight from origin.',
+  },
+  'github-nvidia': {
+    name: 'GitHub · NVIDIA',
+    description: 'NVIDIA agent skills (Apache-2.0 / CC-BY-4.0) — install from origin.',
+  },
+  'github-gstack': {
+    name: 'GitHub · gstack',
+    description: 'gstack community skills (MIT) — install straight from origin.',
+  },
+  'github-superpowers': {
+    name: 'GitHub · Superpowers',
+    description: 'obra/superpowers skill pack (MIT) — install straight from origin.',
+  },
+  'github-marketing': {
+    name: 'GitHub · Marketing',
+    description: "coreyhaines31/marketingskills (MIT) — a marketing-focused skill pack tapped repo-by-repo.",
   },
 };
 
 type SourceMeta = { name: string; description: string };
 
-function metaFor(slug: string): SourceMeta {
-  return (
-    SOURCE_META[slug] || {
-      name: slug,
-      description: `Agent skills indexed from the ${slug} upstream registry.`,
-    }
-  );
+/** Turn "github-awesome-agent-skills" into "GitHub · Awesome Agent Skills",
+ *  "hoangnguyen-skills-standard" into "Hoangnguyen Skills Standard". Used
+ *  ONLY for slugs the live API reports that aren't in the hand-authored
+ *  SOURCE_META above (issue#277: "auto-generate a sane label from the slug
+ *  for unknown ones") — so a new source self-served into
+ *  config/federation_sources.yaml is never silently dropped from
+ *  crawlability here just because nobody wrote it a blurb yet. */
+function autoLabel(slug: string): string {
+  const isGithubTap = slug.startsWith('github-');
+  const rest = isGithubTap ? slug.slice('github-'.length) : slug;
+  const words = rest
+    .split(/[-_]+/)
+    .filter(Boolean)
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1));
+  const label = words.join(' ') || slug;
+  return isGithubTap ? `GitHub · ${label}` : label;
 }
 
-const SAMPLE_CAP = 80;
+function metaFor(slug: string): SourceMeta {
+  const known = SOURCE_META[slug];
+  if (known) return known;
+  const name = autoLabel(slug);
+  return {
+    name,
+    description: `Agent skills indexed from the ${slug} upstream registry.`,
+  };
+}
 
-/**
- * Rows requested per API call while collecting a source's entries.
- *
- * The filter API hard-caps `limit` at 200 (measured 2026-08-24: limit=200 ->
- * HTTP 200, limit=400 -> HTTP 422), so a bigger number does not fetch more —
- * it fails the request outright and, under this file's fail-closed contract,
- * silently costs the source its entire page. Never raise this above the
- * API's own cap; page with PAGE_OFFSET_STEP instead.
- */
-const PAGE_SIZE = 200;
+/** Sample cap per source. GET /api/skills/external returns at most ~20 rows
+ *  per source per call regardless of the `limit` query param (measured live
+ *  2026-08-25: limit=5/20/100 on a single source all returned the same 20
+ *  rows; a combined 28-source request returned exactly min(20, real count)
+ *  per source). There is no offset/pagination support on this endpoint, so
+ *  unlike the old /api/federation/filter-backed implementation this is not
+ *  a "how many do we ask for" knob — it is what the API hands back. */
+const SAMPLE_CAP = 20;
 
-/**
- * Hard bound on pagination so one huge upstream can never make the build hang
- * on the federation API. 5 pages = 1000 rows, comfortably above the largest
- * live bucket (`github`, 438 rows on 2026-08-24).
- */
-const MAX_PAGES = 5;
+/** Raw row shape from GET /api/skills/external's `external[]` array. */
+interface RawExternalRow {
+  slug?: unknown;
+  title?: unknown;
+  source?: unknown;
+  license?: unknown;
+  origin_url?: unknown;
+}
 
 /** Extract "owner/repo" from a GitHub-shaped origin URL. Null for anything
  *  else — non-github registries legitimately have no repo identity, and a
@@ -219,72 +326,81 @@ export function roundRobinSample(entries: FederationEntry[], cap: number): Feder
   return out;
 }
 
-/** Fetch one upstream source's total row count. Null on any failure. */
-async function fetchSourceTotal(source: string): Promise<number | null> {
-  const res = await fetchApi<{ total?: number }>(
-    `/api/federation/filter?source=${encodeURIComponent(source)}&limit=1`,
-    { authed: false, maxAttempts: 6, initialDelayMs: 500, maxDelayMs: 8000 },
-  );
-  if (!res.ok || !res.data || typeof res.data.total !== 'number') return null;
-  return res.data.total;
+function toEntry(row: RawExternalRow): FederationEntry {
+  const source = typeof row.source === 'string' ? row.source : '';
+  const slug = typeof row.slug === 'string' ? row.slug : '';
+  const title = typeof row.title === 'string' && row.title ? row.title : slug;
+  const license = typeof row.license === 'string' ? row.license : null;
+  const originUrl = typeof row.origin_url === 'string' ? row.origin_url : null;
+  return {
+    slug,
+    title,
+    upstream_source: source,
+    trust_level: null,
+    license,
+    tags: [],
+    origin_url: originUrl,
+  };
+}
+
+/** Fetch the live source list + per-source indexed counts + grand total, all
+ *  from ONE call to GET /api/skills/external (no `sources` param — this
+ *  shape always returns `available_sources`/`per_source`/`counts` regardless
+ *  of which, if any, sources are "enabled"). Null on any failure. */
+async function fetchSourceSummary(): Promise<{
+  slugs: string[];
+  perSourceIndexed: Record<string, number | null>;
+  grandTotal: number | null;
+} | null> {
+  const res = await fetchApi<{
+    available_sources?: unknown;
+    per_source?: Record<string, { indexed?: unknown } | undefined>;
+    counts?: { external_indexed?: unknown };
+  }>('/api/skills/external', { authed: false, maxAttempts: 6, initialDelayMs: 500, maxDelayMs: 8000 });
+
+  if (!res.ok || !res.data || !Array.isArray(res.data.available_sources) || res.data.available_sources.length === 0) {
+    return null;
+  }
+  const slugs = res.data.available_sources.filter((s): s is string => typeof s === 'string' && s.length > 0);
+  if (slugs.length === 0) return null;
+
+  const perSource = res.data.per_source || {};
+  const perSourceIndexed: Record<string, number | null> = {};
+  for (const slug of slugs) {
+    const v = perSource[slug]?.indexed;
+    perSourceIndexed[slug] = typeof v === 'number' && Number.isFinite(v) ? v : null;
+  }
+
+  const gt = res.data.counts?.external_indexed;
+  const grandTotal = typeof gt === 'number' && Number.isFinite(gt) ? gt : null;
+
+  return { slugs, perSourceIndexed, grandTotal };
 }
 
 /**
- * Fetch a capped sample of entries for one source. An entry only survives
- * into the returned list if it carries a non-empty `origin_url` — D-035
- * requires linking to the origin, and audit-links refuses a dead/empty href,
- * so an entry with no usable link is metadata without a citation and is
- * dropped rather than rendered with a broken or fabricated link.
- *
- * WHY THIS PAGES (measured live 2026-08-24, `source=github`, 438 rows):
- * the API returns rows in slug order, so taking the first SAMPLE_CAP (80)
- * rows yielded 53 garrytan/gstack + 17 anthropics/skills + 10
- * huggingface/skills and ZERO rows from NVIDIA/skills — the LARGEST repo in
- * that bucket at 299 rows — plus zero from openai/skills (44). The page
- * rendered its two biggest upstreams as literally invisible. Even one full
- * page (limit=200) still misses openai/skills entirely. So we collect the
- * whole bucket (bounded by MAX_PAGES), then round-robin across the real
- * repos so every upstream present in the data reaches the render.
- *
- * Fail-closed at every layer, as the rest of this file: a failed page stops
- * pagination and we sample whatever genuinely came back — never a fabricated
- * row, never a guessed total.
+ * Fetch a sample of entries for EVERY source in `slugs` in a single call —
+ * GET /api/skills/external?sources=<comma-joined>&limit=… returns up to
+ * SAMPLE_CAP rows per source in one round trip (measured live 2026-08-25:
+ * a 28-source combined request returned min(20, real count) rows per
+ * source). Returns a map of slug -> raw rows; a slug absent from the map
+ * (or with an empty array) means the API returned nothing usable for it —
+ * that source is dropped by the caller's fail-closed gate, never guessed.
  */
-async function fetchSourceSample(
-  source: string,
-): Promise<{ sample: FederationEntry[]; repos: FederationRepo[] }> {
-  const collected: FederationEntry[] = [];
-  for (let page = 0; page < MAX_PAGES; page++) {
-    const res = await fetchApi<{ results?: FederationEntry[] }>(
-      `/api/federation/filter?source=${encodeURIComponent(source)}&limit=${PAGE_SIZE}&offset=${page * PAGE_SIZE}`,
-      { authed: false, maxAttempts: 6, initialDelayMs: 500, maxDelayMs: 8000 },
-    );
-    if (!res.ok || !res.data || !Array.isArray(res.data.results)) break;
-    collected.push(...res.data.results);
-    // A short page means we've reached the end of this source.
-    if (res.data.results.length < PAGE_SIZE) break;
-  }
-  const linkable = collected.filter(
-    (e) => typeof e?.origin_url === 'string' && /^https?:\/\//.test(e.origin_url),
+async function fetchAllSamples(slugs: string[]): Promise<Record<string, RawExternalRow[]>> {
+  if (slugs.length === 0) return {};
+  const res = await fetchApi<{ external?: unknown }>(
+    `/api/skills/external?sources=${slugs.join(',')}&limit=100`,
+    { authed: false, maxAttempts: 6, initialDelayMs: 500, maxDelayMs: 8000 },
   );
-  // Repo counts come from the FULL collected set, not the capped sample: the
-  // sample is deliberately evened out by round-robin, so ranking by it would
-  // order the repos ~alphabetically and bury the biggest upstream in the
-  // <title>. Ranking by true size puts NVIDIA/skills (299 of 438) first,
-  // which is the entire SEO point of naming them.
-  return { sample: roundRobinSample(linkable, SAMPLE_CAP), repos: deriveRepos(linkable) };
-}
+  if (!res.ok || !res.data || !Array.isArray(res.data.external)) return {};
 
-/** Fetch the grand total across the whole federated index (no source filter). */
-async function fetchGrandTotal(): Promise<number | null> {
-  const res = await fetchApi<{ total?: number }>('/api/federation/filter?limit=1', {
-    authed: false,
-    maxAttempts: 6,
-    initialDelayMs: 500,
-    maxDelayMs: 8000,
-  });
-  if (!res.ok || !res.data || typeof res.data.total !== 'number') return null;
-  return res.data.total;
+  const bySource: Record<string, RawExternalRow[]> = {};
+  for (const row of res.data.external as RawExternalRow[]) {
+    const s = row && typeof row.source === 'string' ? row.source : null;
+    if (!s) continue;
+    (bySource[s] ||= []).push(row);
+  }
+  return bySource;
 }
 
 let _cachedOverview: Promise<FederationOverview> | null = null;
@@ -304,40 +420,60 @@ let _cachedOverview: Promise<FederationOverview> | null = null;
 export function getFederationOverview(): Promise<FederationOverview> {
   if (_cachedOverview) return _cachedOverview;
   _cachedOverview = (async () => {
-    // Rationale: a facets-endpoint failure means we cannot even enumerate
-    // which sources exist — fail the whole surface closed (ok=false, no
-    // sources, no total) rather than guess.
-    let sourceSlugs: string[] = [];
-    let trustLevels: string[] = [];
+    let slugs: string[] = [];
+    let perSourceIndexed: Record<string, number | null> = {};
+    let grandTotal: number | null = null;
+    let summaryOk = false;
+
     try {
-      const facets = await fetchApi<{ sources?: string[]; trust_levels?: string[] }>(
-        '/api/federation/filter/facets',
-        { authed: false, maxAttempts: 6, initialDelayMs: 500, maxDelayMs: 8000 },
-      );
-      if (facets.ok && facets.data && Array.isArray(facets.data.sources)) {
-        sourceSlugs = facets.data.sources;
-        trustLevels = Array.isArray(facets.data.trust_levels) ? facets.data.trust_levels : [];
+      const summary = await fetchSourceSummary();
+      if (summary) {
+        slugs = summary.slugs;
+        perSourceIndexed = summary.perSourceIndexed;
+        grandTotal = summary.grandTotal;
+        summaryOk = true;
       }
       // Rationale: this whole file must degrade, never throw and abort the
       // build — a build-time fetch failure here must not couple the WHOLE
       // portal build to federation-API uptime (WIS-737 incident class).
     } catch {
-      // Rationale: see above — fail closed to sourceSlugs=[] and continue;
-      // grand total below still gets its own independent attempt.
+      // Rationale: see above — fail closed and continue with the fallback
+      // slug list below.
     }
 
-    if (sourceSlugs.length === 0) {
-      return { ok: false, total: null, trustLevels: [], sources: [] };
+    // CRITICAL fail-closed rule (issue#277): the summary call failed outright
+    // (not just returned a short list) — fall back to the FULL current-list
+    // snapshot, never the old stale 8-source hardcode, so a still-working
+    // sample call below can populate pages for the real 28-source set.
+    if (slugs.length === 0) {
+      slugs = [...FALLBACK_SOURCE_SLUGS];
     }
 
-    const grandTotalPromise = fetchGrandTotal();
-    const perSource = await Promise.all(
-      sourceSlugs.map(async (slug) => {
-        const [total, entries] = await Promise.all([fetchSourceTotal(slug), fetchSourceSample(slug)]);
-        return { slug, total, sample: entries.sample, repos: entries.repos };
-      }),
-    );
-    const grandTotal = await grandTotalPromise;
+    let samplesBySource: Record<string, RawExternalRow[]> = {};
+    try {
+      samplesBySource = await fetchAllSamples(slugs);
+    } catch {
+      // Rationale: see above — every source ends up with zero sample rows,
+      // which the gate below excludes cleanly. Never a fabricated entry.
+    }
+
+    const perSource = slugs.map((slug) => {
+      const rawRows = samplesBySource[slug] || [];
+      const entries = rawRows
+        .map(toEntry)
+        .filter((e) => typeof e.origin_url === 'string' && /^https?:\/\//.test(e.origin_url));
+      // Total: the live indexed count when the summary call actually gave us
+      // one; otherwise the honest count of real, origin-linked sample rows
+      // (a true lower bound — never a number larger than what we verified).
+      const liveTotal = perSourceIndexed[slug];
+      const total = typeof liveTotal === 'number' ? liveTotal : (entries.length > 0 ? entries.length : null);
+      return {
+        slug,
+        total,
+        sample: roundRobinSample(entries, SAMPLE_CAP),
+        repos: deriveRepos(entries),
+      };
+    });
 
     // A source only becomes a built page (and an index table row) when it
     // has BOTH a real total AND at least one sample entry with a real,
@@ -352,7 +488,7 @@ export function getFederationOverview(): Promise<FederationOverview> {
       .map((s) => ({ slug: s.slug, meta: metaFor(s.slug), total: s.total, sample: s.sample, repos: s.repos }))
       .sort((a, b) => b.total - a.total);
 
-    return { ok: true, total: grandTotal, trustLevels, sources };
+    return { ok: summaryOk, total: grandTotal, trustLevels: [], sources };
   })();
   return _cachedOverview;
 }

@@ -14,14 +14,23 @@
  * "GitHub taps".
  *
  * THE INVARIANTS
- *   1. We over-fetch (FETCH_CAP > SAMPLE_CAP) before sampling — asking for
- *      exactly the render cap re-introduces the ordering bias.
- *   2. roundRobinSample() gives every distinct repo a slot in round 0, so no
+ *   1. roundRobinSample() gives every distinct repo a slot in round 0, so no
  *      repo present in the data can be absent from the render.
- *   3. deriveRepos() is derived from live origin_urls only — never a
+ *   2. deriveRepos() is derived from live origin_urls only — never a
  *      hardcoded repo list (that would be a fabricated attribution, D-035).
- *   4. The source page NAMES its repos in <title>/description/JSON-LD, which
+ *   3. The source page NAMES its repos in <title>/description/JSON-LD, which
  *      is the entire SEO point; an anonymous bucket page is the regression.
+ *
+ * issue#277 UPDATE: federation.ts's data layer was reworked to source the
+ * live source list + samples from GET /api/skills/external (one combined
+ * call for all sources, ~20 rows/source, no offset/pagination — that
+ * endpoint has no PAGE_SIZE/MAX_PAGES pagination knobs to test), replacing
+ * the old per-source-paginated /api/federation/filter walk. The
+ * roundRobinSample()/deriveRepos()/repoFromOriginUrl() pure functions this
+ * file exists to pin are UNCHANGED — issue#277 did not touch them — so the
+ * behavioral tests below are kept verbatim. Only the "source shape" tests
+ * that asserted the now-removed PAGE_SIZE/MAX_PAGES/fetchSourceSample
+ * pagination internals are replaced with the current SAMPLE_CAP contract.
  */
 
 import { describe, it, expect } from 'vitest';
@@ -161,60 +170,16 @@ describe('roundRobinSample — the invisibility fix', () => {
   });
 });
 
-describe('source shape — the guard must stay wired', () => {
+describe('source shape — the guard must stay wired (issue#277 contract)', () => {
   const lib = readFileSync(FEDERATION_LIB, 'utf-8');
   const pageSrc = readFileSync(SOURCE_PAGE, 'utf-8');
 
-  /**
-   * REGRESSION GUARD (cost a real build, 2026-08-24): the first cut of this
-   * fix "over-fetched" with limit=500. The filter API hard-caps limit at 200
-   * and returns HTTP 422 above it, so under this file's fail-closed contract
-   * EVERY source resolved to zero sample rows, every source page was dropped
-   * from the build, and dist/federation/ shipped with the index page only.
-   * The build stayed green — the pages simply ceased to exist. Never request
-   * more than the API's cap; page instead.
-   */
-  it('never requests more rows per call than the API accepts (limit cap = 200)', () => {
-    const pageSize = Number(lib.match(/const PAGE_SIZE = (\d+)/)?.[1]);
-    expect(pageSize).toBeGreaterThan(0);
-    expect(pageSize).toBeLessThanOrEqual(200);
-  });
-
-  it('paginates with an offset instead of one oversized request', () => {
-    expect(lib).toMatch(/limit=\$\{PAGE_SIZE\}&offset=\$\{page \* PAGE_SIZE\}/);
-    expect(lib).not.toMatch(/limit=\$\{SAMPLE_CAP\}/);
-  });
-
-  it('pagination is bounded so a huge upstream cannot hang the build', () => {
-    const maxPages = Number(lib.match(/const MAX_PAGES = (\d+)/)?.[1]);
-    expect(maxPages).toBeGreaterThan(1);
-    expect(maxPages).toBeLessThanOrEqual(20);
-    expect(lib).toMatch(/page < MAX_PAGES/);
-  });
-
-  it('stops early on a short page (no pointless extra round-trips)', () => {
-    expect(lib).toMatch(/results\.length < PAGE_SIZE\) break/);
-  });
-
-  it('fetchSourceSample routes through roundRobinSample', () => {
-    expect(lib).toMatch(/sample: roundRobinSample\(linkable, SAMPLE_CAP\)/);
+  it('fetchAllSamples routes every source through roundRobinSample via SAMPLE_CAP', () => {
+    expect(lib).toMatch(/roundRobinSample\(entries, SAMPLE_CAP\)/);
   });
 
   it('the overview attaches derived repos to every source page', () => {
-    expect(lib).toMatch(/repos: s\.repos/);
-  });
-
-  /**
-   * Repo ranking must come from the FULL collected set, never the capped
-   * sample. round-robin deliberately evens the sample out (17/17/17/17/17 on
-   * the live github bucket), so ranking by it ordered the repos
-   * ~alphabetically and put "anthropics, garrytan" in the <title> while
-   * NVIDIA — 299 of the 438 real rows — came third. Ranking by true size is
-   * the difference between naming the biggest upstream and burying it.
-   */
-  it('ranks repos by TRUE size, not by the evened-out sample', () => {
-    expect(lib).toMatch(/repos: deriveRepos\(linkable\)/);
-    expect(lib).not.toMatch(/deriveRepos\(s\.sample\)/);
+    expect(lib).toMatch(/repos: deriveRepos\(entries\)/);
   });
 
   it('never hardcodes an upstream repo name as data (must be derived)', () => {
