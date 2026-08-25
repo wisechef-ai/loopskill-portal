@@ -178,13 +178,13 @@ const EXPECTED_NON_2XX: StatusRule[] = [
   },
   {
     method: 'POST',
-    url: `${SITE}/api/cookbooks`,
+    url: `${SITE}/api/bundles`,
     expectedStatus: 401,
-    reason: 'Documented as requiring auth ("All bundle endpoints require auth") — anonymous call correctly 401s.',
+    reason: 'Documented as requiring auth ("All bundle endpoints require auth"); anonymous call correctly 401s.',
   },
   {
     method: 'POST',
-    url: `${SITE}/api/cookbooks/UUID/skills`,
+    url: `${SITE}/api/bundles/UUID/skills`,
     expectedStatus: 401,
     reason: 'Same bundle-auth contract as above; the literal `UUID` placeholder in the doc example never resolves to a real bundle regardless, but auth is checked first.',
   },
@@ -228,7 +228,7 @@ interface SkipRule {
 const SKIP_LIST: SkipRule[] = [
   {
     method: 'POST',
-    url: `${SITE}/api/cookbooks/UUID/skills`,
+    url: `${SITE}/api/bundles/UUID/skills`,
     reason:
       'PLACEHOLDER (not skipped, see EXPECTED_NON_2XX) — kept here only as a documentation ' +
       'note: the literal `UUID` token is never a real bundle id. It is NOT actually skipped ' +

@@ -120,39 +120,43 @@ const telemetryBodyEx = `{
       <pre><code>curl "https://app.loopskill.io/api/skills/trending?period=week&limit=10"</code></pre>
       <p><strong>Query params:</strong> <code>period</code> (week | month), <code>limit</code> (1–50).</p>
 
-      <!-- ────────────────────────────────── COOKBOOKS ── -->
+      <!-- ────────────────────────────────── BUNDLES ── -->
       <h2>Bundles</h2>
       <p>All bundle endpoints require auth (<code>x-api-key</code> header).</p>
 
-      <h3>POST /api/cookbooks</h3>
+      <h3>POST /api/bundles</h3>
       <p>Create a new bundle.</p>
-      <pre><code>curl -X POST -H "x-api-key: $RECIPES_API_KEY" \
+      <pre><code>curl -X POST -H "x-api-key: *** \
   -H "Content-Type: application/json" \
   -d '&#123;"name": "My Team Bundle"&#125;' \
-  https://app.loopskill.io/api/cookbooks</code></pre>
+  https://app.loopskill.io/api/bundles</code></pre>
       <p><strong>Response:</strong> <code>201</code> with bundle object including <code>id</code>.</p>
 
-      <h3>GET /api/cookbooks</h3>
+      <h3>GET /api/bundles</h3>
       <p>List all bundles for the authenticated account.</p>
 
-      <h3>GET /api/cookbooks/&#123;cookbook_id&#125;</h3>
+      <h3>GET /api/bundles/&#123;bundle_id&#125;</h3>
       <p>Get a single bundle with its skill list and version pins.</p>
 
-      <h3>POST /api/cookbooks/&#123;cookbook_id&#125;/skills</h3>
+      <h3>POST /api/bundles/&#123;bundle_id&#125;/skills</h3>
       <p>Add a skill to a bundle (pins to current latest version).</p>
-      <pre><code>curl -X POST -H "x-api-key: $RECIPES_API_KEY" \
+      <pre><code>curl -X POST -H "x-api-key: *** \
   -H "Content-Type: application/json" \
   -d '&#123;"slug": "seo-audit-engine"&#125;' \
-  "https://app.loopskill.io/api/cookbooks/UUID/skills"</code></pre>
+  "https://app.loopskill.io/api/bundles/UUID/skills"</code></pre>
 
-      <h3>DELETE /api/cookbooks/&#123;cookbook_id&#125;/skills/&#123;slug&#125;</h3>
+      <h3>DELETE /api/bundles/&#123;bundle_id&#125;/skills/&#123;slug&#125;</h3>
       <p>Remove a skill from a bundle.</p>
 
-      <h3>GET /api/cookbooks/&#123;cookbook_id&#125;/sync</h3>
+      <h3>GET /api/bundles/&#123;bundle_id&#125;/sync</h3>
       <p>Get the latest-version diff for all skills in the bundle.</p>
 
-      <h3>GET /api/cookbooks/&#123;cookbook_id&#125;/manifest</h3>
+      <h3>GET /api/bundles/&#123;bundle_id&#125;/manifest</h3>
       <p>Get the full skill manifest (slugs + pinned versions + checksums).</p>
+      <p class="text-xs text-muted-soft mt-1">
+        <code>/api/cookbooks/*</code> still works as a backward-compatible alias for every
+        endpoint above — new integrations should use <code>/api/bundles</code>.
+      </p>
 
       <!-- ────────────────────────────────── API KEYS ── -->
       <h2>API Keys</h2>
