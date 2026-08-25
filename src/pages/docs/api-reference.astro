@@ -9,7 +9,7 @@ const searchResponseEx = `{
     {
       "slug": "seo-audit-engine",
       "title": "SEO Audit Engine",
-      "tier": "cook",
+      "tier": "pro",
       "quality_score": 0.92,
       "install_count_total": 847,
       "last_verified": "2026-05-01",
@@ -32,9 +32,9 @@ const installResponseEx = `{
   }
 }`;
 
-const accessGrantedEx = `{"access": true, "tier": "cook", "slug": "seo-audit-engine"}`;
+const accessGrantedEx = `{"access": true, "tier": "pro", "slug": "seo-audit-engine"}`;
 const accessDeniedEx = `{"access": false, "reason": "tier_required",
- "required_tier": "cook", "upgrade_url": "/pricing"}`;
+ "required_tier": "pro", "upgrade_url": "/pricing"}`;
 
 
 const apiKeyResponseEx = `{"key": "rec_...", "id": "uuid", "name": "CI server"}`;
@@ -55,8 +55,9 @@ const telemetryBodyEx = `{
     <div class="prose">
       <p>Base URL: <code>https://app.loopskill.io/api</code></p>
       <p>
-        Auth: <code>x-api-key: rec_xx...</code> header. All install and write endpoints require
-        a valid API key. Read-only endpoints (search, skill detail) are public.
+        Auth: <code>x-api-key: $LOOPSKILL_API_KEY</code> header. Write endpoints (create/delete
+        bundles, keys) and locked/tier-gated skill installs require a valid API key. Read-only
+        endpoints (search, skill detail) and free-tier skill installs are public — no key needed.
       </p>
       <p>Rate limit: 60 req/min per key (burst 10). Exceeding returns <code>429</code> with
       a <code>Retry-After</code> header.</p>
@@ -77,7 +78,7 @@ const telemetryBodyEx = `{
         <li><code>page_size</code> — 1–100, default 20</li>
         <li><code>page</code> — 1+ (default 1)</li>
         <li><code>category</code> — marketing | code | web-scraping | ops | sales | sim-robotics</li>
-        <li><code>tier</code> — free | cook | operator</li>
+        <li><code>tier</code> — free | pro | pro_plus</li>
         <li><code>sort</code> — updated_at | created_at | title | quality_score (default: quality_score)</li>
         <li><code>is_public</code> — true | false</li>
       </ul>
@@ -92,7 +93,7 @@ const telemetryBodyEx = `{
       <p><strong>Errors:</strong> <code>404</code> if slug not found.</p>
 
       <h3>GET /api/skills/install</h3>
-      <p>Auth required (every install needs a key — including free-tier skills).</p>
+      <p>Auth required for locked/tier-gated skills. Free-tier skills install anonymously — no key needed. (The MCP transport is stricter: it requires a key for every call, including free-tier lookups — see <a href="/docs/install">the install guide</a>.)</p>
       <pre><code>curl -H "x-api-key: $RECIPES_API_KEY" \
   "https://app.loopskill.io/api/skills/install?slug=super-memory&mode=files"</code></pre>
       <p><strong>Query params:</strong></p>
@@ -109,7 +110,7 @@ const telemetryBodyEx = `{
       <h3>GET /api/skills/access</h3>
       <p>Auth required. Pre-flight check before install — confirms tier without consuming an install slot.</p>
       <pre><code>curl -H "x-api-key: $RECIPES_API_KEY" \
-  "https://app.loopskill.io/api/skills/access?slug=seo-audit-engine"</code></pre>
+  "https://app.loopskill.io/api/skills/access?skill=super-memory"</code></pre>
       <p><strong>Response — access granted:</strong></p>
       <pre><code set:text={accessGrantedEx}></code></pre>
       <p><strong>Response — access denied:</strong></p>
@@ -117,8 +118,8 @@ const telemetryBodyEx = `{
 
       <h3>GET /api/skills/trending</h3>
       <p>Public. Returns trending skills by install velocity.</p>
-      <pre><code>curl "https://app.loopskill.io/api/skills/trending?period=week&limit=10"</code></pre>
-      <p><strong>Query params:</strong> <code>period</code> (week | month), <code>limit</code> (1–50).</p>
+      <pre><code>curl "https://app.loopskill.io/api/skills/trending?period=week&page_size=10"</code></pre>
+      <p><strong>Query params:</strong> <code>period</code> (week | month), <code>page_size</code> (1–100, default 20; the legacy <code>limit</code> param is silently ignored — use <code>page_size</code>).</p>
 
       <!-- ────────────────────────────────── COOKBOOKS ── -->
       <h2>Bundles</h2>
@@ -157,19 +158,19 @@ const telemetryBodyEx = `{
       <!-- ────────────────────────────────── API KEYS ── -->
       <h2>API Keys</h2>
 
-      <h3>POST /api-keys</h3>
+      <h3>POST /api/api-keys</h3>
       <p>Create a new <code>rec_</code> API key.</p>
       <pre><code>curl -X POST -H "Authorization: Bearer $JWT" \
   -H "Content-Type: application/json" \
   -d '&#123;"name": "CI server"&#125;' \
-  https://app.loopskill.io/api-keys</code></pre>
+  https://app.loopskill.io/api/api-keys</code></pre>
       <p><strong>Response:</strong> <code>201</code> — key shown once, store securely.</p>
       <pre><code set:text={apiKeyResponseEx}></code></pre>
 
-      <h3>GET /api-keys</h3>
+      <h3>GET /api/api-keys</h3>
       <p>List all API keys (hashed — raw keys not re-shown).</p>
 
-      <h3>DELETE /api-keys/&#123;key_id&#125;</h3>
+      <h3>DELETE /api/api-keys/&#123;key_id&#125;</h3>
       <p>Revoke an API key immediately. Inflight requests 401 within 60s.</p>
 
       <!-- ────────────────────────────────── TELEMETRY ── -->

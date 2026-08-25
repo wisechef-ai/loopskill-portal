@@ -110,7 +110,7 @@ anonymous telemetry ping (optional)`}</code></pre>
         hashed agent class, hashed user ID, duration in seconds, and retry count. No payload
         contents, no credential fingerprints, no inputs or outputs.
       </p>
-      <p>To opt out entirely, set the environment variable before starting your agent:</p>
+      <p>To opt out entirely, set the environment variable before starting your agent (<code>RECIPES_TELEMETRY</code> is a legacy variable name, still canonical):</p>
       <pre><code>export RECIPES_TELEMETRY=off</code></pre>
       <p>
         Pro subscribers can opt into pseudonymous payload sampling to improve their
@@ -125,8 +125,9 @@ anonymous telemetry ping (optional)`}</code></pre>
       <ul>
         <li>
           <strong>Bundle sync (Pro tier):</strong> create a bundle in the dashboard,
-          add skills to it, then call <code>loopskill_sync</code> (MCP) or <code>loopskill sync</code>
-          (CLI) on each host. All agents stay on the same pinned versions.
+          add skills to it, then call <code>loopskill_sync</code> via the MCP tool or meta-skill
+          on each host — the sync loop runs through the MCP tool, not a standalone CLI
+          subcommand today. All agents stay on the same pinned versions.
         </li>
         <li>
           <strong>Fleet keys (Pro tier):</strong> issue a <code>rec_fleet_*</code> key

@@ -116,12 +116,11 @@ curl -sL https://app.loopskill.io/skill \
 
       <h2>Step 4 — Sync to stay current</h2>
       <p>
-        Skills are versioned. Run sync periodically to pull patch updates:
-      </p>
-      <pre><code>loopskill sync</code></pre>
-      <p>
-        Or use the MCP tool: ask your agent "sync my LoopSkill skills to latest".
-        The <code>loopskill_sync</code> MCP tool updates all installed skills in your bundle.
+        Skills are versioned. Ask your agent — "sync my LoopSkill skills to latest" — to
+        pull patch updates. The sync loop runs via the <code>loopskill_sync</code> MCP tool
+        (or the LoopSkill meta-skill on a non-MCP agent); the standalone <code>loopskill</code>
+        CLI does not have a <code>sync</code> subcommand today (it ships
+        <code>import</code>/<code>diff</code>/<code>pull</code>/<code>apply</code> only).
       </p>
 
       <h2>What's in the catalog</h2>

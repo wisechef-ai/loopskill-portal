@@ -19,9 +19,19 @@
  *   #215 — every docs page recommends ONE canonical MCP transport:
  *          POST https://app.loopskill.io/api/mcp/http/ (StreamableHTTP).
  *          No page may tell a reader to `git clone loopskill-mcp`,
- *          `pip install loopskill-mcp`, `uvx loopskill-mcp`, or hit
- *          `/api/mcp/sse` — all four are dead (verified: 404 repo, no PyPI
- *          package, 405/500 on SSE).
+ *          `pip install loopskill-mcp`, or hit `/api/mcp/sse` — all three
+ *          are dead (verified: 404 repo, 405/500 on SSE).
+ *
+ *          UPDATE (docs-drift-wave, 2026-08-25): `uvx loopskill-mcp` is
+ *          EXCLUDED from this ban as of today. `loopskill-mcp` 0.9.42
+ *          published to PyPI 2026-08-25 (verified live:
+ *          `curl https://pypi.org/pypi/loopskill-mcp/json` returns a real
+ *          package whose README documents `uvx loopskill-mcp` as the
+ *          supported stdio-bridge install path). docs/mcp.astro and
+ *          docs/install.astro now recommend it as the RECOMMENDED option
+ *          for stdio-only MCP clients — this is a real, verified command,
+ *          not the dead path #215 was filed against. `git clone`/`pip
+ *          install` remain dead and stay banned below.
  *   #216 — /docs/mcp's tool list matches the real 45-tool MCP surface (no
  *          `loopskill_detail` / `loopskill_trending` / `loopskill_stats`,
  *          which do not exist as MCP tools).
@@ -71,10 +81,12 @@ describe('#215 — one canonical MCP transport across all docs pages', () => {
       expect(src).not.toContain('api/mcp/sse');
     });
 
-    it(`${name}: does not tell readers to clone/pip/uvx the nonexistent loopskill-mcp package`, () => {
+    it(`${name}: does not tell readers to git-clone or pip-install the (still nonexistent as a repo/pip target) loopskill-mcp package`, () => {
       expect(src).not.toMatch(/git clone.*loopskill-mcp/);
       expect(src).not.toMatch(/pip install (fastmcp|loopskill-mcp)/);
-      expect(src).not.toMatch(/uvx loopskill-mcp/);
+      // `uvx loopskill-mcp` is deliberately NOT banned here — see the file-header
+      // UPDATE note: the PyPI package went live 2026-08-25 and is now a real,
+      // verified command. Banning it would make this test fight a real fix.
     });
   }
 });

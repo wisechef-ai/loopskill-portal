@@ -6,6 +6,8 @@ author: 'WiseChef'
 tags: ['gohighlevel', 'cli', 'agencies', 'automation', 'recipes']
 ---
 
+> **Correction (2026-08-25):** This post predates the Recipes→LoopSkill rename. Commands like `npm install -g @recipes/cli` / `recipes install` no longer exist. The current install is one phrase to your agent — "Install the loopskill skill from app.loopskill.io/skill" — or `uvx loopskill-mcp` for MCP clients. See [the install guide](/docs/install).
+
 GoHighLevel is the operating system for marketing agencies. Pipelines, contacts, campaigns, funnels, calendars, reputations -- it does everything. But doing everything through the GHL dashboard is like writing a novel in Google Docs with your mouse. Possible. Painful.
 
 Recipes' GoHighLevel skill turns GHL into a command-line tool. Your AI agent (Claude Code, Cursor, Windsurf, or any Anthropic Skills-compatible host) can now manage your entire GHL stack from the terminal.

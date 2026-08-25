@@ -113,13 +113,12 @@ curl -X POST -H "x-api-key: $RECIPES_API_KEY" \\
 
       <h2>Step 5 — Sync agents</h2>
       <p>
-        On each agent machine, trigger a sync:
+        On each agent machine, trigger a sync via the MCP tool (the standalone
+        <code>loopskill</code> CLI does not have a <code>sync</code> subcommand today —
+        it ships <code>import</code>/<code>diff</code>/<code>pull</code>/<code>apply</code> only):
       </p>
       <pre><code>{`// Via MCP (from any agent in the fleet):
-loopskill_fleet_sync({ fleet_id: "uuid...", dry_run: false })
-
-// Via CLI:
-loopskill sync`}</code></pre>
+loopskill_fleet_sync({ fleet_id: "uuid...", dry_run: false })`}</code></pre>
       <p>The sync response shows what changed:</p>
       <pre><code>{`{
   "fleet_id": "uuid...",
@@ -155,11 +154,15 @@ loopskill sync`}</code></pre>
 
       <h2>Automation pattern: nightly sync</h2>
       <p>
-        For unattended agents (CI runners, always-on servers), add a sync to your cron or
-        systemd timer:
+        For unattended agents (CI runners, always-on servers), the sync loop runs via the
+        MCP tool or meta-skill — there is no standalone CLI <code>sync</code> subcommand today
+        (the published <code>loopskill</code> CLI ships <code>import</code>/<code>diff</code>/
+        <code>pull</code>/<code>apply</code> only). Schedule an agent invocation that calls
+        <code>loopskill_fleet_sync</code> from your cron or systemd timer, e.g. a headless
+        agent run that logs to <code>/var/log/loopskill-sync.log</code>:
       </p>
       <pre><code>{`# crontab entry (runs daily at 05:30 UTC)
-30 5 * * * LOOPSKILL_API_KEY=rec_fleet_... loopskill sync >> /var/log/recipes-sync.log 2>&1`}</code></pre>
+30 5 * * * LOOPSKILL_API_KEY=rec_fleet_... /path/to/your/agent --prompt "call loopskill_fleet_sync" >> /var/log/loopskill-sync.log 2>&1`}</code></pre>
 
       <h2>Security considerations</h2>
       <ul>

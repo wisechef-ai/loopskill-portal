@@ -9,7 +9,7 @@
 // shell. If you don't have that bridge, prompt for the key on first load.
 //
 // All API calls hit POST/GET/DELETE under /api/forks/* with `x-api-key`.
-// Cook-tier users land here with a 402 — render the upgrade banner.
+// Free-tier users land here with a 402 — render the upgrade banner.
 //
 // v1 deliberately uses a textarea instead of a WYSIWYG markdown editor.
 // The "Save" button POSTs a fresh version; visibility toggle PATCHes.
@@ -36,7 +36,7 @@ const API_BASE = import.meta.env.PUBLIC_LOOPSKILL_API_BASE || import.meta.env.PU
     </section>
 
     <section id="forks-empty" hidden>
-      <p>You don't have any forks yet. Run <code>recipes fork &lt;slug&gt;</code> to create one.</p>
+      <p>You don't have any forks yet. Ask your agent to call <code>loopskill_tailor</code> (or say "fork &lt;slug&gt;") to create one.</p>
     </section>
 
     <ul id="fork-list"></ul>
@@ -61,7 +61,7 @@ const API_BASE = import.meta.env.PUBLIC_LOOPSKILL_API_BASE || import.meta.env.PU
           Visibility
           <select class="fork-visibility">
             <option value="private">private</option>
-            <option value="team">team (Operator)</option>
+            <option value="team">team (Pro)</option>
             <option value="public">public</option>
           </select>
         </label>
@@ -142,7 +142,7 @@ const API_BASE = import.meta.env.PUBLIC_LOOPSKILL_API_BASE || import.meta.env.PU
           readme: node.querySelector(".fork-readme").value,
           visibility: node.querySelector(".fork-visibility").value,
         });
-        alert("Save: PATCH endpoint ships next batch (D.4 v2). Use `recipes publish-fork` for now.");
+        alert("Save: PATCH endpoint ships next batch (D.4 v2). Ask your agent to call loopskill_tailor_version for now.");
       });
 
       node.querySelector(".install-btn").addEventListener("click", async () => {

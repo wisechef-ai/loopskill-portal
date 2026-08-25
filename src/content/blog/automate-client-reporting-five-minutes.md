@@ -6,6 +6,8 @@ author: 'WiseChef'
 tags: ['client-reporting', 'automation', 'agencies', 'seo', 'gohighlevel']
 ---
 
+> **Correction (2026-08-25):** This post predates the Recipes→LoopSkill rename. Commands like `npm install -g @recipes/cli` / `recipes install` no longer exist. The current install is one phrase to your agent — "Install the loopskill skill from app.loopskill.io/skill" — or `uvx loopskill-mcp` for MCP clients. See [the install guide](/docs/install).
+
 Every agency knows the drill. Friday afternoon. Five client reports due by 5 PM. You are copy-pasting numbers from Google Analytics, screenshots from GoHighLevel, and campaign metrics from Meta Ads into a Google Slide template that has not been updated since Q2.
 
 It takes 45 minutes per client. With ten clients, that is your entire Friday.

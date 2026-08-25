@@ -32,7 +32,7 @@ import CrossSell from '../../components/CrossSell.astro';
       <pre><code>export LOOPSKILL_API_KEY=rec_xx...   # add to your ~/.bashrc or .zshrc</code></pre>
       <p>
         You don't need a paid subscription to submit a skill — submissions are open to all
-        API key holders. A subscription is only required to <em>install</em> cook-tier skills.
+        API key holders. A subscription is only required to <em>install</em> pro-tier skills.
       </p>
 
       <!-- ──── STEP 2 ──── -->
@@ -76,7 +76,7 @@ description: >
   One-sentence description of what this skill does and who it's for.
   Under 200 chars. This is what users see in search results.
 version: 1.0.0
-tier: cook        # free | cook | operator
+tier: pro        # free | pro | pro_plus
 license: MIT      # SPDX identifier
 category: code    # marketing | code | web-scraping | ops | sales | sim-robotics
 ---
@@ -131,7 +131,7 @@ loopskill_publish_request({
   content: "<SKILL.md contents>",
   version: "1.0.0",
   description: "One-sentence description",
-  tier: "cook",
+  tier: "pro",
   license: "MIT"
 })`}</code></pre>
 
@@ -206,7 +206,8 @@ loopskill_publish_request({
       </p>
       <p>
         Users on a Pro subscription who have your skill in a bundle will see the update
-        the next time they run <code>loopskill_sync</code> or <code>loopskill sync</code>.
+        the next time their agent calls <code>loopskill_sync</code> (MCP tool / meta-skill —
+        there is no standalone CLI <code>sync</code> subcommand today).
       </p>
 
       <!-- ──── EARNINGS ──── -->
