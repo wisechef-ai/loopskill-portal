@@ -84,21 +84,36 @@ build-time fetch couples the build to API uptime (WIS-737 incident class;
 island over `src/lib/api.ts` (`API_BASE = https://app.loopskill.io`; the legacy
 `recipes.wisechef.ai` 301s here as of 2026-07-10).
 
-## Build, CI, deploy (deploy is MANUAL)
+## Build, CI, deploy (CI DEPLOYS — this is not manual)
 
 - `npm run build` = `astro build && bash scripts/assert-dist.sh`.
-- CI (`.github/workflows/ci.yml`, runner `wisechef-runner`): astro check,
-  build, page-size anti-SPA-fallback asserts, auth-marker guard (greps
-  `dist/index.html` AND `dist/_astro/` — Astro externalizes big scripts).
-  CI does NOT deploy.
-- Deploy: `npm run build` -> backup prod dist -> `rsync -az --delete dist/
-  wisechef-hq:/home/wisechef/loopskill-portal/dist/`. Caddy serves it.
-  NOTE (ah_0706): app.loopskill.io Caddy `root *` is
+- CI (`.github/workflows/ci.yml`, job "Build (Astro) + deploy on main", runner
+  `wisechef-runner`): astro check, build, page-size anti-SPA-fallback asserts,
+  auth-marker guard (greps `dist/index.html` AND `dist/_astro/` — Astro
+  externalizes big scripts), **then rsyncs `dist/` to prod in the SAME job**
+  (artifactfree_0730: build+deploy were merged so a passing build cannot ship
+  a different artifact than the one tested). A merge to `main` DEPLOYS.
+  *(Corrected 2026-08-25: this section previously said "deploy is MANUAL",
+  which predates artifactfree_0730 and would send an agent doing a redundant
+  hand-rsync over a deploy that already happened.)*
+- **Nightly rebuild (added 2026-08-25, PR #88):** `schedule: 20 3 * * *` on the
+  same workflow, with all 7 deploy gates and the concurrency group widened from
+  `event_name == 'push'` to `push || schedule`. This exists because the portal
+  is STATIC: skills published through the API are invisible on the site until
+  something rebuilds it. It REPLACED `ops/install-rebuild-timer.sh`, which
+  targeted the ARCHIVED `/home/wisechef/recipes-portal` path and was never
+  installed on the host — i.e. there was no working scheduled rebuild at all.
+  Verify it is still firing: `gh run list --repo wisechef-ai/loopskill-portal
+  --workflow ci.yml --event schedule --limit 3` must show recent runs.
+- Deploy target: Caddy `root *` for app.loopskill.io is
   `/home/wisechef/loopskill-portal/dist` — NOT `recipes-portal/dist` (that is
   the legacy recipes.wisechef.ai root, verify with `grep -A40 'app.loopskill.io'
-  /etc/caddy/Caddyfile` on wisechef-hq). Rsyncing to recipes-portal/dist is a
-  silent no-op on this domain — always re-probe the live URL after deploy.
-  "Merged to main" is NOT "live" — re-probe live URLs after rsync.
+  /etc/caddy/Caddyfile` on wisechef-hq). Writing to recipes-portal/dist is a
+  silent no-op on this domain.
+  **"Merged to main" is NOT "live" — always re-probe the live URL.** Cheap
+  proof the deploy landed: `curl -sI https://app.loopskill.io/ | grep -i
+  last-modified` should be minutes old, and the run's `headSha` should equal
+  `git rev-parse origin/main`.
 - Redirects: static SSG means redirects are client-JS or Caddy. Cut pages
   301 in `/etc/caddy/Caddyfile` on wisechef-hq (`/graph`->`/skills`,
   `/stats`->`/home`, `/vs`->wisechef.ai, `/whitepaper`->`/whitepaper.pdf`,
