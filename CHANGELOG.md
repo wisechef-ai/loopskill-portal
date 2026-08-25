@@ -4,6 +4,31 @@ All notable changes to recipes-portal (Astro 5 static site at recipes.wisechef.a
 
 ## [Unreleased]
 
+### Changed — landing_onramp (2026-08-25)
+
+- **Homepage rebuilt as "THE ON-RAMP"** (landing-concepts v2, Concept 3 + Concept 2's
+  drift matrix): career-path hero ("Deploying AI agents for clients is a job now.
+  This is its toolkit.") with a 4-station journey rail — Day 1 → First client →
+  Fleet → Get paid — each station expanding inline (ARIA tabs, deep-linkable via
+  `/#station-<id>`, all four server-rendered for crawlers/no-JS).
+- NEW `src/components/JourneyRail.astro` — the station rail (progressive
+  enhancement: panels visible in static HTML, JS only toggles).
+- NEW `src/components/FleetDriftMatrix.astro` — interactive fleet drift-matrix
+  demo in the Fleet station: 5 agents × 5 skills, three-way verdict cells
+  (declared/installed/extras), hover/click inspection, per-row Converge
+  animation, reset. Fleet state is simulated and labelled DEMO; column
+  headers + declared versions are LIVE catalog data (slug + `latest_version`),
+  fail-closed when unresolvable.
+- First public surfacing of: the offline `loopskill import`/`diff` CLI, bundle
+  fork/preview, and the staged connector-index count (live-bound, phrased
+  "indexed, review-gated").
+- FIX: bootcamp step chips rendered blank when `/api/bootcamp/{id}` returns
+  `title: null` for catalog-absent steps — now falls back to the slug.
+- NEW `tests/landing-onramp.test.ts` — 41 assertions pinning the rail contract,
+  matrix interactivity/honesty (DEMO label, no hardcoded slugs/versions), claim
+  grounding, and one-click reachability of the top-value capability docs.
+
+
 ## [v0.5.0] — 2026-05-20 — recipes_2005 sprint
 
 ### Added

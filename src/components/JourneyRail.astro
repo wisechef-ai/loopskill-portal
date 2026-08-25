@@ -1,0 +1,272 @@
+---
+// JourneyRail.astro — the "ON-RAMP" hero rail (landing_onramp, Concept 3).
+//
+// Four stations the visitor CLICKS; each expands inline, no page change:
+//   Day 1  →  First client  →  Fleet  →  Get paid
+//
+// WHY A RAIL AND NOT FOUR SECTIONS
+// --------------------------------
+// The feature matrix (2026-08-21) found only 6 of the 10 highest-ICP-value
+// capabilities were reachable within one click of the homepage. A rail puts
+// all four stations' content in the SAME document — so every station is zero
+// clicks away for a crawler/agent and one click away for a human.
+//
+// PROGRESSIVE ENHANCEMENT (this is load-bearing, do not "fix" it)
+// --------------------------------------------------------------
+// Every panel is rendered VISIBLE in the static HTML. JS then hides all but
+// the active one on init. Consequences that are deliberate:
+//   * No-JS visitors and crawlers read all four stations — the GEO/SEO win
+//     the concept was picked for (each station is an anchor target).
+//   * scripts/audit-links.mjs can resolve every link in every station,
+//     because they are all server-rendered markup, not runtime strings.
+//   * AGENTS.md Trap C: we never branch a JS-fill target away at build time.
+//
+// The four slot names are STATIC on purpose. A dynamic `<slot name={x}/>` is
+// not a shape this repo uses anywhere, and the station set is a fixed
+// narrative (day one → first client → fleet → revenue), not a list.
+//
+// A11y: WAI-ARIA tabs pattern — roving tabindex, ArrowLeft/Right, Home/End,
+// aria-controls/aria-labelledby wired both ways. Deep links work:
+// /#station-fleet opens the Fleet station (that is the URL the Fleet
+// drift-matrix demo is shared under).
+import Icon from './Icon.astro';
+
+// The station shape is declared inline rather than exported: importing a type
+// OUT of an .astro module is not a pattern this repo uses, and the set is a
+// fixed four-item narrative, so the caller writing it out is clearer than a
+// cross-file type import that only Astro's TS plugin can resolve.
+interface Props {
+  stations: {
+    id: 'day-1' | 'first-client' | 'fleet' | 'get-paid';
+    num: string;
+    label: string;
+    sub: string;
+    icon: string;
+  }[];
+}
+
+const { stations } = Astro.props;
+---
+
+<div class="journey-rail w-full max-w-5xl mx-auto text-left" data-component="journey-rail">
+  <!-- Station selector -->
+  <div
+    class="journey-tabs"
+    role="tablist"
+    aria-label="The path from day one to a paying client's fleet"
+    id="journey-tablist"
+  >
+    {stations.map((s, i) => (
+      <button
+        type="button"
+        role="tab"
+        id={`tab-${s.id}`}
+        class="journey-tab"
+        data-station={s.id}
+        aria-controls={`station-${s.id}`}
+        aria-selected={i === 0 ? 'true' : 'false'}
+        tabindex={i === 0 ? 0 : -1}
+      >
+        <span class="journey-tab-num">{s.num}</span>
+        <span class="journey-tab-body">
+          <span class="journey-tab-label">{s.label}</span>
+          <span class="journey-tab-sub">{s.sub}</span>
+        </span>
+        <span class="journey-tab-icon" aria-hidden="true">
+          <Icon name={s.icon as any} size={15} />
+        </span>
+      </button>
+    ))}
+  </div>
+
+  <!-- Panels: all rendered in static HTML; JS hides the inactive ones on init -->
+  <div class="journey-panels">
+    <section id="station-day-1" role="tabpanel" aria-labelledby="tab-day-1"
+             class="journey-panel" data-station-panel="day-1" tabindex="0">
+      <slot name="day-1" />
+    </section>
+    <section id="station-first-client" role="tabpanel" aria-labelledby="tab-first-client"
+             class="journey-panel" data-station-panel="first-client" tabindex="0">
+      <slot name="first-client" />
+    </section>
+    <section id="station-fleet" role="tabpanel" aria-labelledby="tab-fleet"
+             class="journey-panel" data-station-panel="fleet" tabindex="0">
+      <slot name="fleet" />
+    </section>
+    <section id="station-get-paid" role="tabpanel" aria-labelledby="tab-get-paid"
+             class="journey-panel" data-station-panel="get-paid" tabindex="0">
+      <slot name="get-paid" />
+    </section>
+  </div>
+</div>
+
+<style>
+  .journey-tabs {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 8px;
+    position: relative;
+  }
+  @media (max-width: 900px) {
+    .journey-tabs { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  }
+  @media (max-width: 460px) {
+    .journey-tabs { grid-template-columns: 1fr; }
+  }
+
+  .journey-tab {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    text-align: left;
+    padding: 14px 14px 13px;
+    border-radius: 12px;
+    border: 1px solid #262626;
+    background: rgba(19, 19, 19, 0.7);
+    cursor: pointer;
+    position: relative;
+    transition: border-color .18s ease, background-color .18s ease, transform .18s ease;
+  }
+  .journey-tab::after {
+    /* the rail line linking one station to the next */
+    content: '';
+    position: absolute;
+    top: 50%;
+    right: -8px;
+    width: 8px;
+    height: 1px;
+    background: #262626;
+  }
+  .journey-tab:last-child::after { display: none; }
+  @media (max-width: 900px) { .journey-tab::after { display: none; } }
+
+  .journey-tab:hover { border-color: rgba(255, 209, 102, 0.45); }
+  .journey-tab:focus-visible { outline: 2px solid #ffd166; outline-offset: 2px; }
+
+  .journey-tab[aria-selected='true'] {
+    border-color: #ffd166;
+    background: rgba(255, 209, 102, 0.09);
+    transform: translateY(-1px);
+  }
+  .journey-tab[aria-selected='true'] .journey-tab-num,
+  .journey-tab[aria-selected='true'] .journey-tab-label { color: #ffd166; }
+  .journey-tab[aria-selected='true'] .journey-tab-icon { opacity: 1; }
+
+  .journey-tab-num {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: .1em;
+    color: #737373;
+    padding-top: 2px;
+    transition: color .18s ease;
+  }
+  .journey-tab-body { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+  .journey-tab-label {
+    font-size: 14px; font-weight: 700; line-height: 1.2; color: #fafafa;
+    transition: color .18s ease;
+  }
+  .journey-tab-sub { font-size: 11px; line-height: 1.35; color: #737373; }
+  .journey-tab-icon {
+    margin-left: auto; color: #ffd166; opacity: .35;
+    transition: opacity .18s ease; padding-top: 2px;
+  }
+
+  .journey-panels { margin-top: 14px; }
+  .journey-panel {
+    border: 1px solid #262626;
+    border-radius: 14px;
+    background: rgba(19, 19, 19, 0.55);
+    padding: 22px;
+  }
+  .journey-panel:focus-visible { outline: 2px solid #ffd166; outline-offset: 3px; }
+  @media (max-width: 640px) { .journey-panel { padding: 16px; } }
+
+  /* No-JS / pre-hydration: every panel is readable and separated. */
+  .journey-panel + .journey-panel { margin-top: 12px; }
+  .journey-rail[data-hydrated='true'] .journey-panel + .journey-panel { margin-top: 0; }
+
+  .journey-panel[hidden] { display: none; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .journey-tab, .journey-tab[aria-selected='true'] { transition: none; transform: none; }
+  }
+</style>
+
+<script is:inline>
+  (function () {
+    var rail = document.querySelector('[data-component="journey-rail"]');
+    if (!rail || rail.dataset.hydrated === 'true') return;
+
+    var tabs = Array.prototype.slice.call(rail.querySelectorAll('.journey-tab'));
+    var panels = Array.prototype.slice.call(rail.querySelectorAll('.journey-panel'));
+    if (!tabs.length || !panels.length) return;
+
+    function select(id, opts) {
+      var focusTab = opts && opts.focusTab;
+      var pushHash = opts && opts.pushHash;
+      tabs.forEach(function (t) {
+        var on = t.dataset.station === id;
+        t.setAttribute('aria-selected', on ? 'true' : 'false');
+        t.tabIndex = on ? 0 : -1;
+        if (on && focusTab) t.focus();
+      });
+      panels.forEach(function (p) {
+        var on = p.dataset.stationPanel === id;
+        // Both `hidden` AND inline display — the repo's Trap A rule: a bare
+        // `hidden` attribute loses to any `display:` rule that wins
+        // specificity, which is how auth-aware UI has broken here before.
+        if (on) {
+          p.removeAttribute('hidden');
+          p.style.display = '';
+        } else {
+          p.setAttribute('hidden', '');
+          p.style.display = 'none';
+        }
+      });
+      if (pushHash && window.history && window.history.replaceState) {
+        window.history.replaceState(null, '', '#station-' + id);
+      }
+      rail.dispatchEvent(new CustomEvent('journey:station', { detail: { id: id }, bubbles: true }));
+    }
+
+    tabs.forEach(function (tab) {
+      tab.addEventListener('click', function () {
+        select(tab.dataset.station, { pushHash: true });
+      });
+      tab.addEventListener('keydown', function (e) {
+        var i = tabs.indexOf(tab);
+        var next = null;
+        if (e.key === 'ArrowRight' || e.key === 'ArrowDown') next = (i + 1) % tabs.length;
+        else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') next = (i - 1 + tabs.length) % tabs.length;
+        else if (e.key === 'Home') next = 0;
+        else if (e.key === 'End') next = tabs.length - 1;
+        if (next === null) return;
+        e.preventDefault();
+        select(tabs[next].dataset.station, { focusTab: true, pushHash: true });
+      });
+    });
+
+    // Deep link: /#station-fleet opens the Fleet station (the drift-matrix demo).
+    var initial = tabs[0].dataset.station;
+    var hash = (window.location.hash || '').replace(/^#/, '');
+    if (hash.indexOf('station-') === 0) {
+      var wanted = hash.slice('station-'.length);
+      if (tabs.some(function (t) { return t.dataset.station === wanted; })) initial = wanted;
+    }
+
+    rail.dataset.hydrated = 'true';
+    select(initial, {});
+
+    // Any in-page link to a station opens it instead of jumping to hidden markup.
+    document.addEventListener('click', function (e) {
+      var a = e.target && e.target.closest ? e.target.closest('a[href^="#station-"]') : null;
+      if (!a) return;
+      var id = a.getAttribute('href').slice('#station-'.length);
+      if (!tabs.some(function (t) { return t.dataset.station === id; })) return;
+      e.preventDefault();
+      select(id, { pushHash: true });
+      rail.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  })();
+</script>

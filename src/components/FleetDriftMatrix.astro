@@ -1,0 +1,578 @@
+---
+// FleetDriftMatrix.astro — the interactive drift-matrix demo (landing_onramp).
+//
+// Concept 2's "control room" visual, embedded inside Concept 3's Fleet
+// station. Rows = a client's agents, columns = skills a bundle declares,
+// cells = the three-way verdict (declared vs installed vs extras). Hovering
+// or focusing a cell inspects it; clicking pins the inspection; "Converge"
+// walks the row green and updates the fleet summary.
+//
+// HONESTY CONTRACT (read before editing)
+// --------------------------------------
+// The MATRIX STATE IS SIMULATED and says so, loudly, in three places: a DEMO
+// chip in the header, an aria-description on the grid, and a footnote under
+// it. What is NOT simulated: the SKILL SLUGS in the column headers are pulled
+// from the live catalog by the caller at build time and link to their real
+// detail pages. If the caller cannot resolve real slugs it must not render
+// this component at all — an invented slug here would be both a fabricated
+// catalog entry (identity-guards, 2026-07-05) and a dead link (audit-links).
+//
+// The verdict vocabulary — declared / installed / extras, lock revision —
+// is the real vocabulary of the bundle-lock + fleet routes, not invented UI
+// language. See /docs/fleet.
+//
+// PROGRESSIVE ENHANCEMENT: every cell, every version string and the whole
+// grid are SERVER-RENDERED. With JS off you still read the entire matrix and
+// its legend; JS only adds inspection and the converge animation. The
+// original state is mirrored into data-*0 attributes so "Reset" restores the
+// exact server-rendered truth rather than a JS-side copy of it.
+import Icon from './Icon.astro';
+
+interface MatrixSkill {
+  slug: string;
+  title: string;
+  /** Version the bundle lock DECLARES — the LIVE `latest_version` from the catalog. */
+  declared: string;
+}
+
+interface Props {
+  skills: MatrixSkill[];
+  lockRev?: number;
+}
+
+const { skills, lockRev = 7 } = Astro.props;
+
+type CellState = 'ok' | 'stale' | 'missing' | 'extra';
+
+/**
+ * The version a "behind the lock" agent is sitting on. DERIVED from the real
+ * declared version rather than hand-typed, so the demo can never print a
+ * version string for a real skill that we made up out of nothing — it is
+ * visibly one release behind whatever the catalog currently declares.
+ */
+function priorVersion(declared: string): string {
+  const m = declared.match(/^(\d+)\.(\d+)\.(\d+)(.*)$/);
+  if (!m) return declared;
+  const [, maj, min, patch] = m;
+  if (Number(patch) > 0) return `${maj}.${min}.${Number(patch) - 1}`;
+  if (Number(min) > 0) return `${maj}.${Number(min) - 1}.0`;
+  if (Number(maj) > 1) return `${Number(maj) - 1}.0.0`;
+  return `0.${min}.${patch}`;
+}
+
+interface DemoAgent {
+  id: string;
+  client: string;
+  host: string;
+  /** One entry per column, in order. */
+  cells: { state: CellState; extra?: string }[];
+}
+
+// The simulated fleet. Deliberately messy in the middle — a matrix where
+// everything is green demonstrates nothing, and a matrix where everything is
+// red reads as a broken product.
+const AGENTS: DemoAgent[] = [
+  {
+    id: 'acme-prod-01',
+    client: 'Acme',
+    host: 'claude code',
+    cells: [{ state: 'ok' }, { state: 'ok' }, { state: 'ok' }, { state: 'ok' }, { state: 'ok' }],
+  },
+  {
+    id: 'acme-prod-02',
+    client: 'Acme',
+    host: 'codex cli',
+    cells: [
+      { state: 'ok' },
+      { state: 'stale' },
+      { state: 'ok' },
+      { state: 'missing' },
+      { state: 'ok' },
+    ],
+  },
+  {
+    id: 'northwind-01',
+    client: 'Northwind',
+    host: 'cursor',
+    cells: [
+      { state: 'ok' },
+      { state: 'ok' },
+      { state: 'extra', extra: 'legacy-scraper' },
+      { state: 'ok' },
+      { state: 'stale' },
+    ],
+  },
+  {
+    id: 'northwind-02',
+    client: 'Northwind',
+    host: 'hermes',
+    cells: [{ state: 'missing' }, { state: 'ok' }, { state: 'ok' }, { state: 'ok' }, { state: 'ok' }],
+  },
+  {
+    id: 'solo-laptop',
+    client: 'You',
+    host: 'claude code',
+    cells: [{ state: 'ok' }, { state: 'ok' }, { state: 'ok' }, { state: 'ok' }, { state: 'ok' }],
+  },
+];
+
+const cols = skills.slice(0, 5);
+const agents = AGENTS.map((a) => ({ ...a, cells: a.cells.slice(0, cols.length) }));
+const convergedCount = agents.filter((a) => a.cells.every((c) => c.state === 'ok')).length;
+
+const STATE_LABEL: Record<CellState, string> = {
+  ok: 'in sync',
+  stale: 'behind the lock',
+  missing: 'declared, not installed',
+  extra: 'undeclared extra installed',
+};
+
+function installedFor(declared: string, c: { state: CellState }) {
+  if (c.state === 'stale') return priorVersion(declared);
+  if (c.state === 'missing') return 'not installed';
+  return declared; // ok, and extra (the declared skill is fine — something else is ALSO present)
+}
+---
+
+<div class="drift-matrix" data-component="fleet-drift-matrix" data-total-agents={agents.length}>
+  <!-- ── header ─────────────────────────────────────────────────────── -->
+  <div class="dm-head">
+    <div class="dm-head-left">
+      <span class="dm-demo-chip" title="The matrix state below is simulated, not live fleet data">
+        DEMO · simulated fleet
+      </span>
+      <span class="dm-lock">lock rev {lockRev}</span>
+    </div>
+    <div class="dm-head-right">
+      <span class="dm-summary" data-dm-summary aria-live="polite">
+        <strong data-dm-converged>{convergedCount}</strong> of {agents.length} agents converged
+      </span>
+      <button type="button" class="dm-reset" data-dm-reset>Reset demo</button>
+    </div>
+  </div>
+
+  <!-- ── the grid ───────────────────────────────────────────────────── -->
+  <div class="dm-scroll">
+    <table
+      class="dm-grid"
+      data-dm-grid
+      aria-describedby="dm-description"
+    >
+      <caption id="dm-description" class="dm-caption">
+        Simulated drift matrix. Rows are agents across two example clients; columns are the
+        skills a bundle lock declares. Every cell reports the three-way verdict —
+        declared, installed, extras — the same verdict the fleet routes return.
+      </caption>
+      <thead>
+        <tr>
+          <th scope="col" class="dm-corner">agent</th>
+          {cols.map((s) => (
+            <th scope="col" class="dm-col">
+              <a href={`/skills/${s.slug}`} class="dm-col-link">{s.title}</a>
+              <span class="dm-col-ver">declares {s.declared}</span>
+            </th>
+          ))}
+          <th scope="col" class="dm-corner dm-corner-right">action</th>
+        </tr>
+      </thead>
+      <tbody>
+        {agents.map((a) => {
+          const rowOk = a.cells.every((c) => c.state === 'ok');
+          return (
+            <tr class="dm-row" data-dm-row={a.id} data-row-state={rowOk ? 'converged' : 'drifted'}>
+              <th scope="row" class="dm-agent">
+                <span class="dm-agent-id">{a.id}</span>
+                <span class="dm-agent-meta">{a.client} · {a.host}</span>
+              </th>
+              {a.cells.map((c, i) => {
+                const skill = cols[i];
+                const installed = installedFor(skill.declared, c);
+                return (
+                  <td class="dm-cell-wrap">
+                    <button
+                      type="button"
+                      class="dm-cell"
+                      data-dm-cell
+                      data-state={c.state}
+                      data-state0={c.state}
+                      data-agent={a.id}
+                      data-skill={skill.title}
+                      data-declared={skill.declared}
+                      data-installed={installed}
+                      data-installed0={installed}
+                      data-extra={c.extra ?? ''}
+                      data-extra0={c.extra ?? ''}
+                      aria-label={`${a.id} — ${skill.title}: ${STATE_LABEL[c.state]}`}
+                    >
+                      <span class="dm-dot" aria-hidden="true"></span>
+                    </button>
+                  </td>
+                );
+              })}
+              <td class="dm-action-wrap">
+                <button type="button" class="dm-converge" data-dm-converge={a.id}>
+                  {rowOk ? 'In sync' : 'Converge'}
+                </button>
+              </td>
+            </tr>
+          );
+        })}
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ── inspector ──────────────────────────────────────────────────── -->
+  <div class="dm-inspector" data-dm-inspector aria-live="polite">
+    <p class="dm-inspect-hint" data-dm-hint>
+      Hover, focus or click any cell to inspect it — or hit <kbd>Converge</kbd> on a drifted row.
+    </p>
+    <div class="dm-inspect-body" data-dm-body hidden>
+      <p class="dm-inspect-title">
+        <span data-dm-agent></span> <span class="dm-sep">·</span> <span data-dm-skill></span>
+        <span class="dm-verdict" data-dm-verdict></span>
+      </p>
+      <dl class="dm-kv">
+        <div><dt>declared</dt><dd data-dm-declared></dd></div>
+        <div><dt>installed</dt><dd data-dm-installed></dd></div>
+        <div><dt>extras</dt><dd data-dm-extras></dd></div>
+      </dl>
+    </div>
+  </div>
+
+  <!-- ── legend + honest footer ─────────────────────────────────────── -->
+  <div class="dm-legend" aria-hidden="true">
+    <span><i class="dm-key" data-state="ok"></i>in sync</span>
+    <span><i class="dm-key" data-state="stale"></i>behind the lock</span>
+    <span><i class="dm-key" data-state="missing"></i>not installed</span>
+    <span><i class="dm-key" data-state="extra"></i>undeclared extra</span>
+  </div>
+
+  <p class="dm-foot">
+    The state above is simulated so you can drive it without an account. The skills named are real
+    catalog entries — click one. Your own matrix lives behind sign-in:
+    <a href="/library?tab=fleets">Your Library → Fleets</a> <span class="dm-sep">·</span>
+    <a href="/docs/fleet">how locks and the three-way verdict work</a>.
+    <span class="dm-foot-caveat">
+      Known gap, stated rather than hidden: an assignment that has never run once still reads
+      healthy at the top level — see <a href="/docs/scope">what LoopSkill does and does not do</a>.
+    </span>
+  </p>
+</div>
+
+<style>
+  .drift-matrix {
+    border: 1px solid #262626;
+    border-radius: 14px;
+    background: #0d0d0d;
+    overflow: hidden;
+  }
+
+  /* ── header ── */
+  .dm-head {
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    flex-wrap: wrap;
+    padding: 12px 14px; border-bottom: 1px solid #262626; background: #111111;
+  }
+  .dm-head-left, .dm-head-right { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .dm-demo-chip {
+    font-size: 10px; font-weight: 800; letter-spacing: .09em; text-transform: uppercase;
+    padding: 3px 8px; border-radius: 999px;
+    background: rgba(168, 85, 247, 0.14); color: #c084fc; border: 1px solid rgba(168, 85, 247, 0.4);
+  }
+  .dm-lock {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 11px; color: #a3a3a3;
+    padding: 3px 8px; border-radius: 6px; border: 1px solid #262626; background: #131313;
+  }
+  .dm-summary { font-size: 12px; color: #a3a3a3; }
+  .dm-summary strong { color: #fafafa; font-weight: 700; }
+  .dm-reset {
+    font-size: 11px; font-weight: 600; color: #737373;
+    padding: 3px 9px; border-radius: 6px; border: 1px solid #262626; background: transparent;
+    cursor: pointer; transition: color .15s ease, border-color .15s ease;
+  }
+  .dm-reset:hover { color: #ffd166; border-color: rgba(255, 209, 102, 0.45); }
+  .dm-reset:focus-visible { outline: 2px solid #ffd166; outline-offset: 2px; }
+
+  /* ── grid ── */
+  .dm-scroll { overflow-x: auto; }
+  .dm-grid { width: 100%; border-collapse: collapse; min-width: 560px; }
+  .dm-caption {
+    caption-side: top; text-align: left; padding: 10px 14px 0;
+    font-size: 11px; line-height: 1.5; color: #737373;
+  }
+  .dm-grid th, .dm-grid td { padding: 0; }
+  .dm-corner {
+    text-align: left; padding: 10px 14px;
+    font-size: 10px; font-weight: 700; letter-spacing: .09em; text-transform: uppercase;
+    color: #737373;
+  }
+  .dm-corner-right { text-align: right; }
+  .dm-col {
+    padding: 10px 6px; text-align: center; vertical-align: bottom;
+    border-left: 1px solid #1a1a1a;
+  }
+  .dm-col-link {
+    display: block; font-size: 11px; font-weight: 700; color: #fafafa;
+    text-decoration: none; line-height: 1.2;
+  }
+  .dm-col-link:hover { color: #ffd166; text-decoration: underline; }
+  .dm-col-ver {
+    display: block; margin-top: 2px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 9.5px; color: #737373;
+  }
+
+  .dm-row { border-top: 1px solid #1a1a1a; transition: background-color .2s ease; }
+  .dm-row:hover { background: rgba(255, 255, 255, 0.018); }
+  .dm-row[data-row-state='converged'] .dm-agent-id { color: #7DD3C0; }
+
+  .dm-agent { text-align: left; padding: 8px 14px; white-space: nowrap; }
+  .dm-agent-id {
+    display: block; font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 11.5px; font-weight: 600; color: #fafafa; transition: color .25s ease;
+  }
+  .dm-agent-meta { display: block; font-size: 10px; color: #737373; }
+
+  .dm-cell-wrap { text-align: center; border-left: 1px solid #1a1a1a; }
+  .dm-cell {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 100%; min-width: 44px; height: 40px; padding: 0;
+    background: transparent; border: 0; cursor: pointer;
+  }
+  .dm-cell:focus-visible { outline: 2px solid #ffd166; outline-offset: -3px; }
+  .dm-dot {
+    display: block; width: 22px; height: 22px; border-radius: 7px;
+    border: 1px solid transparent;
+    transition: transform .18s ease, background-color .3s ease, border-color .3s ease,
+                box-shadow .18s ease;
+  }
+  .dm-cell:hover .dm-dot, .dm-cell:focus-visible .dm-dot { transform: scale(1.18); }
+  .dm-cell[aria-pressed='true'] .dm-dot { box-shadow: 0 0 0 2px rgba(255, 209, 102, 0.55); }
+
+  .dm-cell[data-state='ok'] .dm-dot {
+    background: rgba(125, 211, 192, 0.22); border-color: rgba(125, 211, 192, 0.7);
+  }
+  .dm-cell[data-state='stale'] .dm-dot {
+    background: rgba(255, 209, 102, 0.2); border-color: rgba(255, 209, 102, 0.75);
+  }
+  .dm-cell[data-state='missing'] .dm-dot {
+    background: rgba(255, 95, 126, 0.16); border-color: rgba(255, 95, 126, 0.7);
+    border-style: dashed;
+  }
+  .dm-cell[data-state='extra'] .dm-dot {
+    background: rgba(168, 85, 247, 0.2); border-color: rgba(168, 85, 247, 0.7);
+  }
+  .dm-cell[data-just-converged] .dm-dot { animation: dm-pop .42s ease; }
+  @keyframes dm-pop {
+    0% { transform: scale(1); }
+    45% { transform: scale(1.4); box-shadow: 0 0 0 6px rgba(125, 211, 192, 0.18); }
+    100% { transform: scale(1); }
+  }
+
+  .dm-action-wrap { text-align: right; padding: 8px 14px; }
+  .dm-converge {
+    font-size: 11px; font-weight: 700; padding: 5px 11px; border-radius: 7px;
+    background: rgba(255, 209, 102, 0.12); color: #ffd166;
+    border: 1px solid rgba(255, 209, 102, 0.3); cursor: pointer; white-space: nowrap;
+    transition: background-color .15s ease, border-color .15s ease, color .15s ease;
+  }
+  .dm-converge:hover { background: rgba(255, 209, 102, 0.24); border-color: rgba(255, 209, 102, 0.6); }
+  .dm-converge:focus-visible { outline: 2px solid #ffd166; outline-offset: 2px; }
+  .dm-row[data-row-state='converged'] .dm-converge {
+    background: transparent; color: #7DD3C0;
+    border-color: rgba(125, 211, 192, 0.35); cursor: default;
+  }
+
+  /* ── inspector ── */
+  .dm-inspector {
+    border-top: 1px solid #262626; padding: 12px 14px; min-height: 84px; background: #111111;
+  }
+  .dm-inspect-hint { font-size: 12px; color: #737373; margin: 0; }
+  .dm-inspect-hint kbd {
+    font-family: inherit; font-size: 11px; font-weight: 700; color: #ffd166;
+    border: 1px solid rgba(255, 209, 102, 0.3); border-radius: 5px; padding: 1px 5px;
+  }
+  .dm-inspect-title {
+    margin: 0 0 8px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 12px; color: #fafafa; display: flex; align-items: center; gap: 7px; flex-wrap: wrap;
+  }
+  .dm-sep { color: #404040; }
+  .dm-verdict {
+    font-family: var(--font-sans, system-ui); font-size: 10px; font-weight: 700;
+    letter-spacing: .06em; text-transform: uppercase;
+    padding: 2px 7px; border-radius: 999px; border: 1px solid currentColor;
+  }
+  .dm-verdict[data-state='ok'] { color: #7DD3C0; }
+  .dm-verdict[data-state='stale'] { color: #ffd166; }
+  .dm-verdict[data-state='missing'] { color: #ff5f7e; }
+  .dm-verdict[data-state='extra'] { color: #c084fc; }
+
+  .dm-kv { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin: 0; }
+  @media (max-width: 560px) { .dm-kv { grid-template-columns: 1fr; } }
+  .dm-kv dt {
+    font-size: 9.5px; font-weight: 700; letter-spacing: .09em; text-transform: uppercase;
+    color: #737373; margin-bottom: 2px;
+  }
+  .dm-kv dd {
+    margin: 0; font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 12px; color: #fafafa;
+  }
+
+  /* ── legend + footer ── */
+  .dm-legend {
+    display: flex; gap: 14px; flex-wrap: wrap;
+    padding: 10px 14px; border-top: 1px solid #262626;
+    font-size: 10.5px; color: #737373;
+  }
+  .dm-legend span { display: inline-flex; align-items: center; gap: 5px; }
+  .dm-key { width: 10px; height: 10px; border-radius: 3px; border: 1px solid transparent; }
+  .dm-key[data-state='ok'] { background: rgba(125, 211, 192, 0.22); border-color: rgba(125, 211, 192, 0.7); }
+  .dm-key[data-state='stale'] { background: rgba(255, 209, 102, 0.2); border-color: rgba(255, 209, 102, 0.75); }
+  .dm-key[data-state='missing'] { background: rgba(255, 95, 126, 0.16); border-color: rgba(255, 95, 126, 0.7); border-style: dashed; }
+  .dm-key[data-state='extra'] { background: rgba(168, 85, 247, 0.2); border-color: rgba(168, 85, 247, 0.7); }
+
+  .dm-foot {
+    margin: 0; padding: 10px 14px 13px; border-top: 1px solid #262626;
+    font-size: 11px; line-height: 1.6; color: #737373;
+  }
+  .dm-foot a { color: #ffd166; text-decoration: underline; text-underline-offset: 2px; }
+  .dm-foot-caveat { display: block; margin-top: 5px; color: #575757; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .dm-dot, .dm-row, .dm-agent-id { transition: none; }
+    .dm-cell[data-just-converged] .dm-dot { animation: none; }
+  }
+</style>
+
+<script is:inline>
+  (function () {
+    var root = document.querySelector('[data-component="fleet-drift-matrix"]');
+    if (!root || root.dataset.wired === 'true') return;
+    root.dataset.wired = 'true';
+
+    var VERDICT = {
+      ok: 'in sync',
+      stale: 'behind the lock',
+      missing: 'not installed',
+      extra: 'undeclared extra',
+    };
+    var reduceMotion =
+      window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    var body = root.querySelector('[data-dm-body]');
+    var hint = root.querySelector('[data-dm-hint]');
+    var elAgent = root.querySelector('[data-dm-agent]');
+    var elSkill = root.querySelector('[data-dm-skill]');
+    var elVerdict = root.querySelector('[data-dm-verdict]');
+    var elDeclared = root.querySelector('[data-dm-declared]');
+    var elInstalled = root.querySelector('[data-dm-installed]');
+    var elExtras = root.querySelector('[data-dm-extras]');
+    var elConverged = root.querySelector('[data-dm-converged]');
+    var total = Number(root.dataset.totalAgents || 0);
+
+    var pinned = null;
+
+    function inspect(cell) {
+      if (!cell) return;
+      var state = cell.dataset.state;
+      elAgent.textContent = cell.dataset.agent;
+      elSkill.textContent = cell.dataset.skill;
+      elVerdict.textContent = VERDICT[state] || state;
+      elVerdict.setAttribute('data-state', state);
+      elDeclared.textContent = cell.dataset.declared;
+      elInstalled.textContent = cell.dataset.installed;
+      elExtras.textContent = cell.dataset.extra ? cell.dataset.extra : 'none';
+      hint.hidden = true;
+      body.hidden = false;
+    }
+
+    function clearInspect() {
+      if (pinned) return inspect(pinned);
+      body.hidden = true;
+      hint.hidden = false;
+    }
+
+    function recount() {
+      var rows = root.querySelectorAll('[data-dm-row]');
+      var n = 0;
+      rows.forEach(function (row) {
+        var drifted = row.querySelector('[data-dm-cell]:not([data-state="ok"])');
+        var btn = row.querySelector('[data-dm-converge]');
+        if (drifted) {
+          row.setAttribute('data-row-state', 'drifted');
+          if (btn) btn.textContent = 'Converge';
+        } else {
+          row.setAttribute('data-row-state', 'converged');
+          if (btn) btn.textContent = 'In sync';
+          n++;
+        }
+      });
+      if (elConverged) elConverged.textContent = String(n);
+      return n;
+    }
+
+    root.querySelectorAll('[data-dm-cell]').forEach(function (cell) {
+      cell.addEventListener('mouseenter', function () { if (!pinned) inspect(cell); });
+      cell.addEventListener('mouseleave', function () { if (!pinned) clearInspect(); });
+      cell.addEventListener('focus', function () { inspect(cell); });
+      cell.addEventListener('blur', function () { if (!pinned) clearInspect(); });
+      cell.addEventListener('click', function () {
+        if (pinned === cell) {
+          pinned.setAttribute('aria-pressed', 'false');
+          pinned = null;
+          clearInspect();
+          return;
+        }
+        if (pinned) pinned.setAttribute('aria-pressed', 'false');
+        pinned = cell;
+        cell.setAttribute('aria-pressed', 'true');
+        inspect(cell);
+      });
+    });
+
+    root.querySelectorAll('[data-dm-converge]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var row = root.querySelector('[data-dm-row="' + btn.dataset.dmConverge + '"]');
+        if (!row) return;
+        var cells = Array.prototype.slice.call(row.querySelectorAll('[data-dm-cell]'));
+        var drifted = cells.filter(function (c) { return c.dataset.state !== 'ok'; });
+        if (!drifted.length) return;
+        btn.textContent = 'Converging…';
+        drifted.forEach(function (cell, i) {
+          var delay = reduceMotion ? 0 : i * 110;
+          window.setTimeout(function () {
+            cell.dataset.state = 'ok';
+            cell.dataset.installed = cell.dataset.declared;
+            cell.dataset.extra = '';
+            cell.setAttribute(
+              'aria-label',
+              cell.dataset.agent + ' — ' + cell.dataset.skill + ': in sync'
+            );
+            cell.setAttribute('data-just-converged', '');
+            window.setTimeout(function () { cell.removeAttribute('data-just-converged'); }, 450);
+            if (pinned === cell || document.activeElement === cell) inspect(cell);
+            if (i === drifted.length - 1) recount();
+          }, delay);
+        });
+      });
+    });
+
+    var reset = root.querySelector('[data-dm-reset]');
+    if (reset) {
+      reset.addEventListener('click', function () {
+        root.querySelectorAll('[data-dm-cell]').forEach(function (cell) {
+          cell.dataset.state = cell.dataset.state0;
+          cell.dataset.installed = cell.dataset.installed0;
+          cell.dataset.extra = cell.dataset.extra0;
+          cell.setAttribute('aria-pressed', 'false');
+        });
+        pinned = null;
+        clearInspect();
+        recount();
+      });
+    }
+
+    recount();
+  })();
+</script>

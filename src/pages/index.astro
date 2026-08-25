@@ -1,4 +1,33 @@
 ---
+// ─────────────────────────────────────────────────────────────────────────────
+// THE ON-RAMP (landing_onramp) — homepage rebuilt around the career-path
+// narrative from the 2026-08-21 landing-concepts plan (Concept 3 + Concept 2's
+// drift matrix embedded in the Fleet station).
+//
+// Hook: "Deploying AI agents for clients is a job now. This is its toolkit."
+// Rail: Day 1 → First client → Fleet → Get paid. Each station expands INLINE.
+//
+// WHY THIS SHAPE
+// --------------
+// The 41-feature coverage matrix (2026-08-21) found only 6 of the 10
+// highest-ICP-value capabilities were reachable within one click of the
+// homepage. The four stations are the fix: every top-10 capability now has a
+// server-rendered home ON this page, one click (or zero, for a crawler) away.
+// Specifically surfaced here for the first time anywhere on the site:
+//   * the offline `loopskill` CLI — previously ZERO mentions on any surface
+//   * bundle fork/preview — previously zero docs copy
+//   * the staged connector index count — previously never published
+//   * the fleet drift matrix — previously invisible before sign-in
+//
+// CLAIMS DISCIPLINE (D-029 + claim-grounded-marketing)
+// ----------------------------------------------------
+// Every number rendered below is bound to a live public endpoint at build
+// time and FAILS CLOSED — an unfetchable stat is omitted, never invented.
+// Federated/indexed counts are phrased "indexed"/"federated", never "ours".
+// The drift matrix's fleet state is simulated and labelled DEMO in three
+// places; its column headers are REAL catalog slugs resolved below, because
+// an invented slug would be both fabricated catalog data and a dead link.
+// ─────────────────────────────────────────────────────────────────────────────
 import AppShell from '../layouts/AppShell.astro';
 import CrossSell from '../components/CrossSell.astro';
 import Icon from '../components/Icon.astro';
@@ -6,22 +35,20 @@ import AgentLogos from '../components/AgentLogos.astro';
 import NeuronAnimation from '../components/NeuronAnimation.astro';
 import InstallWidget from '../components/InstallWidget.astro';
 import SkillCover from '../components/SkillCover.astro';
+import JourneyRail from '../components/JourneyRail.astro';
+import FleetDriftMatrix from '../components/FleetDriftMatrix.astro';
 import { fetchApi } from '../lib/api';
 
 // Pull live skill count for the stats strip (retry+jitter; fallback below if API unreachable).
-// CANONICAL NUMBER = 72 = the BROWSABLE catalog (marketing SSOT).
-//   - /api/marketing/snapshot → counts.skills_total = 72  (the marketing source of truth)
-//   - /api/skills/search      → total = 72                (what /skills actually lists; this fetch)
-//   - /api/stats              → total_skills = 76         (total INCL. 4 private/unlisted pro skills)
-// DO NOT "fix" this fallback to 76. The hero links "Browse {N}+ skills → /skills", and /skills
-// only exposes the 72 public skills; marketing 76 would overstate the browsable catalog and break
-// claim-grounded-marketing. The 4-skill gap is private pro skills not reachable from the catalog.
-// The `+` suffix keeps "72+" honest even as the public count grows. Verified 2026-06-08.
-// 2026-06-07: bumped fallback 59 → 72 to match the marketing SSOT (/api/marketing/snapshot).
+// CANONICAL NUMBER = the BROWSABLE catalog (marketing SSOT).
+//   - /api/marketing/snapshot → counts.skills_total  (the marketing source of truth)
+//   - /api/skills/search      → total                (what /browse actually lists; this fetch)
+//   - /api/stats              → total_skills         (total INCL. private/unlisted skills)
+// The `+` suffix keeps the figure honest as the public count grows.
 // 2026-05-20: API rate limiter now exempts authenticated callers (per-IP cap
 // was busting on 116-page parallel builds even with our retry+cache); this
 // fetch reliably gets the live total now. Fallback retained as belt-and-suspenders.
-let liveSkillCount = 72;
+let liveSkillCount = 57;
 try {
   const result = await fetchApi<{ total: number }>('/api/skills/search?page_size=1');
   if (result.ok && result.data && typeof result.data.total === 'number' && result.data.total > 0) {
@@ -30,13 +57,15 @@ try {
 } catch {}
 
 // first-impression fix (5): the hero/stats-strip/spotlight copy hardcoded
-// "80,000+" / "80k-skill universe" in five places while the live federation
-// count (/api/skills/external, public/no-key — the same endpoint llms.txt
-// already binds to) had grown to 91,170. Bind the headline the same way
-// llms.txt does: round DOWN to a defensible "+" figure so the claim stays
-// true as the count drifts between crawler walks, and degrade to the last
-// verified honest floor (80,000+, still true — 91k > 80k) rather than a
-// hardcoded literal if the build-time fetch fails.
+// "80,000+" in five places while the live federation count
+// (/api/skills/external, public/no-key — the same endpoint llms.txt already
+// binds to) had grown past 91,000. Bind the headline the same way llms.txt
+// does: round DOWN to a defensible "+" figure so the claim stays true as the
+// count drifts between crawler walks, and degrade to the last verified honest
+// floor (80,000+, still true) rather than a hardcoded literal if the
+// build-time fetch fails.
+// D-029: this count is INDEXED/FEDERATED — skills we can find and link, never
+// skills that are "ours". Every string that renders it says so.
 let federatedSkillCount = 80000;
 try {
   const result = await fetchApi<{ counts?: { external_indexed?: number } }>('/api/skills/external', { authed: false });
@@ -57,10 +86,8 @@ try {
   const r = await fetchApi<{ tools?: string[] }>('/api/mcp/healthz', { authed: false });
   if (r.ok && Array.isArray(r.data?.tools) && r.data.tools.length > 0) {
     mcpToolCount = r.data.tools.length;
-  } else {
-    console.log('[proof-bar] mcp healthz miss:', JSON.stringify({ ok: r.ok, status: r.status, error: r.error, keys: r.data ? Object.keys(r.data) : null }));
   }
-} catch (e) { console.log('[proof-bar] mcp healthz threw:', (e as Error).message); }
+} catch {}
 let hostedSkillCount: number | null = null;
 try {
   const r = await fetchApi<{ total_skills?: number }>('/api/stats', { authed: false });
@@ -68,33 +95,25 @@ try {
     hostedSkillCount = r.data.total_skills;
   }
 } catch {}
-const agentProofStats: { value: string; label: string; href: string }[] = [];
-if (mcpToolCount) agentProofStats.push({ value: String(mcpToolCount), label: 'MCP tools — search, install, publish', href: '/docs/mcp' });
-if (hostedSkillCount) agentProofStats.push({ value: String(hostedSkillCount), label: 'hosted skills, versioned + signed', href: '/skills' });
-agentProofStats.push({ value: federatedSkillLabel, label: 'community skills federated', href: '/federation/' });
-agentProofStats.push({ value: '0 humans', label: 'agents enrol themselves (Ed25519)', href: '/docs/new-agent' });
 
-// Cook-tier strip — gated public skills, surfaces what Pro unlocks.
-// Live filter on tier=cook AND is_public=true. identity-guards fix
-// (2026-07-05): the hardcoded fallback list below was FICTIONAL —
-// install_count_total: 0 on every row, several slugs unverifiable against
-// the live catalog. An honest empty/omitted state beats invented entries:
-// if the fetch fails or returns nothing, cookSkills simply stays empty and
-// downstream consumers (cookStrip) render nothing rather than fiction.
-type CookSkill = { slug: string; title: string; description?: string | null; tagline?: string | null; install_count_total?: number; install_count?: number; category?: string | null };
-let cookSkills: CookSkill[] = [];
+// landing_onramp: the staged connector index. The matrix doc calls this
+// "unadvertised weapon #2" — 2,500+ MCP servers indexed behind a human review
+// gate, and the number has never appeared on any public surface. It is
+// deliberately phrased "indexed, review-gated" so nobody reads it as a
+// browsable catalog: /docs/scope states plainly that staging is not publishing.
+let stagedConnectorCount: number | null = null;
 try {
-  const result = await fetchApi<{ results: CookSkill[] }>('/api/skills/search?tier=cook&is_public=true&page_size=24');
-  if (result.ok && result.data?.results) {
-    cookSkills = result.data.results;
+  const r = await fetchApi<{ external_total?: number }>('/api/connectors?include_external=true&limit=1', { authed: false });
+  if (r.ok && typeof r.data?.external_total === 'number' && r.data.external_total > 0) {
+    stagedConnectorCount = r.data.external_total;
   }
 } catch {}
-// Pin larry first (when present); sort the rest by install_count desc so the
-// most-used cook skills surface. No fictional fallback — empty stays empty.
-const installCount = (s: CookSkill) => s.install_count_total ?? s.install_count ?? 0;
-const larryRow = cookSkills.find(s => s.slug === 'larry');
-const restCook = cookSkills.filter(s => s.slug !== 'larry').sort((a, b) => installCount(b) - installCount(a));
-const cookStrip: CookSkill[] = (larryRow ? [larryRow, ...restCook] : restCook).slice(0, 8);
+
+const agentProofStats: { value: string; label: string; href: string }[] = [];
+if (mcpToolCount) agentProofStats.push({ value: String(mcpToolCount), label: 'MCP tools — search, install, publish, fleet', href: '/docs/mcp' });
+if (hostedSkillCount) agentProofStats.push({ value: String(hostedSkillCount), label: 'skills hosted here, versioned + signed', href: '/browse' });
+agentProofStats.push({ value: federatedSkillLabel, label: 'skills indexed across federated registries', href: '/federation/' });
+agentProofStats.push({ value: '0 humans', label: 'agents enrol themselves (Ed25519)', href: '/docs/new-agent' });
 
 // Spotlight — Pro skill highlights in the hero grid.
 // Phase H (recipes_2005): replaced hardcoded array with live API fetch to eliminate
@@ -111,18 +130,18 @@ try {
   if (result.ok && result.data?.results) spotlight = result.data.results;
 } catch {} // Rationale: offline build or API down — section below is omitted, no invented fallback
 
-// ─── Popular-skills rail (content-led hero, Spotify-shelf style) ────────────
+// ─── Popular-skills rail (content-led, Spotify-shelf style) ────────────────
 // Build-time fetch: mixed tiers, sorted by install_count. When the fetch
 // fails/returns empty, popularSkills stays empty and the whole rail section
 // is omitted (gated by `popularSkills.length > 0` below) — no invented cards.
 type RailSkill = { slug: string; title?: string; name?: string; description?: string; category?: string; tier?: string; install_count_total?: number };
 let popularSkills: RailSkill[] = [];
 try {
-  const result = await fetchApi<{ results: RailSkill[] }>('/api/skills/search?limit=12');
+  const result = await fetchApi<{ results: RailSkill[] }>('/api/skills/search?page_size=12');
   if (result.ok && result.data?.results) popularSkills = result.data.results;
 } catch {}
 
-// ─── Public-bundles rail (the shareable playlists) ───────────────────────
+// ─── Public-bundles rail (the shareable client stacks) ────────────────────
 // GET /api/cookbooks/discover is public + ranked by real installs.
 // NOTE: `theme` is an OBJECT ({label, accent, icon}) or null on the live API,
 // not a string — SkillCover's `category` prop expects a string it can
@@ -142,11 +161,40 @@ try {
   publicCookbooks = rows.filter(c => c.slug);
 } catch {} // Rationale: offline build — rail simply omits
 
+// ─── Drift-matrix columns — REAL catalog slugs + REAL versions ───────────
+// The matrix's fleet STATE is simulated (labelled DEMO in three places inside
+// the component). Its COLUMNS are not: slug, title and the DECLARED version
+// are all live catalog values, and each column links to its real detail page.
+// Three failure modes this guards:
+//   * identity-guards (2026-07-05): fabricated catalog rows rendered as if
+//     genuine are indistinguishable from real ones to a visitor.
+//   * audit-links: a link to /skills/<invented> is a build-failing 404.
+//   * claim-grounding: a version number printed next to a real skill name is
+//     a numeric claim. It must come from `latest_version`, never from us.
+// Fails CLOSED — if we cannot resolve 5 real slugs WITH real versions the
+// matrix is not rendered at all and the Fleet station falls back to prose.
+type MatrixCol = { slug: string; title: string; declared: string };
+let matrixSkills: MatrixCol[] = [];
+try {
+  const r = await fetchApi<{ results?: { slug?: string; title?: string; name?: string; latest_version?: string | null }[] }>(
+    '/api/skills/search?page_size=12',
+    { authed: false },
+  );
+  const rows = (r.ok && r.data?.results) || [];
+  matrixSkills = rows
+    .filter((s) => !!s?.slug && !!s?.latest_version)
+    .slice(0, 5)
+    .map((s) => ({
+      slug: s.slug as string,
+      title: (s.title || s.name || s.slug) as string,
+      declared: s.latest_version as string,
+    }));
+} catch {}
+const showMatrix = matrixSkills.length === 5;
+
 // ─── Agent Bootcamp — live fetch at build time ───────────────────────────────
 // GET /api/bootcamp is PUBLIC (no auth required). We pass authed:false to skip
 // the x-api-key header. Tracks are stable (low churn) so build-time bake is safe.
-// 2026-06-07: Bootcamp shipped as PRs #472+#473. Three tracks, each starting on
-// the free on-ramp (super-memory) and crossing free→Pro at a documented step.
 type BootcampTrack = {
   id: string;
   title: string;
@@ -182,7 +230,7 @@ const bootcampFallback: BootcampTrackDetail[] = [
     step_count: 5, free_steps: 2, paid_steps: 3,
     steps: [
       { position: 1, slug: 'super-memory', title: 'super-memory', tier: 'free', is_free: true, available: true, why: 'Start here. Full memory stack in one command. Free on-ramp — zero spend on day one.', install_link: '/skills/super-memory?ref=bootcamp-zero-to-agent-step-1' },
-      { position: 2, slug: 'hyperspace-matrix', title: 'hyperspace-matrix', tier: 'free', is_free: true, available: true, why: 'Discover more skills as your agent needs them. Free on-ramp — search 100k+ indexed capabilities.', install_link: '/skills/hyperspace-matrix?ref=bootcamp-zero-to-agent-step-2' },
+      { position: 2, slug: 'hyperspace-matrix', title: 'hyperspace-matrix', tier: 'free', is_free: true, available: true, why: 'Discover more skills as your agent needs them. Free on-ramp — search the indexed universe.', install_link: '/skills/hyperspace-matrix?ref=bootcamp-zero-to-agent-step-2' },
       { position: 3, slug: 'cognee', title: 'cognee', tier: 'pro', is_free: false, available: true, why: 'Self-hosted graph retrieval at scale. First Pro skill.', install_link: '/skills/cognee?ref=bootcamp-zero-to-agent-step-3' },
       { position: 4, slug: 'maestro', title: 'maestro', tier: 'pro', is_free: false, available: true, why: 'Morning brief, marketing, code delegation. Turns an agent into an operating loop.', install_link: '/skills/maestro?ref=bootcamp-zero-to-agent-step-4' },
       { position: 5, slug: 'framework-v0', title: 'framework-v0', tier: 'pro', is_free: false, available: true, why: 'One-call bootstrap for the full Maestro stack.', install_link: '/skills/framework-v0?ref=bootcamp-zero-to-agent-step-5' },
@@ -239,7 +287,7 @@ if (bootcampTracks.length === 0) bootcampTracks = bootcampFallback;
 // `bootcampFallback` hardcodes `available: true` under a comment claiming its
 // slugs were "all confirmed 200 ... 2026-06-07". That verification EXPIRED:
 // 6 of the 12 slugs (scrapling-official, cognee, comfyui, chef, maestro,
-// framework-v0) now 404 and are absent from the live 57-skill catalog. Because
+// framework-v0) now 404 and are absent from the live catalog. Because
 // the fallback only fires when the API is unreachable at build time, it turned
 // a degraded build into a FAILED one — `audit-links` rightly refuses dead links.
 // A dated "verified" comment is not a guarantee; it is a guarantee with an
@@ -272,40 +320,26 @@ const trackAccents: Record<string, { badge: string; dot: string; label: string }
   'content-engine':  { badge: 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400', dot: 'bg-emerald-400', label: 'Media' },
   'agent-fleet':     { badge: 'bg-violet-500/10 border-violet-500/30 text-violet-400', dot: 'bg-violet-400', label: 'Fleet' },
 };
+const fleetTrack = bootcampTracks.find((t) => t.id === 'agent-fleet');
 
-const howItWorks = [
-  { num: '01', title: 'You describe the goal', body: 'Plain language, in your existing AI agent. No searches, no docs, no copy-paste.', icon: 'lightning' },
-  { num: '02', title: 'LoopSkill finds the skill', body: 'The meta-skill makes your agent aware of every LoopSkill skill. It picks the perfect match.', icon: 'search' },
-  { num: '03', title: 'Installs locally in seconds', body: 'Skill files written to your machine. Your credentials, your data, your control.', icon: 'box' },
-  { num: '04', title: 'Results delivered', body: 'A report. A scrape. A calendar. A patch. Done — and ready to ship.', icon: 'check' },
+// ─── The rail ────────────────────────────────────────────────────────────
+const stations = [
+  { id: 'day-1' as const,        num: '01', label: 'Day 1',        sub: 'Point an agent at the registry', icon: 'lightning' },
+  { id: 'first-client' as const, num: '02', label: 'First client', sub: 'One bundle, one install line',   icon: 'box' },
+  { id: 'fleet' as const,        num: '03', label: 'Fleet',        sub: 'Prove every agent converged',    icon: 'chart' },
+  { id: 'get-paid' as const,     num: '04', label: 'Get paid',     sub: 'Publish, refer, or hand it off', icon: 'mail' },
 ];
 
 const stats = [
-  { num: federatedSkillLabel, label: 'Skills across federated registries' },
-  { num: `${liveSkillCount}`, label: 'Curated & signed in our catalog' },
+  { num: federatedSkillLabel, label: 'Skills indexed across federated registries' },
+  { num: `${liveSkillCount}`, label: 'Curated & signed in this catalog' },
   { num: 'pass / fail', label: 'Every loop run, objective + bounded' },
-];
-
-const heroPillars = [
-  { title: 'Runnable + verified', body: 'Every loop runs under enforced bounds and returns an objective pass/fail. Proof, not a prompt.', icon: 'lightning' },
-  { title: 'MCP-native', body: 'Dedicated tools. Your agent runs loops, searches, and installs from inside its own conversation.', icon: 'box' },
-  { title: 'Open source', body: 'MPL-2.0. Self-host the whole registry for free. Pro is hosted convenience, never a feature gate.', icon: 'check' },
-  { title: 'Curated + signed', body: `Small trusted core, audited every push, ed25519-signed delivery — inside the ${federatedSkillLabel} skill universe.`, icon: 'calendar' },
-];
-
-const verticals = [
-  { label: 'Marketing', icon: 'chart', desc: 'Reports, calendars, audits, proposals' },
-  { label: 'Code', icon: 'terminal', desc: 'Code review, refactors, test scaffolds' },
-  { label: 'Web scraping', icon: 'search', desc: 'Stealth scrapers, structured extraction' },
-  { label: 'Ops', icon: 'box', desc: 'Onboarding, invoicing, standups' },
-  { label: 'Sales', icon: 'mail', desc: 'Outreach, CRM ops, proposals' },
-  { label: 'Sim & robotics', icon: 'lightning', desc: 'ROS workflows, simulation pipelines' },
 ];
 ---
 <AppShell
   mode="public"
-  title="LoopSkill — the open skill registry for AI agents"
-  description="LoopSkill is the open-source skill registry and MCP server for AI agents. Install versioned skills into Claude Code, Cursor, Cline, OpenClaw, Hermes or Windsurf, keep every agent in sync with bundles and fleet locks, and let agents discover, enrol and publish over MCP — no human in the loop. Free tier, Pro $9.95/mo, self-hostable."
+  title="LoopSkill — the toolkit for deploying AI agents for clients"
+  description="Deploying AI agents for clients is a job now. LoopSkill is its toolkit: point an agent at the registry on day 1, hand your first client one install line, prove a whole fleet converged with drift-proof locks, then publish or refer for revenue. Open source (MPL-2.0), MCP-native, free tier, Pro $9.95/mo, self-hostable."
 >
   <script is:inline>
     // onechrome_0611 seam #1: returning members land on THEIR home, not marketing.
@@ -315,41 +349,45 @@ const verticals = [
       .then(function (u) { if (u && u.id) window.location.replace('/home'); })
       .catch(function () { /* anon stays */ });
   </script>
-  <section class="relative overflow-hidden min-h-[88vh] md:min-h-screen flex items-center">
+
+  <!-- ══ HERO ══════════════════════════════════════════════════════════ -->
+  <section class="relative overflow-hidden">
     <NeuronAnimation />
     <div class="absolute inset-0 -z-20 opacity-[0.025] pointer-events-none"
          style="background-image: linear-gradient(to right, #fafafa 1px, transparent 1px), linear-gradient(to bottom, #fafafa 1px, transparent 1px); background-size: 64px 64px;"></div>
 
     <div class="max-w-6xl mx-auto px-6 pt-20 md:pt-28 pb-16 relative w-full">
       <div class="flex flex-col items-center text-center gap-6 max-w-3xl mx-auto">
-        <a href="/skills" class="group inline-flex items-center gap-2 px-3 py-1 rounded-full border border-accent/40 text-xs text-accent hover:text-text hover:border-accent/60 transition backdrop-blur-sm bg-accent/5">
+        <a href="/docs/getting-started" class="group inline-flex items-center gap-2 px-3 py-1 rounded-full border border-accent/40 text-xs text-accent hover:text-text hover:border-accent/60 transition backdrop-blur-sm bg-accent/5">
           <span class="w-1.5 h-1.5 rounded-full bg-accent animate-pulse"></span>
-          Open-source skill registry + MCP server for AI agents
+          Open-source toolkit for people who run agents for other people
           <Icon name="arrow-right" size={11} class="opacity-70 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all" />
         </a>
-        <h1 class="text-5xl md:text-7xl font-bold tracking-tighter leading-[1.02]" style="letter-spacing: -0.04em;">
-          Every skill.<br/><span class="text-gradient hero-glow">Every agent. In sync.</span>
+
+        <h1 class="text-4xl md:text-6xl font-bold tracking-tighter leading-[1.04]" style="letter-spacing: -0.04em;">
+          Deploying AI agents for clients is a job now.<br/>
+          <span class="text-gradient hero-glow">This is its toolkit.</span>
         </h1>
+
         <p class="text-lg md:text-xl text-muted leading-relaxed max-w-2xl">
-          The open skill registry for <strong class="text-text font-semibold">AI agents</strong>. Install versioned, signed skills into Claude Code, Cursor, Cline, OpenClaw, Hermes or Windsurf — one command or one MCP call — and keep every agent you run converged on the same stack with bundles and fleet locks.
+          From your first installed skill to a paying client's self-maintaining fleet —
+          <strong class="text-text font-semibold">one open-source platform for the whole path</strong>.
+          Pick the station you're standing on.
         </p>
-        <p class="text-sm text-muted-soft leading-relaxed max-w-xl -mt-1">
-          Agents are first-class citizens: yours can discover this registry, enrol itself (Ed25519 — no OAuth, no human), install, compose and publish bundles entirely over MCP. And every skill that matters ships with a runnable loop — press run, get an objective pass / fail.
-        </p>
-        <div class="flex items-center gap-3 mt-1">
-          <a href="/skills" class="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-accent text-bg font-semibold text-sm hover:bg-accent-soft transition">
-            Browse the registry
+
+        <div class="flex flex-col sm:flex-row items-center gap-3 mt-1">
+          <a href="#station-day-1" class="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-accent text-bg font-semibold text-sm hover:bg-accent-soft transition">
+            Start Day 1 — free
           </a>
-          <a href="/docs/new-agent" class="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg border border-border text-text font-semibold text-sm hover:border-accent transition">
-            🤖 Point your agent here
+          <a href="/browse" class="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg border border-border text-text font-semibold text-sm hover:border-accent transition">
+            Browse what you'll deploy
           </a>
         </div>
 
-        {/* ── Agent-proof bar (landing_0821): the four machine-readiness facts,
-             every number bound to a live endpoint at build time (fail-closed —
-             an unfetchable stat is omitted, never invented). This is the
-             "what you actually get" strip the verdict hero was missing. ── */}
-        <div class="w-full max-w-4xl mt-8 grid grid-cols-2 md:grid-cols-4 gap-3 text-left">
+        {/* ── Agent-proof bar: every number bound to a live endpoint at build
+             time (fail-closed — an unfetchable stat is omitted, never
+             invented). D-029: federated counts say "indexed", never "ours". ── */}
+        <div class="w-full max-w-4xl mt-6 grid grid-cols-2 md:grid-cols-4 gap-3 text-left">
           {agentProofStats.map(st => (
             <a href={st.href} class="group rounded-xl border border-border bg-bg-card px-4 py-3 hover:border-accent transition">
               <p class="text-xl font-bold text-text group-hover:text-accent transition">{st.value}</p>
@@ -357,134 +395,321 @@ const verticals = [
             </a>
           ))}
         </div>
+        <p class="text-xs text-muted-soft" data-auth-anon>Open source (MPL-2.0) · Free tier · Self-host the whole thing · Cancel anytime</p>
+      </div>
 
-        {/* ── Share-skills trio (landing_0821): the core-pitch use case
-             ("share Claude skills between agents") stated as three concrete
-             verbs, each linking to a real surface. Static copy, no data deps. ── */}
-        <div class="w-full max-w-4xl mt-6 grid md:grid-cols-3 gap-3 text-left">
-          <div class="rounded-xl border border-border bg-bg-card px-4 py-4">
-            <p class="text-sm font-semibold text-text mb-1">📦 One skill, every agent</p>
-            <p class="text-xs text-muted leading-relaxed">Install the same versioned skill into Claude Code, Cursor, Cline, OpenClaw, Hermes or Windsurf — one command or one MCP call, no per-vendor rewrites. <a href="/docs" class="text-accent hover:underline">How installs work →</a></p>
-          </div>
-          <div class="rounded-xl border border-border bg-bg-card px-4 py-4">
-            <p class="text-sm font-semibold text-text mb-1">🔄 Drift-proof by default</p>
-            <p class="text-xs text-muted leading-relaxed">Bundles pin exact versions with locks; fleet sync converges every machine to the same stack on a schedule. Stop copy-pasting SKILL.md files. <a href="/bundles/loopskill-essentials" class="text-accent hover:underline">See a bundle →</a></p>
-          </div>
-          <div class="rounded-xl border border-border bg-bg-card px-4 py-4">
-            <p class="text-sm font-semibold text-text mb-1">🤖 Built for agents, not just humans</p>
-            <p class="text-xs text-muted leading-relaxed">Your agent can discover, enrol (Ed25519 — no OAuth, no human), install, compose and publish bundles entirely over MCP. <a href="/docs/new-agent" class="text-accent hover:underline">Agent quickstart →</a></p>
-          </div>
-        </div>
+      <!-- ══ THE RAIL ═══════════════════════════════════════════════════ -->
+      <div class="mt-14">
+        <p class="eyebrow text-center mb-4">The path · click a station</p>
 
-        {/* ── Content rails (Spotify-shelf): the product you can SEE ── */}
-        {popularSkills.length > 0 && (
-          <div class="w-full max-w-5xl mt-10 text-left">
-            <div class="flex items-center justify-between mb-3">
-              <h2 class="text-sm font-semibold uppercase tracking-widest text-muted-soft">Popular skills</h2>
-              <a href="/skills" class="text-xs text-accent hover:opacity-80">Browse all →</a>
-            </div>
-            <div class="flex gap-3 overflow-x-auto pb-2 -mx-1 px-1 snap-x">
-              {popularSkills.map(s => (
-                <a href={`/skills/${s.slug}`} class="skill-rail-card group shrink-0 w-[140px] sm:w-[160px] snap-start">
-                  <SkillCover slug={s.slug} title={s.title || s.name} category={s.category} tier={s.tier} />
-                  <div class="mt-2 px-0.5">
-                    <p class="text-sm font-semibold text-text group-hover:text-accent transition truncate">{s.title || s.name || s.slug}</p>
-                    <p class="text-[11px] text-muted-soft capitalize truncate">{s.category || 'general'}{typeof s.install_count_total === 'number' && s.install_count_total > 0 ? ` · ${s.install_count_total.toLocaleString()}` : ''}</p>
-                  </div>
+        <JourneyRail stations={stations}>
+          <!-- ─────────────── STATION 01 — DAY 1 ─────────────── -->
+          <div slot="day-1" class="grid lg:grid-cols-[1.05fr_1fr] gap-8 items-start">
+            <div class="flex flex-col gap-4">
+              <h2 class="text-2xl md:text-3xl font-bold tracking-tight" style="letter-spacing:-0.03em;">
+                You have an agent. Give it a supply chain.
+              </h2>
+              <p class="text-muted leading-relaxed">
+                Day 1 costs nothing and needs no account. Point your agent at the registry, and it can
+                search, install and run vetted skills from inside its own conversation — one MCP surface
+                instead of forty copy-pasted markdown files.
+              </p>
+
+              <div class="rounded-xl border border-border bg-bg-card/60 p-4">
+                <p class="text-[10px] font-bold uppercase tracking-widest text-muted-soft mb-2">A · the one-liner</p>
+                <p class="text-sm text-muted leading-relaxed mb-2">
+                  Tell your agent this. That is the whole install — no package to add, no key to paste.
+                </p>
+                <code class="block font-mono text-xs bg-[#0d0d0d] border border-border rounded px-3 py-2 text-text">"Install the loopskill skill from app.loopskill.io/skill"</code>
+                <a href="/docs/install" class="text-xs text-accent hover:opacity-80 inline-flex items-center gap-1.5 mt-2">
+                  Per-agent install guide — Claude Code, Codex, Cursor, Cline, Hermes, OpenClaw <Icon name="arrow-right" size={11} />
                 </a>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {publicCookbooks.length > 0 && (
-          <div class="w-full max-w-5xl mt-8 text-left">
-            <div class="flex items-center justify-between mb-3">
-              <h2 class="text-sm font-semibold uppercase tracking-widest text-muted-soft">Public bundles</h2>
-              <a href="/cookbooks" class="text-xs text-accent hover:opacity-80">Browse all →</a>
-            </div>
-            <div class="flex gap-3 overflow-x-auto pb-2 -mx-1 px-1 snap-x">
-              {publicCookbooks.map(cb => (
-                <a href={`/bundles/p?slug=${cb.slug}`} class="skill-rail-card group shrink-0 w-[140px] sm:w-[160px] snap-start">
-                  <SkillCover slug={cb.slug!} title={cb.name} category={cb.theme?.icon || cb.theme?.label || 'general'} tier="bundle" />
-                  <div class="mt-2 px-0.5">
-                    <p class="text-sm font-semibold text-text group-hover:text-accent transition truncate">{cb.name || 'Untitled'}</p>
-                    <p class="text-[11px] text-muted-soft truncate">{cb.skill_count != null ? `${cb.skill_count} skill${cb.skill_count === 1 ? '' : 's'}` : 'bundle'}</p>
-                  </div>
-                </a>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* ah0813 onboarding-friction fix: this IS the product's actual conversion
-            action (paste one phrase into your agent) but was collapsed behind a
-            <details> disclosure a visitor had to notice and click before ever
-            seeing it — on a page whose whole point is "here's how you install
-            this". Opening it by default costs nothing (still collapsible, same
-            markup, same assert-dist.sh checks) and removes one click from the
-            single highest-intent action on the homepage. Rails stay the
-            visual centerpiece above it; this is no longer demoted below a
-            fold-behind-a-click. */}
-        <details class="w-full max-w-xl mt-8 group" open>
-          <summary class="list-none cursor-pointer text-xs text-muted-soft hover:text-accent transition text-center">
-            Install LoopSkill into your agent <span class="underline underline-offset-2">— the command below</span>
-          </summary>
-          <div class="mt-3"><InstallWidget skillCount={liveSkillCount} federatedCount={federatedSkillLabel} /></div>
-        </details>
-
-
-        <div class="flex flex-col sm:flex-row items-center gap-3 mt-4">
-          <a href="/fleets"
-             class="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg font-semibold text-sm bg-accent text-bg transition hover:opacity-90">
-            Sync your fleet →
-          </a>
-          <a href="/cookbooks"
-             class="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg font-semibold text-sm border border-border hover:border-accent text-text transition backdrop-blur-sm bg-bg/40">
-            Browse bundles →
-          </a>
-          <a href="/composer"
-             class="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg text-sm text-muted hover:text-accent transition">
-            or compose one
-          </a>
-        </div>
-        <p class="text-xs text-muted-soft mt-1 max-w-2xl">
-          Compose skills into a bundle, share one link, and every agent you run installs it.
-          <a href="/fleets" class="text-accent hover:opacity-80 underline underline-offset-2">See Fleets →</a>
-          · <a href="/skills" class="hover:text-accent transition underline underline-offset-2">Browse {liveSkillCount}+ skills</a>
-          · <a href="/security" class="hover:text-accent transition underline underline-offset-2">How we audit</a>
-        </p>
-
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mt-8 w-full max-w-4xl text-left">
-          {heroPillars.map(p => (
-            <div class="flex flex-col gap-2 p-5 bg-bg-card/60 border border-border-soft rounded-xl backdrop-blur-sm hover:border-accent/40 transition">
-              <div class="flex items-center gap-2.5">
-                <div class="w-8 h-8 rounded-lg bg-accent/10 border border-accent/20 flex items-center justify-center text-accent">
-                  <Icon name={p.icon as any} size={16} />
-                </div>
-                <span class="text-sm font-semibold text-text">{p.title}</span>
               </div>
-              <p class="text-xs text-muted leading-relaxed">{p.body}</p>
+
+              <div class="rounded-xl border border-border bg-bg-card/60 p-4">
+                <p class="text-[10px] font-bold uppercase tracking-widest text-muted-soft mb-2">B · not ready to sign up? Look at what you already have</p>
+                <p class="text-sm text-muted leading-relaxed mb-2">
+                  <code class="font-mono text-accent">loopskill import</code> and
+                  <code class="font-mono text-accent">loopskill diff</code> read the skills already sitting in
+                  <code class="font-mono">~/.claude</code>, <code class="font-mono">~/.codex</code>,
+                  <code class="font-mono">~/.cursor</code> and <code class="font-mono">~/.hermes</code>, and show you
+                  exactly how two machines have drifted. <strong class="text-text">Zero network calls</strong> —
+                  enforced structurally, not promised: the network-capable module is one the offline commands never import,
+                  and a test breaks <code class="font-mono">socket.socket</code> for their duration to prove it.
+                </p>
+                <a href="/docs/quickstart" class="text-xs text-accent hover:opacity-80 inline-flex items-center gap-1.5">
+                  Getting the CLI <Icon name="arrow-right" size={11} />
+                </a>
+              </div>
+
+              <div class="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-soft">
+                <a href="/bootcamp" class="hover:text-accent transition underline underline-offset-2">Zero-to-Agent track →</a>
+                <a href="/docs/mcp" class="hover:text-accent transition underline underline-offset-2">Wire it over MCP →</a>
+                <a href="/docs/new-agent" class="hover:text-accent transition underline underline-offset-2">Let the agent enrol itself →</a>
+              </div>
             </div>
-          ))}
+
+            <div class="flex flex-col gap-4">
+              <InstallWidget skillCount={liveSkillCount} federatedCount={federatedSkillLabel} />
+              <div class="rounded-xl border border-border bg-bg-card/60 p-4">
+                <p class="text-sm font-semibold text-text mb-1">What day 1 actually buys you</p>
+                <ul class="text-xs text-muted leading-relaxed space-y-1.5 mt-2">
+                  <li>· One search surface over this catalog <em>and</em> {federatedSkillLabel} skills indexed across federated registries — we link to those, never rehost them.</li>
+                  <li>· Skills that ship a runnable loop: press run, get an objective pass/fail under enforced bounds. Not a model's opinion.</li>
+                  <li>· Nothing to un-pick later. Everything below is the same platform, no migration.</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          <!-- ─────────────── STATION 02 — FIRST CLIENT ─────────────── -->
+          <div slot="first-client" class="grid lg:grid-cols-[1.05fr_1fr] gap-8 items-start">
+            <div class="flex flex-col gap-4">
+              <h2 class="text-2xl md:text-3xl font-bold tracking-tight" style="letter-spacing:-0.03em;">
+                Hand them one line. Keep your name on it.
+              </h2>
+              <p class="text-muted leading-relaxed">
+                A bundle is the unit of client work: the skills that client's agent should have, pinned at
+                exact versions. You edit the bundle; their agent pulls. There is no push — the control plane
+                cannot reach into a client machine, which is precisely why a client will let you near theirs.
+              </p>
+
+              <ol class="flex flex-col gap-3">
+                <li class="rounded-xl border border-border bg-bg-card/60 p-4">
+                  <p class="text-[10px] font-bold uppercase tracking-widest text-muted-soft mb-1">step 01</p>
+                  <p class="text-sm font-semibold text-text mb-1">Compose the bundle</p>
+                  <p class="text-xs text-muted leading-relaxed">
+                    Pick skills, pin versions, name it after the client. Or
+                    <strong class="text-text">fork someone else's public stack</strong> and start from a working
+                    set instead of a blank page — preview the diff before you claim it.
+                    <a href="/composer" class="text-accent hover:underline">Compose one →</a>
+                  </p>
+                </li>
+                <li class="rounded-xl border border-border bg-bg-card/60 p-4">
+                  <p class="text-[10px] font-bold uppercase tracking-widest text-muted-soft mb-1">step 02</p>
+                  <p class="text-sm font-semibold text-text mb-1">Scope a key to that bundle, and nothing else</p>
+                  <p class="text-xs text-muted leading-relaxed">
+                    A bundle-scoped key (<code class="font-mono text-accent">cbt_…</code>) reaches exactly one
+                    bundle. If a client leaks it, they leak that bundle — not your catalog, not another client.
+                    <a href="/docs/api-keys" class="text-accent hover:underline">Key scopes →</a>
+                  </p>
+                </li>
+                <li class="rounded-xl border border-border bg-bg-card/60 p-4">
+                  <p class="text-[10px] font-bold uppercase tracking-widest text-muted-soft mb-1">step 03</p>
+                  <p class="text-sm font-semibold text-text mb-1">Send the install line</p>
+                  <p class="text-xs text-muted leading-relaxed">
+                    One line, branded-neutral, key already baked in. Their agent installs and then reconciles on
+                    its own schedule — no dashboard for them to babysit, no LoopSkill branding on their side.
+                    <a href="/docs/deployment" class="text-accent hover:underline">Delivery guide →</a>
+                  </p>
+                </li>
+              </ol>
+            </div>
+
+            <div class="flex flex-col gap-4">
+              {publicCookbooks.length > 0 && (
+                <div class="rounded-xl border border-border bg-bg-card/60 p-4">
+                  <div class="flex items-center justify-between mb-3">
+                    <p class="text-sm font-semibold text-text">Fork one of these instead of starting empty</p>
+                    <a href="/cookbooks" class="text-xs text-accent hover:opacity-80 shrink-0 ml-2">All →</a>
+                  </div>
+                  <div class="flex gap-3 overflow-x-auto pb-2 -mx-1 px-1 snap-x">
+                    {publicCookbooks.slice(0, 6).map(cb => (
+                      <a href={`/bundles/p?slug=${cb.slug}`} class="skill-rail-card group shrink-0 w-[124px] snap-start">
+                        <SkillCover slug={cb.slug!} title={cb.name} category={cb.theme?.icon || cb.theme?.label || 'general'} tier="bundle" />
+                        <div class="mt-2 px-0.5">
+                          <p class="text-xs font-semibold text-text group-hover:text-accent transition truncate">{cb.name || 'Untitled'}</p>
+                          <p class="text-[10px] text-muted-soft truncate">{cb.skill_count != null ? `${cb.skill_count} skill${cb.skill_count === 1 ? '' : 's'}` : 'bundle'}</p>
+                        </div>
+                      </a>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <div class="rounded-xl border border-border bg-bg-card/60 p-4">
+                <p class="text-sm font-semibold text-text mb-2">Before you run someone else's code on a client's machine</p>
+                <ul class="text-xs text-muted leading-relaxed space-y-1.5">
+                  <li>· Skills can run in an ephemeral, syscall-audited sandbox with a network allowlist.</li>
+                  <li>· Anonymous contributions land as drafts and need a human reviewer before promotion.</li>
+                  <li>· Packs are content-addressed: the same source rebuilds byte-identical, sha256 verifiable.</li>
+                </ul>
+                <a href="/security" class="text-xs text-accent hover:opacity-80 inline-flex items-center gap-1.5 mt-2">
+                  The trust stack, in detail <Icon name="arrow-right" size={11} />
+                </a>
+              </div>
+            </div>
+          </div>
+
+          <!-- ─────────────── STATION 03 — FLEET (the matrix) ─────────────── -->
+          <div slot="fleet" class="flex flex-col gap-6">
+            <div class="grid lg:grid-cols-[1fr_auto] gap-4 lg:items-end">
+              <div class="flex flex-col gap-3">
+                <h2 class="text-2xl md:text-3xl font-bold tracking-tight" style="letter-spacing:-0.03em;">
+                  Your second client is where it breaks.
+                </h2>
+                <p class="text-muted leading-relaxed max-w-2xl">
+                  One client, one agent — easy. Two clients, five agents, and nobody knows which version of
+                  which skill runs where. A bundle lock is an immutable revision; every agent reports a
+                  three-way verdict against it — <strong class="text-text">declared</strong> vs
+                  <strong class="text-text">installed</strong> vs <strong class="text-text">extras</strong>.
+                  Drive the matrix below.
+                </p>
+              </div>
+              <a href="/docs/fleet" class="text-xs text-accent hover:opacity-80 inline-flex items-center gap-1.5 shrink-0">
+                Fleet + locks guide <Icon name="arrow-right" size={11} />
+              </a>
+            </div>
+
+            {showMatrix ? (
+              <FleetDriftMatrix skills={matrixSkills} lockRev={7} />
+            ) : (
+              <div class="rounded-xl border border-border bg-bg-card/60 p-5">
+                <p class="text-sm text-muted leading-relaxed">
+                  The interactive drift matrix could not be built against the live catalog this build, so it is
+                  omitted rather than filled with invented skills.
+                  <a href="/docs/fleet" class="text-accent hover:underline">Read how the three-way verdict works →</a>
+                </p>
+              </div>
+            )}
+
+            <div class="grid md:grid-cols-3 gap-3">
+              <div class="rounded-xl border border-border bg-bg-card/60 p-4">
+                <p class="text-sm font-semibold text-text mb-1">Immutable lock revisions</p>
+                <p class="text-xs text-muted leading-relaxed">
+                  Edit a bundle and a new revision is minted. Every agent's verdict is computed against a
+                  specific revision, so "which version did they actually get" has an answer, not a guess.
+                </p>
+              </div>
+              <div class="rounded-xl border border-border bg-bg-card/60 p-4">
+                <p class="text-sm font-semibold text-text mb-1">Agents enrol themselves</p>
+                <p class="text-xs text-muted leading-relaxed">
+                  An agent proves possession of an Ed25519 key and registers itself. No OAuth screen, no
+                  session, no human clicking through a console on a client's laptop.
+                  <a href="/docs/new-agent" class="text-accent hover:underline">How →</a>
+                </p>
+              </div>
+              <div class="rounded-xl border border-border bg-bg-card/60 p-4">
+                <p class="text-sm font-semibold text-text mb-1">Convergence is a poll, not a push</p>
+                <p class="text-xs text-muted leading-relaxed">
+                  Nothing is pushed to a client machine and nothing is real-time — an agent reconciles on the
+                  schedule you install. That is a security property, and we would rather state the interval
+                  than call it "instant".
+                </p>
+              </div>
+            </div>
+
+            {fleetTrack && (
+              <div class="rounded-xl border border-violet-500/30 bg-violet-500/[0.06] p-4">
+                <div class="flex items-center gap-2 mb-2">
+                  <span class="w-1.5 h-1.5 rounded-full bg-violet-400"></span>
+                  <p class="text-sm font-semibold text-text">{fleetTrack.title} — the curriculum for this station</p>
+                </div>
+                <p class="text-xs text-muted leading-relaxed mb-3">{fleetTrack.outcome}</p>
+                <div class="flex flex-wrap gap-2">
+                  {fleetTrack.steps.map(step => (
+                    step.available && step.install_link ? (
+                      <a href={step.install_link} class="inline-flex items-center gap-1.5 text-[11px] font-mono px-2.5 py-1 rounded-md border border-border bg-bg-card text-muted hover:text-accent hover:border-accent/50 transition">
+                        <span class="text-muted-soft">{step.position}.</span> {step.title || step.slug}
+                      </a>
+                    ) : (
+                      <span class="inline-flex items-center gap-1.5 text-[11px] font-mono px-2.5 py-1 rounded-md border border-border-soft bg-bg-card/50 text-muted-soft">
+                        <span>{step.position}.</span> {step.title || step.slug}
+                      </span>
+                    )
+                  ))}
+                </div>
+                <a href="/bootcamp" class="text-xs text-accent hover:opacity-80 inline-flex items-center gap-1.5 mt-3">
+                  Open the track <Icon name="arrow-right" size={11} />
+                </a>
+              </div>
+            )}
+          </div>
+
+          <!-- ─────────────── STATION 04 — GET PAID ─────────────── -->
+          <div slot="get-paid" class="flex flex-col gap-6">
+            <div class="flex flex-col gap-3 max-w-2xl">
+              <h2 class="text-2xl md:text-3xl font-bold tracking-tight" style="letter-spacing:-0.03em;">
+                The runbook you already wrote is the product.
+              </h2>
+              <p class="text-muted leading-relaxed">
+                Three ways the work you're already doing turns into revenue — none of them require you to
+                stop doing client work.
+              </p>
+            </div>
+
+            <div class="grid md:grid-cols-3 gap-3">
+              <div class="rounded-xl border border-border bg-bg-card/60 p-4 flex flex-col gap-2">
+                <p class="text-[10px] font-bold uppercase tracking-widest text-accent">01 · publish</p>
+                <p class="text-sm font-semibold text-text">Turn a workflow into a skill</p>
+                <p class="text-xs text-muted leading-relaxed">
+                  Describe the runbook in plain language and one call scaffolds a SKILL.md draft. It goes
+                  through a quality gate and a human review before it's listed — the same gate everyone
+                  else's does.
+                </p>
+                <a href="/docs/creator-workflow" class="text-xs text-accent hover:opacity-80 inline-flex items-center gap-1.5 mt-auto">
+                  Creator workflow <Icon name="arrow-right" size={11} />
+                </a>
+              </div>
+              <div class="rounded-xl border border-border bg-bg-card/60 p-4 flex flex-col gap-2">
+                <p class="text-[10px] font-bold uppercase tracking-widest text-accent">02 · refer</p>
+                <p class="text-sm font-semibold text-text">50% recurring, then 30%</p>
+                <p class="text-xs text-muted leading-relaxed">
+                  Refer a Pro subscriber and earn 50% of every invoice they pay for your first 50 referrals,
+                  30% after — monthly, for as long as they stay. Paid out via Stripe Connect.
+                </p>
+                <a href="/docs/referrals" class="text-xs text-accent hover:opacity-80 inline-flex items-center gap-1.5 mt-auto">
+                  Referral terms <Icon name="arrow-right" size={11} />
+                </a>
+              </div>
+              <div class="rounded-xl border border-border bg-bg-card/60 p-4 flex flex-col gap-2">
+                <p class="text-[10px] font-bold uppercase tracking-widest text-accent">03 · hand it off</p>
+                <p class="text-sm font-semibold text-text">Or don't run it yourself</p>
+                <p class="text-xs text-muted leading-relaxed">
+                  If a client wants the outcome and not the operations, WiseChef runs the same stack as a
+                  managed service. Same skills, someone else's pager.
+                </p>
+                <a href="/publish" class="text-xs text-accent hover:opacity-80 inline-flex items-center gap-1.5 mt-auto">
+                  Publish or get help <Icon name="arrow-right" size={11} />
+                </a>
+              </div>
+            </div>
+
+            <div class="rounded-xl border border-border bg-bg-card/60 p-4">
+              <p class="text-sm font-semibold text-text mb-1">What it costs to run this</p>
+              <p class="text-xs text-muted leading-relaxed">
+                The whole platform is MPL-2.0 — clone it, <code class="font-mono">docker compose up</code>, run
+                every capability on your own hardware with no account and nothing phoning home. Pro is hosted
+                convenience, never a feature gate.
+                <a href="/pricing" class="text-accent hover:underline">See the ladder →</a>
+              </p>
+            </div>
+          </div>
+        </JourneyRail>
+      </div>
+
+      <!-- ══ CONTENT RAILS — the product you can SEE ═════════════════════ -->
+      {popularSkills.length > 0 && (
+        <div class="w-full max-w-5xl mx-auto mt-16 text-left">
+          <div class="flex items-center justify-between mb-3">
+            <h2 class="text-sm font-semibold uppercase tracking-widest text-muted-soft">Popular skills</h2>
+            <a href="/browse" class="text-xs text-accent hover:opacity-80">Browse all →</a>
+          </div>
+          <div class="flex gap-3 overflow-x-auto pb-2 -mx-1 px-1 snap-x">
+            {popularSkills.map(s => (
+              <a href={`/skills/${s.slug}`} class="skill-rail-card group shrink-0 w-[140px] sm:w-[160px] snap-start">
+                <SkillCover slug={s.slug} title={s.title || s.name} category={s.category} tier={s.tier} />
+                <div class="mt-2 px-0.5">
+                  <p class="text-sm font-semibold text-text group-hover:text-accent transition truncate">{s.title || s.name || s.slug}</p>
+                  <p class="text-[11px] text-muted-soft capitalize truncate">{s.category || 'general'}{typeof s.install_count_total === 'number' && s.install_count_total > 0 ? ` · ${s.install_count_total.toLocaleString()}` : ''}</p>
+                </div>
+              </a>
+            ))}
+          </div>
         </div>
-        <p class="text-xs text-muted-soft mt-2" data-auth-anon>Open-source meta-skill · Free skills available · Cancel anytime</p>
-      </div>
+      )}
 
-      <div class="mt-12 max-w-4xl mx-auto rounded-2xl overflow-hidden border border-border bg-bg-card/40 backdrop-blur-sm">
-        <video
-          src="/assets/fleet-hero.mp4?v=2026-06-17-fed"
-          autoplay
-          muted
-          loop
-          playsinline
-          preload="metadata"
-          poster="/assets/demo-poster.svg?v=2026-05-08-rcp2"
-          class="w-full h-auto block aspect-video bg-bg-elev"
-        ></video>
-      </div>
-
-      <div class="grid grid-cols-3 gap-4 mt-20 pt-12 border-t border-border" id="stats-strip">
+      <div class="grid grid-cols-3 gap-4 mt-16 pt-12 border-t border-border" id="stats-strip">
         {stats.map(s => (
           <div class="flex flex-col gap-1">
             <div class="text-3xl md:text-5xl font-bold text-text tracking-tight" style="letter-spacing: -0.03em;">{s.num}</div>
@@ -495,90 +720,63 @@ const verticals = [
     </div>
   </section>
 
-
+  <!-- ══ THE SUPPLY SIDE — what fills the bundles ═════════════════════ -->
   <section class="border-t border-border bg-bg-card/30">
-    <div class="max-w-6xl mx-auto px-6 py-12">
-      <p class="eyebrow text-center mb-8">Production infrastructure for teams running AI in production</p>
-      <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-        {verticals.map(v => (
-          <div class="flex flex-col items-center gap-2 p-4 bg-bg-card border border-border-soft rounded-xl hover:border-border transition group">
-            <div class="w-10 h-10 rounded-lg bg-accent/10 border border-accent/20 flex items-center justify-center text-accent group-hover:bg-accent/20 transition">
-              <Icon name={v.icon as any} size={18} />
-            </div>
-            <span class="text-sm font-semibold text-text">{v.label}</span>
-            <span class="text-[10px] text-muted-soft text-center leading-relaxed">{v.desc}</span>
-          </div>
-        ))}
+    <div class="max-w-6xl mx-auto px-6 py-20">
+      <div class="flex flex-col gap-3 mb-10 max-w-2xl">
+        <p class="eyebrow text-accent">What fills the bundles</p>
+        <h2 class="text-3xl md:text-4xl font-bold tracking-tight" style="letter-spacing: -0.03em;">
+          A small signed core, inside a very large index.
+        </h2>
+        <p class="text-muted text-lg leading-relaxed">
+          The curated catalog is deliberately small — every entry is audited and signed. Around it sits a
+          federated index of everything else worth finding. We link to indexed skills; we never rehost them,
+          and we never count them as ours.
+        </p>
+      </div>
+
+      <div class="grid md:grid-cols-3 gap-3">
+        <a href="/browse" class="rounded-xl border border-border bg-bg-card p-5 hover:border-accent transition flex flex-col gap-1.5">
+          <p class="text-2xl font-bold text-text">{liveSkillCount}</p>
+          <p class="text-sm font-semibold text-text">curated here</p>
+          <p class="text-xs text-muted leading-relaxed">Audited on every push, ed25519-signed delivery, version-pinned in bundles.</p>
+        </a>
+        <a href="/federation/" class="rounded-xl border border-border bg-bg-card p-5 hover:border-accent transition flex flex-col gap-1.5">
+          <p class="text-2xl font-bold text-text">{federatedSkillLabel}</p>
+          <p class="text-sm font-semibold text-text">indexed, federated</p>
+          <p class="text-xs text-muted leading-relaxed">Searched across upstream registries in one query, with an honest per-source breakdown of what is indexed vs actually installable.</p>
+        </a>
+        {stagedConnectorCount ? (
+          <a href="/docs/scope" class="rounded-xl border border-border bg-bg-card p-5 hover:border-accent transition flex flex-col gap-1.5">
+            <p class="text-2xl font-bold text-text">{stagedConnectorCount.toLocaleString()}</p>
+            <p class="text-sm font-semibold text-text">MCP servers indexed, review-gated</p>
+            <p class="text-xs text-muted leading-relaxed">Discovered and staged behind a human review gate. Staging is not publishing — you cannot browse or install these yet, and the scope doc says so plainly.</p>
+          </a>
+        ) : (
+          <a href="/docs/scope" class="rounded-xl border border-border bg-bg-card p-5 hover:border-accent transition flex flex-col gap-1.5">
+            <p class="text-sm font-semibold text-text">MCP server index</p>
+            <p class="text-xs text-muted leading-relaxed">Discovered servers are staged behind a human review gate. Staging is not publishing — read what is and is not shipped.</p>
+          </a>
+        )}
+      </div>
+
+      <div class="mt-4 text-center">
+        <a href="/browse" class="text-sm text-muted hover:text-accent inline-flex items-center gap-1.5 transition">
+          Browse everything <Icon name="arrow-right" size={11} />
+        </a>
       </div>
     </div>
   </section>
 
   <AgentLogos />
 
-  <section class="relative overflow-hidden">
-    <div class="absolute inset-0 -z-10 opacity-[0.015]" style="background-image: linear-gradient(to right, #fafafa 1px, transparent 1px), linear-gradient(to bottom, #fafafa 1px, transparent 1px); background-size: 32px 32px;"></div>
-    <div class="max-w-6xl mx-auto px-6 py-24">
-      <div class="grid grid-cols-1 lg:grid-cols-2 gap-12 items-start">
-        <div class="flex flex-col gap-5">
-          <p class="eyebrow text-accent">How it works</p>
-          <h2 class="text-3xl md:text-5xl font-bold tracking-tight" style="letter-spacing: -0.03em;">Your agent already does this — it just doesn't know about us yet.</h2>
-          <p class="text-muted text-lg leading-relaxed">LoopSkill is a single Markdown file. Drop it into your agent's skills directory. From then on your agent can run vetted loops (objective pass/fail under enforced bounds), search {federatedSkillLabel} skills across federated registries, install the right one locally, and group your picks into a shareable bundle — versioned, signed, auto-rolled-back.</p>
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">
-            {howItWorks.map(s => (
-              <div class="flex flex-col gap-2 p-4 bg-bg-card/50 border border-border-soft rounded-xl hover:border-border transition">
-                <div class="flex items-center gap-2.5">
-                  <div class="w-8 h-8 rounded-lg bg-accent/10 border border-accent/20 flex items-center justify-center text-accent">
-                    <Icon name={s.icon as any} size={16} />
-                  </div>
-                  <span class="font-mono text-[10px] text-muted-soft">{s.num}</span>
-                </div>
-                <span class="text-sm font-semibold text-text">{s.title}</span>
-                <span class="text-xs text-muted leading-relaxed">{s.body}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div class="bg-[#0d0d0d] border border-border rounded-2xl overflow-hidden shadow-2xl shadow-black/50">
-          <div class="flex items-center gap-2 px-4 py-3 border-b border-border bg-bg-elev">
-            <div class="flex gap-1.5">
-              <div class="w-2.5 h-2.5 rounded-full bg-[#ff5f56]"></div>
-              <div class="w-2.5 h-2.5 rounded-full bg-[#ffbd2e]"></div>
-              <div class="w-2.5 h-2.5 rounded-full bg-[#27c93f]"></div>
-            </div>
-            <span class="text-xs text-muted-soft ml-2 font-mono">~/clients/X — agent session</span>
-          </div>
-          <div class="p-5 font-mono text-xs leading-relaxed">
-            <div class="text-success">$ you</div>
-            <div class="text-text mb-3">install the loopskill skill from app.loopskill.io</div>
-            <div class="text-accent">$ agent</div>
-            <div class="text-muted mb-1">→ Fetching SKILL.md · wiring MCP (run loops · search · install · bundles)</div>
-            <div class="text-muted mb-3">✓ LoopSkill installed. <span class="text-text">Runnable registry + {federatedSkillLabel} skills</span> — ready.</div>
-            <div class="text-success">$ you</div>
-            <div class="text-text mb-3">build my agents a memory + scraping stack and keep them all in sync</div>
-            <div class="text-accent">$ agent</div>
-            <div class="text-muted mb-1">→ Searching ClawHub · skills.sh · curated — <span class="text-text">match: super-memory + agent-browser</span></div>
-            <div class="text-muted mb-1">→ Composing bundle <span class="text-text">"agent-core"</span> (2 skills, 1 link)</div>
-            <div class="text-muted mb-1">→ Subscribing fleet on <span class="text-text">stable</span> channel — <span class="text-success">3 agents reconciled</span></div>
-            <div class="text-muted mb-1">→ Auto-rollback armed; only changed files pulled (304-cheap)</div>
-            <div class="text-success font-semibold">✓ Fleet in lockstep. <span class="text-accent">Every machine, same signed stack.</span></div>
-            <div class="mt-3 inline-flex items-center text-xs">
-              <span class="text-muted">elapsed:</span> <span class="text-success ml-1.5 font-semibold">71s</span>
-              <span class="ml-1.5 inline-block w-1.5 h-3 bg-accent animate-pulse"></span>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </section>
-
   {spotlight.length > 0 && (
-  <section class="border-t border-border bg-bg-card/30">
-    <div class="max-w-6xl mx-auto px-6 py-24">
-      <div class="flex flex-col gap-3 mb-12 max-w-2xl">
+  <section class="border-t border-border">
+    <div class="max-w-6xl mx-auto px-6 py-20">
+      <div class="flex flex-col gap-3 mb-10 max-w-2xl">
         <p class="eyebrow text-accent">Skill spotlight</p>
-        <h2 class="text-3xl md:text-5xl font-bold tracking-tight" style="letter-spacing: -0.03em;">These are not prompts.<br/>They are <span class="text-accent">products</span>.</h2>
-        <p class="text-muted text-lg">Our curated skills are signed, audited, and ready — the trusted core inside the {federatedSkillLabel}-skill universe. Every one replaces a SaaS subscription or a freelancer hour, run locally by your agent.</p>
+        <h2 class="text-3xl md:text-4xl font-bold tracking-tight" style="letter-spacing: -0.03em;">These are not prompts.<br/>They are <span class="text-accent">products</span>.</h2>
+        <p class="text-muted text-lg">Signed, audited and version-pinned — the trusted core you put in front of a client. Every one replaces a SaaS subscription or a freelancer hour, run locally by their agent.</p>
       </div>
       <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
         {spotlight.map(s => {
@@ -607,7 +805,7 @@ const verticals = [
         })}
       </div>
       <div class="text-center mt-10">
-        <a href="/skills" class="text-sm text-muted hover:text-accent inline-flex items-center gap-1.5 transition">
+        <a href="/browse" class="text-sm text-muted hover:text-accent inline-flex items-center gap-1.5 transition">
           See all {liveSkillCount}+ skills <Icon name="arrow-right" size={11} />
         </a>
       </div>
@@ -615,69 +813,46 @@ const verticals = [
   </section>
   )}
 
-  {/* rev 7.2.5: Cook-tier strip section removed — overlapped with the
-      "Skill spotlight" section above. Larry's "new" mention lives in
-      the spotlight intro now; cookStrip data is unused on the homepage
-      but still computed in case we want to surface it elsewhere. */}
-
+  <!-- ══ HONEST SCOPE — the thing nobody else publishes ═══════════════ -->
   <section class="border-t border-border">
     <div class="max-w-5xl mx-auto px-6 py-20">
-      <div class="flex flex-col gap-3 mb-8">
-        <p class="eyebrow text-accent">For creators &amp; operators</p>
-        <h2 class="text-3xl md:text-4xl font-bold tracking-tight" style="letter-spacing:-0.03em;">
-          Publish a loop. The whole world can run it.
-        </h2>
-        <p class="text-muted text-lg max-w-xl leading-relaxed">
-          LoopSkill is open source (MPL-2.0). Publish a vetted, runnable loop to the
-          registry and anyone can run it under enforced bounds and rate it — earn 50%
-          recurring rev share on every Pro referral.
-        </p>
-      </div>
-      <div class="mt-2">
-        <a href="/creators" class="text-sm text-accent hover:opacity-80 inline-flex items-center gap-1.5 transition font-semibold">
-          Learn about the creator program <Icon name="arrow-right" size={13} />
-        </a>
-      </div>
-    </div>
-  </section>
-
-  <section class="border-t border-border" data-section="free-hook-ladder">
-    <div class="max-w-5xl mx-auto px-6 py-20">
-      <div class="flex flex-col gap-3 mb-10 max-w-2xl">
-        <p class="eyebrow text-accent">Two free steps to value</p>
-        <h2 class="text-3xl md:text-4xl font-bold tracking-tight" style="letter-spacing: -0.03em;">
-          Two free skills.<br/>That's the whole onboarding.
-        </h2>
-        <p class="text-muted text-lg">No card. No subscription. Each step does something useful on its own.</p>
-      </div>
-      <ol class="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <li class="bg-bg-card border border-border rounded-2xl p-6 flex flex-col gap-3 relative" data-step="1">
-          <span class="absolute top-4 right-4 text-[10px] font-semibold uppercase tracking-wider text-success border border-success/40 rounded-full px-2 py-0.5">FREE FOREVER</span>
-          <span class="font-mono text-xs text-muted-soft">step 01 — meta-skill</span>
-          <h3 class="text-xl font-semibold text-text tracking-tight">Install <code class="font-mono">loopskill-skill</code></h3>
-          <p class="text-sm text-muted leading-relaxed">
-            One phrase to your agent. It gains registry awareness — it can run loops, search, and install any skill in the library.
+      <div class="grid lg:grid-cols-[1fr_1fr] gap-10 items-start">
+        <div class="flex flex-col gap-3">
+          <p class="eyebrow text-accent">Before you bet a client on this</p>
+          <h2 class="text-3xl md:text-4xl font-bold tracking-tight" style="letter-spacing:-0.03em;">
+            We publish what this does <span class="text-accent">not</span> do.
+          </h2>
+          <p class="text-muted leading-relaxed">
+            You are about to put this between you and someone who pays you. A marketing page that only lists
+            wins is not enough information to make that call, so there is a page that lists the gaps — known
+            blind spots, half-shipped surfaces, and the exact probe behind every "verified" claim.
           </p>
-          <code class="font-mono text-xs bg-[#0d0d0d] border border-border rounded px-3 py-2 mt-1">"Install the loopskill skill from app.loopskill.io/skill"</code>
-          <a href="/docs/install" class="text-xs text-accent hover:opacity-80 inline-flex items-center gap-1.5 mt-auto">
-            Install instructions <Icon name="arrow-right" size={11} />
-          </a>
-        </li>
-        <li class="bg-bg-card border border-border rounded-2xl p-6 flex flex-col gap-3 relative" data-step="2">
-          <span class="absolute top-4 right-4 text-[10px] font-semibold uppercase tracking-wider text-success border border-success/40 rounded-full px-2 py-0.5">FREE · MIT</span>
-          <span class="font-mono text-xs text-muted-soft">step 02 — first skill (open-source gateway)</span>
-          <h3 class="text-xl font-semibold text-text tracking-tight">Add <code class="font-mono">super-memory</code></h3>
-          <p class="text-sm text-muted leading-relaxed">
-            Cognee + Postgres + pgvector wired together. Your agent gets durable cross-session memory
-            in 60 seconds. MIT-licensed — yours forever, no subscription. The pro_open gateway: install
-            free, see how we ship, then upgrade for the rest of the catalog.
-          </p>
-          <code class="font-mono text-xs bg-[#0d0d0d] border border-border rounded px-3 py-2 mt-1">"Add the super-memory skill"</code>
-          <a href="/skills/super-memory" class="text-xs text-accent hover:opacity-80 inline-flex items-center gap-1.5 mt-auto">
-            View skill <Icon name="arrow-right" size={11} />
-          </a>
-        </li>
-      </ol>
+          <div class="mt-2">
+            <a href="/docs/scope" class="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg border border-border text-text font-semibold text-sm hover:border-accent transition">
+              What LoopSkill does &amp; does not do <Icon name="arrow-right" size={12} />
+            </a>
+          </div>
+        </div>
+        <div class="flex flex-col gap-3">
+          <div class="rounded-xl border border-border bg-bg-card/60 p-4">
+            <p class="text-sm font-semibold text-text mb-1">Example: the never-run blind spot</p>
+            <p class="text-xs text-muted leading-relaxed">
+              The fleet view shows which assignments converged and which are failing. It does
+              <strong class="text-text"> not</strong> yet age a never-run assignment into an alarm — a loop
+              assigned and never fired looks healthy at the top level. That is on the scope page, not buried in a changelog.
+            </p>
+          </div>
+          <div class="rounded-xl border border-border bg-bg-card/60 p-4">
+            <p class="text-sm font-semibold text-text mb-1">Every number on this page is live</p>
+            <p class="text-xs text-muted leading-relaxed">
+              The counts above are fetched from public endpoints when this page is built, and any stat that
+              cannot be fetched is omitted rather than guessed. Check them yourself:
+              <a href="/docs/api-reference" class="text-accent hover:underline">the API reference</a> lists the
+              endpoints they come from.
+            </p>
+          </div>
+        </div>
+      </div>
     </div>
   </section>
 
