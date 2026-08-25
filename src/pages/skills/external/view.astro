@@ -1,0 +1,275 @@
+---
+// src/pages/skills/external/view.astro — issue#277 FIX 2.
+//
+// PROBLEM: LoopSkill's federated index (91k+ entries across 28 upstream
+// registries — see src/lib/federation.ts) had NO detail surface at all.
+// GET /api/skills/external/{source}/{slug}/install is a live, working
+// endpoint (returns either an install_path=fetch_origin body with real
+// install_command/content, or install_path=deep_link with just an
+// origin_url) but nothing in the portal ever linked to it — federated
+// skills were indexed, searchable via the API, and completely unreachable
+// on the actual website.
+//
+// PUBLIC surface, but query-param addressed and robots noindex (like
+// /bundles/p and /loops/view) — a federated entry has no stable canonical
+// slug of its own worth indexing separately from its origin page, and
+// duplicate-content risk against the real upstream (GitHub, ClawHub, ...)
+// is exactly what noindex avoids. mode="public" so anonymous visitors are
+// never gated — browsing a federated skill needs no account.
+//
+// AGENTS.md build-time fetch ban: install-shape data is live, per-visitor,
+// unbounded (91k+ entries) — cannot be enumerated with getStaticPaths. This
+// is a client-fetched query-param page, same pattern as loops/view.astro
+// and bundles/p.astro.
+//
+// D-035 (proxy-never-rehost): a fetch_origin response DOES carry the raw
+// skill content (the API already fetched it from origin server-side) — we
+// deliberately do NOT render that content here. We show an install_command
+// copy block only, so this page never becomes a second hosting location for
+// external content. deep_link responses carry no content at all; we link
+// straight to origin_url.
+//
+// REF FORMAT: ?ref=SOURCE:SLUG (colon form — matches the install_ref field
+// GET /api/skills/metasearch and the federated group of GET /api/search
+// both emit, e.g. "hermes-hub:marketing-os",
+// "github-marketing:github-marketing--co-marketing"). The legacy
+// SOURCE--SLUG (double-dash) form is also accepted defensively. Both split
+// on the FIRST occurrence only — a slug may itself legitimately contain
+// "--" (e.g. "github-marketing--co-marketing").
+import AppShell from '../../../layouts/AppShell.astro';
+import Icon from '../../../components/Icon.astro';
+
+const API_BASE = import.meta.env.PUBLIC_LOOPSKILL_API_BASE || import.meta.env.PUBLIC_RECIPES_API_BASE || 'https://app.loopskill.io';
+---
+
+<AppShell mode="public"
+  title="External skill — LoopSkill"
+  description="A federated agent skill indexed by LoopSkill from an external registry. LoopSkill never rehosts external content — install it, or view it at its origin."
+  pageType="website"
+>
+  <Fragment slot="head">
+    <meta name="robots" content="noindex" />
+  </Fragment>
+  <main class="ext-view max-w-3xl mx-auto px-6 pt-10 pb-24">
+    <a href="/browse?type=skills" class="text-sm text-muted hover:text-text transition inline-flex items-center gap-1.5 mb-6">
+      <Icon name="chevron-left" size={12} />
+      All skills
+    </a>
+
+    <section id="state-loading" class="text-muted text-sm py-12">Loading skill…</section>
+
+    <!-- Not-found: missing/malformed ?ref, or a live 404 from the install endpoint. -->
+    <section id="state-notfound" hidden class="bg-bg-card border border-border rounded-2xl p-8 text-center mt-2">
+      <h1 class="text-2xl font-semibold mb-2">Skill not found</h1>
+      <p class="text-sm text-muted mb-5">
+        This link is missing or malformed — expected <code class="text-accent">?ref=source:slug</code>.
+      </p>
+      <a href="/browse?type=skills" class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-accent text-bg font-semibold text-sm hover:bg-accent-soft transition">
+        Browse skills
+      </a>
+    </section>
+
+    <!-- Visible error state — never a blank page on a failed fetch. -->
+    <section id="state-error" hidden class="bg-bg-card border border-red-500/40 rounded-2xl p-6 mt-2">
+      <h2 class="text-lg font-semibold mb-2">Couldn't load this skill</h2>
+      <p id="error-detail" class="text-sm text-muted mb-4"></p>
+      <button id="retry-btn" type="button" class="text-sm text-accent hover:underline">Retry</button>
+    </section>
+
+    <article id="skill-body" hidden class="mt-2">
+      <header class="flex flex-col gap-3 mb-6">
+        <div class="flex items-center gap-2 flex-wrap">
+          <span id="source-badge" class="badge badge-source"></span>
+          <span id="quality-badge" class="badge badge-quality" hidden></span>
+        </div>
+        <h1 id="sk-title" class="text-3xl md:text-4xl font-semibold tracking-tight"></h1>
+        <p id="sk-desc" class="text-muted leading-relaxed" hidden></p>
+        <div class="text-sm text-muted-soft flex items-center gap-4 flex-wrap">
+          <span id="sk-license"></span>
+          <a id="sk-origin-link" href="#" target="_blank" rel="noopener nofollow" class="text-accent hover:underline" hidden>View at origin ↗</a>
+        </div>
+      </header>
+
+      <section class="bg-bg-card border border-border rounded-2xl p-5 mb-6 text-sm text-muted leading-relaxed">
+        This is an external skill. LoopSkill indexes its metadata so it's searchable here, but the
+        skill itself — its README, its code, its install instructions — lives at the source.
+        <strong class="text-text">LoopSkill never rehosts external content.</strong>
+      </section>
+
+      <!-- fetch_origin branch: redistributable — real install_command. -->
+      <section id="install-fetch" hidden class="bg-bg-card border border-accent/40 rounded-2xl p-6 mb-6">
+        <h2 class="text-lg font-semibold mb-3">Install this skill</h2>
+        <div class="relative">
+          <pre class="bg-[#0d0d0d] border border-border rounded-xl p-4 pr-12 text-sm text-accent overflow-x-auto"><code id="install-command"></code></pre>
+          <button id="copy-install-btn" type="button" class="absolute top-3 right-3 px-2.5 py-1 rounded-md bg-bg-elev border border-border text-xs text-muted hover:text-accent hover:border-accent/40 transition">Copy</button>
+        </div>
+        <p class="text-xs text-muted-soft mt-3">Tell your agent to run the command above — it fetches this skill straight from its origin, no account needed.</p>
+      </section>
+
+      <!-- deep_link branch: not redistributable — origin only, no content. -->
+      <section id="install-deeplink" hidden class="bg-bg-card border border-border rounded-2xl p-6 mb-6 text-center">
+        <p id="deeplink-reason" class="text-sm text-muted mb-4"></p>
+        <a id="deeplink-btn" href="#" target="_blank" rel="noopener nofollow" class="inline-flex items-center gap-2 px-6 py-3 rounded-lg bg-accent text-bg font-semibold text-sm hover:bg-accent-soft transition">
+          View at origin →
+        </a>
+        <p class="text-xs text-muted-soft mt-3">LoopSkill never rehosts this content — install it directly from where it actually lives.</p>
+      </section>
+    </article>
+  </main>
+</AppShell>
+
+<style>
+  .badge { display: inline-flex; align-items: center; gap: .25rem; font-size: 10px; text-transform: uppercase; letter-spacing: .04em; padding: .15rem .5rem; border-radius: 999px; border: 1px solid; }
+  .badge-source { color: #5b9bf5; background: rgba(91,155,245,.1); border-color: rgba(91,155,245,.35); }
+  .badge-quality { color: var(--muted-soft, #9aa3b2); background: var(--bg-elev, #1b1f27); border-color: var(--border-soft, #2a2f3a); text-transform: none; letter-spacing: 0; }
+</style>
+
+<script define:vars={{ API_BASE }}>
+  const $ = (id) => document.getElementById(id);
+  const show = (id) => { const e = $(id); if (e) e.hidden = false; };
+  const hide = (id) => { const e = $(id); if (e) e.hidden = true; };
+
+  // REF FORMAT: canonical is "source:slug" (colon — matches install_ref
+  // from /api/search's federated group and /api/skills/metasearch). Legacy
+  // "source--slug" (double-dash) also accepted. Split on the FIRST
+  // occurrence only in either case — a slug may itself contain "--".
+  function parseRef(raw) {
+    if (!raw) return null;
+    const colonIdx = raw.indexOf(':');
+    if (colonIdx > 0 && colonIdx < raw.length - 1) {
+      return { source: raw.slice(0, colonIdx), slug: raw.slice(colonIdx + 1) };
+    }
+    const dashIdx = raw.indexOf('--');
+    if (dashIdx > 0 && dashIdx < raw.length - 2) {
+      return { source: raw.slice(0, dashIdx), slug: raw.slice(dashIdx + 2) };
+    }
+    return null;
+  }
+
+  // XSS guard: origin_url/raw_url are upstream-controlled strings that
+  // arrive via the API. Never build an <a href> from an unvalidated value —
+  // only a real http(s) URL becomes a clickable anchor; anything else is
+  // simply not rendered as a link.
+  function isHttpUrl(u) {
+    return typeof u === 'string' && /^https?:\/\//i.test(u);
+  }
+
+  // The install endpoint returns no display title — derive a readable one
+  // from the slug. Purely cosmetic; never used as a security boundary.
+  function humanizeSlug(slug) {
+    const s = String(slug || '');
+    const words = s.split(/[-_]+/).filter(Boolean).map((w) => w.charAt(0).toUpperCase() + w.slice(1));
+    return words.join(' ') || s || 'Untitled skill';
+  }
+
+  // Best-effort description from a fetch_origin SKILL.md's frontmatter.
+  // Deliberately tolerant (no YAML parser) — a single-line `description:`
+  // capture only. Returns null (the description block stays hidden) rather
+  // than guessing when the shape doesn't match.
+  function extractDescription(content) {
+    if (typeof content !== 'string') return null;
+    const fm = content.match(/^---\r?\n([\s\S]*?)\r?\n---/);
+    const body = fm ? fm[1] : content.slice(0, 2000);
+    const m = body.match(/^description:\s*["']?(.+?)["']?\s*$/mi);
+    if (!m) return null;
+    const val = m[1].trim();
+    return val && val !== '>' && val !== '|' ? val : null;
+  }
+
+  const ref = parseRef(new URLSearchParams(location.search).get('ref'));
+
+  function fail(detail) {
+    hide('state-loading'); hide('skill-body');
+    const d = $('error-detail'); if (d) d.textContent = detail || 'Unknown error.';
+    show('state-error');
+  }
+
+  async function load() {
+    hide('state-notfound'); hide('state-error'); hide('skill-body');
+    show('state-loading');
+
+    if (!ref) { hide('state-loading'); show('state-notfound'); return; }
+
+    let res;
+    try {
+      res = await fetch(
+        `${API_BASE}/api/skills/external/${encodeURIComponent(ref.source)}/${encodeURIComponent(ref.slug)}/install`,
+      );
+    } catch (e) {
+      fail('Network error: ' + (e && e.message ? e.message : e));
+      return;
+    }
+    if (res.status === 404) { hide('state-loading'); show('state-notfound'); return; }
+    if (!res.ok) { fail(`The API returned an error (HTTP ${res.status}).`); return; }
+
+    // The endpoint may return non-JSON on a 5xx that slips past res.ok
+    // (proxy error pages, etc.) — never let a parse throw escape uncaught.
+    let data;
+    try { data = await res.json(); } catch { fail('The server returned a malformed response.'); return; }
+    if (!data || typeof data !== 'object') { fail('The server returned an empty response.'); return; }
+
+    render(data);
+  }
+
+  function render(d) {
+    hide('state-loading');
+    show('skill-body');
+
+    const title = humanizeSlug(d.slug || ref.slug);
+    document.title = `${title} — LoopSkill`;
+    $('sk-title').textContent = title;
+    $('source-badge').textContent = d.source || ref.source || 'external';
+
+    if (d.quality) { $('quality-badge').textContent = d.quality; show('quality-badge'); }
+    else hide('quality-badge');
+
+    $('sk-license').textContent = d.license ? `License: ${d.license}` : 'License: unknown';
+
+    const originLink = $('sk-origin-link');
+    if (isHttpUrl(d.origin_url)) { originLink.href = d.origin_url; show('sk-origin-link'); }
+    else hide('sk-origin-link');
+
+    hide('install-fetch'); hide('install-deeplink');
+
+    if (d.install_path === 'fetch_origin') {
+      const desc = extractDescription(d.content);
+      if (desc) { $('sk-desc').textContent = desc; show('sk-desc'); } else hide('sk-desc');
+
+      const cmd = typeof d.install_command === 'string' && d.install_command
+        ? d.install_command
+        : (isHttpUrl(d.raw_url) ? `curl -fsSL ${d.raw_url}` : '');
+      // textContent only — NEVER innerHTML — even for API-sourced strings.
+      $('install-command').textContent = cmd || 'Install command unavailable.';
+      show('install-fetch');
+
+      const copyBtn = $('copy-install-btn');
+      if (copyBtn && cmd) {
+        copyBtn.addEventListener('click', async () => {
+          try {
+            await navigator.clipboard.writeText(cmd);
+            copyBtn.textContent = 'Copied';
+            setTimeout(() => { copyBtn.textContent = 'Copy'; }, 1600);
+          } catch {
+            copyBtn.textContent = 'Select & copy';
+          }
+        }, { once: true });
+      }
+    } else {
+      // deep_link (or any future/unknown install_path — fail closed to the
+      // origin-only affordance rather than showing nothing at all).
+      hide('sk-desc');
+      $('deeplink-reason').textContent = d.reason
+        ? `Not installable here: ${d.reason}.`
+        : 'This skill installs only from its origin.';
+      const btn = $('deeplink-btn');
+      if (isHttpUrl(d.origin_url)) { btn.href = d.origin_url; btn.removeAttribute('aria-disabled'); }
+      else { btn.removeAttribute('href'); btn.setAttribute('aria-disabled', 'true'); }
+      show('install-deeplink');
+    }
+  }
+
+  const retryBtn = $('retry-btn');
+  if (retryBtn) retryBtn.addEventListener('click', load);
+
+  load();
+</script>
