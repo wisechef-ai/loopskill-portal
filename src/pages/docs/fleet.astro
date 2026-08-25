@@ -55,10 +55,10 @@ loopskill_list_bundle({})   // list existing bundles
 curl -X POST -H "x-api-key: $RECIPES_API_KEY" \\
   -H "Content-Type: application/json" \\
   -d '{"name": "Production Fleet Bundle"}' \\
-  https://app.loopskill.io/api/cookbooks`}</code></pre>
+  https://app.loopskill.io/api/bundles`}</code></pre>
       <p>
         Add skills to the bundle via the dashboard or the
-        <code>POST /api/cookbooks/{`{id}`}/skills</code> endpoint.
+        <code>POST /api/bundles/{`{id}`}/skills</code> endpoint.
         Each skill is pinned at the current latest version when added.
       </p>
 
