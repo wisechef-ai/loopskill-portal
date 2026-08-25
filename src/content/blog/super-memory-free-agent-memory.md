@@ -6,6 +6,8 @@ author: 'WiseChef'
 tags: ['super-memory', 'open-source', 'cognee']
 ---
 
+> **Correction (2026-08-25):** This post predates the Recipes→LoopSkill rename. Commands like `npm install -g @recipes/cli` / `recipes install` no longer exist. The current install is one phrase to your agent — "Install the loopskill skill from app.loopskill.io/skill" — or `uvx loopskill-mcp` for MCP clients. See [the install guide](/docs/install).
+
 Most agents forget the conversation 30 minutes ago. super-memory fixes that with one curl command.
 
 Cognee for the knowledge graph + Postgres for durability + pgvector for semantic recall. MIT licensed. Yours forever.

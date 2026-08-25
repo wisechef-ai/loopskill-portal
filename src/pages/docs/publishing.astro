@@ -17,7 +17,7 @@ const faqs: FaqItem[] = [
   },
   {
     q: 'How long does review take?',
-    a: "Standard review: we aim to respond within a few business days. Operator subscribers receive priority review. If your issue hasn't received a response, comment on it with a ping.",
+    a: "Standard review: we aim to respond within a few business days. Pro subscribers receive priority review. If your issue hasn't received a response, comment on it with a ping.",
   },
 ];
 const faqSchema = buildFaqPageSchema(faqs);
@@ -75,7 +75,7 @@ templates/        ← optional: config snippets, scaffolds`}</code></pre>
       <p>
         The <code>SKILL.md</code> frontmatter must include at minimum:
         <code>name</code>, <code>description</code>, <code>version</code> (semver),
-        <code>tier</code> (free | cook | operator), and <code>license</code> (SPDX).
+        <code>tier</code> (free | pro | pro_plus), and <code>license</code> (SPDX).
       </p>
 
       <h3>Step 2: Call loopskill_publish_request</h3>
@@ -89,7 +89,7 @@ loopskill_publish_request({
   content: "<SKILL.md contents>",
   version: "1.0.0",
   description: "What this skill does",
-  tier: "cook",
+  tier: "pro",
   license: "MIT"
 })`}</code></pre>
 
@@ -176,11 +176,11 @@ loopskill_publish_request({
           Good for open-source skills you want maximum adoption on. MIT or Apache-2.0 license preferred.
         </li>
         <li>
-          <strong>cook</strong> — available to Pro subscribers ($9.95/mo). This is the sweet spot
-          for polished, maintained skills. Most catalog skills are cook-tier.
+          <strong>pro</strong> — available to Pro subscribers ($9.95/mo). This is the sweet spot
+          for polished, maintained skills. Most catalog skills are pro-tier.
         </li>
         <li>
-          <strong>operator</strong> — available to Pro subscribers. For advanced
+          <strong>pro_plus</strong> — available to Pro subscribers. For advanced
           skills: fleet-specific tooling, high-compute workflows, bespoke integrations.
         </li>
       </ul>

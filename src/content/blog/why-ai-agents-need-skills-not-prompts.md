@@ -6,6 +6,8 @@ author: 'WiseChef'
 tags: ['skills', 'ai-agents', 'anthropic', 'architecture', 'mcp']
 ---
 
+> **Correction (2026-08-25):** This post predates the Recipes→LoopSkill rename. Commands like `npm install -g @recipes/cli` / `recipes install` no longer exist. The current install is one phrase to your agent — "Install the loopskill skill from app.loopskill.io/skill" — or `uvx loopskill-mcp` for MCP clients. See [the install guide](/docs/install).
+
 The prompt is dead. Long live the skill.
 
 That sounds dramatic, but it is the practical reality for agencies running AI agents in production. Prompts work for demos. Skills work for clients.

@@ -86,8 +86,36 @@ import AppShell from '../../layouts/AppShell.astro';
 
     <h2 class="text-xl font-semibold text-text mb-3">2. Configure your client</h2>
     <p class="text-muted mb-6">
-      LoopSkill is a <strong>hosted</strong> MCP server — no local install, no clone, no <code class="text-xs bg-bg-elev rounded px-1">pip install</code>.
-      Point your client at the StreamableHTTP endpoint with your key in the <code class="text-xs bg-bg-elev rounded px-1">x-api-key</code> header:
+      Two ways to connect, depending on what your client supports.
+    </p>
+
+    <p class="text-xs text-muted-soft uppercase tracking-wider font-semibold mb-2">Recommended · <code class="text-[11px] bg-bg-elev border border-border-soft rounded px-1 py-0.5">uvx loopskill-mcp</code> (stdio bridge)</p>
+    <p class="text-sm text-muted mb-3 leading-relaxed">
+      For clients that spawn a local stdio MCP process (Claude Desktop, Hermes, Codex CLI) —
+      <code class="text-xs bg-bg-elev rounded px-1">loopskill-mcp</code> is a published PyPI package: a
+      thin local bridge that proxies to the same hosted StreamableHTTP endpoint. No clone, no
+      manual venv — <code class="text-xs bg-bg-elev rounded px-1">uvx</code> fetches and runs it on demand.
+    </p>
+    <pre class="bg-[#0d0d0d] border border-border rounded-xl p-4 text-sm text-text overflow-x-auto mb-4"><code>&#123;
+  "mcpServers": &#123;
+    "loopskill": &#123;
+      "command": "uvx",
+      "args": ["loopskill-mcp"],
+      "env": &#123; "LOOPSKILL_API_KEY": "rec_live_your_key_here" &#125;
+    &#125;
+  &#125;
+&#125;</code></pre>
+    <p class="text-xs text-muted-soft leading-relaxed mb-8">
+      MCP calls require a key for every operation (verified live: anonymous
+      <code class="text-[11px] bg-bg-elev border border-border-soft rounded px-1 py-0.5">tools/list</code>
+      returns 401) — including free-tier lookups. For a truly keyless path, use the
+      <a href="/docs/install" class="text-accent hover:underline">meta-skill or raw REST install guide</a> instead.
+    </p>
+
+    <p class="text-xs text-muted-soft uppercase tracking-wider font-semibold mb-2">Manual · raw StreamableHTTP JSON</p>
+    <p class="text-sm text-muted mb-3 leading-relaxed">
+      For clients that connect directly over HTTP (no local process) — point them at the hosted
+      endpoint with your key in the <code class="text-xs bg-bg-elev rounded px-1">x-api-key</code> header:
     </p>
     <pre class="bg-[#0d0d0d] border border-border rounded-xl p-4 text-sm text-text overflow-x-auto mb-8"><code>&#123;
   "mcpServers": &#123;

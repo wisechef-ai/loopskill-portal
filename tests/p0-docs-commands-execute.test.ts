@@ -141,40 +141,16 @@ const EXPECTED_NON_2XX: StatusRule[] = [
       'a deliberately documented dead link, not an omission.',
   },
   {
-    method: 'GET',
-    url: `${SITE}/api/skills/access?slug=seo-audit-engine`,
-    expectedStatus: 422,
-    reason:
-      'Documented example uses query param `slug`, but the live API requires `skill` — a ' +
-      'REAL docs defect this gate is designed to catch (proven live 2026-08-11: `slug=` ' +
-      '422s "Field required" for `skill`; `skill=` resolves and 404s cleanly instead). ' +
-      'Pinned as an expected-422 contract rather than silently fixed here so the PR body ' +
-      'can report it as a finding — api-reference.astro §"GET /api/skills/access" needs a ' +
-      'follow-up doc fix to change its example query param from `slug` to `skill`.',
-  },
-  {
-    method: 'GET',
-    url: `${SITE}/api/skills/install?slug=client-reporter`,
+    method: 'POST',
+    url: `${SITE}/api/api-keys`,
     expectedStatus: 401,
     reason:
-      'install.astro badges this "Install a free skill (no auth)", but slug=client-reporter ' +
-      'is not a free-tier skill on the live catalog today, so it 401s exactly like any ' +
-      'other keyed skill would ("Authentication required to install this skill. Free skills ' +
-      'install with no key."). The CONTRACT the docs describe (free skills install keyless) ' +
-      'is real and covered by the super-memory (tier=free) install commands below, which DO ' +
-      'assert 200 — this is a stale EXAMPLE slug, not a broken auth contract. Flagged here as ' +
-      'a real finding: install.astro should swap this example to a slug that is actually ' +
-      'free-tier today (or fetch one live rather than hardcoding).',
-  },
-  {
-    method: 'POST',
-    url: `${SITE}/api-keys`,
-    expectedStatus: 404,
-    reason:
-      'api-reference.astro documents `POST /api-keys` at the site root, but the live API only ' +
-      'serves it under `/api/api-keys` (verified live: /api/api-keys 401s unauthenticated, the ' +
-      'documented root path 404s). A real docs defect — api-reference.astro needs its path ' +
-      'fixed to /api/api-keys.',
+      'docs-drift-wave fix (2026-08-25, fixlist item 6): api-reference.astro now documents ' +
+      '`POST /api/api-keys` (was the wrong root-level `/api-keys`, which 404d — see git ' +
+      'history for the old EXPECTED_NON_2XX pin at that path). The corrected path resolves ' +
+      'and correctly 401s unauthenticated (verified live 2026-08-25: `POST /api/api-keys` ' +
+      'anonymous -> 401 "Invalid or missing x-api-key/Authorization"). This is the intended ' +
+      'auth-gated contract, not a docs defect — creating a key requires a session/API key.',
   },
   {
     method: 'POST',
