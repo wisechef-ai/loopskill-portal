@@ -36,7 +36,7 @@ const API_BASE = import.meta.env.PUBLIC_LOOPSKILL_API_BASE || import.meta.env.PU
     </section>
 
     <section id="forks-empty" hidden>
-      <p>You don't have any forks yet. Run <code>recipes fork &lt;slug&gt;</code> to create one.</p>
+      <p>You don't have any forks yet. Run <code>loopskill fork &lt;slug&gt;</code> to create one.</p>
     </section>
 
     <ul id="fork-list"></ul>
@@ -142,7 +142,7 @@ const API_BASE = import.meta.env.PUBLIC_LOOPSKILL_API_BASE || import.meta.env.PU
           readme: node.querySelector(".fork-readme").value,
           visibility: node.querySelector(".fork-visibility").value,
         });
-        alert("Save: PATCH endpoint ships next batch (D.4 v2). Use `recipes publish-fork` for now.");
+        alert("Save: PATCH endpoint ships next batch (D.4 v2). Use `loopskill publish-fork` for now.");
       });
 
       node.querySelector(".install-btn").addEventListener("click", async () => {

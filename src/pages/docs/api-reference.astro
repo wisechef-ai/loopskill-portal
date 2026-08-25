@@ -92,9 +92,9 @@ const telemetryBodyEx = `{
       <p><strong>Errors:</strong> <code>404</code> if slug not found.</p>
 
       <h3>GET /api/skills/install</h3>
-      <p>Auth required (every install needs a key — including free-tier skills).</p>
-      <pre><code>curl -H "x-api-key: $RECIPES_API_KEY" \
-  "https://app.loopskill.io/api/skills/install?slug=super-memory&mode=files"</code></pre>
+      <p>Auth required for Pro/Pro+-tier skills. Free-tier skills (the entire catalog today)
+      install anonymously — no key needed.</p>
+      <pre><code>curl "https://app.loopskill.io/api/skills/install?slug=super-memory&mode=files"</code></pre>
       <p><strong>Query params:</strong></p>
       <ul>
         <li><code>slug</code> — skill slug (required)</li>
@@ -108,8 +108,8 @@ const telemetryBodyEx = `{
 
       <h3>GET /api/skills/access</h3>
       <p>Auth required. Pre-flight check before install — confirms tier without consuming an install slot.</p>
-      <pre><code>curl -H "x-api-key: $RECIPES_API_KEY" \
-  "https://app.loopskill.io/api/skills/access?slug=seo-audit-engine"</code></pre>
+      <pre><code>curl -H "x-api-key: *** \
+  "https://app.loopskill.io/api/skills/access?skill=seo-audit-engine"</code></pre>
       <p><strong>Response — access granted:</strong></p>
       <pre><code set:text={accessGrantedEx}></code></pre>
       <p><strong>Response — access denied:</strong></p>
@@ -117,8 +117,8 @@ const telemetryBodyEx = `{
 
       <h3>GET /api/skills/trending</h3>
       <p>Public. Returns trending skills by install velocity.</p>
-      <pre><code>curl "https://app.loopskill.io/api/skills/trending?period=week&limit=10"</code></pre>
-      <p><strong>Query params:</strong> <code>period</code> (week | month), <code>limit</code> (1–50).</p>
+      <pre><code>curl "https://app.loopskill.io/api/skills/trending?period=week&page_size=10"</code></pre>
+      <p><strong>Query params:</strong> <code>period</code> (day | week | month), <code>page</code> (1+, default 1), <code>page_size</code> (1–100, default 20).</p>
 
       <!-- ────────────────────────────────── COOKBOOKS ── -->
       <h2>Bundles</h2>
@@ -157,19 +157,19 @@ const telemetryBodyEx = `{
       <!-- ────────────────────────────────── API KEYS ── -->
       <h2>API Keys</h2>
 
-      <h3>POST /api-keys</h3>
+      <h3>POST /api/api-keys</h3>
       <p>Create a new <code>rec_</code> API key.</p>
-      <pre><code>curl -X POST -H "Authorization: Bearer $JWT" \
+      <pre><code>curl -X POST -H "Authorization: Bearer ***" \
   -H "Content-Type: application/json" \
   -d '&#123;"name": "CI server"&#125;' \
-  https://app.loopskill.io/api-keys</code></pre>
+  https://app.loopskill.io/api/api-keys</code></pre>
       <p><strong>Response:</strong> <code>201</code> — key shown once, store securely.</p>
       <pre><code set:text={apiKeyResponseEx}></code></pre>
 
-      <h3>GET /api-keys</h3>
+      <h3>GET /api/api-keys</h3>
       <p>List all API keys (hashed — raw keys not re-shown).</p>
 
-      <h3>DELETE /api-keys/&#123;key_id&#125;</h3>
+      <h3>DELETE /api/api-keys/&#123;key_id&#125;</h3>
       <p>Revoke an API key immediately. Inflight requests 401 within 60s.</p>
 
       <!-- ────────────────────────────────── TELEMETRY ── -->

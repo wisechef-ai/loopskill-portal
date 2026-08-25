@@ -159,7 +159,7 @@ loopskill sync`}</code></pre>
         systemd timer:
       </p>
       <pre><code>{`# crontab entry (runs daily at 05:30 UTC)
-30 5 * * * LOOPSKILL_API_KEY=rec_fleet_... loopskill sync >> /var/log/recipes-sync.log 2>&1`}</code></pre>
+30 5 * * * LOOPSKILL_API_KEY=rec_fleet_... loopskill sync >> /var/log/loopskill-sync.log 2>&1`}</code></pre>
 
       <h2>Security considerations</h2>
       <ul>

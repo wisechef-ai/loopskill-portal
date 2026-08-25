@@ -142,15 +142,13 @@ const EXPECTED_NON_2XX: StatusRule[] = [
   },
   {
     method: 'GET',
-    url: `${SITE}/api/skills/access?slug=seo-audit-engine`,
-    expectedStatus: 422,
+    url: `${SITE}/api/skills/access?skill=seo-audit-engine`,
+    expectedStatus: 404,
     reason:
-      'Documented example uses query param `slug`, but the live API requires `skill` — a ' +
-      'REAL docs defect this gate is designed to catch (proven live 2026-08-11: `slug=` ' +
-      '422s "Field required" for `skill`; `skill=` resolves and 404s cleanly instead). ' +
-      'Pinned as an expected-422 contract rather than silently fixed here so the PR body ' +
-      'can report it as a finding — api-reference.astro §"GET /api/skills/access" needs a ' +
-      'follow-up doc fix to change its example query param from `slug` to `skill`.',
+      'Fixed docsdrift_0821 finding #5: api-reference.astro used to document `slug=` (422s, ' +
+      '"Field required: skill"). Now teaches the real param name `skill=`. `seo-audit-engine` ' +
+      'is not a real catalog slug (it is an illustrative example, per the surrounding prose), ' +
+      'so a valid-shaped request against it 404s cleanly — that is the correct, working contract.',
   },
   {
     method: 'GET',
@@ -168,13 +166,13 @@ const EXPECTED_NON_2XX: StatusRule[] = [
   },
   {
     method: 'POST',
-    url: `${SITE}/api-keys`,
-    expectedStatus: 404,
+    url: `${SITE}/api/api-keys`,
+    expectedStatus: 401,
     reason:
-      'api-reference.astro documents `POST /api-keys` at the site root, but the live API only ' +
-      'serves it under `/api/api-keys` (verified live: /api/api-keys 401s unauthenticated, the ' +
-      'documented root path 404s). A real docs defect — api-reference.astro needs its path ' +
-      'fixed to /api/api-keys.',
+      'api-reference.astro now documents the canonical `/api/api-keys` path ' +
+      '(fixed docsdrift_0821 finding #6 — was `/api-keys` at the site root, which 404\'d; ' +
+      'live-verified: /api/api-keys 401s unauthenticated with a real placeholder Bearer token, ' +
+      'never 2xx without a real session). Anonymous call correctly 401s.',
   },
   {
     method: 'POST',

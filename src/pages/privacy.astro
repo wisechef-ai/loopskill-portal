@@ -17,7 +17,7 @@ const lastUpdated = '2026-05-03';
     </ul>
 
     <h2>What the heartbeat actually contains</h2>
-    <p>Every Recipes client (CLI, installer, skill runtime) sends one HTTP request per day to <code>POST /api/v1/heartbeat</code>. The body has <strong>exactly two fields</strong>:</p>
+    <p>Every LoopSkill client (CLI, installer, skill runtime) sends one HTTP request per day to <code>POST /api/v1/heartbeat</code>. The body has <strong>exactly two fields</strong>:</p>
     <pre><code>{`{
   "salt": "<32-character random hex string, generated on first run>",
   "last_seen_day": "YYYY-MM-DD"

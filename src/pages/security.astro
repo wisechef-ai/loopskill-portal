@@ -16,7 +16,7 @@ const layers = [
       'Layered scan before catalog entry: security + discipline + quality gates must all pass',
       'Two-stage trust: anonymous PRs land as drafts, require human reviewer approval before promotion',
       'Failed installs are filed as feedback issues and fed back through the pipeline → patches shipped within the same release cycle',
-      'Versioned forever, content-addressed (sha256), one-CLI rollback — recipes install <slug>@<version>',
+      'Versioned forever, content-addressed (sha256), no silent overwrite — pin any version via GET /api/skills/install?slug=<slug>&version=<version>',
     ],
   },
   {
@@ -31,7 +31,7 @@ const layers = [
     title: 'Creator track record',
     icon: 'check',
     body: `Each skill is signed (Ed25519) by its creator. The signature, the published tarball SHA-256, and the source commit URL are stamped on the public skill page. Bad actors can't quietly replace a tarball — the hash mismatch is detectable by every install.`,
-    proof: 'recipes verify <slug>',
+    proof: 'GET /api/skills/install?slug=<slug> -> checksum_sha256',
   },
 ];
 
@@ -117,10 +117,11 @@ const guarantees = [
   <section class="max-w-4xl mx-auto px-6 py-16">
     <div class="bg-[#0d0d0d] border border-border rounded-2xl p-6 md:p-8 flex flex-col gap-4">
       <p class="eyebrow">Verify a skill yourself</p>
-      <code class="font-mono text-sm text-text">recipes verify client-reporter</code>
+      <code class="font-mono text-sm text-text">curl "https://app.loopskill.io/api/skills/install?slug=super-memory"</code>
       <p class="text-xs text-muted-soft">
-        The CLI re-downloads the tarball, recomputes its SHA-256, and prints the source URL + signature.
-        If anything ever drifts from what we published, this command fails loudly.
+        The install endpoint returns a signed <code>checksum_sha256</code> for the exact tarball
+        bytes served. Recompute the hash on the downloaded file and compare — if anything ever
+        drifts from what we published, the checksum mismatch is immediately visible.
       </p>
     </div>
   </section>

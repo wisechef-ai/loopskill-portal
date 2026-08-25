@@ -7,35 +7,35 @@ const clients = [
     name: 'Hermes',
     status: 'Native',
     icon_path: '/icons/integrations/hermes.svg',
-    note: 'Hermes auto-discovers SKILL.md in ~/.hermes/skills/. The recipes meta-skill becomes a tool the agent uses to search and install skills on demand.',
-    setup: 'mkdir -p ~/.hermes/skills/recipes && curl -sL https://app.loopskill.io/skill -o ~/.hermes/skills/recipes/SKILL.md',
+    note: 'Hermes auto-discovers SKILL.md in ~/.hermes/skills/. The loopskill meta-skill becomes a tool the agent uses to search and install skills on demand.',
+    setup: 'mkdir -p ~/.hermes/skills/loopskill && curl -sL https://app.loopskill.io/skill -o ~/.hermes/skills/loopskill/SKILL.md',
   },
   {
     name: 'OpenClaw',
     status: 'Native',
     icon_path: '/icons/integrations/openclaw.svg',
     note: 'OpenClaw mounts the same skill directory layout as Claude Code/Codex. Drop the meta-skill in once; every spawned agent inherits it.',
-    setup: 'mkdir -p ~/.openclaw/skills/recipes && curl -sL https://app.loopskill.io/skill -o ~/.openclaw/skills/recipes/SKILL.md',
+    setup: 'mkdir -p ~/.openclaw/skills/loopskill && curl -sL https://app.loopskill.io/skill -o ~/.openclaw/skills/loopskill/SKILL.md',
   },
   {
     name: 'Claude Code',
     status: 'Native',
     icon_path: '/icons/integrations/claude-code.svg',
-    note: 'Drop SKILL.md into ~/.claude/skills/recipes/. Auto-discovered.',
-    setup: 'curl -sL https://app.loopskill.io/skill -o ~/.claude/skills/recipes/SKILL.md',
+    note: 'Drop SKILL.md into ~/.claude/skills/loopskill/. Auto-discovered.',
+    setup: 'mkdir -p ~/.claude/skills/loopskill && curl -sL https://app.loopskill.io/skill -o ~/.claude/skills/loopskill/SKILL.md',
   },
   {
     name: 'Codex CLI',
     status: 'Native',
     icon_path: '/icons/integrations/codex.svg',
-    note: 'Drop SKILL.md into ~/.codex/skills/recipes/. Same format as Claude Code.',
-    setup: 'curl -sL https://app.loopskill.io/skill -o ~/.codex/skills/recipes/SKILL.md',
+    note: 'Drop SKILL.md into ~/.codex/skills/loopskill/. Same format as Claude Code.',
+    setup: 'mkdir -p ~/.codex/skills/loopskill && curl -sL https://app.loopskill.io/skill -o ~/.codex/skills/loopskill/SKILL.md',
   },
   {
     name: 'Claude Desktop',
     status: 'MCP',
     icon_path: '/icons/integrations/claude-desktop.svg',
-    note: 'Configure recipes-mcp server. Search/install skills via tool calls.',
+    note: 'Configure the loopskill-mcp server. Search/install skills via tool calls.',
     setup: 'See /docs/mcp for claude_desktop_config.json snippet',
   },
   {
@@ -123,8 +123,8 @@ const statusBadge: Record<string, string> = {
           <h3 class="text-lg font-semibold text-text">SKILL.md drop</h3>
           <p class="text-sm text-muted leading-relaxed">
             For Claude Code &amp; Codex CLI, the meta-skill is a single Markdown file dropped into
-            <code class="text-xs bg-bg-elev rounded px-1">~/.claude/skills/recipes/</code> or
-            <code class="text-xs bg-bg-elev rounded px-1">~/.codex/skills/recipes/</code>.
+            <code class="text-xs bg-bg-elev rounded px-1">~/.claude/skills/loopskill/</code> or
+            <code class="text-xs bg-bg-elev rounded px-1">~/.codex/skills/loopskill/</code>.
             The agent auto-discovers it on next session, learns about the marketplace, and starts
             installing skills as it works.
           </p>
