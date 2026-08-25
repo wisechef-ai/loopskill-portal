@@ -146,37 +146,37 @@ describe('Docs content requirements (Phase I) [REVISED — loopskill_0622 rebran
 });
 
 // ---------------------------------------------------------------------------
-// Part 3: ops/install-rebuild-timer.sh
+// Part 3: nightly scheduled rebuild (replaces the dead rebuild timer)
 // ---------------------------------------------------------------------------
 
-describe('ops/install-rebuild-timer.sh (Phase I)', () => {
-  it('file exists', () => {
-    expect(existsSync(OPS)).toBe(true);
+describe('nightly scheduled rebuild (fix/277, 2026-08-25) [REVISED]', () => {
+  // The old Part 3 pinned ops/install-rebuild-timer.sh — a script that was
+  // DEAD ON ARRIVAL: it targeted /home/wisechef/recipes-portal (the archived
+  // product's path; prod serves /home/wisechef/loopskill-portal/dist) and was
+  // never installed on the host (verified: systemctl list-timers shows only
+  // recipes-carousel timers). It was deleted in fix/277 and replaced by a
+  // scheduled trigger inside .github/workflows/ci.yml, which already owns the
+  // atomic-swap deploy path this repo actually uses.
+  const CI = join(ROOT, '.github', 'workflows', 'ci.yml');
+
+  it('ci.yml exists', () => {
+    expect(existsSync(CI)).toBe(true);
   });
 
-  it('contains OnCalendar=*-*-* 04:30:00 Europe/London', () => {
-    if (!existsSync(OPS)) return;
-    const src = readFileSync(OPS, 'utf-8');
-    expect(src).toContain('04:30:00');
-    expect(src).toContain('Europe/London');
+  it('declares the nightly schedule trigger', () => {
+    const src = readFileSync(CI, 'utf-8');
+    expect(src).toMatch(/schedule:\s*\n\s*-\s*cron:\s*"20 3 \* \* \*"/);
   });
 
-  it('contains systemctl restart caddy', () => {
-    if (!existsSync(OPS)) return;
-    const src = readFileSync(OPS, 'utf-8');
-    expect(src).toContain('systemctl restart caddy');
+  it('deploy steps accept scheduled runs, not just push', () => {
+    const src = readFileSync(CI, 'utf-8');
+    // The old gate `== 'push'` alone would skip every deploy step on a
+    // scheduled run — a silent no-op nightly rebuild.
+    expect(src).toContain("github.event_name == 'push' || github.event_name == 'schedule'");
+    expect(src).not.toMatch(/event_name == 'push'\s*\}\)/);
   });
 
-  it('is idempotent (uses tee or cat > for file creation)', () => {
-    if (!existsSync(OPS)) return;
-    const src = readFileSync(OPS, 'utf-8');
-    // Either writes with tee or cat heredoc — idempotent re-run
-    expect(src).toMatch(/tee|cat >/);
-  });
-
-  it('contains npm ci with fallback on failure', () => {
-    if (!existsSync(OPS)) return;
-    const src = readFileSync(OPS, 'utf-8');
-    expect(src).toContain('npm ci');
+  it('the dead timer script is gone', () => {
+    expect(existsSync(join(ROOT, 'ops', 'install-rebuild-timer.sh'))).toBe(false);
   });
 });
