@@ -327,8 +327,8 @@ const verticals = [
           Open-source skill registry + MCP server for AI agents
           <Icon name="arrow-right" size={11} class="opacity-70 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all" />
         </a>
-        <h1 class="text-5xl md:text-7xl font-bold tracking-tighter leading-[1.02]" style="letter-spacing: -0.04em;">
-          Every skill.<br/><span class="text-gradient hero-glow">Every agent. In sync.</span>
+        <h1 class="text-4xl md:text-6xl font-bold tracking-tighter leading-[1.05]" style="letter-spacing: -0.04em;">
+          One skill stack across every client agent —<br/><span class="text-gradient hero-glow">version-locked, drift-visible, synced</span> without logging into each machine.
         </h1>
         <p class="text-lg md:text-xl text-muted leading-relaxed max-w-2xl">
           The open skill registry for <strong class="text-text font-semibold">AI agents</strong>. Install versioned, signed skills into Claude Code, Cursor, Cline, OpenClaw, Hermes or Windsurf — one command or one MCP call — and keep every agent you run converged on the same stack with bundles and fleet locks.
@@ -376,46 +376,17 @@ const verticals = [
           </div>
         </div>
 
-        {/* ── Content rails (Spotify-shelf): the product you can SEE ── */}
-        {popularSkills.length > 0 && (
-          <div class="w-full max-w-5xl mt-10 text-left">
-            <div class="flex items-center justify-between mb-3">
-              <h2 class="text-sm font-semibold uppercase tracking-widest text-muted-soft">Popular skills</h2>
-              <a href="/skills" class="text-xs text-accent hover:opacity-80">Browse all →</a>
-            </div>
-            <div class="flex gap-3 overflow-x-auto pb-2 -mx-1 px-1 snap-x">
-              {popularSkills.map(s => (
-                <a href={`/skills/${s.slug}`} class="skill-rail-card group shrink-0 w-[140px] sm:w-[160px] snap-start">
-                  <SkillCover slug={s.slug} title={s.title || s.name} category={s.category} tier={s.tier} />
-                  <div class="mt-2 px-0.5">
-                    <p class="text-sm font-semibold text-text group-hover:text-accent transition truncate">{s.title || s.name || s.slug}</p>
-                    <p class="text-[11px] text-muted-soft capitalize truncate">{s.category || 'general'}{typeof s.install_count_total === 'number' && s.install_count_total > 0 ? ` · ${s.install_count_total.toLocaleString()}` : ''}</p>
-                  </div>
-                </a>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {publicCookbooks.length > 0 && (
-          <div class="w-full max-w-5xl mt-8 text-left">
-            <div class="flex items-center justify-between mb-3">
-              <h2 class="text-sm font-semibold uppercase tracking-widest text-muted-soft">Public bundles</h2>
-              <a href="/cookbooks" class="text-xs text-accent hover:opacity-80">Browse all →</a>
-            </div>
-            <div class="flex gap-3 overflow-x-auto pb-2 -mx-1 px-1 snap-x">
-              {publicCookbooks.map(cb => (
-                <a href={`/bundles/p?slug=${cb.slug}`} class="skill-rail-card group shrink-0 w-[140px] sm:w-[160px] snap-start">
-                  <SkillCover slug={cb.slug!} title={cb.name} category={cb.theme?.icon || cb.theme?.label || 'general'} tier="bundle" />
-                  <div class="mt-2 px-0.5">
-                    <p class="text-sm font-semibold text-text group-hover:text-accent transition truncate">{cb.name || 'Untitled'}</p>
-                    <p class="text-[11px] text-muted-soft truncate">{cb.skill_count != null ? `${cb.skill_count} skill${cb.skill_count === 1 ? '' : 's'}` : 'bundle'}</p>
-                  </div>
-                </a>
-              ))}
-            </div>
-          </div>
-        )}
+        {/* ── Catalog proof strip — one compact line replaces the two Spotify rails ── */}
+        <div class="w-full max-w-4xl mt-8 flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-sm text-muted-soft border border-border/50 rounded-xl px-5 py-3 bg-bg-card/40">
+          <a href="/skills" class="text-text font-semibold hover:text-accent transition">{liveSkillCount}+ curated skills</a>
+          <span aria-hidden="true">·</span>
+          <a href="/federation/" class="hover:text-accent transition">{federatedSkillLabel} federated</a>
+          <span aria-hidden="true">·</span>
+          <a href={publicCookbooks.length > 0 ? `/bundles/p?slug=${publicCookbooks[0]?.slug}` : '/cookbooks'} class="hover:text-accent transition">
+            {publicCookbooks.length > 0 && publicCookbooks[0]?.name ? `bundles like ${publicCookbooks[0].name}` : 'shareable bundles'}
+          </a>
+          <a href="/skills" class="ml-auto text-xs text-accent hover:opacity-80 hidden sm:inline">Browse all →</a>
+        </div>
 
         {/* ah0813 onboarding-friction fix: this IS the product's actual conversion
             action (paste one phrase into your agent) but was collapsed behind a
@@ -453,6 +424,9 @@ const verticals = [
           <a href="/fleets" class="text-accent hover:opacity-80 underline underline-offset-2">See Fleets →</a>
           · <a href="/skills" class="hover:text-accent transition underline underline-offset-2">Browse {liveSkillCount}+ skills</a>
           · <a href="/security" class="hover:text-accent transition underline underline-offset-2">How we audit</a>
+        </p>
+        <p class="text-xs text-muted-soft mt-1 max-w-2xl opacity-70">
+          Agent-control endpoints reject anonymous access; public discovery stays open.
         </p>
 
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mt-8 w-full max-w-4xl text-left">
@@ -572,70 +546,66 @@ const verticals = [
     </div>
   </section>
 
-  {spotlight.length > 0 && (
-  <section class="border-t border-border bg-bg-card/30">
-    <div class="max-w-6xl mx-auto px-6 py-24">
-      <div class="flex flex-col gap-3 mb-12 max-w-2xl">
-        <p class="eyebrow text-accent">Skill spotlight</p>
-        <h2 class="text-3xl md:text-5xl font-bold tracking-tight" style="letter-spacing: -0.03em;">These are not prompts.<br/>They are <span class="text-accent">products</span>.</h2>
-        <p class="text-muted text-lg">Our curated skills are signed, audited, and ready — the trusted core inside the {federatedSkillLabel}-skill universe. Every one replaces a SaaS subscription or a freelancer hour, run locally by your agent.</p>
-      </div>
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {spotlight.map(s => {
-          const tierClass = s.tier === 'free' ? 'badge-free' : 'badge-pro';
-          return (
-            <a href={`/skills/${s.slug}`} class="group bg-bg-card border border-border rounded-2xl p-6 card-lift flex flex-col gap-4 relative overflow-hidden">
-              {s.badge && <span class="absolute top-4 right-4 text-[10px] font-semibold uppercase tracking-wider text-success border border-success/40 rounded-full px-2 py-0.5">{s.badge}</span>}
-              <div class="flex items-start gap-4">
-                <div class="w-11 h-11 rounded-xl bg-accent/10 border border-accent/20 flex items-center justify-center text-accent shrink-0">
-                  <Icon name={s.icon as any} size={20} />
-                </div>
-                <div class="flex-1">
-                  <div class="flex items-center gap-2">
-                    <h3 class="text-xl font-semibold text-text group-hover:text-accent transition tracking-tight">{s.name}</h3>
-                    <span class={`inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] font-semibold tracking-wider ${tierClass}`}>{(s.tier ?? 'pro').toUpperCase()}</span>
-                  </div>
-                  <p class="text-xs text-muted-soft mt-0.5">{s.tagline}</p>
-                </div>
-              </div>
-              <p class="text-sm text-muted leading-relaxed">{s.description}</p>
-              <span class="text-xs text-accent inline-flex items-center gap-1 mt-auto group-hover:gap-2 transition-all">
-                View skill <Icon name="arrow-right" size={11} />
-              </span>
-            </a>
-          );
-        })}
-      </div>
-      <div class="text-center mt-10">
-        <a href="/skills" class="text-sm text-muted hover:text-accent inline-flex items-center gap-1.5 transition">
-          See all {liveSkillCount}+ skills <Icon name="arrow-right" size={11} />
-        </a>
-      </div>
-    </div>
-  </section>
-  )}
-
-  {/* rev 7.2.5: Cook-tier strip section removed — overlapped with the
-      "Skill spotlight" section above. Larry's "new" mention lives in
-      the spotlight intro now; cookStrip data is unused on the homepage
-      but still computed in case we want to surface it elsewhere. */}
-
   <section class="border-t border-border">
-    <div class="max-w-5xl mx-auto px-6 py-20">
-      <div class="flex flex-col gap-3 mb-8">
-        <p class="eyebrow text-accent">For creators &amp; operators</p>
+    <div class="max-w-6xl mx-auto px-6 py-20">
+      <div class="flex flex-col gap-4 mb-10 max-w-2xl">
+        <p class="eyebrow text-accent">Fleet convergence</p>
         <h2 class="text-3xl md:text-4xl font-bold tracking-tight" style="letter-spacing:-0.03em;">
-          Publish a loop. The whole world can run it.
+          See exactly which client agents have converged — and which have drifted.
         </h2>
-        <p class="text-muted text-lg max-w-xl leading-relaxed">
-          LoopSkill is open source (MPL-2.0). Publish a vetted, runnable loop to the
-          registry and anyone can run it under enforced bounds and rate it — earn 50%
-          recurring rev share on every Pro referral.
+        <p class="text-muted text-lg leading-relaxed">
+          Every agent in your fleet fetches its bundle on its own cron. You get the whole convergence picture at a glance — no SSH, no per-machine dashboards.
         </p>
       </div>
-      <div class="mt-2">
-        <a href="/creators" class="text-sm text-accent hover:opacity-80 inline-flex items-center gap-1.5 transition font-semibold">
-          Learn about the creator program <Icon name="arrow-right" size={13} />
+
+      <div class="overflow-x-auto rounded-2xl border border-border bg-bg-card/40 mb-6">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="border-b border-border">
+              <th class="text-left px-4 py-3 text-xs font-semibold uppercase tracking-widest text-muted-soft">Agent</th>
+              <th class="text-left px-4 py-3 text-xs font-semibold uppercase tracking-widest text-muted-soft">super-memory</th>
+              <th class="text-left px-4 py-3 text-xs font-semibold uppercase tracking-widest text-muted-soft">agent-browser</th>
+              <th class="text-left px-4 py-3 text-xs font-semibold uppercase tracking-widest text-muted-soft">seo-audit-engine</th>
+              <th class="text-left px-4 py-3 text-xs font-semibold uppercase tracking-widest text-muted-soft">Status</th>
+            </tr>
+          </thead>
+          <tbody class="font-mono text-xs">
+            <tr class="border-b border-border/50">
+              <td class="px-4 py-3 text-text font-sans font-medium">client-A</td>
+              <td class="px-4 py-3 text-emerald-400">✓ 1.4.2</td>
+              <td class="px-4 py-3 text-emerald-400">✓ 2.1.0</td>
+              <td class="px-4 py-3 text-emerald-400">✓ 1.3.0</td>
+              <td class="px-4 py-3"><span class="text-[11px] font-semibold font-sans text-emerald-400 bg-emerald-400/10 border border-emerald-400/30 rounded-full px-2 py-0.5">Converged</span></td>
+            </tr>
+            <tr class="border-b border-border/50">
+              <td class="px-4 py-3 text-text font-sans font-medium">client-B</td>
+              <td class="px-4 py-3 text-emerald-400">✓ 1.4.2</td>
+              <td class="px-4 py-3 text-amber-400">⚠ 2.0.1</td>
+              <td class="px-4 py-3 text-emerald-400">✓ 1.3.0</td>
+              <td class="px-4 py-3"><span class="text-[11px] font-semibold font-sans text-amber-400 bg-amber-400/10 border border-amber-400/30 rounded-full px-2 py-0.5">Drifted</span></td>
+            </tr>
+            <tr>
+              <td class="px-4 py-3 text-text font-sans font-medium">client-C</td>
+              <td class="px-4 py-3 text-emerald-400">✓ 1.4.2</td>
+              <td class="px-4 py-3 text-emerald-400">✓ 2.1.0</td>
+              <td class="px-4 py-3 text-muted-soft">— not pinned</td>
+              <td class="px-4 py-3"><span class="text-[11px] font-semibold font-sans text-emerald-400 bg-emerald-400/10 border border-emerald-400/30 rounded-full px-2 py-0.5">Converged</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="p-5 rounded-xl border border-border bg-bg-card flex flex-col gap-2 mb-8 max-w-2xl">
+        <p class="text-sm font-semibold text-text">LoopSkill never pushes.</p>
+        <p class="text-sm text-muted">There is no outbound connection from this control plane to any client machine. Each agent fetches its bundle on its own cron — you can't accidentally reach a client's environment, and neither can we. Revoke the fleet key and the pull stops.</p>
+      </div>
+
+      <div class="flex items-center gap-3">
+        <a href="/fleets" class="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-accent text-bg font-semibold text-sm hover:opacity-90 transition">
+          Set up a fleet
+        </a>
+        <a href="/docs/fleet" class="text-sm text-muted hover:text-accent transition">
+          Fleet docs →
         </a>
       </div>
     </div>

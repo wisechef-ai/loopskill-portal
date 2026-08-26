@@ -1,0 +1,85 @@
+---
+import AppShell from '../../layouts/AppShell.astro';
+---
+
+<AppShell mode="public"
+  title="Bundles — LoopSkill Docs"
+  description="A bundle is the packaging unit that carries your skill list to the fleet. Version-locked, pull-based, and shareable with one link."
+>
+  <section class="max-w-3xl mx-auto px-6 pt-16 pb-24">
+    <p class="eyebrow mb-3">Docs · Bundles</p>
+
+    <h1 class="text-4xl md:text-5xl font-semibold tracking-tight mb-6">
+      Bundles
+    </h1>
+    <p class="text-muted text-lg leading-relaxed mb-8">
+      A bundle is the packaging unit that carries your skill list to the fleet.
+      It pins exact versions, travels as one link, and every agent that holds a
+      bundle key reconciles itself against it on its own schedule — no push required.
+    </p>
+
+    <div class="bg-bg-card border border-border rounded-xl p-5 mb-10">
+      <p class="text-sm font-semibold text-text mb-2">The one-sentence model</p>
+      <p class="text-sm text-muted">
+        Bundle = a named manifest of skill slugs at pinned versions. When an agent
+        syncs against a bundle, it installs exactly those skills at exactly those
+        versions, and nothing else.
+      </p>
+    </div>
+
+    <h2 class="text-xl font-semibold text-text mb-4">What a bundle contains</h2>
+    <ul class="flex flex-col gap-3 text-sm text-muted mb-10">
+      <li class="flex items-start gap-2">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" class="text-accent mt-0.5 shrink-0"><path d="M3 8.5L6 11.5L13 4.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <span><strong class="text-text">Skill slugs + version pins</strong> — the exact catalog version each skill should be at. You choose whether to track <code class="text-xs bg-bg-elev rounded px-1">latest</code> or pin a specific semver.</span>
+      </li>
+      <li class="flex items-start gap-2">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" class="text-accent mt-0.5 shrink-0"><path d="M3 8.5L6 11.5L13 4.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <span><strong class="text-text">A visibility setting</strong> — <em>private</em> (accessible only to agents that hold your key) or <em>public</em> (discoverable by anyone with the URL).</span>
+      </li>
+      <li class="flex items-start gap-2">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" class="text-accent mt-0.5 shrink-0"><path d="M3 8.5L6 11.5L13 4.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <span><strong class="text-text">A bundle-scoped API key</strong> (optional) — a key scoped exclusively to this bundle. An agent using a bundle key can only install the skills listed; it cannot browse the general catalog.</span>
+      </li>
+    </ul>
+
+    <h2 class="text-xl font-semibold text-text mb-4">How bundles reach a fleet</h2>
+    <ol class="flex flex-col gap-4 text-sm text-muted mb-10">
+      <li class="flex gap-3">
+        <span class="w-6 h-6 rounded-full bg-accent/10 text-accent text-xs font-bold flex items-center justify-center shrink-0 mt-0.5">1</span>
+        <span>You create a bundle in <a href="/library" class="text-accent hover:opacity-80 underline">/library</a> and add the skills you want every agent to run.</span>
+      </li>
+      <li class="flex gap-3">
+        <span class="w-6 h-6 rounded-full bg-accent/10 text-accent text-xs font-bold flex items-center justify-center shrink-0 mt-0.5">2</span>
+        <span>You scope an API key to the bundle and distribute the one-line install command to each client agent.</span>
+      </li>
+      <li class="flex gap-3">
+        <span class="w-6 h-6 rounded-full bg-accent/10 text-accent text-xs font-bold flex items-center justify-center shrink-0 mt-0.5">3</span>
+        <span>Each agent installs the meta-skill once and reconciles against the bundle manifest on its own cron. LoopSkill never initiates a connection to a client machine.</span>
+      </li>
+      <li class="flex gap-3">
+        <span class="w-6 h-6 rounded-full bg-accent/10 text-accent text-xs font-bold flex items-center justify-center shrink-0 mt-0.5">4</span>
+        <span>When you update the bundle — add a skill, bump a version, remove a skill — agents pick up the change on their next cron fire. No action required from you or the client after the initial install.</span>
+      </li>
+    </ol>
+
+    <h2 class="text-xl font-semibold text-text mb-4">Tier limits</h2>
+    <p class="text-muted text-sm mb-6">
+      Free accounts get 2 private bundles. Public bundles are unlimited on every tier,
+      including Free. Pro ($9.95/mo) raises the private-bundle cap to 50 and adds fleet-key
+      distribution for multi-agent deployments.
+    </p>
+
+    <div class="flex flex-col sm:flex-row gap-3">
+      <a href="/docs/cookbooks" class="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold border border-border hover:border-accent text-text transition">
+        Full bundle reference →
+      </a>
+      <a href="/docs/deployment" class="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold border border-border hover:border-accent text-text transition">
+        Client delivery guide →
+      </a>
+      <a href="/docs/fleet" class="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold border border-border hover:border-accent text-text transition">
+        Fleet sync guide →
+      </a>
+    </div>
+  </section>
+</AppShell>

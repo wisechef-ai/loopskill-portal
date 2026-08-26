@@ -1,0 +1,122 @@
+---
+import AppShell from '../../layouts/AppShell.astro';
+---
+
+<AppShell mode="public"
+  title="Client deployment — LoopSkill Docs"
+  description="Multi-client, multi-machine skill sync: one install command, no push, each agent pulls on its own schedule."
+>
+  <section class="max-w-3xl mx-auto px-6 pt-16 pb-24">
+    <p class="eyebrow mb-3">Docs · Client deployment</p>
+
+    <h1 class="text-4xl md:text-5xl font-semibold tracking-tight mb-6">
+      Client deployment
+    </h1>
+    <p class="text-muted text-lg leading-relaxed mb-8">
+      Multi-client, multi-machine skill sync: one install command per client, no push,
+      each agent pulls on its own schedule. You update the bundle once — every client
+      agent converges on the next cron fire without any additional action from you or
+      from them.
+    </p>
+
+    <div class="bg-bg-card border border-border rounded-xl p-5 mb-10">
+      <p class="text-sm font-semibold text-text mb-2">LoopSkill never pushes.</p>
+      <p class="text-sm text-muted">
+        There is no outbound connection from the LoopSkill control plane to any client
+        machine. The security boundary is explicit: you cannot accidentally reach a
+        client's environment, and neither can we. If you revoke the bundle-scoped key,
+        the pull stops — no additional cleanup required.
+      </p>
+    </div>
+
+    <h2 class="text-xl font-semibold text-text mb-4">The three-step model</h2>
+
+    <div class="flex flex-col gap-6 mb-12">
+      <div class="flex gap-4">
+        <div class="flex-none flex flex-col items-center">
+          <span class="w-8 h-8 rounded-full bg-accent/10 text-accent text-sm font-bold flex items-center justify-center">1</span>
+          <div class="w-px flex-1 bg-border mt-2"></div>
+        </div>
+        <div class="pb-6 min-w-0">
+          <h3 class="text-base font-semibold text-text mb-2">You build a bundle</h3>
+          <p class="text-sm text-muted">
+            In <a href="/library" class="text-accent hover:opacity-80 underline">/library</a>,
+            create a bundle and add the skills each client agent should run. Pin versions
+            or track <code class="text-xs bg-bg-elev rounded px-1">latest</code> — your choice.
+            Scope an API key to the bundle; that key can only serve skills inside this bundle.
+          </p>
+        </div>
+      </div>
+
+      <div class="flex gap-4">
+        <div class="flex-none flex flex-col items-center">
+          <span class="w-8 h-8 rounded-full bg-accent/10 text-accent text-sm font-bold flex items-center justify-center">2</span>
+          <div class="w-px flex-1 bg-border mt-2"></div>
+        </div>
+        <div class="pb-6 min-w-0">
+          <h3 class="text-base font-semibold text-text mb-2">Each client runs one command</h3>
+          <p class="text-sm text-muted mb-3">
+            Hand the client the one-line install command from the bundle detail view.
+            It includes the bundle-scoped key pre-filled:
+          </p>
+          <pre class="bg-[#0d0d0d] border border-border rounded-xl p-4 text-sm text-text overflow-x-auto"><code>mkdir -p ~/.claude/skills/loopskill
+LOOPSKILL_API_KEY=rec_live_cbk_... \
+  curl -sL https://app.loopskill.io/skill \
+  -o ~/.claude/skills/loopskill/SKILL.md</code></pre>
+          <p class="text-sm text-muted mt-3">
+            The client runs this once. From then on their agent reconciles against your
+            bundle automatically — no additional configuration.
+          </p>
+        </div>
+      </div>
+
+      <div class="flex gap-4">
+        <div class="flex-none">
+          <span class="w-8 h-8 rounded-full bg-accent/10 text-accent text-sm font-bold flex items-center justify-center">3</span>
+        </div>
+        <div class="min-w-0">
+          <h3 class="text-base font-semibold text-text mb-2">Each agent pulls on its own schedule</h3>
+          <p class="text-sm text-muted">
+            The meta-skill re-fetches the bundle manifest each time the client's cron fires.
+            It installs any skills that were added, updates any that changed version, and
+            removes any that were dropped. The cadence is whatever cron the client configured —
+            the example in the self-host guide is every 30 minutes.
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <h2 class="text-xl font-semibold text-text mb-4">Shipping an update</h2>
+    <p class="text-muted text-sm mb-4">
+      Edit the bundle in your library — add skills, remove skills, or change version pins.
+      Save. That is the entire operator-side action. Every client agent holding the
+      bundle-scoped key picks up the change on its next cron fire.
+    </p>
+    <p class="text-muted text-sm mb-10">
+      Rolling back is the same motion: pin the previous version and agents converge back.
+      No push command, no acknowledgement to wait for.
+    </p>
+
+    <h2 class="text-xl font-semibold text-text mb-4">Multi-machine fleet variant</h2>
+    <p class="text-muted text-sm mb-6">
+      If you operate many machines or many clients on the same bundle, create a
+      <strong class="text-text">fleet</strong> instead of a bare bundle key. Fleet keys
+      are bundle-scoped and designed for wide distribution — they appear in the convergence
+      view (<a href="/mesh" class="text-accent hover:opacity-80 underline">/mesh</a>) so you
+      can see which agents have converged and which have drifted, without logging into each
+      machine.
+    </p>
+
+    <div class="flex flex-col sm:flex-row gap-3">
+      <a href="/docs/deployment" class="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold border border-border hover:border-accent text-text transition">
+        Full delivery reference →
+      </a>
+      <a href="/docs/fleet" class="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold border border-border hover:border-accent text-text transition">
+        Fleet sync guide →
+      </a>
+      <a href="/docs/bundles" class="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold border border-border hover:border-accent text-text transition">
+        What is a bundle? →
+      </a>
+    </div>
+  </section>
+</AppShell>

@@ -200,8 +200,14 @@ describe('test_hero_spotlight_falls_back_when_api_down [REVISED 2026-07-05]', ()
     expect(src).toContain("} catch {} // Rationale: offline build or API down");
   });
 
-  it('the spotlight section itself is gated on spotlight.length so it is omitted, not faked, when empty', () => {
+  it('the spotlight section has been removed from the landing — no longer rendered at all (landing-refresh-260826)', () => {
     const src = readFileSync(indexPath, 'utf-8');
-    expect(src).toContain('spotlight.length > 0');
+    // spotlight section was intentionally cut in feat/landing-refresh-260826:
+    // the spotlight content was deemed redundant with the fleet/hero narrative.
+    // The fetch var and its empty-array guard remain (no invented fallback),
+    // but the template section is gone — stronger than gating, since it can
+    // never appear even when the API is reachable.
+    expect(src).not.toContain('Skill spotlight');
+    expect(src).not.toContain('These are not prompts');
   });
 });
