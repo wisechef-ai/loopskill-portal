@@ -235,6 +235,19 @@ export const RULES = [
       // "Pro is $20/month" cannot exonerate itself; only
       // "the $20/month figure is superseded" can.
       { when: /\b(out of date|outdated|superseded|no longer|former|previously|correction|was priced|historical|withdrawn|retired|discontinued|then priced)\b/i },
+      // six-fixes-c (fix/six-c): the WiseChef cross-sell banner (<CrossSell>,
+      // src/components/CrossSell.astro) advertises WISECHEF's OWN managed-
+      // service price, $199/month — a THIRD-PARTY product, not a LoopSkill
+      // tier. hub §4 D-003/D-005 locks LoopSkill's OWN public ladder (Free /
+      // Pro $9.95 / Enterprise-on-demand); it says nothing about a different
+      // company's price appearing in a cross-sell unit, and widening this
+      // rule to cover LoopSkill's tiers-only wording would defeat the guard's
+      // purpose. Scoped tightly to sentences that explicitly name WiseChef —
+      // narrower is safer per this file's own doctrine (see the referral
+      // exoneration above). Was previously "€199/mo" (a real currency bug,
+      // since fixed) which never tripped this dollar-only regex at all — the
+      // silent bug is why USD had to be re-verified against this gate now.
+      { when: /\bWiseChef\b/ },
     ],
   },
   {

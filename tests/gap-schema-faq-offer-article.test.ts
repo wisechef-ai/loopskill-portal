@@ -162,10 +162,16 @@ describeBuilt('/pricing — AggregateOffer JSON-LD', () => {
   it('the rendered page HTML itself contains no $100 (or other non-ladder) monthly price', () => {
     // Belt-and-suspenders on the actual bytes, independent of the JSON-LD
     // parse above — mirrors the audit-claims `unlocked-price` discipline.
+    //
+    // six-fixes-c (fix/six-c): $199/mo is allowed here too — it is
+    // WiseChef's own managed-service cross-sell price (<CrossSell> banner),
+    // a different company's product rendered on this page, not a LoopSkill
+    // tier. See scripts/audit-claims.mjs's matching `unlocked-price`
+    // exoneration for the full rationale.
     const html = readFileSync(join(DIST, 'pricing/index.html'), 'utf-8');
     const matches = [...html.matchAll(/\$\s?(\d[\d,]*(?:\.\d{2})?)\s*(?:\/\s*(?:mo|month))/gi)];
     for (const m of matches) {
-      expect(['0', '0.00', '9.95']).toContain(m[1]);
+      expect(['0', '0.00', '9.95', '199']).toContain(m[1]);
     }
   });
 });

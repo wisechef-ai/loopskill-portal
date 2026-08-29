@@ -54,6 +54,7 @@ const STATIC_ROUTES: { path: string; priority: string; changefreq: string }[] = 
   { path: '/graph', priority: '0.5', changefreq: 'weekly' },
   { path: '/publish', priority: '0.5', changefreq: 'monthly' },
   { path: '/security', priority: '0.4', changefreq: 'monthly' },
+  { path: '/docs/share-tokens', priority: '0.6', changefreq: 'monthly' },
   { path: '/privacy', priority: '0.3', changefreq: 'monthly' },
   // G2-federation: the federation overview index. Per-source pages are
   // enumerated separately below (federationUrls) — same no-hard-500
