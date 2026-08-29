@@ -1,12 +1,12 @@
 ---
-import AgentMark from './AgentMark.astro';
 const compatibleAgents = [
-  { name: 'Claude Code', mark: 'claude' },
-  { name: 'Cursor', mark: 'cursor' },
-  { name: 'OpenClaw', mark: 'openclaw' },
-  { name: 'Hermes', mark: 'hermes' },
-  { name: 'Cline', mark: 'cline' },
-  { name: 'Windsurf', mark: 'windsurf' },
+  { name: 'Claude Code' },
+  { name: 'Cursor' },
+  { name: 'Codex' },
+  { name: 'Hermes' },
+  { name: 'OpenClaw' },
+  { name: 'Cline' },
+  { name: 'Zed' },
 ];
 ---
 <div class="border-y border-border bg-bg-card/30">
@@ -15,12 +15,16 @@ const compatibleAgents = [
       <p class="text-xs text-muted-soft uppercase tracking-widest md:max-w-[180px]">
         Works with every<br/>major AI agent
       </p>
-      <div class="flex flex-wrap items-center gap-x-7 gap-y-4">
-        {compatibleAgents.map(a => (
-          <div class="flex items-center gap-2 text-muted hover:text-text transition group">
-            <AgentMark name={a.mark as any} size={20} class="text-muted group-hover:text-accent transition" />
-            <span class="text-sm font-medium tracking-tight">{a.name}</span>
-          </div>
+      <div class="flex flex-wrap items-center gap-x-2 gap-y-3">
+        {compatibleAgents.map((a, i) => (
+          <>
+            <span class="text-sm font-semibold tracking-tight text-muted hover:text-accent transition cursor-default">
+              {a.name}
+            </span>
+            {i < compatibleAgents.length - 1 && (
+              <span class="text-muted-soft select-none" aria-hidden="true">·</span>
+            )}
+          </>
         ))}
       </div>
     </div>
