@@ -98,51 +98,38 @@ describe('test_referrals_pitch_renders_for_anon_user', () => {
 });
 
 // ---------------------------------------------------------------------------
-// Bug 3 — Integration icons: 10 SVG files
+// Bug 3 — Integration marks: wordmarks, not invented glyph SVGs
+// (Adam decision, six_a_0829: hand-invented brand glyphs are a trademark/
+// credibility risk. Replaced with clean typographic wordmarks — no icons.)
 // ---------------------------------------------------------------------------
-describe('test_integration_icons_all_resolve', () => {
+describe('test_integration_marks_are_wordmarks', () => {
   const ICON_DIR = join(PUBLIC, 'icons/integrations');
-  const EXPECTED_ICONS = [
-    'hermes.svg',
-    'openclaw.svg',
-    'claude-code.svg',
-    'codex.svg',
-    'claude-desktop.svg',
-    'cursor.svg',
-    'cline.svg',
-    'continue.svg',
-    'zed.svg',
-    'rest.svg',
-  ];
 
-  it('icons/integrations directory exists', () => {
-    expect(existsSync(ICON_DIR)).toBe(true);
+  it('icons/integrations directory no longer exists', () => {
+    expect(existsSync(ICON_DIR)).toBe(false);
   });
 
-  for (const icon of EXPECTED_ICONS) {
-    it(`${icon} exists and is valid SVG`, () => {
-      const iconPath = join(ICON_DIR, icon);
-      expect(existsSync(iconPath)).toBe(true);
-      const content = readFileSync(iconPath, 'utf-8');
-      expect(content).toContain('<svg');
-      expect(content).toContain('viewBox');
-      expect(content).toContain('currentColor');
-    });
-  }
-
-  it('integrations.astro uses icon_path instead of icon emoji', () => {
-    const src = readFileSync(join(SRC, 'pages/integrations.astro'), 'utf-8');
-    expect(src).toContain('icon_path');
-    expect(src).toContain('/icons/integrations/');
-    // Should no longer have raw emoji in the icon field
-    expect(src).not.toContain("icon: '🜲'");
-    expect(src).not.toContain("icon: '⚙️'");
+  it('AgentMark.astro no longer exists', () => {
+    expect(existsSync(join(SRC, 'components/AgentMark.astro'))).toBe(false);
   });
 
-  it('integrations.astro renders <img> not text emoji for icons', () => {
+  it('integrations.astro no longer references icon_path or /icons/integrations/', () => {
     const src = readFileSync(join(SRC, 'pages/integrations.astro'), 'utf-8');
-    expect(src).toContain('c.icon_path');
-    expect(src).not.toContain('{c.icon}');
+    expect(src).not.toContain('icon_path');
+    expect(src).not.toContain('/icons/integrations/');
+  });
+
+  it('integrations.astro renders client names as text, not <img> icons', () => {
+    const src = readFileSync(join(SRC, 'pages/integrations.astro'), 'utf-8');
+    expect(src).not.toContain('<img');
+    expect(src).toContain('c.name');
+  });
+
+  it('AgentLogos.astro renders agent names as text wordmarks, not AgentMark glyphs', () => {
+    const src = readFileSync(join(SRC, 'components/AgentLogos.astro'), 'utf-8');
+    expect(src).not.toContain('AgentMark');
+    expect(src).toContain('Claude Code');
+    expect(src).toContain('Hermes');
   });
 });
 

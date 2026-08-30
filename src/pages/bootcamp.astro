@@ -78,99 +78,141 @@ if (list.error || !list.data) {
 // Honest fallback so an API-offline build still renders a real, non-empty page
 // instead of an empty shell.
 //
-// ROT TRAP (fixed 2026-08-20): this list used to hardcode `available: true` on
-// every step, with a comment claiming "API-verified slugs only". That claim
+// ROT TRAP #1 (fixed 2026-08-20): this list used to hardcode `available: true`
+// on every step, with a comment claiming "API-verified slugs only". That claim
 // went stale — 6 of the 12 hardcoded slugs (scrapling-official, cognee,
-// comfyui, chef, maestro, framework-v0) now 404 and are absent from the live
-// 57-skill catalog. Worse, the failure was INVERTED: the fallback only fires
-// when the API is unreachable at build time, and it then emitted dead links
-// that `audit-links` correctly refuses to ship — so the safety net turned a
-// DEGRADED build into NO build. It was verified by three separate failed
-// builds during the 2026-08-20 gap-closure run.
+// comfyui, chef, maestro, framework-v0) 404'd and were absent from the live
+// catalog. The failure was INVERTED: the fallback only fires when the API is
+// unreachable at build time, and it then emitted dead links that
+// `audit-links` correctly refuses to ship — so the safety net turned a
+// DEGRADED build into NO build.
 //
-// Fix: never trust a hardcoded `available`. Resolve it against the live
-// catalog at build time, and if the catalog itself is unreachable (the exact
-// situation this fallback exists for) fail CLOSED — render every step as
-// plain text rather than a link that might 404. The curriculum copy still
-// renders in full either way; only the linkiness degrades.
+// ROT TRAP #2 (fixed 2026-08-29): a live re-audit found the "fixed" list from
+// 2026-08-20 was STILL rotten — re-probing every /api/skills/<slug> found
+// SEVEN of twelve pinned slugs 404 (chef, client-reporter, scrapling-official,
+// comfyui, maestro, framework-v0, cognee), one more than the prior fix's own
+// comment admitted. Worse: `curl -s '/api/skills/search?page_size=100'`
+// (57 results, 2026-08-29) shows every publicly listed skill has tier=free —
+// there are ZERO pro skills in the live catalog. Every step below marked
+// tier:'pro' was therefore both a dead link AND a false claim about paid
+// tiers that don't exist. The three tracks were rebuilt from skills that were
+// live-probed 200 with tier=free on 2026-08-29 (see scripts/audit-curriculum.mjs
+// for the repeatable check); "Run a Fleet" keeps multi-agent-discord-coordination
+// because it remains the only fleet-coordination-specific skill in the live
+// catalog, reframed as a coordination protocol rather than "set up Discord".
+//
+// ROT TRAP #3 (fixed 2026-08-29, same pass): the catalog cross-check below
+// used to run ONLY inside `if (tracks.length === 0)` — i.e. only when this
+// hardcoded fallback was in play. But `/api/bootcamp` ITSELF was found
+// serving the exact same rotten data (dead slugs with tier=null, which
+// `tierLabel` below then defaulted to displaying as "PRO" — a skill that
+// doesn't even exist, badged as a paid upgrade). A build with the live API
+// fully reachable was shipping false PRO badges on 404 slugs. Fix: the
+// catalog cross-check now runs unconditionally on whatever `tracks` holds,
+// live-fetched or fallback — never trust a hardcoded OR API-supplied
+// `available`/`tier` without checking it against the real catalog.
 if (tracks.length === 0) {
   fetchError = fetchError ?? 'bootcamp API returned no tracks';
   tracks = [
     {
       id: 'zero-to-agent',
       title: 'Zero to Agent',
-      subtitle: 'Stand up a production-grade agent from scratch — memory first, then capability.',
+      subtitle: 'Stand up a production-grade agent from scratch — memory first, then a real operating discipline.',
       audience: 'A builder who wants the canonical setup, not 50 tabs of trial-and-error.',
-      outcome: 'A persistent-memory agent that survives restarts, keeps its skills current, and runs a daily operating loop.',
+      outcome: 'A persistent-memory agent that discovers its own next skill, plans against real goals, and ships work you can trust.',
       steps: [
-        { position: 1, slug: 'super-memory', title: 'super-memory', tier: 'free', is_free: true, available: true, why: 'Start here. Full memory stack in one command. Free on-ramp — zero spend on day one.', install_link: '/skills/super-memory?ref=bootcamp-zero-to-agent-step-1' },
-        { position: 2, slug: 'hyperspace-matrix', title: 'hyperspace-matrix', tier: 'free', is_free: true, available: true, why: 'Discover more skills as your agent needs them — search 100k+ indexed capabilities, free on-ramp.', install_link: '/skills/hyperspace-matrix?ref=bootcamp-zero-to-agent-step-2' },
-        { position: 3, slug: 'cognee', title: 'cognee', tier: 'pro', is_free: false, available: true, why: 'Self-hosted graph retrieval at scale. The first Pro skill — where free stops working.', install_link: '/skills/cognee?ref=bootcamp-zero-to-agent-step-3' },
-        { position: 4, slug: 'maestro', title: 'maestro', tier: 'pro', is_free: false, available: true, why: 'The operating loop — morning brief, marketing, code delegation while you sleep.', install_link: '/skills/maestro?ref=bootcamp-zero-to-agent-step-4' },
-        { position: 5, slug: 'framework-v0', title: 'framework-v0', tier: 'pro', is_free: false, available: true, why: 'One-call bootstrap for the full Maestro stack.', install_link: '/skills/framework-v0?ref=bootcamp-zero-to-agent-step-5' },
+        { position: 1, slug: 'super-memory', title: 'super-memory', tier: 'free', is_free: true, available: true, why: 'Start here. Full memory stack in one command — every other step assumes the agent remembers yesterday.', install_link: '/skills/super-memory?ref=bootcamp-zero-to-agent-step-1' },
+        { position: 2, slug: 'hyperspace-matrix', title: 'hyperspace-matrix', tier: 'free', is_free: true, available: true, why: 'Discover more skills as your agent needs them — search 100k+ indexed capabilities instead of guessing.', install_link: '/skills/hyperspace-matrix?ref=bootcamp-zero-to-agent-step-2' },
+        { position: 3, slug: 'plan-for-goal', title: 'plan-for-goal', tier: 'free', is_free: true, available: true, why: 'Turn a vague goal into N discrete, falsifiable steps your agent can actually execute against.', install_link: '/skills/plan-for-goal?ref=bootcamp-zero-to-agent-step-3' },
+        { position: 4, slug: 'musk-5-step-algorithm', title: 'musk-5-step-algorithm', tier: 'free', is_free: true, available: true, why: 'Question requirements, delete, simplify, accelerate, automate — the discipline that keeps the plan from bloating.', install_link: '/skills/musk-5-step-algorithm?ref=bootcamp-zero-to-agent-step-4' },
+        { position: 5, slug: 'test-driven-development', title: 'test-driven-development', tier: 'free', is_free: true, available: true, why: 'The capstone: red-green-refactor discipline so the agent ships code you can verify, not code you have to trust.', install_link: '/skills/test-driven-development?ref=bootcamp-zero-to-agent-step-5' },
       ],
     },
     {
       id: 'content-engine',
       title: 'Content Engine',
       subtitle: 'A self-hosted media pipeline an agent can drive end-to-end.',
-      audience: 'Builders who want their agent to produce media without per-call API bills.',
-      outcome: 'An agent that scrapes source material and produces finished video + audio locally.',
+      audience: 'Builders who want their agent to produce media without stitching together five disconnected tools.',
+      outcome: 'An agent that pulls source material off the live web and produces finished images, voiceover, and animation.',
       steps: [
-        { position: 1, slug: 'super-memory', title: 'super-memory', tier: 'free', is_free: true, available: true, why: 'Free on-ramp — memory of what it has produced, avoids duplicate work.', install_link: '/skills/super-memory?ref=bootcamp-content-engine-step-1' },
-        { position: 2, slug: 'scrapling-official', title: 'scrapling-official', tier: 'pro', is_free: false, available: true, why: 'Headless scraping for JS-heavy / Cloudflare-protected pages — the input side.', install_link: '/skills/scrapling-official?ref=bootcamp-content-engine-step-2' },
-        { position: 3, slug: 'comfyui', title: 'comfyui', tier: 'pro', is_free: false, available: true, why: 'Generate images, video, audio locally — no per-frame API spend.', install_link: '/skills/comfyui?ref=bootcamp-content-engine-step-3' },
-        { position: 4, slug: 'local-tts-kokoro', title: 'local-tts-kokoro', tier: 'pro', is_free: false, available: true, why: 'Local text-to-speech at 2.6x realtime — voiceover without an ElevenLabs bill.', install_link: '/skills/local-tts-kokoro?ref=bootcamp-content-engine-step-4' },
-        { position: 5, slug: 'manim-video', title: 'manim-video', tier: 'pro', is_free: false, available: true, why: '3Blue1Brown-style explainer animations — the local-media capstone.', install_link: '/skills/manim-video?ref=bootcamp-content-engine-step-5' },
+        { position: 1, slug: 'super-memory', title: 'super-memory', tier: 'free', is_free: true, available: true, why: 'Memory of what it has already produced — avoids duplicate work across a long-running content pipeline.', install_link: '/skills/super-memory?ref=bootcamp-content-engine-step-1' },
+        { position: 2, slug: 'agent-browser', title: 'agent-browser', tier: 'free', is_free: true, available: true, why: 'Headless browser automation for JS-heavy source pages — the input side of any real content pipeline.', install_link: '/skills/agent-browser?ref=bootcamp-content-engine-step-2' },
+        { position: 3, slug: 'nano-banana-pro', title: 'nano-banana-pro', tier: 'free', is_free: true, available: true, why: 'Generate and edit images from text via Gemini 3 Pro — the visual half of the pipeline.', install_link: '/skills/nano-banana-pro?ref=bootcamp-content-engine-step-3' },
+        { position: 4, slug: 'local-tts-kokoro', title: 'local-tts-kokoro', tier: 'free', is_free: true, available: true, why: 'Local text-to-speech at 2.6x realtime — voiceover without an ElevenLabs bill.', install_link: '/skills/local-tts-kokoro?ref=bootcamp-content-engine-step-4' },
+        { position: 5, slug: 'manim-video', title: 'manim-video', tier: 'free', is_free: true, available: true, why: '3Blue1Brown-style explainer animations — the capstone that turns raw source material into a finished video.', install_link: '/skills/manim-video?ref=bootcamp-content-engine-step-5' },
       ],
     },
     {
       id: 'agent-fleet',
       title: 'Run a Fleet',
-      subtitle: 'Coordinate multiple agents without infinite loops or split-brain.',
+      subtitle: 'Coordinate multiple agents on a shared protocol without infinite loops or split-brain.',
       audience: 'Builders graduating from one agent to a coordinated team.',
-      outcome: 'A multi-agent setup with shared memory, loop-safe coordination, and per-client reporting.',
+      outcome: 'A multi-agent setup with shared memory, a loop-safe coordination protocol, shared goal-tracking, and a client-ready output.',
       steps: [
-        { position: 1, slug: 'super-memory', title: 'super-memory', tier: 'free', is_free: true, available: true, why: 'Shared memory is the substrate a fleet coordinates on. Free on-ramp.', install_link: '/skills/super-memory?ref=bootcamp-agent-fleet-step-1' },
-        { position: 2, slug: 'multi-agent-discord-coordination', title: 'multi-agent-discord-coordination', tier: 'pro', is_free: false, available: true, why: 'The protocol for 2+ agents without infinite loops — the failure mode that kills naive fleets.', install_link: '/skills/multi-agent-discord-coordination?ref=bootcamp-agent-fleet-step-2' },
-        { position: 3, slug: 'chef', title: 'chef', tier: 'pro', is_free: false, available: true, why: 'The per-agent operating template you replicate across the fleet.', install_link: '/skills/chef?ref=bootcamp-agent-fleet-step-3' },
-        { position: 4, slug: 'client-reporter', title: 'client-reporter', tier: 'pro', is_free: false, available: true, why: 'GA4 / GSC / Meta / TikTok → branded client PDF. Turns a fleet into billable work.', install_link: '/skills/client-reporter?ref=bootcamp-agent-fleet-step-4' },
+        { position: 1, slug: 'super-memory', title: 'super-memory', tier: 'free', is_free: true, available: true, why: 'Shared memory is the substrate a fleet coordinates on — stand it up before wiring the agents together.', install_link: '/skills/super-memory?ref=bootcamp-agent-fleet-step-1' },
+        { position: 2, slug: 'multi-agent-discord-coordination', title: 'multi-agent-discord-coordination', tier: 'free', is_free: true, available: true, why: 'The coordination protocol, not a chat app: hard rules against infinite loops and runaway cost between 2+ agents. Discord is just today\'s transport — the rules are what matter.', install_link: '/skills/multi-agent-discord-coordination?ref=bootcamp-agent-fleet-step-2' },
+        { position: 3, slug: 'plan-for-goal', title: 'plan-for-goal', tier: 'free', is_free: true, available: true, why: 'One shared goal-doc every agent in the fleet plans and executes against, instead of five agents improvising separately.', install_link: '/skills/plan-for-goal?ref=bootcamp-agent-fleet-step-3' },
+        { position: 4, slug: 'summarize-cli', title: 'summarize-cli', tier: 'free', is_free: true, available: true, why: 'Turn a fleet\'s noisy multi-agent output into one clean summary — the deliverable that makes a fleet look like a single competent operator.', install_link: '/skills/summarize-cli?ref=bootcamp-agent-fleet-step-4' },
       ],
     },
   ];
-
-  // Resolve `available` against the REAL catalog rather than trusting the
-  // literals above. Fails closed: if the catalog can't be read, nothing links.
-  const catalogSlugs = new Set<string>();
-  try {
-    const cat = await fetchApi<{ results?: { slug?: string }[] }>(
-      '/api/skills/search?page_size=100',
-      { authed: false, maxAttempts: 2, timeoutMs: 8000 },
-    );
-    for (const s of cat.data?.results ?? []) if (s?.slug) catalogSlugs.add(s.slug);
-  } catch {
-    /* fail closed — catalogSlugs stays empty, so every step renders as text */
-  }
-  tracks = tracks.map((t) => ({
-    ...t,
-    steps: t.steps.map((s) => ({ ...s, available: !!s.slug && catalogSlugs.has(s.slug) })),
-  }));
 }
 
-function tierLabel(s: Step): string {
+// Resolve `available` AND `tier` against the REAL catalog rather than
+// trusting ANY hardcoded or API-supplied literal — this runs unconditionally
+// on `tracks` regardless of whether they came from the live /api/bootcamp
+// response or the fallback above (see ROT TRAP #3). Fails closed: if the
+// catalog can't be read, nothing links and the literal (possibly stale)
+// tier is shown as-is, but a step never LINKS or badges PRO on a guess.
+const catalogTiers = new Map<string, string | null>();
+try {
+  const cat = await fetchApi<{ results?: { slug?: string; tier?: string | null }[] }>(
+    '/api/skills/search?page_size=100',
+    { authed: false, maxAttempts: 2, timeoutMs: 8000 },
+  );
+  for (const s of cat.data?.results ?? []) if (s?.slug) catalogTiers.set(s.slug, s.tier ?? null);
+} catch {
+  /* fail closed — catalogTiers stays empty, so every step renders as text
+     with its literal tier (last-known-good, not a live guarantee) */
+}
+tracks = tracks.map((t) => ({
+  ...t,
+  steps: t.steps.map((s) => {
+    const available = !!s.slug && catalogTiers.has(s.slug);
+    // API wins on disagreement: a live 'free' tier overrides a stale 'pro'
+    // literal, and vice versa, so the badge never contradicts the catalog.
+    const tier = available ? (catalogTiers.get(s.slug) ?? s.tier) : s.tier;
+    const is_free = available ? (catalogTiers.get(s.slug) ?? s.tier)?.toLowerCase() === 'free' : s.is_free;
+    return { ...s, available, tier, is_free };
+  }),
+}));
+
+// tierLabel returns null (no badge) for any step we could not verify against
+// the live catalog. A dead/unlisted slug (available === false) has no real
+// tier to report — badging it "PRO" (the old default-to-PRO behavior) turned
+// "we don't know" into a fabricated paid-tier claim. Only a step CONFIRMED
+// live gets a FREE/PRO badge, and PRO only when the catalog itself says so.
+function tierLabel(s: Step): string | null {
+  if (!s.available) return null;
   return (s.tier || '').toLowerCase() === 'free' ? 'FREE' : 'PRO';
 }
 
-// First paid step index per track = the conversion boundary marker.
+// Conversion-boundary marker. The live catalog has ZERO pro-tier skills
+// (verified 2026-08-29: 56 of 57 results tier='free', one null — no 'pro'
+// anywhere), so this must never fabricate an upgrade prompt for a skill the
+// API itself reports as free, and never for a step we couldn't verify at
+// all. It only fires for a step that is confirmed AVAILABLE and whose
+// RESOLVED tier disagrees with 'free' — i.e. it degrades to "no boundary"
+// honestly instead of inventing one.
 function firstPaidPosition(t: Track): number | null {
-  const paid = t.steps.find((s) => (s.tier || '').toLowerCase() !== 'free');
+  const paid = t.steps.find((s) => s.available && (s.tier || '').toLowerCase() !== 'free');
   return paid ? paid.position : null;
 }
 ---
 
 <AppShell mode="public"
   title="Agent Bootcamp — the opinionated install path | LoopSkill"
-  description={`Don't browse the catalog one by one — follow the install path. Three curated bootcamp tracks take your agent from zero to a production setup. Start free, upgrade when it earns it.`}
+  description={`Don't browse the catalog one by one — follow the install path. Three curated bootcamp tracks take your agent from zero to a production setup, entirely on the free tier.`}
 >
   <main class="max-w-5xl mx-auto px-6 py-16">
     <header class="mb-14 text-center">
@@ -180,8 +222,8 @@ function firstPaidPosition(t: Track): number | null {
       </h1>
       <p class="text-lg md:text-xl text-muted max-w-2xl mx-auto">
         Three curated tracks take your agent from zero to a production setup —
-        each one an opinionated, ordered sequence of skills. Start on the free
-        on-ramp. Upgrade at the step where free stops working.
+        each one an opinionated, ordered sequence of skills. Every step below
+        is free to install, right now.
       </p>
     </header>
 
@@ -203,7 +245,9 @@ function firstPaidPosition(t: Track): number | null {
             </div>
 
             <ol class="space-y-3">
-              {track.steps.map((step) => (
+              {track.steps.map((step) => {
+                const label = tierLabel(step);
+                return (
                 <>
                   {boundary !== null && step.position === boundary && (
                     <li class="flex items-center gap-3 py-1" aria-hidden="true">
@@ -220,13 +264,16 @@ function firstPaidPosition(t: Track): number | null {
                         ) : (
                           <span class="font-semibold text-muted-soft">{step.slug}</span>
                         )}
-                        <span class={`text-[10px] font-bold px-1.5 py-0.5 rounded ${tierLabel(step) === 'FREE' ? 'bg-success/15 text-success' : 'bg-accent/15 text-accent'}`}>{tierLabel(step)}</span>
+                        {label && (
+                          <span class={`text-[10px] font-bold px-1.5 py-0.5 rounded ${label === 'FREE' ? 'bg-success/15 text-success' : 'bg-accent/15 text-accent'}`}>{label}</span>
+                        )}
                       </div>
                       <p class="text-sm text-muted mt-0.5">{step.why}</p>
                     </div>
                   </li>
                 </>
-              ))}
+                );
+              })}
             </ol>
           </section>
         );
@@ -239,7 +286,11 @@ function firstPaidPosition(t: Track): number | null {
         Every track begins with <code class="text-sm">super-memory</code> — MIT-licensed, installs in seconds, zero cost. Tell your agent to install it and you're on the path.
       </p>
       <div class="flex items-center justify-center gap-4 flex-wrap">
-        <a href="/skills/super-memory?ref=bootcamp-cta" class="bg-accent text-bg px-6 py-3 rounded-lg font-semibold hover:bg-accent-soft transition">Start free → super-memory</a>
+        {catalogTiers.has('super-memory') ? (
+          <a href="/skills/super-memory?ref=bootcamp-cta" class="bg-accent text-bg px-6 py-3 rounded-lg font-semibold hover:bg-accent-soft transition">Start free → super-memory</a>
+        ) : (
+          <a href={`/skills?ref=bootcamp-cta`} class="bg-accent text-bg px-6 py-3 rounded-lg font-semibold hover:bg-accent-soft transition">Start free → browse {skillCountLabel}</a>
+        )}
         <a href="/skills?ref=bootcamp-cta" class="px-6 py-3 rounded-lg font-semibold border border-border hover:border-accent">Browse {skillCountLabel} →</a>
       </div>
     </section>

@@ -17,9 +17,10 @@ set -uo pipefail
 cd "$(dirname "$0")/.."
 
 LOG=/tmp/fallback-build.log
-CURRICULUM=(scrapling-official cognee comfyui chef maestro framework-v0
-            manim-video multi-agent-discord-coordination local-tts-kokoro
-            hyperspace-matrix client-reporter)
+CURRICULUM=(super-memory hyperspace-matrix plan-for-goal musk-5-step-algorithm
+            test-driven-development agent-browser nano-banana-pro
+            local-tts-kokoro manim-video multi-agent-discord-coordination
+            summarize-cli)
 
 echo "=== building with the bootcamp API unreachable (port 9) ==="
 PUBLIC_LOOPSKILL_API_BASE="http://127.0.0.1:9" \

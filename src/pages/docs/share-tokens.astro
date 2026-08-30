@@ -1,0 +1,162 @@
+---
+import AppShell from '../../layouts/AppShell.astro';
+---
+
+<AppShell mode="public"
+  title="Share tokens — LoopSkill Docs"
+  description="Hand a client one bundle without handing them your API key: cbt_ share tokens, the three scopes, what they can't reach, rotation, and revocation."
+>
+  <section class="max-w-3xl mx-auto px-6 pt-16 pb-24">
+    <p class="eyebrow mb-3">Docs · Share tokens</p>
+    <h1 class="text-4xl md:text-5xl font-semibold tracking-tight mb-6">
+      Share tokens
+    </h1>
+    <p class="text-muted text-lg leading-relaxed mb-12">
+      You built a bundle for a client. Now you need to hand it to their agent — without handing
+      over your own API key, your whole catalog, or a support ticket every time they lose it.
+      A share token is a second, disposable key that reaches exactly one bundle and nothing else.
+    </p>
+
+    <!-- Why -->
+    <h2 class="text-xl font-semibold text-text mb-4">Why this exists</h2>
+    <p class="text-muted mb-4">
+      Your <code class="text-xs bg-bg-elev rounded px-1">rec_live_</code> API key can read your
+      entire account: every private bundle, every key, your billing state. Pasting that into a
+      client's agent config means trusting them (and their infrastructure) with all of it forever.
+    </p>
+    <p class="text-muted mb-10">
+      A share token — prefix <code class="text-xs bg-bg-elev rounded px-1">cbt_</code> — is scoped
+      to one bundle at mint time. Give it to a client, a contractor, or another agent, and the
+      worst case if it leaks is: they can act on that one bundle. Not your account.
+    </p>
+
+    <!-- Minting -->
+    <h2 class="text-xl font-semibold text-text mb-4">Minting a token</h2>
+    <p class="text-muted mb-4">
+      From <a href="/library" class="text-accent hover:opacity-80 underline">/library</a>, open the
+      <strong class="text-text">Client delivery</strong> tab, find the bundle, pick a scope, and
+      click <strong class="text-text">Mint key</strong>. The token is shown once — copy it before
+      you close the dialog.
+    </p>
+    <pre class="bg-[#0d0d0d] border border-border rounded-xl p-4 text-sm text-text overflow-x-auto mb-10"><code>POST /api/cookbooks/{`{cookbook_id}`}/share-tokens
+x-api-key: rec_live_your_key
+content-type: application/json
+
+{`{"name": "handoff-install", "scope": "install"}`}</code></pre>
+
+    <!-- Scopes -->
+    <h2 class="text-xl font-semibold text-text mb-4">The three scopes</h2>
+    <p class="text-muted mb-4">
+      Every share token carries exactly one scope, chosen at mint time. <strong class="text-text">Default is
+      <code class="text-xs bg-bg-elev rounded px-1">install</code></strong> — the token can read
+      the bundle and pull skills, which is what a client handoff needs.
+    </p>
+    <div class="overflow-x-auto mb-4">
+      <table class="w-full text-sm text-muted border border-border rounded-xl overflow-hidden">
+        <thead>
+          <tr class="bg-bg-card text-text">
+            <th class="text-left px-4 py-2 font-semibold">Scope</th>
+            <th class="text-left px-4 py-2 font-semibold">Read manifest</th>
+            <th class="text-left px-4 py-2 font-semibold">Install skills</th>
+            <th class="text-left px-4 py-2 font-semibold">Write to bundle</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr class="border-t border-border">
+            <td class="px-4 py-2"><code class="text-xs bg-bg-elev rounded px-1">read</code></td>
+            <td class="px-4 py-2">✅</td>
+            <td class="px-4 py-2">❌</td>
+            <td class="px-4 py-2">❌</td>
+          </tr>
+          <tr class="border-t border-border">
+            <td class="px-4 py-2"><code class="text-xs bg-bg-elev rounded px-1">install</code> <span class="text-xs text-muted-soft">(default)</span></td>
+            <td class="px-4 py-2">✅</td>
+            <td class="px-4 py-2">✅</td>
+            <td class="px-4 py-2">❌</td>
+          </tr>
+          <tr class="border-t border-border">
+            <td class="px-4 py-2"><code class="text-xs bg-bg-elev rounded px-1">edit</code></td>
+            <td class="px-4 py-2">✅</td>
+            <td class="px-4 py-2">✅</td>
+            <td class="px-4 py-2">✅</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="text-muted mb-10">
+      <code class="text-xs bg-bg-elev rounded px-1">edit</code> gives owner-equivalent access to
+      that one bundle (add/remove skills) — it does <em>not</em> let the holder mint further
+      share tokens. That guard is hard-coded: a share token can never create another share token.
+    </p>
+
+    <!-- What it cannot reach -->
+    <h2 class="text-xl font-semibold text-text mb-4">What a share token cannot reach</h2>
+    <p class="text-muted mb-4">
+      These restrictions are enforced in middleware, before your bundle's authorization logic even
+      runs — no scope, however permissive, overrides them:
+    </p>
+    <ul class="flex flex-col gap-2 text-sm text-muted mb-10">
+      <li class="flex items-start gap-2">
+        <span class="text-muted-soft mt-0.5 shrink-0">✕</span>
+        <span>Any route outside <code class="text-xs bg-bg-elev rounded px-1">/api/cookbooks/*</code> — your skill catalog, other bundles, account, billing — is rejected outright.</span>
+      </li>
+      <li class="flex items-start gap-2">
+        <span class="text-muted-soft mt-0.5 shrink-0">✕</span>
+        <span>Any path containing <code class="text-xs bg-bg-elev rounded px-1">/_publish</code> returns <code class="text-xs bg-bg-elev rounded px-1">403</code> — regardless of scope. A share token can never publish a skill.</span>
+      </li>
+      <li class="flex items-start gap-2">
+        <span class="text-muted-soft mt-0.5 shrink-0">✕</span>
+        <span>A different bundle's ID in the URL — the token is bound to one cookbook at mint time, so a request for another bundle returns <code class="text-xs bg-bg-elev rounded px-1">403 token scope mismatch</code>.</span>
+      </li>
+    </ul>
+
+    <!-- Rotation & revocation -->
+    <h2 class="text-xl font-semibold text-text mb-4">Rotation and revocation</h2>
+    <p class="text-muted mb-4">
+      Rotate a token to invalidate the old value and issue a new one under the same record — useful
+      if you suspect a leak but still want the client connected:
+    </p>
+    <pre class="bg-[#0d0d0d] border border-border rounded-xl p-4 text-sm text-text overflow-x-auto mb-6"><code>POST /api/cookbooks/{`{cookbook_id}`}/share-tokens/{`{token_id}`}/rotate</code></pre>
+    <p class="text-muted mb-4">
+      Revoke a token entirely from <a href="/library" class="text-accent hover:opacity-80 underline">/library</a>
+      → Client delivery, or directly:
+    </p>
+    <pre class="bg-[#0d0d0d] border border-border rounded-xl p-4 text-sm text-text overflow-x-auto mb-6"><code>DELETE /api/cookbooks/{`{cookbook_id}`}/share-tokens/{`{token_id}`}</code></pre>
+    <p class="text-muted mb-10">
+      Revocation is a soft-delete and takes effect immediately — the recipient's very next request
+      gets <code class="text-xs bg-bg-elev rounded px-1">401 Invalid or revoked share token</code>.
+      There is no grace period.
+    </p>
+
+    <!-- Worked example -->
+    <h2 class="text-xl font-semibold text-text mb-4">Worked example: handing off a bundle</h2>
+    <ol class="flex flex-col gap-3 mb-10 text-sm text-muted list-none">
+      <li class="flex gap-3">
+        <span class="flex-none w-6 h-6 rounded-full bg-accent/10 text-accent text-xs font-bold flex items-center justify-center">1</span>
+        <span>Build the bundle in <a href="/library" class="text-accent hover:opacity-80 underline">/library</a> — add the skills the client needs, pin versions.</span>
+      </li>
+      <li class="flex gap-3">
+        <span class="flex-none w-6 h-6 rounded-full bg-accent/10 text-accent text-xs font-bold flex items-center justify-center">2</span>
+        <span>Open the Client delivery tab, leave scope on <code class="text-xs bg-bg-elev rounded px-1">install</code> (the default), and click Mint key. Copy the <code class="text-xs bg-bg-elev rounded px-1">cbt_&lt;8hex&gt;_&lt;32hex&gt;</code> token shown.</span>
+      </li>
+      <li class="flex gap-3">
+        <span class="flex-none w-6 h-6 rounded-full bg-accent/10 text-accent text-xs font-bold flex items-center justify-center">3</span>
+        <span>Send the client the one-line meta-skill install command with that token as their <code class="text-xs bg-bg-elev rounded px-1">x-api-key</code>. Their agent can now pull exactly this bundle's skills, on its own schedule — you never touch their machine.</span>
+      </li>
+      <li class="flex gap-3">
+        <span class="flex-none w-6 h-6 rounded-full bg-accent/10 text-accent text-xs font-bold flex items-center justify-center">4</span>
+        <span>Engagement ends, or the token leaks? Revoke it from the same tab. Everything else in your account — other clients, your own keys — was never reachable from it in the first place.</span>
+      </li>
+    </ol>
+
+    <div class="mt-4 p-6 bg-bg-card border border-border rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+      <div>
+        <p class="text-sm font-semibold text-text">Ready to hand off a bundle?</p>
+        <p class="text-sm text-muted mt-1">Mint, rotate, and revoke share tokens from the Client delivery tab.</p>
+      </div>
+      <a href="/library" class="shrink-0 inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold bg-accent text-bg hover:bg-accent-soft transition">
+        Open library →
+      </a>
+    </div>
+  </section>
+</AppShell>

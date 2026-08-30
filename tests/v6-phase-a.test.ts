@@ -140,7 +140,14 @@ describe('currency sweep', () => {
   // nowhere weakens the guard for zero user benefit. The component was deleted
   // instead and this set restored. If a $300 SKU ever ships for real, add it
   // here together with the page that actually renders it.
-  const CANONICAL_PRICES = new Set(['$20/mo', '$100/mo']);
+  //
+  // six-fixes-c (fix/six-c): $199/mo is the WiseChef cross-sell price (the
+  // live Stripe charge for the WiseChef managed-service upsell surfaced via
+  // <CrossSell>), NOT a LoopSkill tier — it coexists with Cook/Operator
+  // rather than replacing them. Was previously mis-typed as EUR (€199) in
+  // CrossSell.astro/index.astro/pricing.astro; corrected to USD to match
+  // the live charge and is now canonical here.
+  const CANONICAL_PRICES = new Set(['$20/mo', '$100/mo', '$199/mo', '$199/month']);
 
   it('has zero stale prices outside canonical Cook ($20/mo) / Operator ($100/mo) pricing', () => {
     const files = USER_FACING_DIRS.flatMap(d => walkFiles(d, ['.astro', '.ts', '.js', '.html']));

@@ -1,6 +1,0 @@
-<!-- source: OpenClaw logomark — stylised claw / bracket pair, geometric, single-color -->
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-  <path d="M8 4C5.79 4 4 5.79 4 8v8c0 2.21 1.79 4 4 4" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
-  <path d="M16 4c2.21 0 4 1.79 4 8v0c0 2.21-1.79 4-4 4" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
-  <circle cx="12" cy="12" r="2" fill="currentColor"/>
-</svg>
