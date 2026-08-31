@@ -47,8 +47,16 @@ export default defineConfig({
   // The page's JS resolves the slug from ?slug= (rewrite) or the trailing path
   // segment, so it works on both the clean URL and /cookbooks/p/?slug= directly.
   // /cookbooks (discover feed) is a normal static route — no rewrite needed.
+  // issue #157 Phase 2: legacy /cookbooks/* pages cut to 301s. The three
+  // src/pages/cookbooks/* stub files are REMOVED in favour of these build-time
+  // redirects (Astro SSG emits a meta-refresh page per path; Caddy adds true
+  // HTTP 301s post-merge — see the held Caddy step). Never hard-404 a
+  // formerly-live URL (page-cut policy, D6).
   redirects: {
     '/creators': '/referrals',
+    '/cookbooks': '/browse?type=bundles',
+    '/cookbooks/p': '/bundles/p',
+    '/cookbooks/view': '/bundles/view',
   },
 
   vite: {

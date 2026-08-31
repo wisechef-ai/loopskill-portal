@@ -349,8 +349,8 @@ ${compositeLines.join('\n')}`
 
 ## Bundles — curated skill collections (install one, get many)
 A bundle groups multiple skills (and connectors) into one install. Bundles are the "playlist" primitive — public bundles are browsable and installable with no key.
-- List public bundles (no key): \`GET ${SITE}/api/cookbooks/discover\`
-- Detail: \`GET ${SITE}/api/cookbooks/public/{slug}\`
+- List public bundles (no key): \`GET ${SITE}/api/bundles/discover\`
+- Detail: \`GET ${SITE}/api/bundles/public/{slug}\`
 ${bundleLines.join('\n')}`
     : '';
 

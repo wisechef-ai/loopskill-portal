@@ -570,8 +570,8 @@ import AppShell from '../layouts/AppShell.astro';
 
   async function loadLibraryBundles() {
     const wrap = $('library-bundles');
-    const data = await fetchJson('/api/cookbooks');
-    const cbooks = (data && data.cookbooks) || [];
+    const data = await fetchJson('/api/bundles');
+    const cbooks = (data && (data.bundles || data.cookbooks)) || []; // bundles key canonical (issue #157 Ph 3)
     libraryBundleCount = cbooks.length;
     maybeShowFirstLogin();
     if (!cbooks.length) {
@@ -674,8 +674,8 @@ import AppShell from '../layouts/AppShell.astro';
     } } catch {}
 
     const sel = $('composer-bundle') as HTMLSelectElement;
-    try { const r = await api('/api/cookbooks'); if (r.ok) { const d = await r.json();
-      const cbs = (d.cookbooks || d.bundles || d.items || d || []);
+    try { const r = await api('/api/bundles'); if (r.ok) { const d = await r.json();
+      const cbs = (d.bundles || d.cookbooks || d.items || d || []);
       cbs.forEach((cb: any) => { const o = document.createElement('option'); o.value = cb.id; o.textContent = cb.name; sel.appendChild(o); });
     } } catch {}
 
@@ -799,7 +799,7 @@ import AppShell from '../layouts/AppShell.astro';
     if (sel.value) { currentCookbookId = sel.value; return currentCookbookId; }
     const name = `Composer bundle ${new Date().toISOString().slice(0,10)}`;
     try {
-      const r = await api('/api/cookbooks', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ name }) });
+      const r = await api('/api/bundles', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ name }) });
       if (r.status === 401) { toast('Sign in to compose.', 'error'); return null; }
       if (!r.ok) { toast('Could not create bundle.', 'error'); return null; }
       const cb = await r.json();
@@ -1012,7 +1012,7 @@ import AppShell from '../layouts/AppShell.astro';
   }
 
   async function loadFleetCookbooks() {
-    try { const r = await api('/api/cookbooks'); if (r.ok) { const d = await r.json(); fleetBundles = (d.cookbooks || d.items || d || []); } } catch {}
+    try { const r = await api('/api/bundles'); if (r.ok) { const d = await r.json(); fleetBundles = (d.bundles || d.items || d || []); } } catch {}
   }
 
   async function loadFleets() {
@@ -1321,10 +1321,10 @@ import AppShell from '../layouts/AppShell.astro';
 
   async function loadDelivery() {
     const wrap = $('cockpit-list');
-    const r = await api('/api/cookbooks');
+    const r = await api('/api/bundles');
     if (r.status === 401) { window.location.href = '/signin?next=/library?tab=delivery'; return; }
     let cbs: any[] = [];
-    if (r.ok) { const d = await r.json(); cbs = (d.cookbooks || d.bundles || []); }
+    if (r.ok) { const d = await r.json(); cbs = (d.bundles || d.cookbooks || []); }
     $('cockpit-loading')?.remove();
     if (!cbs.length) {
       wrap.innerHTML = `<div class="flex flex-col items-center gap-3 py-16 rounded-2xl border border-dashed border-border text-center">

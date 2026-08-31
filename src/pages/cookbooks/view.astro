@@ -1,7 +1,0 @@
----
-// Legacy /cookbooks/view?id=<uuid> → the real bundle detail page.
-// feat/fleet-console-ui: was a dead loop (redirected to /library, losing the
-// id). Now forwards to /bundles/view preserving the query string.
-import RedirectStub from '../../components/RedirectStub.astro';
----
-<RedirectStub to="/bundles/view" title="Bundle" preserveQuery={true} />

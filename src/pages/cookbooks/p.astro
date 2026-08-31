@@ -1,7 +1,0 @@
----
-// /cookbooks/p → /bundles/p, PRESERVING the full query string (the ?slug=...
-// share link must not break — council §5/§6). This is the one stub where
-// preserveQuery=true matters most: it's the live public-share-link surface.
-import RedirectStub from '../../components/RedirectStub.astro';
----
-<RedirectStub to="/bundles/p" title="Bundle" preserveQuery={true} />

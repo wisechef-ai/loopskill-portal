@@ -58,14 +58,14 @@ const API_BASE = import.meta.env.PUBLIC_LOOPSKILL_API_BASE || import.meta.env.PU
       if (bundles !== null && !force) return bundles;
       let res;
       try {
-        res = await fetch(API_BASE + '/api/cookbooks', { headers: authHeaders(), credentials: 'include' });
+        res = await fetch(API_BASE + '/api/bundles', { headers: authHeaders(), credentials: 'include' });
       } catch (e) { authState = 'unknown'; return null; }
       if (res.status === 401) { authState = 'anon'; bundles = []; return []; }
       if (!res.ok) { authState = 'unknown'; return null; }
       authState = 'ok';
       let data;
       try { data = await res.json(); } catch (e) { return null; }
-      bundles = Array.isArray(data) ? data : (data.cookbooks || data.items || []);
+      bundles = Array.isArray(data) ? data : (data.bundles || data.cookbooks || data.items || []);
       return bundles;
     }
 
@@ -186,7 +186,7 @@ const API_BASE = import.meta.env.PUBLIC_LOOPSKILL_API_BASE || import.meta.env.PU
     async function createAndAdd(root, name) {
       let res;
       try {
-        res = await fetch(API_BASE + '/api/cookbooks', {
+        res = await fetch(API_BASE + '/api/bundles', {
           method: 'POST',
           headers: authHeaders({ 'content-type': 'application/json' }),
           credentials: 'include',
