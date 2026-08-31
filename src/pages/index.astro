@@ -156,8 +156,8 @@ type DiscoverCb = {
 };
 let publicCookbooks: DiscoverCb[] = [];
 try {
-  const result = await fetchApi<{ cookbooks?: DiscoverCb[]; items?: DiscoverCb[] }>('/api/cookbooks/discover?sort=installs&limit=8');
-  const rows = result.ok && result.data ? (result.data.cookbooks || result.data.items || []) : [];
+  const result = await fetchApi<{ bundles?: DiscoverCb[]; cookbooks?: DiscoverCb[]; items?: DiscoverCb[] }>('/api/bundles/discover?sort=installs&limit=8');
+  const rows = result.ok && result.data ? (result.data.bundles || result.data.cookbooks || result.data.items || []) : [];
   publicCookbooks = rows.filter(c => c.slug);
 } catch {} // Rationale: offline build — rail simply omits
 

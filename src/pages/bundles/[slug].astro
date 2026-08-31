@@ -80,8 +80,8 @@ export async function getStaticPaths() {
     { slug: 'terraform-and-kubernetes-ops', name: 'Terraform & Kubernetes Infra Ops', description: 'Provision and run infrastructure without leaving the agent loop.', skill_count: 8, requires_pro: false },
     { slug: 'proactive-and-autonomous-agent-ops', name: 'Proactive & Autonomous Agent Ops', description: 'Agents that act before you ask, and improve on their own runs.', skill_count: 8, requires_pro: false },
   ];
-  const result = await fetchApi<{ cookbooks: Bundle[] }>('/api/bundles/discover', { authed: false });
-  let bundles: Bundle[] = (result.ok && Array.isArray(result.data?.cookbooks)) ? result.data!.cookbooks : [];
+  const result = await fetchApi<{ bundles: Bundle[] }>('/api/bundles/discover', { authed: false });
+  let bundles: Bundle[] = (result.ok && Array.isArray(result.data?.bundles)) ? result.data!.bundles : [];
 
   // Only public bundles get a page — discover already filters to
   // visibility=public, but guard explicitly in case that ever changes.

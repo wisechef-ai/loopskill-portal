@@ -417,12 +417,14 @@ import Icon from '../components/Icon.astro';
 
   // ── Bundles — populate modal dropdown + the visible bundles list ───
   async function loadCookbooks(): Promise<void> {
-    const data = await fetchJson<{ cookbooks: CookbookItem[] }>('/api/cookbooks');
-    if (!data?.cookbooks) return;
-    _cookbooks = data.cookbooks;
+    // issue #157 Phase 3: API response key renamed `cookbooks` -> `bundles`
+    // (portal consumer flipped FIRST; the API dual-emit is retired).
+    const data = await fetchJson<{ bundles: CookbookItem[] }>('/api/bundles');
+    if (!data?.bundles) return;
+    _cookbooks = data.bundles;
     const sel = $<HTMLSelectElement>('modal-bundle');
     if (sel) {
-      data.cookbooks.forEach(cb => {
+      data.bundles.forEach(cb => {
         const opt = document.createElement('option');
         opt.value = cb.id;
         opt.textContent = cb.name;
@@ -434,10 +436,10 @@ import Icon from '../components/Icon.astro';
     // open /bundles/view?id=<id> and see the skills inside, zero-CLI.
     const list = $('cookbooks-list');
     const empty = $('cookbooks-empty');
-    if (list && data.cookbooks.length) {
+    if (list && data.bundles.length) {
       if (empty) empty.remove();
       list.innerHTML = '';
-      data.cookbooks.forEach(cb => {
+      data.bundles.forEach(cb => {
         const a = document.createElement('a');
         a.href = `/bundles/view?id=${encodeURIComponent(cb.id)}`;
         a.className = 'flex items-center justify-between gap-3 px-4 py-3 rounded-xl bg-bg-elev border border-border-soft hover:border-accent/40 transition mb-2';

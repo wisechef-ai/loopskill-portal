@@ -77,12 +77,12 @@ describe('Ph F: public bundle page (/bundles/p) [renamed from /cookbooks/p]', ()
     expect(src).toContain('/skills/');
   });
 
-  it('/cookbooks/p redirects to /bundles/p preserving the query string (compat)', () => {
-    const stub = join(SRC, 'pages/cookbooks/p.astro');
-    const src = readFileSync(stub, 'utf-8');
-    expect(src).toContain('RedirectStub');
-    expect(src).toContain('to="/bundles/p"');
-    expect(src).toContain('preserveQuery={true}');
+  it('/cookbooks/p is 301-redirected to /bundles/p at the repo level (issue #157 Phase 2)', () => {
+    // The src/pages/cookbooks/* stub files were removed; the redirect now
+    // lives in astro.config.mjs `redirects` (build-time + Caddy 301).
+    expect(existsSync(join(SRC, 'pages/cookbooks/p.astro'))).toBe(false);
+    const cfg = readFileSync(join(ROOT, 'astro.config.mjs'), 'utf-8');
+    expect(cfg).toContain("'/cookbooks/p': '/bundles/p'");
   });
 });
 
@@ -108,11 +108,10 @@ describe('Ph F: discover surface — /browse?type=bundles [replaces dedicated /c
     expect(src).toContain('/bundles/p?slug=');
   });
 
-  it('/cookbooks redirects to /browse?type=bundles (compat)', () => {
-    const stub = join(SRC, 'pages/cookbooks/index.astro');
-    const src = readFileSync(stub, 'utf-8');
-    expect(src).toContain('RedirectStub');
-    expect(src).toContain('/browse?type=bundles');
+  it('/cookbooks is 301-redirected to /browse?type=bundles at the repo level (issue #157 Phase 2)', () => {
+    expect(existsSync(join(SRC, 'pages/cookbooks/index.astro'))).toBe(false);
+    const cfg = readFileSync(join(ROOT, 'astro.config.mjs'), 'utf-8');
+    expect(cfg).toContain("'/cookbooks': '/browse?type=bundles'");
   });
 });
 

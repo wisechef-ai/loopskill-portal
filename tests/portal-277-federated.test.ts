@@ -342,7 +342,7 @@ describe('issue#277 FIX 3 — browse.astro zero-regression when federated key is
   const SKILLS_PAYLOAD = {
     results: [{ slug: 'stub-alpha', title: 'Stub Alpha', description: 'x', category: 'data', install_count: 1 }],
   };
-  const BUNDLES_PAYLOAD = { cookbooks: [] };
+  const BUNDLES_PAYLOAD = { bundles: [] }; // issue #157 Ph 3: `bundles` is the only emitted key
   const PERSONALITIES_PAYLOAD: unknown[] = [];
   const LOOPS_PAYLOAD: unknown[] = [];
   // OLD-SHAPE /api/search response — no `federated` key at all. This is the

@@ -383,7 +383,7 @@ const orgSchema = {
           const cbRes = await fetch('/api/cookbooks', { credentials: 'include' });
           if (cbRes.ok) {
             const data = await cbRes.json();
-            const cbooks = (data && data.cookbooks) || [];
+            const cbooks = (data && (data.bundles || data.cookbooks)) || []; // bundles key canonical (issue #157 Ph 3); cookbooks fallback for pre-flip cached API
             userCookbooks = cbooks;
             const wrap = document.getElementById('rail-bundles');
             const empty = document.getElementById('rail-bundles-empty');

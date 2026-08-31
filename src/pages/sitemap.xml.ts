@@ -150,12 +150,12 @@ async function fetchAllCompositeLoopSlugs(): Promise<{ slug: string; updatedAt: 
 // sitemap.xml carried ZERO /bundles/* entries despite 10 public bundles
 // actively sold and listed in llms.txt (live-verified 2026-08-20).
 async function fetchAllBundleSlugs(): Promise<{ slug: string; updatedAt: string }[]> {
-  const res = await fetchApi<{ cookbooks: { slug: string; visibility?: string; created_at?: string }[] }>(
+  const res = await fetchApi<{ bundles: { slug: string; visibility?: string; created_at?: string }[] }>(
     '/api/bundles/discover',
     { authed: false, maxAttempts: 8, initialDelayMs: 600, maxDelayMs: 12000 },
   );
-  if (!res.ok || !Array.isArray(res.data?.cookbooks)) return [];
-  return res.data.cookbooks
+  if (!res.ok || !Array.isArray(res.data?.bundles)) return [];
+  return res.data.bundles
     .filter((b) => !b.visibility || b.visibility === 'public')
     .map((b) => ({
       slug: b.slug,

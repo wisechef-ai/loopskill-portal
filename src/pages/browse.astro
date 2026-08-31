@@ -75,13 +75,13 @@ try {
   const [loopsRows, skillsR, bundlesR, persR] = await Promise.all([
     fetchLoopsPrebuilt(),
     fetchApi<any>('/api/skills/search?page_size=24', { authed: false }),
-    fetchApi<any>('/api/cookbooks/discover?sort=installs&limit=6', { authed: false }),
+    fetchApi<any>('/api/bundles/discover?sort=installs&limit=6', { authed: false }),
     fetchApi<any>('/api/personalities', { authed: false }),
   ]);
   byType = {
     loops: loopsRows,
     skills: skillsR.ok && skillsR.data ? (skillsR.data.results || []) : [],
-    bundles: bundlesR.ok && bundlesR.data ? (bundlesR.data.cookbooks || bundlesR.data.bundles || bundlesR.data.items || []) : [],
+    bundles: bundlesR.ok && bundlesR.data ? (bundlesR.data.bundles || bundlesR.data.cookbooks || bundlesR.data.items || []) : [],
     personalities: persR.ok && persR.data
       ? (Array.isArray(persR.data) ? persR.data : (persR.data.personalities || persR.data.results || []))
       : [],
@@ -672,7 +672,7 @@ const hasPrebuilt = prebuiltGroupsHtml.trim().length > 0;
     ]);
     const loops = loopsR.status === 'fulfilled' && Array.isArray(loopsR.value) ? loopsR.value : [];
     const skills = skillsR.status === 'fulfilled' && skillsR.value ? (skillsR.value.results || []) : [];
-    const bundles = bundlesR.status === 'fulfilled' && bundlesR.value ? (bundlesR.value.cookbooks || bundlesR.value.bundles || []) : [];
+    const bundles = bundlesR.status === 'fulfilled' && bundlesR.value ? (bundlesR.value.bundles || bundlesR.value.cookbooks || []) : [];
     const personalities = persR.status === 'fulfilled' && persR.value ? (Array.isArray(persR.value) ? persR.value : (persR.value.personalities || persR.value.results || [])) : [];
     return { loops, skills, bundles, personalities };
   }

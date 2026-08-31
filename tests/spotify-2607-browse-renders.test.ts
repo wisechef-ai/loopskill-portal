@@ -47,7 +47,7 @@ const SKILLS_PAYLOAD = {
     { slug: 'stub-beta', title: 'Stub Beta', description: 'second', category: 'ops', install_count: 1 },
   ],
 };
-const BUNDLES_PAYLOAD = { cookbooks: [{ slug: 'stub-bundle', name: 'Stub Bundle', skill_count: 2 }] };
+const BUNDLES_PAYLOAD = { bundles: [{ slug: 'stub-bundle', name: 'Stub Bundle', skill_count: 2 }] }; // issue #157 Ph 3: `bundles` is the only emitted key
 const PERSONALITIES_PAYLOAD = [{ slug: 'stub-persona', name: 'Stub Persona', category: 'research' }];
 const LOOPS_PAYLOAD = [{ slug: 'stub-loop', title: 'Stub Loop', schedule: 'daily', install_count: 0 }];
 // issue #82: envelope metadata the header binds to. 3 enabled sources but

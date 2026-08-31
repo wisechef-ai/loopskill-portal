@@ -131,14 +131,14 @@ import AppShell from '../layouts/AppShell.astro';
       fetchJson(`${API_BASE}/api/loops`),
       fetchJson(`${API_BASE}/api/skills/search?page_size=12`),
       fetchJson(`${API_BASE}/api/bundles/discover?sort=installs&limit=12`),
-      fetchJson(`${API_BASE}/api/cookbooks/discover?sort=installs&limit=12`),
+      fetchJson(`${API_BASE}/api/bundles/discover?sort=installs&limit=12`),
       fetchJson(`${API_BASE}/api/personalities`),
     ]);
 
     const loops: any[] = loopsData ? (Array.isArray(loopsData) ? loopsData : (loopsData.loops || loopsData.results || [])) : [];
     const skills: any[] = skillsData ? (skillsData.results || []) : [];
-    const bundles: any[] = (bundlesDataPrimary && (bundlesDataPrimary.cookbooks || bundlesDataPrimary.bundles))
-      || (bundlesDataCompat && (bundlesDataCompat.cookbooks || bundlesDataCompat.bundles))
+    const bundles: any[] = (bundlesDataPrimary && (bundlesDataPrimary.bundles || bundlesDataPrimary.cookbooks))
+      || (bundlesDataCompat && (bundlesDataCompat.bundles || bundlesDataCompat.cookbooks))
       || [];
     const personalities: any[] = persData ? (Array.isArray(persData) ? persData : (persData.personalities || persData.results || [])) : [];
 

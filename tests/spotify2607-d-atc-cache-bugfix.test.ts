@@ -37,7 +37,7 @@ describe('AddToCookbookScript.astro loadCookbooks() assigns to the right variabl
   });
 
   it('assigns the fetched list to `bundles` — the variable renderMenu() actually reads', () => {
-    expect(src).toMatch(/bundles\s*=\s*Array\.isArray\(data\)\s*\?\s*data\s*:\s*\(data\.cookbooks/);
+    expect(src).toMatch(/bundles\s*=\s*Array\.isArray\(data\)\s*\?\s*data\s*:\s*\(data\.bundles/);
   });
 });
 
