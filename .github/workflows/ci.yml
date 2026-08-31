@@ -37,11 +37,11 @@ permissions:
 #     job, it has to be expressed here instead.
 concurrency:
   group: >-
-    ${{ (github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'schedule'))
+    ${{ (github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'))
         && 'portal-prod-deploy'
         || format('ci-{0}', github.ref) }}
   cancel-in-progress: >-
-    ${{ !(github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'schedule')) }}
+    ${{ !(github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')) }}
 
 jobs:
   build:
@@ -283,7 +283,7 @@ jobs:
       # how loopskill-api already deploys (runs-on: [self-hosted, loopskill-prod]).
 
       - name: Sanity check built dist before deploy
-        if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'schedule')
+        if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')
         run: |
           set -e
           test -f dist/index.html || { echo "ERR: no index.html in built dist"; exit 1; }
@@ -292,7 +292,7 @@ jobs:
           test "$PAGE_COUNT" -ge 5 || { echo "ERR: only $PAGE_COUNT pages, expected more"; exit 1; }
 
       - name: Stage build into releases/.incoming (local)
-        if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'schedule')
+        if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')
         # issue #34 (approved 2026-08-19): never write --delete straight onto
         # anything the origin can serve. Land in a staging dir first; the swap
         # step below promotes it with a single atomic rename(2).
@@ -308,7 +308,7 @@ jobs:
 
       - name: Atomic symlink swap + release rotation
         id: swap
-        if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'schedule')
+        if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')
         # issue #34: the old two-mv swap had a window (mv dist dist.bak; mv
         # dist.incoming dist) in which the origin had NO document root — the
         # EXIT/TERM/HUP trap from PR #31 narrowed it but cannot cover SIGKILL,
@@ -396,7 +396,7 @@ jobs:
 
       - name: Post-deploy readiness gate (public routes)
         id: verify
-        if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'schedule')
+        if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')
         run: |
           set -e
           FAIL=0
@@ -441,7 +441,7 @@ jobs:
         #      canary did exactly that and failed a deploy that had in fact
         #      landed correctly (log: "printf: write error: Broken pipe").
         #      Compare strings directly instead — no pipes, no subshell exits.
-        if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'schedule')
+        if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')
         run: |
           set -euo pipefail
           EXPECTED="${GITHUB_SHA}"
