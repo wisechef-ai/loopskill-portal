@@ -231,14 +231,19 @@ const orgSchema = {
              = "Recent bundles" preview, max 5, NO plus button in rail (the
              compose flow lives inside /library now). -->
         {isPublic && (
-          <div class="px-3 pb-4 flex-1 min-h-0" data-shell-anon>
+          <!-- overflow-y-auto: on short viewports (<~500px tall) this flex-1
+               body shrinks below the card's height; without overflow handling
+               the card bled over the sticky sign-in footer below (cold-buyer
+               audit 2026-09-01, seen on every public page). Scroll, never
+               overlap. The "Pro $9.95/mo" link was dropped — the nav row two
+               lines up already carries it. -->
+          <div class="px-3 pb-4 flex-1 min-h-0 overflow-y-auto" data-shell-anon>
             <div class="mx-3 rounded-xl border border-border bg-bg-card/50 p-4 flex flex-col gap-2.5">
               <p class="text-xs text-muted leading-relaxed">Save bundles and sync fleets.</p>
               <a href="/signin?next=/library" data-signin-next
                  class="inline-flex items-center justify-center px-3 py-1.5 rounded-lg bg-accent text-bg text-xs font-semibold hover:bg-accent-soft transition">
                 Sign in
               </a>
-              <a href="/pricing" class="text-center text-[11px] text-muted-soft hover:text-accent transition">Pro $9.95/mo</a>
             </div>
           </div>
         )}
