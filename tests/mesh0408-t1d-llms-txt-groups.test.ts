@@ -57,8 +57,18 @@ describe('llms.txt.ts source — five-group fetch + render wiring', () => {
 
   it('has a Bundles heading naming the discover + detail endpoints', () => {
     expect(txt).toContain('## Bundles');
-    expect(txt).toContain('/api/cookbooks/discover');
-    expect(txt).toContain('/api/cookbooks/public/{slug}');
+    // 260901: PR #92 (cookbook->bundle rename P2) renamed the DOCUMENTED
+    // endpoints in this section from /api/cookbooks/* to /api/bundles/*
+    // (the underlying data-source fetch still hits /api/cookbooks/discover
+    // — that's a separate, deliberately-kept legacy fetch path — but the
+    // *documented* discover/detail endpoints shown to agents are the new
+    // /api/bundles/* ones). This assertion was left pointing at the
+    // pre-rename strings and would never have caught the ## Bundles
+    // disappearing (it was gated behind `built` and never ran in CI pre-build
+    // anyway — see ci.yml fix in this same PR); corrected to match the
+    // actual rendered doc text.
+    expect(txt).toContain('/api/bundles/discover');
+    expect(txt).toContain('/api/bundles/public/{slug}');
   });
 
   it('has a Personalities heading naming the list + detail endpoints', () => {
