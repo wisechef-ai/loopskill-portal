@@ -38,6 +38,7 @@ import SkillCover from '../components/SkillCover.astro';
 import JourneyRail from '../components/JourneyRail.astro';
 import FleetDriftMatrix from '../components/FleetDriftMatrix.astro';
 import LiveCount from '../components/LiveCount.astro';
+import FoundingBanner from '../components/FoundingBanner.astro';
 import { fetchApi } from '../lib/api';
 import type { CountFormat } from '../lib/liveCount';
 
@@ -382,6 +383,10 @@ const stats: { num: string; label: string; live?: LiveOpts }[] = [
   title="LoopSkill — the toolkit for deploying AI agents for clients"
   description="Deploying AI agents for clients is a job now. LoopSkill is its toolkit: point an agent at the registry on day 1, hand your first client one install line, prove a whole fleet converged with drift-proof locks, then publish or refer for revenue. Open source (MPL-2.0), MCP-native, free tier, Pro $9.95/mo, self-hostable."
 >
+  <!-- launch/hidden-levers-0901: hidden-by-default founding-member banner.
+       Ships no price in static HTML; see FoundingBanner.astro header comment. -->
+  <FoundingBanner />
+
   <script is:inline>
     // onechrome_0611 seam #1: returning members land on THEIR home, not marketing.
     // Client-side (static SSG, no server). location.replace = no history entry.
@@ -424,6 +429,16 @@ const stats: { num: string; label: string; live?: LiveOpts }[] = [
             Browse what you'll deploy
           </a>
         </div>
+
+        <!-- launch/hidden-levers-0901: ONE above-the-fold hook block -> /seeker.
+             Surgical insert only — no homepage redesign. See vault
+             2026-08-19-zero-code-money-audit.md item B4: loopskill_seeker was
+             the strongest switch-to-us growth lever with zero public surface. -->
+        <a href="/seeker" class="group flex items-center gap-3 mt-1 px-4 py-2.5 rounded-lg border border-accent/40 bg-accent/5 text-sm text-text hover:border-accent hover:bg-accent/10 transition">
+          <span class="w-1.5 h-1.5 rounded-full bg-accent animate-pulse shrink-0"></span>
+          <span><strong class="font-semibold">What are your agents missing?</strong> One command scans your local Claude/Codex/Hermes/OpenCode installs and diffs against the catalog.</span>
+          <Icon name="arrow-right" size={12} class="opacity-70 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all shrink-0" />
+        </a>
 
         {/* ── Agent-proof bar: every number bound to a live endpoint at build
              time (fail-closed — an unfetchable stat is omitted, never
