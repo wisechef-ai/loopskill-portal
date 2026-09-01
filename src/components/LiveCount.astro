@@ -1,0 +1,119 @@
+---
+/**
+ * LiveCount.astro — self-updating marketing count, no rebuild required.
+ *
+ * PROBLEM (owner ask, 2026-09-01): "for the numbers can we have them auto
+ * updating without need of the whole website re-build?" Every marketing
+ * count on this static site (liveSkillCount, federatedSkillLabel, the
+ * federation index total) was previously bound to a build-time `fetchApi`
+ * call in frontmatter — correct at build time, but frozen until the next
+ * `astro build` + deploy. The live API already serves the current number,
+ * publicly, with no auth (/api/marketing/snapshot, /api/skills/external).
+ *
+ * DESIGN — one mechanism, every count site
+ * -----------------------------------------
+ * Static HTML renders the build-time-computed fallback (the SAME honest
+ * fallback callers already compute today — `let liveSkillCount = 57`, the
+ * floor(indexed/1000)*1000 federated label, etc.) inside a `<span>`. A
+ * client `<script>` (real ES module — Astro bundles non-`is:inline` scripts
+ * through Vite) fetches `endpoint` after the page loads, extracts `path`
+ * from the JSON body via extractLiveValue() (src/lib/liveCount.ts — shared
+ * with this file's own frontmatter so the formatting logic can never drift
+ * between static and live paths), and swaps `textContent` in on success.
+ *
+ * FAIL-CLOSED CONTRACT (matches AGENTS.md's build-time-fetch-ban rationale
+ * and the AppShell auth-swap doctrine's "never leave a fill target broken"
+ * rule): on ANY failure — network error, non-2xx, missing/malformed key,
+ * NaN, zero, negative, non-numeric — the fetch handler's .catch/.then chain
+ * simply returns without touching the DOM. The static fallback text is
+ * still sitting there because it was never removed; nothing ever renders
+ * "undefined", "NaN", a permanent spinner, or a fabricated zero.
+ *
+ * NOT for llms.txt.ts: that is a machine-discovery .txt endpoint generated
+ * entirely at build time with no client JS runtime to swap into — it stays
+ * on the direct fetchApi('/api/marketing/snapshot') pattern it already uses
+ * (see AGENTS.md's build-time-fetch-ban: a HANDFUL of catalog surfaces are
+ * allowed to build-time-fetch WITH fallbacks; llms.txt is one, by necessity,
+ * not by omission).
+ */
+import { formatCount, type CountFormat } from '../lib/liveCount';
+
+interface Props {
+  /** Public snapshot/marketing endpoint to fetch client-side, e.g.
+   *  '/api/marketing/snapshot' or '/api/skills/external'. Always same-origin
+   *  relative path — never sends credentials (these are public counts). */
+  endpoint: string;
+  /** Dot-path into the fetched JSON body, e.g. 'counts.skills_total' or
+   *  'counts.external_indexed'. */
+  path: string;
+  /** The build-time-computed, ALREADY-honest fallback value (same number
+   *  today's build-time fetchApi call would have produced) — never a fresh
+   *  guess invented by this component. */
+  fallback: number;
+  /** How to render both the static fallback and the live-swapped value.
+   *  'floor1k-plus' matches the site's existing convention of rounding a
+   *  large federated count DOWN to a defensible "+" figure so the claim
+   *  stays true as the count drifts upward between fetches. */
+  format?: CountFormat;
+  suffix?: string;
+  className?: string;
+}
+
+const {
+  endpoint,
+  path,
+  fallback,
+  format = 'plain',
+  suffix = '',
+  className = '',
+} = Astro.props as Props;
+
+const staticText = `${formatCount(fallback, format)}${suffix}`;
+---
+<span
+  class={className}
+  data-live-count
+  data-endpoint={endpoint}
+  data-path={path}
+  data-format={format}
+  data-suffix={suffix}
+>{staticText}</span>
+
+<script>
+  import { extractLiveValue, formatCount, type CountFormat } from '../lib/liveCount';
+
+  // One listener for every LiveCount instance on the page — avoids N
+  // duplicate fetches to the same endpoint when a page uses this component
+  // more than once (e.g. index.astro renders the catalog count 3x).
+  const nodes = document.querySelectorAll<HTMLElement>('[data-live-count]');
+  const byEndpoint = new Map<string, HTMLElement[]>();
+  nodes.forEach((node) => {
+    const endpoint = node.getAttribute('data-endpoint');
+    if (!endpoint) return; // malformed markup — leave the static fallback alone
+    const list = byEndpoint.get(endpoint) ?? [];
+    list.push(node);
+    byEndpoint.set(endpoint, list);
+  });
+
+  byEndpoint.forEach((targets, endpoint) => {
+    fetch(endpoint, { credentials: 'omit' })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (!data) return; // non-2xx or empty body — fallback stays
+        targets.forEach((node) => {
+          const path = node.getAttribute('data-path');
+          if (!path) return;
+          const value = extractLiveValue(data, path);
+          if (value === null) return; // missing/NaN/zero/negative — fallback stays
+          const format = (node.getAttribute('data-format') || 'plain') as CountFormat;
+          const suffix = node.getAttribute('data-suffix') || '';
+          node.textContent = `${formatCount(value, format)}${suffix}`;
+        });
+      })
+      .catch(() => {
+        /* network error / abort / JSON parse failure — never touch the DOM,
+           the static build-time fallback is already correct-enough and
+           honest; a swap that half-completes is worse than no swap. */
+      });
+  });
+</script>

@@ -37,7 +37,9 @@ import InstallWidget from '../components/InstallWidget.astro';
 import SkillCover from '../components/SkillCover.astro';
 import JourneyRail from '../components/JourneyRail.astro';
 import FleetDriftMatrix from '../components/FleetDriftMatrix.astro';
+import LiveCount from '../components/LiveCount.astro';
 import { fetchApi } from '../lib/api';
+import type { CountFormat } from '../lib/liveCount';
 
 // Pull live skill count for the stats strip (retry+jitter; fallback below if API unreachable).
 // CANONICAL NUMBER = the BROWSABLE catalog (marketing SSOT).
@@ -109,10 +111,20 @@ try {
   }
 } catch {}
 
-const agentProofStats: { value: string; label: string; href: string }[] = [];
+// live_count_island: `live` opts into the client-side LiveCount swap
+// (src/components/LiveCount.astro) instead of a plain build-time string —
+// so the FEDERATION headline (product-owner priority #1) and the catalog
+// count self-correct between rebuilds without needing one.
+type LiveOpts = { endpoint: string; path: string; fallback: number; format: CountFormat };
+const agentProofStats: { value: string; label: string; href: string; live?: LiveOpts }[] = [];
 if (mcpToolCount) agentProofStats.push({ value: String(mcpToolCount), label: 'MCP tools — search, install, publish, fleet', href: '/docs/mcp' });
 if (hostedSkillCount) agentProofStats.push({ value: String(hostedSkillCount), label: 'skills hosted here, versioned + signed', href: '/browse' });
-agentProofStats.push({ value: federatedSkillLabel, label: 'skills indexed across federated registries', href: '/federation/' });
+agentProofStats.push({
+  value: federatedSkillLabel,
+  label: 'skills indexed across federated registries',
+  href: '/federation/',
+  live: { endpoint: '/api/skills/external', path: 'counts.external_indexed', fallback: federatedSkillCount, format: 'floor1k-plus' },
+});
 agentProofStats.push({ value: '0 humans', label: 'agents enrol themselves (Ed25519)', href: '/docs/new-agent' });
 
 // Spotlight — Pro skill highlights in the hero grid.
@@ -351,9 +363,17 @@ const stations = [
   { id: 'get-paid' as const,     num: '04', label: 'Get paid',     sub: 'Publish, refer, or hand it off', icon: 'mail' },
 ];
 
-const stats = [
-  { num: federatedSkillLabel, label: 'Skills indexed across federated registries' },
-  { num: `${liveSkillCount}`, label: 'Curated & signed in this catalog' },
+const stats: { num: string; label: string; live?: LiveOpts }[] = [
+  {
+    num: federatedSkillLabel,
+    label: 'Skills indexed across federated registries',
+    live: { endpoint: '/api/skills/external', path: 'counts.external_indexed', fallback: federatedSkillCount, format: 'floor1k-plus' },
+  },
+  {
+    num: `${liveSkillCount}`,
+    label: 'Curated & signed in this catalog',
+    live: { endpoint: '/api/marketing/snapshot', path: 'counts.skills_total', fallback: liveSkillCount, format: 'plain' },
+  },
   { num: 'pass / fail', label: 'Every loop run, objective + bounded' },
 ];
 ---
@@ -411,7 +431,11 @@ const stats = [
         <div class="w-full max-w-4xl mt-6 grid grid-cols-2 md:grid-cols-4 gap-3 text-left">
           {agentProofStats.map(st => (
             <a href={st.href} class="group rounded-xl border border-border bg-bg-card px-4 py-3 hover:border-accent transition">
-              <p class="text-xl font-bold text-text group-hover:text-accent transition">{st.value}</p>
+              <p class="text-xl font-bold text-text group-hover:text-accent transition">
+                {st.live ? (
+                  <LiveCount endpoint={st.live.endpoint} path={st.live.path} fallback={st.live.fallback} format={st.live.format} />
+                ) : st.value}
+              </p>
               <p class="text-[11px] text-muted-soft leading-snug mt-0.5">{st.label}</p>
             </a>
           ))}
@@ -733,7 +757,11 @@ const stats = [
       <div class="grid grid-cols-3 gap-4 mt-16 pt-12 border-t border-border" id="stats-strip">
         {stats.map(s => (
           <div class="flex flex-col gap-1">
-            <div class="text-3xl md:text-5xl font-bold text-text tracking-tight" style="letter-spacing: -0.03em;">{s.num}</div>
+            <div class="text-3xl md:text-5xl font-bold text-text tracking-tight" style="letter-spacing: -0.03em;">
+              {s.live ? (
+                <LiveCount endpoint={s.live.endpoint} path={s.live.path} fallback={s.live.fallback} format={s.live.format} />
+              ) : s.num}
+            </div>
             <div class="text-xs text-muted">{s.label}</div>
           </div>
         ))}
@@ -758,12 +786,12 @@ const stats = [
 
       <div class="grid md:grid-cols-3 gap-3">
         <a href="/browse" class="rounded-xl border border-border bg-bg-card p-5 hover:border-accent transition flex flex-col gap-1.5">
-          <p class="text-2xl font-bold text-text">{liveSkillCount}</p>
+          <p class="text-2xl font-bold text-text"><LiveCount endpoint="/api/marketing/snapshot" path="counts.skills_total" fallback={liveSkillCount} format="plain" /></p>
           <p class="text-sm font-semibold text-text">curated here</p>
           <p class="text-xs text-muted leading-relaxed">Audited on every push, ed25519-signed delivery, version-pinned in bundles.</p>
         </a>
         <a href="/federation/" class="rounded-xl border border-border bg-bg-card p-5 hover:border-accent transition flex flex-col gap-1.5">
-          <p class="text-2xl font-bold text-text">{federatedSkillLabel}</p>
+          <p class="text-2xl font-bold text-text"><LiveCount endpoint="/api/skills/external" path="counts.external_indexed" fallback={federatedSkillCount} format="floor1k-plus" /></p>
           <p class="text-sm font-semibold text-text">indexed, federated</p>
           <p class="text-xs text-muted leading-relaxed">Searched across upstream registries in one query, with an honest per-source breakdown of what is indexed vs actually installable.</p>
         </a>
@@ -827,7 +855,7 @@ const stats = [
       </div>
       <div class="text-center mt-10">
         <a href="/browse" class="text-sm text-muted hover:text-accent inline-flex items-center gap-1.5 transition">
-          See all {liveSkillCount}+ skills <Icon name="arrow-right" size={11} />
+          See all <LiveCount endpoint="/api/marketing/snapshot" path="counts.skills_total" fallback={liveSkillCount} format="plain" suffix="+" /> skills <Icon name="arrow-right" size={11} />
         </a>
       </div>
     </div>

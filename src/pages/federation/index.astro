@@ -24,6 +24,7 @@
 // lockstep so audit-links never sees a link to a page the build skipped.
 import AppShell from '../../layouts/AppShell.astro';
 import Icon from '../../components/Icon.astro';
+import LiveCount from '../../components/LiveCount.astro';
 import { getFederationOverview } from '../../lib/federation';
 
 const overview = await getFederationOverview();
@@ -89,8 +90,8 @@ const datasetSchema = (overview.ok && overview.total && overview.sources.length 
       </p>
       {overview.ok && overview.total !== null ? (
         <p class="mt-4 text-sm text-muted-soft">
-          <strong class="text-text">{overview.total.toLocaleString()}</strong> externally indexed skills across
-          <strong class="text-text"> {overview.sources.length}</strong> upstream {overview.sources.length === 1 ? 'source' : 'sources'} (live count, this build).
+          <strong class="text-text"><LiveCount endpoint="/api/skills/external" path="counts.external_indexed" fallback={overview.total} format="comma" /></strong> externally indexed skills across
+          <strong class="text-text"> {overview.sources.length}</strong> upstream {overview.sources.length === 1 ? 'source' : 'sources'} (live count, this build — self-updates client-side without a rebuild).
         </p>
       ) : (
         <p class="mt-4 text-sm text-muted-soft">
