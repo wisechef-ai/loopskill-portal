@@ -138,7 +138,12 @@ export const GET: APIRoute = async () => {
     // never a fabricated slug).
     fetchApi<CompositeLoop[]>('/api/composite-loops', { authed: false }),
     // mesh0408 T1-D: bundles (public cookbooks) — public, no key.
-    fetchApi<{ cookbooks?: CatalogBundle[] }>('/api/cookbooks/discover?limit=24', { authed: false }),
+    // 260901 fix: /api/cookbooks/discover returns { bundles: [...] } post
+    // cookbook→bundle rename (P2, #92) — this still read the pre-rename
+    // `cookbooks` key, so bundlesRes.data?.cookbooks was always undefined
+    // and the ## Bundles section silently vanished from llms.txt despite
+    // 10 live public bundles existing. Caught by loopskill-identity-canary.
+    fetchApi<{ bundles?: CatalogBundle[] }>('/api/cookbooks/discover?limit=24', { authed: false }),
     // mesh0408 T1-D: personalities — public, no key.
     fetchApi<CatalogPersonality[]>('/api/personalities', { authed: false }),
     // first-impression fix (2): the free-skill COUNT below used to be derived
@@ -338,7 +343,7 @@ ${compositeLines.join('\n')}`
   // mesh0408 T1-D — explicit per-type listing: bundles. Grounded in live
   // /api/cookbooks/discover (public bundles, no key); omitted entirely if the
   // fetch failed rather than fabricating slugs.
-  const bundles = (bundlesRes.data?.cookbooks ?? []).filter((b: CatalogBundle) => b?.slug);
+  const bundles = (bundlesRes.data?.bundles ?? []).filter((b: CatalogBundle) => b?.slug);
   const bundleLines = bundles.map((b) => {
     const desc = clip(b.description ?? '', 140);
     const count = typeof b.skill_count === 'number' ? ` (${b.skill_count} skills)` : '';
