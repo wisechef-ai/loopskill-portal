@@ -42,7 +42,7 @@ A variant of the git approach: keep skills in a dotfiles repo and symlink `~/.cl
 
 ## The LoopSkill path
 
-[LoopSkill](https://app.loopskill.io) treats a skill as a versioned, signed, installable artifact instead of a folder you hand-copy. It also indexes 91k+ skills from other registries through its [federation search](/federation/), so the same install path works whether the skill lives in LoopSkill's own catalog or was found through the federated index -- worth knowing since a skill you need may not be first-party at all. Every command below was run live for this article on 2026-08-21.
+[LoopSkill](https://app.loopskill.io) treats a skill as a versioned, signed, installable artifact instead of a folder you hand-copy. Its [federation index](/federation/) reaches 91k+ skills across other registries (live count moves daily, see /federation/) -- that's searchable metadata pointing back to each entry's origin, not a rehosted mirror, and the same MCP search/install path works whether the skill it finds is hosted directly or found through the federated index. Every command below was run live for this article on 2026-08-21.
 
 ### Install a single skill
 
@@ -80,7 +80,7 @@ installed 3 skill(s) to /home/adam/.claude/skills
 
 ### Let the agent install its own skills (MCP)
 
-The commands above are for a human running a shell. The more interesting path is letting the agent do it: point any MCP-capable client (Claude Code, Claude Desktop, Cursor, Cline, Continue.dev, Zed, OpenClaw) at LoopSkill's hosted MCP server and it gets two tools for exactly this:
+The commands above are for a human running a shell. The more interesting path is letting the agent do it: point any MCP-capable client (Claude Code, Claude Desktop, Cursor, Cline, Continue.dev, Zed, OpenClaw) at LoopSkill's hosted MCP server -- 47 dedicated tools for search, install, publish, and fleet management -- and it gets what it needs for exactly this:
 
 ```json
 {
@@ -97,7 +97,7 @@ Then, from inside an agent conversation:
 
 - `loopskill_install(slug="super-memory")` -- installs a single skill, same signed tarball as the curl path.
 - `loopskill_bundle_install(slug="dev-agent-essentials")` -- installs a whole bundle.
-- `loopskill_search(...)` -- searches across the federation index too, not just the first-party catalog, so the agent can find and install a skill that lives in another registry entirely.
+- `loopskill_search(...)` -- searches across the whole federated index too, so the agent can find and install a skill it doesn't already host, not only what's in the immediate catalog.
 
 No local install directory to manage by hand -- the agent asks for what it needs and gets it, which is the actual "agent-first" version of the getting-started flow LoopSkill's own docs describe: tell your agent "install the relevant skills from app.loopskill.io" and let it search, pick, and install through MCP rather than you browsing a website.
 
