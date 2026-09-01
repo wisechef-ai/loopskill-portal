@@ -36,6 +36,17 @@ interface SnapshotCounts {
   free_skills?: number;
   pro_skills?: number;
   mcp_tools_count?: number;
+  // fedtotal_0901 — the server-side, dedupe-aware federated figures. These are
+  // the SINGLE SOURCE for the superset headline. Previously this file summed /
+  // rounded `/api/skills/external`'s counts itself, which meant the published
+  // number depended on which endpoint we happened to read. Both API surfaces
+  // now derive from one function (federation_cache.sum_federated_total), so
+  // reading the snapshot here makes the portal agree with the API by
+  // construction rather than by coincidence.
+  federated_skills_total?: number;
+  total_reachable_skills?: number;
+  personalities_total?: number;
+  connectors_total?: number;
 }
 interface Snapshot {
   counts?: SnapshotCounts;
@@ -186,9 +197,20 @@ export const GET: APIRoute = async () => {
   );
 
   // superset_0606 Phase F — honest federation numbers (indexed vs installable,
-  // never conflated). When the cache is warm these are the real ~89.7k / ~500;
-  // a cold/unreachable build omits the section rather than fabricate a count.
-  const fedIndexed = fedRes.data?.counts?.external_indexed ?? 0;
+  // never conflated).
+  //
+  // fedtotal_0901: the INDEXED headline now comes from the marketing snapshot's
+  // `federated_skills_total`, the server-side dedupe-aware total. The portal
+  // must not compute or round this itself — the dedupe topology (hermes-hub
+  // contributes its deduped count; the direct clawhub walk is a strict SUBSET
+  // of the hub snapshot and is excluded) lives server-side in ONE function.
+  // A client-side sum of `per_source` double-counts clawhub by ~77k.
+  // Falls back to /api/skills/external's own total (same function, same value)
+  // only if the snapshot is unreachable; omits the section if neither answers.
+  const fedIndexed =
+    typeof counts?.federated_skills_total === 'number'
+      ? counts.federated_skills_total
+      : (fedRes.data?.counts?.external_indexed ?? 0);
   const fedInstallable = fedRes.data?.counts?.external_installable ?? 0;
   const fedSources = (fedRes.data?.available_sources ?? []).length;
   // Round the headline DOWN to a defensible "+" figure (89,748 → "89,000+"),
@@ -377,7 +399,11 @@ ${bundleLines.join('\n')}`
     ? `
 
 ## Personalities — system-prompt archetypes for your agent
-A personality is a versioned system-prompt archetype (research analyst, focused dev agent, etc.) you can install onto an agent, distinct from a skill (a capability) or a loop (a runnable routine).
+A personality is a versioned system-prompt archetype (research analyst, focused dev agent, etc.) you can install onto an agent, distinct from a skill (a capability) or a loop (a runnable routine).${
+        typeof counts?.personalities_total === 'number'
+          ? ` ${counts.personalities_total} public personalit${counts.personalities_total === 1 ? 'y' : 'ies'} today.`
+          : ''
+      }
 - List public personalities (no key): \`GET ${SITE}/api/personalities\`
 - Detail: \`GET ${SITE}/api/personalities/{slug}\`
 ${personalityLines.join('\n')}`
@@ -388,13 +414,18 @@ ${personalityLines.join('\n')}`
   // phase, populates rows). An empty catalog still gets an honest section
   // naming the endpoints, rather than a silent gap in the machine-readable
   // manifest.
+  const connectorCount = counts?.connectors_total;
+  const connectorsNote =
+    typeof connectorCount === 'number' && connectorCount > 0
+      ? `> ${connectorCount} public connector${connectorCount === 1 ? '' : 's'} available today.`
+      : `> Note: the public connector catalog is intentionally empty until a human promotes an entry — connectors are staged behind a review gate. See ${SITE}/docs/scope.`;
   const connectorsSection = `
 
 ## Connectors — MCP-server config fragments
 A connector is a named, versioned MCP-server config template (stdio/http/sse) — literal secrets never transit the server, only \${VAR} env refs. Catalogued alongside skills and bundles.
 - List public connectors (no key): \`GET ${SITE}/api/connectors\`
 - Detail: \`GET ${SITE}/api/connectors/{slug}\`
-> Note: the public connector catalog is intentionally empty until a human promotes an entry — connectors are staged behind a review gate. See ${SITE}/docs/scope.`;
+${connectorsNote}`;
 
   const body = `# LoopSkill — the vertical skill marketplace for AI agents
 
