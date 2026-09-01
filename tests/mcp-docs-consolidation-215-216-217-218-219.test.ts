@@ -152,6 +152,22 @@ describe('#219 item 3 — llms.txt notes the connector catalog can be legitimate
   const src = readSrc(LLMS_TXT_SRC);
 
   it('the Connectors section carries an empty-state note', () => {
-    expect(src).toMatch(/## Connectors[\s\S]{0,400}(intentionally empty|can be empty|staged behind a review gate)/);
+    // fedtotal_0901: the note moved OUT of the template literal into a
+    // `connectorsNote` variable so it can flip to a live count once
+    // connectors exist (an unconditional "intentionally empty" line becomes
+    // a lie the moment one is published). The note is still rendered into
+    // the Connectors section via ${connectorsNote} — assert the empty-state
+    // branch exists AND that the section interpolates it, rather than
+    // requiring the two to be textually adjacent in the source.
+    expect(src).toMatch(/## Connectors[\s\S]{0,400}\$\{connectorsNote\}/);
+    expect(src).toMatch(
+      /connectorsNote\s*=[\s\S]{0,400}(intentionally empty|can be empty|staged behind a review gate)/,
+    );
+  });
+
+  it('the empty-state note is conditional on the live connector count', () => {
+    // The note must not be unconditional prose — once connectors_total > 0
+    // it has to stop claiming the catalog is empty.
+    expect(src).toMatch(/connectorCount[\s\S]{0,120}>\s*0/);
   });
 });
