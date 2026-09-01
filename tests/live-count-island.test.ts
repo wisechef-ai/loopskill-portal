@@ -120,6 +120,15 @@ describe('LiveCount.astro — source shape', () => {
   it('fetch never sends credentials for a public marketing count (no auth needed)', () => {
     expect(src).toMatch(/credentials:\s*['"]omit['"]/);
   });
+
+  it('a 429/5xx response (r.ok false) is treated identically to a network error — fallback stays, no crash', () => {
+    // The .then(r => r.ok ? r.json() : null) chain means a 429 (rate
+    // limited — the live API rate-limits aggressively per the owner) never
+    // reaches extractLiveValue at all; it degrades the same as a network
+    // error. Assert the ok-gate exists so this can't silently regress to
+    // r.json() unconditionally (which would throw on a non-JSON 429 body).
+    expect(src).toMatch(/r\.ok\s*\?\s*r\.json\(\)\s*:\s*null/);
+  });
 });
 
 describe('LiveCount call sites — wired to the REAL public snapshot/federation endpoints', () => {
