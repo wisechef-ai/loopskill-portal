@@ -10,7 +10,7 @@ faqs:
   - q: 'Does LoopSkill work with agents other than Claude Code?'
     a: "Yes. The install.sh script and the MCP server both work with any agent that reads a local skills directory or speaks MCP -- Claude Code, Claude Desktop, Cursor, Cline, Continue.dev, Zed, OpenClaw, Codex CLI, and Hermes are all documented integration paths. We tested the install.sh path for this article; we did not re-verify every listed client for this piece."
   - q: 'Is there a free way to try this, or do I need an account?'
-    a: 'Free-tier skills install anonymously with no account and no API key -- 56 of the 57 skills in the LoopSkill catalog are free tier as of August 2026. An account and API key are only needed for Pro-tier skills, publishing, or multi-agent fleet sync.'
+    a: 'Yes -- every skill in the LoopSkill catalog installs free today, no account and no API key required. An account and API key are only needed for Pro-tier skills (when the catalog has any), publishing your own skill, or multi-agent fleet sync. Check /skills for the current catalog and what, if anything, sits behind Pro.'
   - q: 'How do I keep a skill updated across five agents without doing it five times?'
     a: 'Bundles plus fleet sync. Put the skills in a bundle, create a fleet (loopskill_fleet_create), subscribe the bundle to it, distribute one fleet key to all five agents, and call loopskill_fleet_sync on each. Every agent pulls the same pinned versions from one place -- update the bundle once, sync propagates it.'
   - q: 'What actually happens when I run the install.sh script?'
@@ -42,7 +42,7 @@ A variant of the git approach: keep skills in a dotfiles repo and symlink `~/.cl
 
 ## The LoopSkill path
 
-[LoopSkill](https://app.loopskill.io) treats a skill as a versioned, signed, installable artifact instead of a folder you hand-copy. Every command below was run live for this article on 2026-08-21.
+[LoopSkill](https://app.loopskill.io) treats a skill as a versioned, signed, installable artifact instead of a folder you hand-copy. It also indexes 91k+ skills from other registries through its [federation search](/federation/), so the same install path works whether the skill lives in LoopSkill's own catalog or was found through the federated index -- worth knowing since a skill you need may not be first-party at all. Every command below was run live for this article on 2026-08-21.
 
 ### Install a single skill
 
@@ -59,7 +59,7 @@ installed 'super-memory' v1.0.1 -> /home/adam/.claude/skills/super-memory
 Done. Tell your agent: "You have a new skill in /home/adam/.claude/skills/super-memory — read its SKILL.md and follow it."
 ```
 
-No account, no API key -- `super-memory` is one of the 56 free-tier skills in the catalog. The script pulled a versioned, Ed25519-signed tarball and unpacked it straight into `~/.claude/skills/`. Run the same command again on a second machine and you get the identical `v1.0.1` files, not "whatever was in the folder when someone last copied it."
+No account, no API key -- `super-memory` is one of the free-tier skills in the catalog (every skill in it installs free today; check [/skills](/skills) for the current lineup). The script pulled a versioned, Ed25519-signed tarball and unpacked it straight into `~/.claude/skills/`. Run the same command again on a second machine and you get the identical `v1.0.1` files, not "whatever was in the folder when someone last copied it."
 
 ### Install a whole stack at once (bundles)
 
@@ -97,6 +97,7 @@ Then, from inside an agent conversation:
 
 - `loopskill_install(slug="super-memory")` -- installs a single skill, same signed tarball as the curl path.
 - `loopskill_bundle_install(slug="dev-agent-essentials")` -- installs a whole bundle.
+- `loopskill_search(...)` -- searches across the federation index too, not just the first-party catalog, so the agent can find and install a skill that lives in another registry entirely.
 
 No local install directory to manage by hand -- the agent asks for what it needs and gets it, which is the actual "agent-first" version of the getting-started flow LoopSkill's own docs describe: tell your agent "install the relevant skills from app.loopskill.io" and let it search, pick, and install through MCP rather than you browsing a website.
 
@@ -137,4 +138,4 @@ curl -fsSL https://app.loopskill.io/install.sh | bash -s -- --bundle dev-agent-e
 
 For anything beyond "install the same free skills on a couple of machines" -- Pro-tier skills, publishing your own, or keeping five-plus agents converged without re-running curl by hand -- sign in free and set up a [bundle](/bundles/dev-agent-essentials), then a fleet, from the [docs](/docs).
 
-[Docs: getting started](/docs) &middot; [Browse the catalog](/skills) &middot; [Pricing](/pricing)
+[Docs: getting started](/docs) &middot; [Browse the catalog](/skills) &middot; [Search the federation index](/federation/) &middot; [Pricing](/pricing)
