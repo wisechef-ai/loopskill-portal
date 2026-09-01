@@ -122,12 +122,21 @@ const API_BASE = import.meta.env.PUBLIC_LOOPSKILL_API_BASE || import.meta.env.PU
       </section>
 
       <!-- Skill list -->
-      <section>
+      <section id="skills-section">
         <h2 class="text-sm font-medium text-muted-soft uppercase tracking-wide mb-3">Skills in this bundle</h2>
         <div id="bd-empty" hidden class="bg-bg-card border border-border rounded-2xl p-8 text-center text-sm text-muted">
           This bundle has no skills yet.
         </div>
         <ul id="skills-list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3"></ul>
+      </section>
+
+      <!-- Personality list. Hidden by default and revealed only when the API
+           returns declared personalities, so a skills-only bundle renders
+           exactly as before (self-hiding shelf, same convention as the other
+           real-data sections). -->
+      <section id="personalities-section" hidden class="mt-10">
+        <h2 class="text-sm font-medium text-muted-soft uppercase tracking-wide mb-3">Personalities in this bundle</h2>
+        <ul id="personalities-list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3"></ul>
       </section>
 
       <!-- CTA footer -->
@@ -202,6 +211,77 @@ const API_BASE = import.meta.env.PUBLIC_LOOPSKILL_API_BASE || import.meta.env.PU
     render(bd);
   }
 
+  function renderPersonalities(personalities) {
+    const section = $("personalities-section");
+    const list = $("personalities-list");
+    if (!section || !list) return;
+
+    // Self-hiding shelf: no declared personalities → the section never
+    // appears, so skills-only bundles look exactly as they did before.
+    if (!Array.isArray(personalities) || personalities.length === 0) {
+      section.hidden = true;
+      return;
+    }
+
+    list.innerHTML = "";
+    for (const p of personalities) {
+      if (!p || !p.slug) continue;
+
+      const li = document.createElement("li");
+      li.className = "skill-row";
+
+      // Stretched-link pattern, same as the skill rows above: one full-card
+      // anchor, no nested <a>. Personality detail pages are internal.
+      const cardLink = document.createElement("a");
+      cardLink.className = "skill-row-link";
+      cardLink.href = `/personalities/${encodeURIComponent(p.slug)}`;
+      cardLink.setAttribute("aria-label", p.title || p.slug);
+      li.appendChild(cardLink);
+
+      const top = document.createElement("div");
+      top.className = "flex items-start justify-between gap-2";
+
+      const nameEl = document.createElement("span");
+      nameEl.className = "font-medium text-text";
+      // textContent, never innerHTML — these strings come from the API.
+      nameEl.textContent = p.title || p.slug;
+      top.appendChild(nameEl);
+
+      const badge = document.createElement("span");
+      badge.className = "skill-source-badge shrink-0";
+      badge.textContent = "personality";
+      top.appendChild(badge);
+      li.appendChild(top);
+
+      if (p.description) {
+        const desc = document.createElement("div");
+        desc.className = "text-sm text-muted line-clamp-2";
+        desc.textContent = p.description;
+        li.appendChild(desc);
+      }
+
+      const bottom = document.createElement("div");
+      bottom.className = "flex items-center justify-between gap-2 flex-wrap";
+
+      const view = document.createElement("span");
+      view.className = "skill-view-source";
+      view.textContent = "view persona →";
+      bottom.appendChild(view);
+
+      if (p.pinned_version) {
+        const pin = document.createElement("span");
+        pin.className = "text-xs text-muted-soft";
+        pin.textContent = `v${p.pinned_version}`;
+        bottom.appendChild(pin);
+      }
+      li.appendChild(bottom);
+
+      list.appendChild(li);
+    }
+
+    section.hidden = false;
+  }
+
   function render(bd) {
     hide("state-loading");
     show("content");
@@ -212,7 +292,17 @@ const API_BASE = import.meta.env.PUBLIC_LOOPSKILL_API_BASE || import.meta.env.PU
     if (bd.ref) $("bd-by").textContent = "shared by a creator on LoopSkill";
 
     const skills = bd.skills || [];
-    const parts = [`${skills.length} skill${skills.length === 1 ? "" : "s"}`];
+    const personalities = bd.personalities || [];
+    // Count what the bundle actually carries. A personalities-only bundle
+    // reporting "0 skills" reads as empty to a first-time visitor — the same
+    // first-impression failure the install-count fix below addresses.
+    const parts = [];
+    if (skills.length > 0 || personalities.length === 0) {
+      parts.push(`${skills.length} skill${skills.length === 1 ? "" : "s"}`);
+    }
+    if (personalities.length > 0) {
+      parts.push(`${personalities.length} personalit${personalities.length === 1 ? "y" : "ies"}`);
+    }
     // first-impression fix: a literal "0 installs" reads as a dead/abandoned
     // bundle to a first-time visitor — every one of the 10 public bundles
     // showed this on 2026-08-19. Only surface a real install count (>0);
@@ -303,7 +393,17 @@ const API_BASE = import.meta.env.PUBLIC_LOOPSKILL_API_BASE || import.meta.env.PU
       });
     }
 
-    if (skills.length === 0) { show("bd-empty"); return; }
+    renderPersonalities(bd.personalities || []);
+
+    // A bundle can legitimately carry ZERO skills and still be non-empty —
+    // agent-bench declares 3 personalities and no skills. The old early
+    // `return` here fired before any other section rendered, so such a bundle
+    // showed "no skills yet" and nothing else. Only the SKILLS section is
+    // empty in that case; render it as such and keep going.
+    if (skills.length === 0) {
+      show("bd-empty");
+      return;
+    }
 
     const list = $("skills-list");
     list.innerHTML = "";
