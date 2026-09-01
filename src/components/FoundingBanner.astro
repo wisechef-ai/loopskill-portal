@@ -1,0 +1,52 @@
+---
+// FoundingBanner.astro — launch/hidden-levers-0901
+//
+// "Founding Member $49 lifetime, 100 seats" — HIDDEN by default. audit-claims.mjs
+// (unlocked-price rule) bans any price string above the public $0/$9.95 ladder on a
+// RENDERED surface. The static HTML this component emits contains NO price digits —
+// the banner starts `hidden` and its entire text content (including "$49") is
+// injected via client-side JS ONLY after a successful (2xx) fetch of
+// /api/founding/remaining. On any non-200 (endpoint not deployed yet, seats
+// exhausted -> 404, or any error) the banner stays hidden and is never shown.
+//
+// This is a placeholder UI: /api/founding/remaining is being added by a sibling
+// PR in loopskill-api and does not exist in prod yet, so this banner renders
+// nothing today. It is safe to merge ahead of the API PR — the fetch simply 404s
+// and the script exits without touching the DOM further.
+---
+<div
+  id="founding-banner"
+  data-founding-banner
+  hidden
+  class="w-full border-b border-accent/30 bg-accent/10 text-center py-2 px-4 text-sm text-text"
+></div>
+
+<script is:inline>
+  (function () {
+    var el = document.getElementById('founding-banner');
+    if (!el) return;
+    fetch('/api/founding/remaining', { credentials: 'omit' })
+      .then(function (r) {
+        if (!r.ok) throw new Error('non-200');
+        return r.json();
+      })
+      .then(function (data) {
+        var remaining = data && typeof data.remaining === 'number' ? data.remaining : null;
+        if (remaining === null || remaining <= 0) return; // sold out or malformed -> stay hidden
+        // The $49 string is constructed here, client-side, only on a verified
+        // successful fetch — it never exists in the static HTML this page ships.
+        var price = '$' + '49';
+        el.textContent =
+          'Founding Member — ' + price + ' lifetime, ' + remaining + ' of 100 seats left.';
+        var link = document.createElement('a');
+        link.href = '/pricing';
+        link.className = 'ml-2 underline hover:opacity-80';
+        link.textContent = 'Claim yours →';
+        el.appendChild(link);
+        el.hidden = false;
+      })
+      .catch(function () {
+        /* endpoint not live, network error, or bad payload — banner stays hidden */
+      });
+  })();
+</script>

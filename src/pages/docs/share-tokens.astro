@@ -9,12 +9,13 @@ import AppShell from '../../layouts/AppShell.astro';
   <section class="max-w-3xl mx-auto px-6 pt-16 pb-24">
     <p class="eyebrow mb-3">Docs · Share tokens</p>
     <h1 class="text-4xl md:text-5xl font-semibold tracking-tight mb-6">
-      Share tokens
+      Share tokens — hand a client ONE install command
     </h1>
     <p class="text-muted text-lg leading-relaxed mb-12">
       You built a bundle for a client. Now you need to hand it to their agent — without handing
       over your own API key, your whole catalog, or a support ticket every time they lose it.
-      A share token is a second, disposable key that reaches exactly one bundle and nothing else.
+      A share token is a second, disposable key that reaches exactly one bundle and nothing else,
+      so "handoff" is one command, not an onboarding call.
     </p>
 
     <!-- Why -->
@@ -87,6 +88,26 @@ content-type: application/json
       <code class="text-xs bg-bg-elev rounded px-1">edit</code> gives owner-equivalent access to
       that one bundle (add/remove skills) — it does <em>not</em> let the holder mint further
       share tokens. That guard is hard-coded: a share token can never create another share token.
+    </p>
+
+    <!-- The one install command -->
+    <h2 class="text-xl font-semibold text-text mb-4">The one command you actually send</h2>
+    <p class="text-muted mb-4">
+      This is what the client's agent runs — their <code class="text-xs bg-bg-elev rounded px-1">x-api-key</code>
+      is the <code class="text-xs bg-bg-elev rounded px-1">cbt_</code> token you minted, not your own key:
+    </p>
+    <pre class="bg-[#0d0d0d] border border-border rounded-xl p-4 text-sm text-text overflow-x-auto mb-4"><code>curl -sS https://app.loopskill.io/api/mcp/http/ \
+  -H "Content-Type: application/json" \
+  -H "Accept: application/json, text/event-stream" \
+  -H "x-api-key: cbt_&lt;8hex&gt;_&lt;32hex&gt;" \
+  -d '{`{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"loopskill_bundle_install","arguments":{}}}`}'</code></pre>
+    <p class="text-xs text-muted-soft leading-relaxed mb-10">
+      Empty <code class="text-xs bg-bg-elev rounded px-1">arguments</code> installs every active
+      skill in the token's scoped bundle (bulk); the client's agent never sees a bundle ID or a
+      cookbook UUID — the token already carries the scope, per the MCP tool description in the
+      live registry ("cbt_token callers may omit cookbook_id — it defaults to the token's scoped
+      bundle"). The full initialize/session handshake this call needs is the same one every MCP
+      call uses — see <a href="/docs/mcp" class="text-accent hover:underline">MCP setup</a>.
     </p>
 
     <!-- What it cannot reach -->

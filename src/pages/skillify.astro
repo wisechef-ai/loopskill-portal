@@ -1,0 +1,136 @@
+---
+// /skillify — public hook page (launch/hidden-levers-0901).
+//
+// Surfaces the loopskill_skillify MCP tool: paste a messy runbook (or any
+// procedural doc) → marketplace-ready SKILL.md, classified, related-skill-
+// linked, written into your bundle. Never on any public page before this PR
+// (vault: 2026-08-19-zero-code-money-audit.md, item B3 — "creator-onboarding
+// wow-demo, absent from /publish").
+//
+// The worked example below (input runbook → output row) is a REAL call
+// against https://app.loopskill.io/api/mcp/http/, verified live 2026-09-01
+// while building this page — not fabricated JSON.
+import AppShell from '../layouts/AppShell.astro';
+---
+<AppShell mode="public"
+  title="Turn any runbook into an installable skill — LoopSkill Skillify"
+  description="Paste a messy internal runbook and get back a marketplace-ready, classified SKILL.md your agents (and everyone else's) can install. One MCP call, verified worked example included."
+>
+  <section class="max-w-3xl mx-auto px-6 pt-16 pb-24">
+    <p class="eyebrow mb-3">Skillify</p>
+    <h1 class="text-4xl md:text-5xl font-semibold tracking-tight mb-6">
+      Turn any runbook into an installable skill.
+    </h1>
+    <p class="text-muted text-lg leading-relaxed mb-10">
+      You already wrote the runbook — the ops doc, the incident playbook, the "how I always fix
+      this" note. <code class="text-xs bg-bg-elev rounded px-1">loopskill_skillify</code> takes
+      that text, validates it as a skill, classifies its category, finds related skills already
+      in the catalog by embedding similarity, and writes it into your bundle as an installable
+      row. One call, no manual metadata entry.
+    </p>
+
+    <!-- Worked example: input -->
+    <h2 class="text-xl font-semibold text-text mb-3">Worked example — input</h2>
+    <p class="text-sm text-muted mb-4 leading-relaxed">
+      A plain, messy-but-real runbook (nothing pre-formatted for a catalog — this is what an
+      internal ops doc actually looks like):
+    </p>
+    <pre class="bg-[#0d0d0d] border border-border rounded-xl p-4 text-xs md:text-sm text-text overflow-x-auto mb-8"><code>---
+name: restart-flaky-nginx
+description: Restart nginx when health checks fail 3x in a row, verify it
+  recovers, and page on-call if it doesn't.
+---
+
+# Restart flaky nginx
+
+When the health checker flags nginx as down 3 consecutive times:
+
+1. SSH to the affected host.
+2. Run `sudo systemctl restart nginx`.
+3. Wait 10s, then `curl -sf http://localhost/healthz`.
+4. If step 3 succeeds, log the recovery and exit.
+5. If step 3 fails twice more, page on-call via the incident webhook.
+
+Known gotcha: nginx sometimes fails to bind because a previous worker
+process held port 443 open. `sudo fuser -k 443/tcp` before the restart
+if step 2 doesn't clear the issue.</code></pre>
+
+    <!-- Worked example: the call -->
+    <h2 class="text-xl font-semibold text-text mb-3">The call</h2>
+    <pre class="bg-[#0d0d0d] border border-border rounded-xl p-4 text-xs md:text-sm text-text overflow-x-auto mb-8"><code>{`{
+  "jsonrpc": "2.0",
+  "id": 3,
+  "method": "tools/call",
+  "params": {
+    "name": "loopskill_skillify",
+    "arguments": {
+      "slug": "restart-flaky-nginx-demo",
+      "content": "<the SKILL.md text above>",
+      "visibility": "private"
+    }
+  }
+}`}</code></pre>
+    <p class="text-xs text-muted-soft leading-relaxed mb-8">
+      Same JSON-RPC 2.0 shape over <code class="text-xs bg-bg-elev rounded px-1">https://app.loopskill.io/api/mcp/http/</code>
+      as every other MCP call — see <a href="/docs/mcp" class="text-accent hover:underline">MCP setup</a>
+      for the full initialize/session handshake. <code class="text-xs bg-bg-elev rounded px-1">visibility: "private"</code>
+      writes to your own bundle only; set <code class="text-xs bg-bg-elev rounded px-1">"public_pending_review"</code>
+      to submit it for the public catalog.
+    </p>
+
+    <!-- Worked example: output -->
+    <h2 class="text-xl font-semibold text-text mb-3">Real output</h2>
+    <p class="text-sm text-muted mb-4 leading-relaxed">
+      The actual response, verified live 2026-09-01 (not a mockup):
+    </p>
+    <pre class="bg-[#0d0d0d] border border-border rounded-xl p-4 text-xs md:text-sm text-text overflow-x-auto mb-4"><code>{`{
+  "slug": "restart-flaky-nginx-demo",
+  "cookbook_id": "b28cf8bd-405d-481e-ab1a-8cccf1a6d940",
+  "category": "dev-tools",
+  "related_skills": [
+    "super-memory",
+    "musk-5-step-algorithm",
+    "plan-for-goal",
+    "ruthless-mentor",
+    "hub-search-claude-code"
+  ],
+  "status": "created"
+}`}</code></pre>
+    <p class="text-sm text-muted leading-relaxed mb-10">
+      Read literally: the runbook was validated (frontmatter parsed OK), auto-classified into
+      the <code class="text-xs bg-bg-elev rounded px-1">dev-tools</code> category, matched
+      against 5 related skills already in the catalog by embedding cosine similarity (so a
+      buyer browsing one sees this one too), and written as a new row in the target bundle
+      (<code class="text-xs bg-bg-elev rounded px-1">status: "created"</code> — a re-run with
+      the same slug would instead return <code class="text-xs bg-bg-elev rounded px-1">"updated"</code>).
+      No manual category picker, no manual related-skills search.
+    </p>
+
+    <!-- What it validates -->
+    <h2 class="text-xl font-semibold text-text mb-3">What gets validated</h2>
+    <ul class="flex flex-col gap-2 text-sm text-muted mb-10">
+      <li class="flex items-start gap-2">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" class="text-accent mt-0.5 shrink-0"><path d="M3 8.5L6 11.5L13 4.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <span>YAML frontmatter — <code class="text-xs bg-bg-elev rounded px-1">name</code> and <code class="text-xs bg-bg-elev rounded px-1">description</code> are required; malformed frontmatter returns <code class="text-xs bg-bg-elev rounded px-1">{`{"code": "invalid_frontmatter"}`}</code> instead of silently writing a broken row.</span>
+      </li>
+      <li class="flex items-start gap-2">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" class="text-accent mt-0.5 shrink-0"><path d="M3 8.5L6 11.5L13 4.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <span>Ownership — writes go to <em>your</em> bundle (resolved from your API key), never an ambiguous default. Pass <code class="text-xs bg-bg-elev rounded px-1">target_cookbook_id</code> to target a specific one.</span>
+      </li>
+      <li class="flex items-start gap-2">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" class="text-accent mt-0.5 shrink-0"><path d="M3 8.5L6 11.5L13 4.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <span>Public submissions (<code class="text-xs bg-bg-elev rounded px-1">visibility: "public_pending_review"</code>) go through the same registry quality gate every catalog entry passes before a cold visitor can see it.</span>
+      </li>
+    </ul>
+
+    <div class="mt-4 p-6 bg-bg-card border border-border rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+      <div>
+        <p class="text-sm font-semibold text-text">Got a runbook worth skillifying?</p>
+        <p class="text-sm text-muted mt-1">Wire up MCP, then call <code class="text-xs bg-bg-elev rounded px-1">loopskill_skillify</code> with your own content.</p>
+      </div>
+      <a href="/docs/mcp" class="shrink-0 inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold bg-accent text-bg hover:bg-accent-soft transition">
+        Wire up MCP →
+      </a>
+    </div>
+  </section>
+</AppShell>

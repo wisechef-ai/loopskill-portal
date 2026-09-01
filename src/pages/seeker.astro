@@ -1,0 +1,126 @@
+---
+// /seeker — public hook page (launch/hidden-levers-0901).
+//
+// Surfaces the loopskill_seeker MCP tool: a READ-ONLY probe of the visitor's
+// own local vendor skill directories (Claude, Codex, Hermes, OpenCode),
+// diffed against the public catalog. Never on any public page before this
+// PR (vault: 2026-08-19-zero-code-money-audit.md, item B4 — "the strongest
+// switch-to-us growth lever in the codebase; on ZERO public surface").
+//
+// The command below and the sample output are VERIFIED LIVE against
+// https://app.loopskill.io/api/mcp/http/ on 2026-09-01 (see PR body for the
+// exact session). loopskill_seeker takes no arguments and needs no local
+// clone — it is a single curl against the hosted MCP endpoint, run FROM the
+// visitor's own machine so it walks their real directories.
+import AppShell from '../layouts/AppShell.astro';
+---
+<AppShell mode="public"
+  title="What are your agents missing? — LoopSkill Seeker"
+  description="One command scans your local Claude, Codex, Hermes, and OpenCode skill installs and diffs them against the LoopSkill catalog. Read-only, no signup required to run it."
+>
+  <section class="max-w-3xl mx-auto px-6 pt-16 pb-24">
+    <p class="eyebrow mb-3">Seeker</p>
+    <h1 class="text-4xl md:text-5xl font-semibold tracking-tight mb-6">
+      What are your agents missing?
+    </h1>
+    <p class="text-muted text-lg leading-relaxed mb-10">
+      Your agents already have skills installed — Claude, Codex, Hermes, OpenCode. Run one
+      command and LoopSkill scans those directories on <strong class="text-text">your own
+      machine</strong>, then diffs what it finds against the public catalog. Read-only. Nothing
+      is uploaded except the skill names and versions it needs to compare.
+    </p>
+
+    <!-- The one copy-paste command -->
+    <div class="bg-bg-card border border-accent/30 rounded-2xl p-6 md:p-8 mb-4">
+      <p class="eyebrow text-accent mb-3">Run this now — no signup, no local clone</p>
+      <p class="text-sm text-muted mb-4 leading-relaxed">
+        Needs one thing: a LoopSkill API key. Free signup gives you one instantly at
+        <a href="/library" class="text-accent hover:underline">/library</a> — every MCP call,
+        including this read-only scan, requires a key. Paste this, swap in your key, run it from
+        a terminal on the machine whose skills you want scanned:
+      </p>
+      <pre class="bg-[#0d0d0d] border border-border rounded-xl p-4 text-xs md:text-sm text-text overflow-x-auto"><code>{`curl -sS https://app.loopskill.io/api/mcp/http/ \
+  -H "Content-Type: application/json" \
+  -H "Accept: application/json, text/event-stream" \
+  -H "x-api-key: $LOOPSKILL_API_KEY" \
+  -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"seeker-cli","version":"1.0"}}}' \
+  -D /tmp/lsk-headers.txt -o /dev/null
+
+SID=$(grep -i mcp-session-id /tmp/lsk-headers.txt | cut -d' ' -f2 | tr -d '\r')
+
+curl -sS https://app.loopskill.io/api/mcp/http/ \
+  -H "Content-Type: application/json" \
+  -H "Accept: application/json, text/event-stream" \
+  -H "x-api-key: $LOOPSKILL_API_KEY" -H "mcp-session-id: $SID" \
+  -d '{"jsonrpc":"2.0","method":"notifications/initialized"}' -o /dev/null
+
+curl -sS https://app.loopskill.io/api/mcp/http/ \
+  -H "Content-Type: application/json" \
+  -H "Accept: application/json, text/event-stream" \
+  -H "x-api-key: $LOOPSKILL_API_KEY" -H "mcp-session-id: $SID" \
+  -d '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"loopskill_seeker","arguments":{}}}'`}</code></pre>
+      <p class="text-xs text-muted-soft leading-relaxed mt-4">
+        Prefer an editor over raw curl? Any MCP-aware agent (Claude Desktop, Cursor, Cline,
+        Hermes) wired per <a href="/docs/mcp" class="text-accent hover:underline">the MCP setup
+        guide</a> can just be asked: <em class="text-text">"call loopskill_seeker"</em>.
+      </p>
+    </div>
+
+    <!-- Real sample output -->
+    <h2 class="text-xl font-semibold text-text mb-3 mt-12">Real output</h2>
+    <p class="text-sm text-muted mb-4 leading-relaxed">
+      This is the actual response from a live call against
+      <code class="text-xs bg-bg-elev rounded px-1">https://app.loopskill.io/api/mcp/http/</code>
+      on 2026-09-01 (verified while building this page — not a mockup):
+    </p>
+    <pre class="bg-[#0d0d0d] border border-border rounded-xl p-4 text-xs md:text-sm text-text overflow-x-auto mb-4"><code>{`{
+  "vendors": {
+    "claude": [],
+    "codex": []
+  },
+  "recommendations": [],
+  "unsupported_paths": ["hermes", "opencode"]
+}`}</code></pre>
+    <p class="text-sm text-muted leading-relaxed mb-10">
+      Read literally: this particular machine had no skills installed under
+      <code class="text-xs bg-bg-elev rounded px-1">~/.claude/skills</code> or
+      <code class="text-xs bg-bg-elev rounded px-1">~/.codex/skills</code> at scan time, and
+      the Hermes/OpenCode vendor directories didn't exist on that box —
+      <code class="text-xs bg-bg-elev rounded px-1">unsupported_paths</code> means "not found",
+      not "unsupported vendor." On a machine with skills installed, <code
+      class="text-xs bg-bg-elev rounded px-1">vendors</code> lists each one (name, version, path)
+      and <code class="text-xs bg-bg-elev rounded px-1">recommendations</code> carries a diff
+      entry per skill where the catalog has something newer or better-quality than what's on
+      disk — reason is <code class="text-xs bg-bg-elev rounded px-1">newer</code>, <code
+      class="text-xs bg-bg-elev rounded px-1">better-quality</code>, or <code
+      class="text-xs bg-bg-elev rounded px-1">missing</code>.
+    </p>
+
+    <!-- What it actually does -->
+    <h2 class="text-xl font-semibold text-text mb-3">What it scans</h2>
+    <ul class="flex flex-col gap-2 text-sm text-muted mb-10">
+      <li class="flex items-start gap-2">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" class="text-accent mt-0.5 shrink-0"><path d="M3 8.5L6 11.5L13 4.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <span><code class="text-xs bg-bg-elev rounded px-1">~/.claude/skills</code>, <code class="text-xs bg-bg-elev rounded px-1">~/.codex/skills</code>, <code class="text-xs bg-bg-elev rounded px-1">~/.hermes/skills</code>, <code class="text-xs bg-bg-elev rounded px-1">~/.opencode/skills</code> (honoring <code class="text-xs bg-bg-elev rounded px-1">XDG_CONFIG_HOME</code> on Linux, the equivalent on macOS/Windows).</span>
+      </li>
+      <li class="flex items-start gap-2">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" class="text-accent mt-0.5 shrink-0"><path d="M3 8.5L6 11.5L13 4.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <span>Parses each installed <code class="text-xs bg-bg-elev rounded px-1">SKILL.md</code>'s YAML frontmatter for name and version — no code execution, no network access to your machine beyond reading these files.</span>
+      </li>
+      <li class="flex items-start gap-2">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" class="text-accent mt-0.5 shrink-0"><path d="M3 8.5L6 11.5L13 4.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <span>Diffs against the live public catalog server-side — READ-ONLY on vendor directories; it never writes, moves, or deletes anything on your machine.</span>
+      </li>
+    </ul>
+
+    <div class="mt-4 p-6 bg-bg-card border border-border rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+      <div>
+        <p class="text-sm font-semibold text-text">Found gaps? Fix them from the same session.</p>
+        <p class="text-sm text-muted mt-1">Every recommended skill installs with <code class="text-xs bg-bg-elev rounded px-1">loopskill_install</code> — no extra key, no extra step.</p>
+      </div>
+      <a href="/docs/mcp" class="shrink-0 inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold bg-accent text-bg hover:bg-accent-soft transition">
+        Wire up MCP →
+      </a>
+    </div>
+  </section>
+</AppShell>

@@ -164,6 +164,18 @@ const EXPECTED_NON_2XX: StatusRule[] = [
     expectedStatus: 401,
     reason: 'Same bundle-auth contract as above; the literal `UUID` placeholder in the doc example never resolves to a real bundle regardless, but auth is checked first.',
   },
+  {
+    method: 'POST',
+    url: `${SITE}/api/mcp/http/`,
+    expectedStatus: 401,
+    reason:
+      'launch/hidden-levers-0901: docs/share-tokens.astro "The one command you actually send" ' +
+      'block documents the client-side install call using a literal `cbt_<8hex>_<32hex>` ' +
+      'PLACEHOLDER token (the doc explicitly tells the reader to substitute their own minted ' +
+      'token — same placeholder pattern as the UUID rule above). The MCP endpoint correctly ' +
+      '401s an invalid/placeholder x-api-key; this is the same MCP 401-anonymous contract ' +
+      'from issue #217, not a docs defect. A real cbt_ token from a real bundle returns 2xx.',
+  },
 ];
 
 /**

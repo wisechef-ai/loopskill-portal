@@ -189,6 +189,8 @@ export const GET: APIRoute = async () => {
     'loopskill_trending',
     'loopskill_install',
     'loopskill_install_meta_skill',
+    'loopskill_seeker',
+    'loopskill_skillify',
     'loopskill_stats',
   ];
 
@@ -301,7 +303,8 @@ export const GET: APIRoute = async () => {
 
 ## Beyond the curated catalog — the superset
 LoopSkill is a superset of the public agent-skill ecosystem, not just its curated catalog. The federation layer indexes **${fedHeadline}** community skills across ${fedSources} sources (every skill the Hermes Skills Hub lists, plus GitHub provider taps — Anthropic, OpenAI, Hugging Face, NVIDIA, gstack, Superpowers — and aggregators like skills.sh and ClawHub). Counts are honest and never conflated: **${fedIndexed.toLocaleString()} indexed**, **${fedInstallable.toLocaleString()} installable** today (redistributable-licensed skills install straight from origin into a bundle; supply-chain-unvetted or source-available ones deep-link to origin and are never rehosted).
-- Browse/search the superset (no key): \`GET ${SITE}/api/skills/external?sources=hermes-hub,skills-sh,clawhub\` (comma-separated source ids — see the provider-facet list below for every valid value)
+- Browse the superset with ZERO params (no key, no sources needed — verified live, returns real rows): \`GET ${SITE}/api/federation/filter\` (optional filters: \`?source=<id>&license=<spdx>&trust_level=<level>&tag=<tag>&limit=<n>\`)
+- Multi-source search variant (no key): \`GET ${SITE}/api/skills/external?sources=hermes-hub,skills-sh,clawhub\` (comma-separated source ids — see the provider-facet list below for every valid value). Note: this endpoint requires an explicit \`sources=\` param — a bare call with no \`sources\` returns zero results by design (nothing is enabled by default), so \`/api/federation/filter\` above is the simpler no-config entry point.
 - Provider facets: \`github-anthropic\`, \`github-openai\`, \`github-huggingface\`, \`github-nvidia\`, \`github-gstack\`, \`github-superpowers\`; aggregators: \`hermes-hub\`, \`skills-sh\`, \`clawhub\`, \`lobehub\`, \`browse-sh\`, \`well-known\`
 - Install a redistributable external skill (real SKILL.md from origin): \`GET ${SITE}/api/skills/external/{source}/{slug}/install\`
 - One library: the curated catalog is the quality-gated headline; the federation is community/as-is underneath. You never need to open the Hermes Hub separately — LoopSkill indexes it.`
@@ -453,6 +456,9 @@ ${trendingLines.length ? trendingLines.join('\n') : '- Browse the full catalog a
 
 ## Key pages
 - Catalog: ${SITE}/skills
+- Seeker (scan local installs, diff vs catalog): ${SITE}/seeker (tool: \`loopskill_seeker\`)
+- Skillify (runbook → installable skill): ${SITE}/skillify (tool: \`loopskill_skillify\`)
+- Share tokens (hand a client one install command): ${SITE}/docs/share-tokens
 - Runnable loops: ${SITE}/browse?type=loops (API: ${SITE}/api/loops)
 - Composite loops (scheduled): ${SITE}/browse?type=loops (API: ${SITE}/api/composite-loops)
 - Docs (install + MCP wiring): ${SITE}/docs
