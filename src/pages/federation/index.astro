@@ -236,8 +236,14 @@ const datasetSchema = (overview.ok && overview.total && overview.sources.length 
               show('warn', 'Already proposed recently (deduped per 24h). ' + (d.issue_url ? 'Review issue: <a class="underline" href="' + d.issue_url + '">' + d.issue_url + '</a>' : 'A review issue already tracks it.'));
             } else if (d.review_channel_open && d.issue_url) {
               show('ok', 'Proposal filed ✓ ' + (pfLine ? pfLine + ' · ' : '') + 'Review issue: <a class="underline" href="' + d.issue_url + '">' + d.issue_url + '</a>');
+            } else if (d.review_channel_open) {
+              // Verified live 2026-09-02: the GitHub issue is opened ASYNC by the
+              // dispatch workflow seconds after this response, so issue_url is
+              // legitimately empty here while review_channel_open=true. Never
+              // claim the channel did not open — that was a lie this branch told.
+              show('ok', 'Proposal filed ✓ ' + (pfLine ? pfLine + ' · ' : '') + 'A review issue is opening on GitHub — check <a class="underline" href="https://github.com/wisechef-ai/loopskill-api/issues?q=is%3Aissue+label%3Afederation-registry">federation-registry issues</a> in a few seconds.');
             } else {
-              show('ok', 'Proposal recorded ✓ ' + (pfLine ? pfLine + ' · ' : '') + 'status: ' + (d.status || 'pending') + '. The review channel did not open automatically — we will pick it up from the proposal queue.');
+              show('warn', 'Proposal recorded ✓ ' + (pfLine ? pfLine + ' · ' : '') + 'status: ' + (d.status || 'pending') + '. No review issue opened automatically — it will be picked up from the proposal queue.');
             }
           } else {
             var detail = (d.detail && typeof d.detail === 'object') ? (d.detail.detail || d.detail.error || '') : (d.detail || 'Proposal rejected.');
