@@ -132,6 +132,52 @@ const datasetSchema = (overview.ok && overview.total && overview.sources.length 
       </section>
     )}
 
+    <!-- Self-serve registry proposal (D-031, install_0902). Backed by the
+         live POST /api/federation/propose — anon-allowed, preflight checks
+         the repo (exists, SKILL.md count, license) before anything is filed.
+         Client island only: no build-time fetch (portal rule). Static HTML
+         renders the full form per Trap C; JS adds preflight feedback +
+         submit. No-JS fallback: the plain curl line stays visible. -->
+    <section id="propose-source" class="mt-8 bg-bg-card border border-accent/30 rounded-2xl p-6">
+      <h2 class="text-base font-semibold mb-1">Missing a registry? Propose one</h2>
+      <p class="text-sm text-muted mb-4 leading-relaxed">
+        Know a public repo or registry of agent skills LoopSkill doesn't index yet? Propose it —
+        we pre-flight the repo (does it exist, how many SKILL.md files, what license) and open a
+        review issue. Accepted sources become searchable in the federated index.
+      </p>
+      <div class="flex flex-col gap-3 max-w-xl">
+        <div>
+          <label for="propose-repo-url" class="text-[10px] uppercase tracking-wider text-muted-soft font-semibold block mb-1">Repo URL <span class="text-accent">*</span></label>
+          <input id="propose-repo-url" type="url" inputmode="url" placeholder="https://github.com/owner/repo" required
+                 class="w-full px-3 py-2.5 rounded-lg bg-bg-elev border border-border text-sm text-text placeholder:text-muted-soft focus:outline-none focus:border-accent transition" />
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label for="propose-contact" class="text-[10px] uppercase tracking-wider text-muted-soft font-semibold block mb-1">Contact (optional)</label>
+            <input id="propose-contact" type="text" placeholder="you@example.com or @handle"
+                   class="w-full px-3 py-2.5 rounded-lg bg-bg-elev border border-border text-sm text-text placeholder:text-muted-soft focus:outline-none focus:border-accent transition" />
+          </div>
+          <div>
+            <label for="propose-why" class="text-[10px] uppercase tracking-wider text-muted-soft font-semibold block mb-1">Why this source? (optional)</label>
+            <input id="propose-why" type="text" placeholder="What makes it worth indexing?"
+                   class="w-full px-3 py-2.5 rounded-lg bg-bg-elev border border-border text-sm text-text placeholder:text-muted-soft focus:outline-none focus:border-accent transition" />
+          </div>
+        </div>
+        <div class="flex items-center gap-3 flex-wrap">
+          <button id="propose-submit" type="button" class="px-4 py-2.5 rounded-lg bg-accent text-bg text-sm font-semibold hover:bg-accent-soft transition shrink-0">Propose source</button>
+          <span id="propose-status" class="text-xs text-muted-soft" role="status" aria-live="polite"></span>
+        </div>
+        <p id="propose-result" hidden class="text-sm rounded-lg border px-4 py-3"></p>
+        <details class="text-xs text-muted-soft">
+          <summary class="cursor-pointer hover:text-text transition">Agent or no-JS? Call the API directly</summary>
+          <pre class="mt-2 bg-[#0d0d0d] border border-border rounded-lg p-3 overflow-x-auto"><code>{`curl -X POST https://app.loopskill.io/api/federation/propose \\
+  -H "Content-Type: application/json" \\
+  -d '{"repo_url":"https://github.com/owner/repo"}'`}</code></pre>
+          <p class="mt-1.5">Or from a connected agent: the <code>loopskill_propose_registry</code> MCP tool. Proposals are deduped per 24h per (identity, repo).</p>
+        </details>
+      </div>
+    </section>
+
     <section class="mt-12 bg-bg-card border border-border rounded-2xl p-6">
       <h2 class="text-base font-semibold mb-2">How this index works</h2>
       <p class="text-sm text-muted leading-relaxed">
@@ -143,4 +189,68 @@ const datasetSchema = (overview.ok && overview.total && overview.sources.length 
       </p>
     </section>
   </main>
+
+<script is:inline>
+  // Registry-proposal island: POST /api/federation/propose (anon-allowed,
+  // server-side preflight). Render outcome honestly — review_channel_open
+  // tells us whether a GitHub issue actually opened (bundles_0811 lesson:
+  // "pending_review" alone over-promised).
+  (function () {
+    var btn = document.getElementById('propose-submit');
+    if (!btn) return;
+    var statusEl = document.getElementById('propose-status');
+    var resultEl = document.getElementById('propose-result');
+
+    function show(kind, html) {
+      resultEl.hidden = false;
+      resultEl.className = 'text-sm rounded-lg border px-4 py-3 ' + (
+        kind === 'ok' ? 'border-success/40 bg-success/10 text-success' :
+        kind === 'warn' ? 'border-accent/40 bg-accent/10 text-text' :
+        'border-red-500/40 bg-red-500/10 text-red-400');
+      resultEl.innerHTML = html;
+    }
+
+    btn.addEventListener('click', function () {
+      var repoUrl = (document.getElementById('propose-repo-url')?.value || '').trim();
+      if (!repoUrl) { show('err', 'Paste a repo URL first (e.g. https://github.com/owner/repo).'); return; }
+      btn.disabled = true;
+      statusEl.textContent = 'Checking the repo and filing the proposal…';
+      fetch('https://app.loopskill.io/api/federation/propose', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          repo_url: repoUrl,
+          contact: (document.getElementById('propose-contact')?.value || '').trim() || null,
+          why: (document.getElementById('propose-why')?.value || '').trim() || null
+        })
+      }).then(function (r) { return r.json().then(function (d) { return { ok: r.ok, d: d }; }); })
+        .then(function (res) {
+          var d = res.d || {};
+          statusEl.textContent = '';
+          if (d.ok) {
+            var pf = d.preflight || {};
+            var pfLine = pf.repo_exists ? (pf.skill_md_count + ' SKILL.md files found') : '';
+            if (d.status === 'already_registered') {
+              show('warn', 'This repo is already registered in the federation index — nothing to propose.');
+            } else if (d.status === 'already_proposed' || d.deduped) {
+              show('warn', 'Already proposed recently (deduped per 24h). ' + (d.issue_url ? 'Review issue: <a class="underline" href="' + d.issue_url + '">' + d.issue_url + '</a>' : 'A review issue already tracks it.'));
+            } else if (d.review_channel_open && d.issue_url) {
+              show('ok', 'Proposal filed ✓ ' + (pfLine ? pfLine + ' · ' : '') + 'Review issue: <a class="underline" href="' + d.issue_url + '">' + d.issue_url + '</a>');
+            } else {
+              show('ok', 'Proposal recorded ✓ ' + (pfLine ? pfLine + ' · ' : '') + 'status: ' + (d.status || 'pending') + '. The review channel did not open automatically — we will pick it up from the proposal queue.');
+            }
+          } else {
+            var detail = (d.detail && typeof d.detail === 'object') ? (d.detail.detail || d.detail.error || '') : (d.detail || 'Proposal rejected.');
+            if (detail === 'rate_limit_exceeded') detail = 'Rate limit: too many proposals from this address — try again later (24h dedupe window per repo).';
+            show('err', 'Not filed: ' + detail);
+          }
+        })
+        .catch(function () {
+          statusEl.textContent = '';
+          show('err', 'Network error — try the curl line below, or retry in a moment.');
+        })
+        .finally(function () { btn.disabled = false; });
+    });
+  })();
+</script>
 </AppShell>

@@ -84,6 +84,22 @@ import AppShell from '../layouts/AppShell.astro';
             blocks below to wire it up over MCP.
           </p>
 
+          <!-- The single paste that IS the install: one phrase carrying the key,
+          assembled client-side (the key never enters a URL or the build).
+          Two states rendered in static HTML per Trap C: "have key" (filled by
+          JS from the one-time reveal, or left as the pattern with a pointer
+          to Account when the reveal was already consumed) and "no key yet". -->
+          <div class="mb-4 rounded-lg border border-accent/30 bg-accent/5 px-4 py-3">
+          <div class="flex items-center justify-between gap-3 mb-1">
+          <span class="text-[10px] uppercase tracking-wider text-accent font-semibold">One-paste install</span>
+          <button id="connect-agent-phrase-copy" type="button" class="px-3 py-1.5 rounded-lg bg-accent text-bg text-xs font-semibold shrink-0 hover:bg-accent-soft transition">Copy install phrase</button>
+          </div>
+          <p id="connect-agent-phrase" class="font-mono text-xs text-text leading-relaxed break-words">
+          Install the loopskill skill from https://app.loopskill.io/skill and use the API key YOUR_KEY_FROM_ACCOUNT_PAGE as LOOPSKILL_API_KEY.
+          </p>
+          <p class="text-[11px] text-muted-soft mt-1.5">Paste this into any AI agent — it fetches the skill, wires the key, and installs from the catalog. No config files needed.</p>
+</div>
+
           <div id="connect-agent-key-wrap" hidden class="mb-4 flex items-center gap-2">
             <code id="connect-agent-key" class="font-mono text-xs bg-bg-elev border border-border rounded px-3 py-2 flex-1 break-all"></code>
             <button id="connect-agent-key-copy" type="button" class="px-3 py-2 rounded-lg bg-accent text-bg text-xs font-semibold shrink-0">Copy key</button>
@@ -440,6 +456,7 @@ import AppShell from '../layouts/AppShell.astro';
     const genericCopy = $('connect-agent-copy-generic');
     const keyWrap = $('connect-agent-key-wrap');
     const keyEl = $('connect-agent-key');
+    const phraseEl = $('connect-agent-phrase');
     const yamlEl = $('connect-agent-hermes-yaml');
     const jsonEl = $('connect-agent-claude-json');
 
@@ -451,6 +468,9 @@ import AppShell from '../layouts/AppShell.astro';
       genericCopy.hidden = true;
       keyWrap.hidden = false;
       keyEl.textContent = revealRes.key;
+      if (phraseEl) {
+        phraseEl.textContent = `Install the loopskill skill from https://app.loopskill.io/skill and use the API key ${revealRes.key} as LOOPSKILL_API_KEY.`;
+      }
       if (revealRes.config_blocks) {
         yamlEl.textContent = revealRes.config_blocks.hermes_yaml || '';
         jsonEl.textContent = revealRes.config_blocks.claude_desktop_json || '';
@@ -482,6 +502,19 @@ import AppShell from '../layouts/AppShell.astro';
   $('connect-agent-key-copy')?.addEventListener('click', async () => {
     const txt = $('connect-agent-key').textContent || '';
     try { await navigator.clipboard.writeText(txt); } catch {}
+  });
+
+  // One-paste install phrase: copy + honest "Copied" feedback so a user is
+  // never left unsure whether the paste landed on the clipboard.
+  $('connect-agent-phrase-copy')?.addEventListener('click', async () => {
+    const btn = $('connect-agent-phrase-copy');
+    const txt = $('connect-agent-phrase')?.textContent || '';
+    try {
+      await navigator.clipboard.writeText(txt);
+      const original = btn.textContent;
+      btn.textContent = 'Copied ✓';
+      setTimeout(() => { btn.textContent = original; }, 1500);
+    } catch {}
   });
 
   document.querySelectorAll<HTMLButtonElement>('.connect-agent-copy-btn').forEach((b) => {

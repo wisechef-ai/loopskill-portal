@@ -147,6 +147,10 @@ const itemListSchema = {
       </div>
       <a href={`/browse?type=skills&q=${encodeURIComponent(page.slug)}`} class="shrink-0 inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-accent text-bg font-semibold text-sm hover:bg-accent-soft transition">Search {page.meta.name}</a>
     </section>
+
+    <p class="mt-4 text-sm text-muted-soft">
+      Missing a registry you care about? <a href="/federation/#propose-source" class="text-accent hover:underline">Propose a new federation source</a> — preflighted and reviewed.
+    </p>
   </main>
 </AppShell>
 
