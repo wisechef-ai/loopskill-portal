@@ -174,6 +174,11 @@ const hasPrebuilt = prebuiltGroupsHtml.trim().length > 0;
         <button type="button" role="tab" class="seg-tab" data-type="skills">Skills</button>
         <button type="button" role="tab" class="seg-tab" data-type="bundles">Bundles</button>
         <button type="button" role="tab" class="seg-tab" data-type="personalities">Personalities</button>
+        <!-- A nav link styled as a tab (not a data-type filter): the federated
+             index is its own page (28+ upstream sources, propose-a-source form),
+             and Browse is where people look for "the whole catalog". The only
+             other in-app entry was one footer line — Adam could not find it. -->
+        <a href="/federation/" role="tab" class="seg-tab" aria-label="Federated index (external sources)">Federated ↗</a>
       </div>
     </div>
 
