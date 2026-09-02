@@ -255,7 +255,7 @@ echo ""
 # grouped-section caps, keyboard nav) are verified by curling the served
 # dist/ output and are NOT re-implemented here; see the PR body for that
 # evidence. This block covers the three that are cheaply build-checkable:
-#   (g) rail has exactly 3 primary links in dist/home/index.html
+#   (g) rail has exactly 4 primary links in dist/home/index.html
 #   (h) redirect stubs exist for every §5 legacy route
 #   (i) dist/skills/<slug>/ detail dirs still exist (§8 SEO — must not be
 #       swept up by the aggregator cut)
@@ -267,8 +267,9 @@ fail_ia() {
   ia_failures=$((ia_failures + 1))
 }
 
-# (g) Rail has exactly 3 primary nav destinations (Home / Browse / Your
-# Library). We count anchors carrying the shared `rail-link` class emitted
+# (g) Rail has exactly 4 primary nav destinations (Home / Browse / Your
+# Library / Add to your agent — the one-paste install entry, added
+# install_0902). We count anchors carrying the shared `rail-link` class emitted
 # by AppShell.astro's primary <nav aria-label="Primary">, then normalize by
 # href so the anon/member dual-render of "Your Library" (one goes to
 # /signin?next=/library, the other to /library — only one is ever visible
@@ -282,10 +283,10 @@ if [ -f "$home_html" ]; then
     | grep -oE 'href="[^"]*"' \
     | sed -E 's#href="/signin\?next=/library"#href="/library"#' \
     | sort -u | wc -l | tr -d ' ')
-  if [ "$rail_dest_count" -ne 3 ]; then
-    fail_ia "$home_html has $rail_dest_count distinct rail-link primary nav destinations — expected exactly 3 (Home, Browse, Your Library)"
+  if [ "$rail_dest_count" -ne 4 ]; then
+    fail_ia "$home_html has $rail_dest_count distinct rail-link primary nav destinations — expected exactly 4 (Home, Browse, Your Library, Add to your agent)"
   else
-    echo "OK:   $home_html has exactly 3 primary rail destinations"
+    echo "OK:   $home_html has exactly 4 primary rail destinations"
   fi
 else
   fail_ia "$home_html is MISSING — cannot verify rail primary-link count"

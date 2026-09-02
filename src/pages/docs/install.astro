@@ -15,6 +15,29 @@ import Icon from '../../components/Icon.astro';
       see the note below.
     </p>
 
+<!-- The one-paste install: the single phrase a customer hands to their agent.
+     Keyed variant is generated per-user on /library (one-time key reveal);
+     the keyless variant below is the honest static default — free skills
+     install with no key at all. -->
+<div class="bg-bg-card border border-accent/40 rounded-2xl p-6 mb-10">
+  <p class="eyebrow text-accent mb-2">Fastest · one paste</p>
+  <h2 class="text-xl font-semibold tracking-tight mb-3">Just tell your agent</h2>
+  <p class="text-sm text-muted mb-4 leading-relaxed">
+    Copy this into any AI agent (Claude Code, Cursor, Hermes, Codex, OpenClaw…). It fetches the
+    LoopSkill meta-skill and wires everything up — no config files on your side. Signed in?
+    <a href="/library" class="text-accent hover:underline">Your library</a> generates this phrase
+    with your API key already in it.
+  </p>
+  <div class="flex items-center gap-3 flex-wrap">
+    <code class="font-mono text-xs bg-[#0d0d0d] border border-border rounded-lg px-4 py-3 flex-1 min-w-[16rem] break-words" id="docs-install-phrase">Install the loopskill skill from https://app.loopskill.io/skill and use the API key YOUR_KEY_FROM_LIBRARY as LOOPSKILL_API_KEY.</code>
+    <button type="button" id="docs-install-phrase-copy" class="px-4 py-2.5 rounded-lg bg-accent text-bg text-xs font-semibold hover:bg-accent-soft transition shrink-0">Copy install phrase</button>
+  </div>
+  <p class="text-xs text-muted-soft mt-3 leading-relaxed">
+    No key yet? Free skills install with <strong class="text-text">no key at all</strong> — tell your agent
+    “Install the loopskill skill from https://app.loopskill.io/skill” and start with the free catalog.
+  </p>
+</div>
+
     <!-- MCP path — recommended -->
     <div class="bg-bg-card border border-accent/30 rounded-2xl p-6 mb-10">
       <div class="flex items-center justify-between gap-3 mb-3 flex-wrap">
@@ -113,4 +136,20 @@ curl -sL https://app.loopskill.io/skill -o ~/.hermes/skills/loopskill/SKILL.md</
 
     <CrossSell />
   </section>
+
+<script is:inline>
+  // One-paste install phrase copy button.
+  (function () {
+    var btn = document.getElementById('docs-install-phrase-copy');
+    if (!btn) return;
+    btn.addEventListener('click', function () {
+      var txt = document.getElementById('docs-install-phrase')?.textContent || '';
+      navigator.clipboard.writeText(txt.trim()).then(function () {
+        var original = btn.textContent;
+        btn.textContent = 'Copied ✓';
+        setTimeout(function () { btn.textContent = original; }, 1500);
+      }).catch(function () {});
+    });
+  })();
+</script>
 </AppShell>

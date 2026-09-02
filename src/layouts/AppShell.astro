@@ -36,7 +36,7 @@ import LoopMark from '../components/LoopMark.astro';
 interface Props {
   title?: string;
   description?: string;
-  active?: 'home' | 'browse' | 'search' | 'library' | 'fleets' | 'cockpit' | 'account' | 'personalities' | 'pricing' | '';
+  active?: 'home' | 'browse' | 'search' | 'library' | 'fleets' | 'cockpit' | 'account' | 'personalities' | 'pricing' | 'skill' | '';
   mode?: 'member' | 'public';
   ogImage?: string;
   pageType?: 'website' | 'product' | 'article';
@@ -211,6 +211,18 @@ const orgSchema = {
               <path d="m16 6 4 14"/><path d="M12 6v14"/><path d="M8 8v12"/><path d="M4 4v16"/>
             </svg>
             <span>Your Library</span>
+          </a>
+          {/* Add to your agent — the human entry to the one-paste install
+              (docs/install carries the phrase + all paths; /skill itself is
+              the API-served agent-facing artifact, linked from the phrase).
+              anon-accessible, serves BOTH shell modes. */}
+          <a href="/docs/install"
+             class={`rail-link flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition ${active === 'skill' ? 'rail-active font-medium' : 'text-muted hover:text-text'}`}
+             aria-current={active === 'skill' ? 'page' : undefined}>
+            <svg class="rail-icon shrink-0" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48"/>
+            </svg>
+            <span>Add to your agent</span>
           </a>
         </nav>
 
