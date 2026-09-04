@@ -13,6 +13,13 @@
 // PR in loopskill-api and does not exist in prod yet, so this banner renders
 // nothing today. It is safe to merge ahead of the API PR — the fetch simply 404s
 // and the script exits without touching the DOM further.
+//
+// UPDATE 2026-09-04: the sibling API PR SHIPPED — GET /api/founding/remaining is
+// live in prod (200, {configured, remaining, cap, price_usd, display_name}), so
+// this banner now renders for real. The price and cap were hardcoded as `49` and
+// `100` here while the endpoint was hypothetical; they are now read from the
+// response, since config/tiers.yaml's `founding:` block is their sole source and
+// a literal in this file is a second copy that lies the day either changes.
 ---
 <div
   id="founding-banner"
@@ -33,11 +40,20 @@
       .then(function (data) {
         var remaining = data && typeof data.remaining === 'number' ? data.remaining : null;
         if (remaining === null || remaining <= 0) return; // sold out or malformed -> stay hidden
-        // The $49 string is constructed here, client-side, only on a verified
-        // successful fetch — it never exists in the static HTML this page ships.
-        var price = '$' + '49';
+        // Price and cap come from the RESPONSE, never from a literal here.
+        // config/tiers.yaml's `founding:` block is the sole source of both
+        // (via /api/founding/remaining) — a hardcoded 49/100 in this file
+        // would be a second copy that silently lies the day either changes.
+        // Still constructed client-side only on a verified 2xx, so no price
+        // digit ever exists in the static HTML this page ships.
+        var price = data && (typeof data.price_usd === 'number' || typeof data.price_usd === 'string')
+          ? data.price_usd
+          : null;
+        var cap = data && typeof data.cap === 'number' ? data.cap : null;
+        if (price === null || cap === null) return; // incomplete payload -> stay hidden
+        var priceText = '$' + (Number(price) % 1 === 0 ? String(Number(price)) : String(price));
         el.textContent =
-          'Founding Member — ' + price + ' lifetime, ' + remaining + ' of 100 seats left.';
+          'Founding Member — ' + priceText + ' lifetime, ' + remaining + ' of ' + cap + ' seats left.';
         var link = document.createElement('a');
         link.href = '/pricing';
         link.className = 'ml-2 underline hover:opacity-80';
