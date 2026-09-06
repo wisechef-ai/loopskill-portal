@@ -31,6 +31,40 @@ const PRICING_SUMMARY =
   'ed25519-signed delivery). Pro is convenience only, never a feature gate — every ' +
   'capability that exists on Pro also exists in the free self-host.';
 
+// ahfounding_0906 — the capped one-time Founding SKU (#304) is surfaced on
+// /api/marketing/snapshot as a top-level `founding` key (#313) and rendered on
+// /pricing, but this machine-discovery surface advertised only Pro/Enterprise:
+// every LLM crawler and agent reading llms.txt could not see the one SKU built
+// to convert. Derived from the snapshot rather than hardcoded, the same
+// discipline #106 applied to the portal's founding banner — a literal here
+// would silently drift the moment the price or the cap changes.
+//
+// Deliberately conservative: emits NOTHING unless the API gave us a usable
+// price, and never claims availability it cannot back. `remaining <= 0` is a
+// real state (the cap is 100) and must read as sold out, not as an offer.
+export function foundingPricingLine(
+  founding: SnapshotFounding | undefined | null,
+): string | null {
+  if (!founding || typeof founding.price_usd !== 'number') return null;
+  const price = Number.isInteger(founding.price_usd)
+    ? String(founding.price_usd)
+    : founding.price_usd.toFixed(2);
+  const name = founding.display_name || 'Founding Member';
+  const remaining = founding.remaining;
+  const cap = founding.cap;
+  if (typeof remaining === 'number' && remaining <= 0) {
+    return `${name} — $${price} one-time: SOLD OUT (all ${typeof cap === 'number' ? cap : remaining} founding seats claimed).`;
+  }
+  const seats =
+    typeof remaining === 'number' && typeof cap === 'number'
+      ? ` Only ${remaining} of ${cap} founding seats left.`
+      : '';
+  return (
+    `${name} — $${price} one-time: permanent Pro, no subscription, never billed again. ` +
+    `Everything in Pro, locked in at the founding price forever.${seats}`
+  );
+}
+
 interface SnapshotCounts {
   skills_total?: number;
   free_skills?: number;
@@ -48,10 +82,21 @@ interface SnapshotCounts {
   personalities_total?: number;
   connectors_total?: number;
 }
+interface SnapshotFounding {
+  display_name?: string;
+  price_usd?: number;
+  one_time?: boolean;
+  cap?: number;
+  remaining?: number;
+  cta?: string;
+  checkout_path?: string;
+  bullets?: string[];
+}
 interface Snapshot {
   counts?: SnapshotCounts;
   mcp_tools?: string[];
   rest_endpoints?: string[];
+  founding?: SnapshotFounding;
 }
 interface CatalogSkill {
   slug: string;
@@ -180,6 +225,11 @@ export const GET: APIRoute = async () => {
   // the catalog fetch is the more direct signal for "which skills is an
   // agent looking at right now that are free," so we don't need the
   // snapshot's free count as a separate variable.
+  // ahfounding_0906 — derive the founding line from the SAME snapshot fetch
+  // this endpoint already performs (line ~127). Never fabricated: falls back
+  // to omitting the SKU entirely if the snapshot didn't carry it.
+  const foundingLine = foundingPricingLine(snapRes.data?.founding);
+
   const counts = snapRes.data?.counts;
   const total: number | null =
     snapRes.ok && typeof counts?.skills_total === 'number' ? counts.skills_total : null;
@@ -448,7 +498,7 @@ Or hit the public REST API directly (no key for read/search):
 ${freeLine}
 
 ## Pricing
-${PRICING_SUMMARY}
+${PRICING_SUMMARY}${foundingLine ? `\n${foundingLine}` : ''}
 - Pricing page: ${SITE}/pricing
 
 ## Featured skills
