@@ -34,8 +34,11 @@ const built = existsSync(LLMS_DIST);
 describe('llms.txt.ts source — five-group fetch + render wiring', () => {
   const src = readFileSync(LLMS_SRC, 'utf-8');
 
-  it('fetches public bundles (/api/cookbooks/discover)', () => {
-    expect(src).toContain('/api/cookbooks/discover');
+  it('fetches public bundles (/api/bundles/discover)', () => {
+    // bundle-vocab cutover: the data-source fetch moved to the canonical
+    // /api/bundles/discover path (/api/cookbooks/discover remains a live
+    // legacy alias server-side).
+    expect(src).toContain('/api/bundles/discover');
   });
 
   it('fetches public personalities (/api/personalities)', () => {
@@ -59,8 +62,9 @@ describe('llms.txt.ts source — five-group fetch + render wiring', () => {
     expect(txt).toContain('## Bundles');
     // 260901: PR #92 (cookbook->bundle rename P2) renamed the DOCUMENTED
     // endpoints in this section from /api/cookbooks/* to /api/bundles/*
-    // (the underlying data-source fetch still hits /api/cookbooks/discover
-    // — that's a separate, deliberately-kept legacy fetch path — but the
+    // (the underlying data-source fetch now also hits /api/bundles/discover
+    // — the legacy /api/cookbooks/discover path remains a server-side
+    // alias — but the
     // *documented* discover/detail endpoints shown to agents are the new
     // /api/bundles/* ones). This assertion was left pointing at the
     // pre-rename strings and would never have caught the ## Bundles

@@ -18,9 +18,10 @@
  *
  * Route shapes differ by artifact type (this is why a pure routing helper
  * exists rather than hand-rolling the URL/body at each call site):
- *   - skill:       POST /api/cookbooks/{id}/skills            body {slug, external_source?}
- *   - personality: POST /api/cookbooks/{id}/personalities/{slug}   (no body)
- *   - loop:        POST /api/cookbooks/{id}/loops/{slug}           (no body)
+ *   - skill:       POST /api/bundles/{id}/skills            body {slug, external_source?}
+ *   - personality: POST /api/bundles/{id}/personalities/{slug}   (no body)
+ *   - loop:        POST /api/bundles/{id}/loops/{slug}           (no body)
+ *   (/api/cookbooks/{id}/... paths are accepted legacy aliases)
  * (loopskill-api app/bundle_routes.py add_skill_to_cookbook /
  *  add_personality_to_cookbook / add_loop_to_cookbook)
  *
@@ -52,15 +53,15 @@ export function isBundleable(type: CardArtifactType | string | null | undefined)
 }
 
 export interface AddRequest {
-  path: string; // relative to the cookbook base, e.g. '/skills' or '/personalities/my-slug'
+  path: string; // relative to the bundle base, e.g. '/skills' or '/personalities/my-slug'
   method: 'POST';
   body: Record<string, unknown> | null; // null = no request body
 }
 
 /**
- * Resolve the request shape for adding one artifact to a cookbook.
- * `cookbookId` is intentionally NOT part of the returned path — callers
- * prefix `/api/cookbooks/{cookbookId}` themselves, matching the existing
+ * Resolve the request shape for adding one artifact to a bundle.
+ * `bundleId` is intentionally NOT part of the returned path — callers
+ * prefix `/api/bundles/{bundleId}` themselves, matching the existing
  * addSkill() call-site convention in AddToCookbookScript.astro.
  */
 export function resolveAddRequest(

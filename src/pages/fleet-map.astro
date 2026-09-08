@@ -17,7 +17,7 @@
 //                                           on older APIs degrade to empty)
 //
 // Groups self-hide when empty (Spotify-IA doctrine: render real data or
-// nothing). Force layout is the dependency-free pattern from cookbooks/view
+// nothing). Force layout is the dependency-free pattern from bundles/view
 // (fleets are small graphs — well under 200 nodes).
 import AppShell from '../layouts/AppShell.astro';
 ---
@@ -198,7 +198,7 @@ import AppShell from '../layouts/AppShell.astro';
     const subs = fleet.subscriptions || [];
     const [dashR, ...bundleRs] = await Promise.all([
       api(`/api/fleets/${fleet.fleet_id}/dashboard`),
-      ...subs.map((s: any) => api(`/api/bundles/${s.cookbook_id}`)),
+      ...subs.map((s: any) => api(`/api/bundles/${s.bundle_id ?? s.cookbook_id}`)),
     ]);
     if (!dashR.ok) { fail(`Dashboard failed (${dashR.status}).`); return; }
     const dash = await dashR.json();
@@ -305,7 +305,7 @@ import AppShell from '../layouts/AppShell.astro';
     drawGraph(nodes, edges);
   }
 
-  // ── Dependency-free force layout (pattern from cookbooks/view) ──────────
+  // ── Dependency-free force layout (pattern from bundles/view) ──────────
   function drawGraph(nodes: N[], edges: E[]) {
     const svg = $('fm-svg');
     const container = $('fm-graph-container');

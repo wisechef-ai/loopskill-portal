@@ -26,14 +26,15 @@ import AppShell from '../../layouts/AppShell.astro';
           <div id="cb-stats" class="text-sm text-muted"></div>
           <!--
             spotify_2607 Phase D — one-click visibility control (plan §3 #4/5/6).
-            PATCH /api/cookbooks/{id}/visibility already existed (portal_0610 J2)
+            PATCH /api/bundles/{id}/visibility already existed (portal_0610 J2;
+            /api/cookbooks/{id}/visibility is the accepted legacy alias)
             but was only ever called from ONE buried composer flow. This is the
             first legible, one-click surface for it, on the bundle's own page.
 
             AGENTS.md auth-state rule (Trap C): render BOTH states in static
             HTML, never branch a JS-fill target away behind a build-time
             ternary. Swap with classList AND inline style.display (Trap A).
-            Current state is read from the SAME GET /api/cookbooks/{id}
+            Current state is read from the SAME GET /api/bundles/{id}
             response this page already fetches — no extra call.
           -->
           <div id="cb-vis-toggle" hidden class="inline-flex items-center gap-1.5 rounded-lg border border-border overflow-hidden text-xs shrink-0">
@@ -275,7 +276,7 @@ import AppShell from '../../layouts/AppShell.astro';
       if (apiKey) headers['x-api-key'] = apiKey;
       let res: Response;
       try {
-        res = await fetch(`${API_BASE}/api/cookbooks/${encodeURIComponent(bundleId)}/visibility`, {
+        res = await fetch(`${API_BASE}/api/bundles/${encodeURIComponent(bundleId)}/visibility`, {
           method: 'PATCH',
           headers,
           credentials: 'include',
@@ -332,7 +333,8 @@ import AppShell from '../../layouts/AppShell.astro';
         return;
       }
       currentVis = returnedVis;
-      // The PATCH response only guarantees {cookbook_id, visibility} — refetch
+      // The PATCH response only guarantees {bundle_id, visibility} (legacy
+      // responses may say cookbook_id — the code below reads only .visibility) — refetch
       // the slug from the cached cb object (unchanged by a visibility flip;
       // fix/bundle-slug-on-create guarantees every bundle already has one).
       paintVisibility(cb.slug);

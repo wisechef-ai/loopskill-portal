@@ -74,12 +74,12 @@ import Icon from '../components/Icon.astro';
         <!-- API Keys card — Phase C per-bundle key table -->
         <div class="md:col-span-2 bg-bg-card border border-border rounded-2xl p-6">
           <!-- quality_1705 Phase E — tier-aware bundle subtitle (per plan §3 step 2) -->
-          <div id="cookbook-tier-subtitle" class="hidden mb-4 pb-4 border-b border-border-soft">
+          <div id="bundle-tier-subtitle" class="hidden mb-4 pb-4 border-b border-border-soft">
             <div class="flex items-center gap-2 mb-1">
               <Icon name="box" size={14} class="text-accent" />
               <h3 class="text-sm font-semibold tracking-tight">Your bundles</h3>
             </div>
-            <p id="cookbook-tier-subtitle-text" class="text-xs text-muted leading-relaxed"></p>
+            <p id="bundle-tier-subtitle-text" class="text-xs text-muted leading-relaxed"></p>
           </div>
           <div class="flex items-center justify-between gap-3 mb-4">
             <div>
@@ -233,12 +233,13 @@ import Icon from '../components/Icon.astro';
   type ApiKey = {
     id: string; prefix: string;
     label: string | null; name: string | null;
-    cookbook_id: string | null;
+    cookbook_id: string | null; // legacy key kept as fallback (bundle_id is canonical)
+    bundle_id?: string | null;
     is_active: boolean;
     created_at: string | null; last_used_at: string | null;
     install_count_total: number; install_count_7d: number;
   };
-  type CookbookItem = { id: string; name: string };
+  type BundleItem = { id: string; name: string };
 
   const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
   const TIER_LABEL: Record<string, string> = {
@@ -260,7 +261,7 @@ import Icon from '../components/Icon.astro';
   };
 
   // ── State ──────────────────────────────────────────────────────────────
-  let _cookbooks: CookbookItem[] = [];
+  let _bundles: BundleItem[] = [];
 
   function fmtRenewsIn(iso: string | null): string {
     if (!iso) return '—';
@@ -338,11 +339,11 @@ import Icon from '../components/Icon.astro';
     }
 
     // quality_1705 Phase E — show tier-appropriate bundle subtitle
-    // loopclose_3005 Phase X — cap numbers come from billing.cookbook_limit
+    // loopclose_3005 Phase X — cap numbers come from billing.cookbook_limit (legacy API field name, still live)
     // (SSOT: config/tiers.yaml via /api/billing/me), never a hardcoded literal.
-    const cookbookSubtitle = document.getElementById('cookbook-tier-subtitle');
-    const cookbookSubtitleText = document.getElementById('cookbook-tier-subtitle-text');
-    if (cookbookSubtitle && cookbookSubtitleText && tier) {
+    const bundleSubtitle = document.getElementById('bundle-tier-subtitle');
+    const bundleSubtitleText = document.getElementById('bundle-tier-subtitle-text');
+    if (bundleSubtitle && bundleSubtitleText && tier) {
       const isProPlus = ['pro_plus', 'operator', 'studio'].includes(tier);
       const isPro = ['pro', 'cook'].includes(tier);
       const cap = typeof billing.cookbook_limit === 'number' ? billing.cookbook_limit : null;
@@ -351,25 +352,25 @@ import Icon from '../components/Icon.astro';
         // ever renders for the handful of already-billed legacy/on-demand
         // accounts. It must never read as an upsell CTA to a general visitor.
         const capPhrase = cap !== null ? `up to ${cap} private bundles` : 'multiple private bundles';
-        cookbookSubtitleText.textContent =
+        bundleSubtitleText.textContent =
           `You have ${capPhrase} available. Each can be named after a client (e.g. acme-corp-bundle) and deployed to their agent fleet. Use bundle scoping below to map each API key to a client.`;
-        cookbookSubtitle.classList.remove('hidden');
+        bundleSubtitle.classList.remove('hidden');
         // Show the on-demand client-naming hint in the create-key modal
         const proPlusHint = document.getElementById('modal-label-pro-plus-hint');
         if (proPlusHint) proPlusHint.classList.remove('hidden');
       } else if (isPro) {
         const capPhrase = cap !== null ? `up to ${cap} private bundles` : 'your personal private bundles';
-        cookbookSubtitleText.textContent =
+        bundleSubtitleText.textContent =
           `You have ${capPhrase}. Public bundles stay unlimited on every tier. Running agents for many clients at once? Contact us — hello@loopskill.io — for an on-demand plan.`;
-        cookbookSubtitle.classList.remove('hidden');
+        bundleSubtitle.classList.remove('hidden');
       }
     }
   }
 
   // ── API Keys table — Phase C ───────────────────────────────────────────
-  function _cookbookName(id: string | null): string {
+  function _bundleName(id: string | null): string {
     if (!id) return '—';
-    const cb = _cookbooks.find(c => c.id === id);
+    const cb = _bundles.find(c => c.id === id);
     return cb ? cb.name : id.slice(0, 8) + '…';
   }
 
@@ -385,7 +386,7 @@ import Icon from '../components/Icon.astro';
     tbody.innerHTML = keys.map(k => `
       <tr class="border-b border-border/50 hover:bg-bg-elev/30 transition ${k.is_active ? '' : 'opacity-40'}">
         <td class="py-2.5 px-3 text-text font-medium">${k.label || k.name || '—'}</td>
-        <td class="py-2.5 px-3 text-muted hidden sm:table-cell">${_cookbookName(k.cookbook_id)}</td>
+        <td class="py-2.5 px-3 text-muted hidden sm:table-cell">${_bundleName(k.bundle_id ?? k.cookbook_id)}</td>
         <td class="py-2.5 px-3 font-mono text-muted">${k.prefix}…</td>
         <td class="py-2.5 px-3 text-muted hidden md:table-cell tabular-nums">${k.install_count_total} / ${k.install_count_7d}</td>
         <td class="py-2.5 px-3 text-muted hidden lg:table-cell">${k.created_at ? new Date(k.created_at).toLocaleDateString() : '—'}</td>
@@ -416,15 +417,16 @@ import Icon from '../components/Icon.astro';
   }
 
   // ── Bundles — populate modal dropdown + the visible bundles list ───
-  async function loadCookbooks(): Promise<void> {
+  async function loadBundles(): Promise<void> {
     // issue #157 Phase 3: API response key renamed `cookbooks` -> `bundles`
     // (portal consumer flipped FIRST; the API dual-emit is retired).
-    const data = await fetchJson<{ bundles: CookbookItem[] }>('/api/bundles');
-    if (!data?.bundles) return;
-    _cookbooks = data.bundles;
+    const data = await fetchJson<{ bundles?: BundleItem[]; cookbooks?: BundleItem[] }>('/api/bundles');
+    const items = data?.bundles ?? data?.cookbooks;
+    if (!items) return;
+    _bundles = items;
     const sel = $<HTMLSelectElement>('modal-bundle');
     if (sel) {
-      data.bundles.forEach(cb => {
+      items.forEach(cb => {
         const opt = document.createElement('option');
         opt.value = cb.id;
         opt.textContent = cb.name;
@@ -434,12 +436,12 @@ import Icon from '../components/Icon.astro';
 
     // loopclose_3005 Phase E — render a linked list of bundles so a user can
     // open /bundles/view?id=<id> and see the skills inside, zero-CLI.
-    const list = $('cookbooks-list');
-    const empty = $('cookbooks-empty');
-    if (list && data.bundles.length) {
+    const list = $('bundles-list');
+    const empty = $('bundles-empty');
+    if (list && items.length) {
       if (empty) empty.remove();
       list.innerHTML = '';
-      data.bundles.forEach(cb => {
+      items.forEach(cb => {
         const a = document.createElement('a');
         a.href = `/bundles/view?id=${encodeURIComponent(cb.id)}`;
         a.className = 'flex items-center justify-between gap-3 px-4 py-3 rounded-xl bg-bg-elev border border-border-soft hover:border-accent/40 transition mb-2';
@@ -480,7 +482,7 @@ import Icon from '../components/Icon.astro';
 
   $('modal-submit-btn')?.addEventListener('click', async () => {
     const labelInput = $<HTMLInputElement>('modal-label');
-    const cookbookSel = $<HTMLSelectElement>('modal-bundle');
+    const bundleSel = $<HTMLSelectElement>('modal-bundle');
     const errorDiv = $('modal-error');
     const submitBtn = $<HTMLButtonElement>('modal-submit-btn');
 
@@ -493,7 +495,7 @@ import Icon from '../components/Icon.astro';
     }
 
     const body: Record<string, string> = { label };
-    if (cookbookSel.value) body.cookbook_id = cookbookSel.value;
+    if (bundleSel.value) body.cookbook_id = bundleSel.value; // request payload still uses the legacy cookbook_id field (API contract)
 
     submitBtn.disabled = true;
     submitBtn.textContent = 'Generating…';
@@ -612,7 +614,7 @@ import Icon from '../components/Icon.astro';
     $('auth-checking').classList.add('hidden');
     $('library-main').classList.remove('hidden');
 
-    await Promise.all([loadBilling(), loadApiKeys(), loadCookbooks()]);
+    await Promise.all([loadBilling(), loadApiKeys(), loadBundles()]);
   })();
 </script>
 
