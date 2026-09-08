@@ -279,6 +279,52 @@ body {
   .artifact-like[aria-pressed="true"] { transform: none; }
 }
 
+/* ── "Copy for agent" control — unisearch_0709/P3 ───────────────────────────
+   Same structural contract as .artifact-like: a SIBLING of the card <a>
+   inside the positioned .artifact-slot, never a descendant (a <button> in an
+   <a> is invalid HTML and breaks keyboard activation everywhere).
+
+   ACCESSIBILITY, NOT DECORATION: hover-revealed on pointer devices, but the
+   control is NEVER display:none / visibility:hidden — either would drop it out
+   of the tab order and make the only install affordance on a card mouse-only.
+   opacity + pointer-events keep it focusable; :focus-within on the slot and
+   :focus-visible on the button both reveal it, and touch devices (no hover)
+   get it unconditionally.
+
+   Anchored below the type badge inside the square cover, so it never collides
+   with the badge (top-left), the heart (top-right), or the title/meta text
+   that flows underneath the cover. */
+.artifact-copy {
+  position: absolute; top: 28px; left: 6px; z-index: 2;
+  display: inline-flex; align-items: center; gap: 4px;
+  max-width: calc(100% - 12px); white-space: nowrap; overflow: hidden;
+  padding: 3px 8px; border-radius: 999px;
+  background: rgba(0,0,0,0.62); border: 1px solid rgba(255,255,255,0.14);
+  color: rgba(255,255,255,0.85); font-size: 11px; line-height: 15px; font-weight: 600;
+  cursor: pointer; backdrop-filter: blur(4px);
+  opacity: 0; pointer-events: none;
+  transition: opacity .16s ease, color .16s ease, border-color .16s ease;
+}
+.artifact-slot:hover .artifact-copy,
+.artifact-slot:focus-within .artifact-copy,
+.artifact-copy:focus-visible,
+.artifact-copy[data-copied="true"] { opacity: 1; pointer-events: auto; }
+.artifact-copy:hover { border-color: rgba(255,209,102,0.55); color: #ffd166; }
+.artifact-copy:focus-visible { outline: 2px solid #ffd166; outline-offset: 2px; }
+.artifact-copy[data-copied="true"] { color: #34d399; border-color: rgba(52,211,153,0.55); }
+.artifact-copy .artifact-copy-label { pointer-events: none; }
+/* Touch devices have no hover — always show the control. */
+@media (hover: none) { .artifact-copy { opacity: 1; pointer-events: auto; } }
+/* Honest degradation when neither clipboard transport is available: the text
+   is revealed, pre-selected, for the visitor to copy by hand. Never a silent
+   no-op on a button that claims to have copied something. */
+.artifact-copy-fallback {
+  display: block; width: 100%; margin-top: 6px; min-height: 68px;
+  background: #0d0d0d; color: rgba(255,255,255,0.85);
+  border: 1px solid rgba(255,255,255,0.14); border-radius: 8px;
+  padding: 6px 8px; font-size: 11px; line-height: 1.5; resize: vertical;
+}
+
 /* Shelf — one consistent horizontal-scroll component */
 .shelf-row {
   display: flex; gap: 16px; overflow-x: auto; scroll-snap-type: x mandatory;

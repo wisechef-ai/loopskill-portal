@@ -25,6 +25,11 @@ MIN_BYTES=$((5 * 1024))  # 5 KB
 # feat/spotify-ia (council report §10/§12): skills/index.html is now a thin
 # redirect stub (no longer the catalog aggregator) — the load-bearing pages
 # are browse/index.html, home/index.html, and library/index.html.
+# unisearch_0709/P3: skills/external/view/index.html joins the list. It is no
+# longer just a detail page — it is the install surface every federated card on
+# /browse now links to (one card per install_ref, href
+# /skills/external/view?ref=...). If the build stops emitting it, every
+# federated result on Browse becomes a dead link.
 CRITICAL_PAGES=(
   "index.html"
   "browse/index.html"
@@ -32,6 +37,7 @@ CRITICAL_PAGES=(
   "library/index.html"
   "fleet-map/index.html"
   "bundles/view/index.html"
+  "skills/external/view/index.html"
 )
 
 failures=0
@@ -345,6 +351,135 @@ if [ "$ia_failures" -gt 0 ]; then
   echo "See feat/spotify-ia PR (council report §7/§10) for context."
   exit 1
 fi
+
+# ─────────────────────────────────────────────────────────────────────────
+# Unified-search guards (unisearch_0709 / P3)
+#
+# Three defects these exist to catch, none of which any other check sees:
+#
+#   (k) The federated group silently disappearing from Browse. It is rendered
+#       by a client-side template, so `astro build` succeeds and the page is
+#       the right size whether or not the group survives — the only evidence
+#       in dist/ is the template string itself. Federated rows ARE the
+#       catalog (91k+ indexed vs ~dozens curated); losing them is the
+#       "where are all the skills?" defect the whole sprint exists to fix.
+#
+#   (l) The card-level "Copy for agent" affordance disappearing. Same failure
+#       mode: it lives in a template string, so nothing else notices. Without
+#       it, discovery and install are disconnected again — a visitor finds a
+#       skill and has no way to hand it to an agent.
+#
+#   (m) A hardcoded inventory literal ("90,000+ skills", "91k+ entries")
+#       creeping back into a search surface. Sprint locked decision #7: every
+#       count in user-facing copy is live-derived from the API envelope
+#       (enabled_sources / counts.external_installable), never a literal that
+#       silently rots as the index grows. tests/p0-no-hardcoded-skill-counts
+#       polices the .astro SOURCES for CATALOG counts; this polices the
+#       RENDERED bytes for FEDERATED-scale ones, which that gate explicitly
+#       does not cover.
+# ─────────────────────────────────────────────────────────────────────────
+
+us_failures=0
+fail_us() {
+  echo "UNISEARCH-FAIL: $1"
+  us_failures=$((us_failures + 1))
+}
+
+browse_html="$DIST_DIR/browse/index.html"
+
+# (k) the federated group markup must be present in the Browse bundle.
+if [ -f "$browse_html" ]; then
+  if grep -F -q 'data-federated-group' "$browse_html"; then
+    echo "OK:   $browse_html ships the federated group markup"
+  else
+    fail_us "$browse_html has no data-federated-group marker — the federated results group is not being rendered on Browse (unisearch_0709/P3)"
+  fi
+else
+  fail_us "$browse_html is MISSING — cannot verify the federated group"
+fi
+
+# (l) the card-level "Copy for agent" affordance must be present on Browse.
+#
+# Checked at BOTH ends deliberately. Grepping for the words alone would pass
+# on a page that merely still defines the label constant in dead code, so:
+#   - the RENDERED control must exist in the build-time prerendered cards
+#     (real <button class="artifact-copy"> markup a non-JS reader receives), and
+#   - the client-side card template must still CALL the builder, which is the
+#     path every JS-rendered card (including every federated one) goes through.
+# Removing either one alone turns this red.
+COPY_SURFACES=(
+  "$DIST_DIR/browse/index.html"
+  "$DIST_DIR/skills/external/view/index.html"
+)
+for surface in "${COPY_SURFACES[@]}"; do
+  if [ ! -f "$surface" ]; then
+    fail_us "$surface is MISSING — cannot verify the Copy for agent affordance"
+    continue
+  fi
+  if grep -F -q 'Copy for agent' "$surface"; then
+    echo "OK:   $surface ships a Copy for agent affordance"
+  else
+    fail_us "$surface has no 'Copy for agent' affordance — federated results are discoverable again but not installable (unisearch_0709/P3)"
+  fi
+done
+
+if [ -f "$browse_html" ]; then
+  # Client path. Match the CALL SITE, not the identifier: grepping for
+  # `copyForAgentHTML(type, item)` alone also matches the function's own
+  # declaration, so deleting the call would have left this guard green.
+  if ! grep -F -q '${likeButtonHTML(type, item)}${copyForAgentHTML(type, item)}' "$browse_html"; then
+    fail_us "$browse_html's client card template no longer appends copyForAgentHTML to the artifact slot — every JS-rendered card, including every federated result, would ship with no install affordance"
+  fi
+  # Prerendered path. `data-copy-text="` followed by anything other than a
+  # `$` is RENDERED markup — the client template's own copy of that attribute
+  # is literally `data-copy-text="${esc(text)}"`, so it cannot satisfy this.
+  # Self-skips when the build-time catalog prerender produced no cards at all
+  # (a real, separately-guarded condition — not this guard's job to diagnose);
+  # a real slug in data-artifact-slug is the proof that it did.
+  if grep -qE 'data-artifact-slug="[a-z0-9][a-z0-9-]*"' "$browse_html"; then
+    if ! grep -qE 'data-copy-text="[^$"]' "$browse_html"; then
+      fail_us "$browse_html's build-time prerendered cards carry no rendered Copy for agent button — a non-JS reader gets a catalog with no install affordance"
+    fi
+  fi
+fi
+
+# The viewer's own button must carry the agent-shaped label, not the old
+# bare "Copy" that handed a visitor a shell command.
+viewer_html="$DIST_DIR/skills/external/view/index.html"
+if [ -f "$viewer_html" ] && ! grep -qE '<button[^>]*id="copy-install-btn"[^>]*>Copy for agent<' "$viewer_html"; then
+  fail_us "$viewer_html's #copy-install-btn is not labelled 'Copy for agent' — the viewer and the browse cards must offer ONE format"
+fi
+
+# (m) no hardcoded inventory literal in any search surface.
+#
+# Pattern: a comma-grouped or k-suffixed figure (optionally "+") sitting
+# directly on an inventory noun — "90,000+ skills", "91k+ entries",
+# "21,206 installable". Deliberately NARROW: bare 4-digit numbers appear all
+# over legitimate markup (hashes, years, CSS), so the guard requires the noun.
+INVENTORY_LITERAL='([0-9]{1,3},[0-9]{3}|[0-9]{2,4}k)\+?[[:space:]]*(\+[[:space:]]*)?(skills?|entries|results|registries|sources|installable)'
+SEARCH_SURFACES=(
+  "$DIST_DIR/browse/index.html"
+  "$DIST_DIR/home/index.html"
+  "$DIST_DIR/skills/external/view/index.html"
+)
+for surface in "${SEARCH_SURFACES[@]}"; do
+  [ -f "$surface" ] || continue
+  if grep -nEo "$INVENTORY_LITERAL" "$surface" >/dev/null 2>&1; then
+    fail_us "$surface hardcodes an inventory count literal — counts must be live-derived from the API envelope (unisearch_0709 locked decision #7). Offending match(es):"
+    grep -nEo "$INVENTORY_LITERAL" "$surface" | head -5 | sed 's/^/    /'
+  fi
+done
+
+if [ "$us_failures" -gt 0 ]; then
+  echo ""
+  echo "BLOCKED: $us_failures unified-search guard(s) failed. Deploy aborted."
+  echo "See the unisearch_0709/P3 PR (Browse single-authority federated group +"
+  echo "card-level Copy for agent) for context."
+  exit 1
+fi
+
+echo "OK:   unified-search guards passed (federated group, Copy for agent, live counts)"
+echo ""
 
 # ─────────────────────────────────────────────────────────────────────────
 # Dark-theme guard (mesh0408 W3)

@@ -20,6 +20,11 @@
 import AppShell from '../layouts/AppShell.astro';
 import { fetchApi } from '../lib/api';
 import { artifactCardHTML as libArtifactCardHTML, artifactMeta as libArtifactMeta, type ArtifactType } from '../lib/artifactCard';
+// unisearch_0709/P3 — the build-time prerendered cards get the same
+// "Copy for agent" affordance the client-rendered ones do. artifactCard.ts
+// itself still returns the bare <a>: the button is a SLOT SIBLING, never a
+// descendant of the card link (a <button> inside an <a> is invalid HTML).
+import { copyForAgentHTML } from '../lib/agentInstall';
 
 const API_BASE = import.meta.env.PUBLIC_LOOPSKILL_API_BASE || import.meta.env.PUBLIC_RECIPES_API_BASE || 'https://app.loopskill.io';
 // NOTE: this is a static (SSG) page — Astro.request.url carries no query
@@ -121,7 +126,7 @@ function renderPrebuiltGroup(type: string, items: RawItem[]): string {
         meta: libArtifactMeta(singular, raw),
         href: hrefForSSR(type, raw),
       };
-      return `<div class="artifact-slot">${libArtifactCardHTML(singular, item, 'shelf')}</div>`;
+      return `<div class="artifact-slot">${libArtifactCardHTML(singular, item, 'shelf')}${copyForAgentHTML(singular, { slug: item.slug, title: item.title })}</div>`;
     })
     .join('');
   return `<section class="ls-section">
@@ -382,6 +387,100 @@ const hasPrebuilt = prebuiltGroupsHtml.trim().length > 0;
       + ` aria-label="Save ${esc(name)} to your library">${HEART_SVG}</button>`;
   }
 
+  // ── "Copy for agent" — unisearch_0709/P3 ─────────────────────────────────
+  // Discovery and install were disconnected: the ONLY copy affordance on the
+  // site was the viewer page's shell-command button, and browse cards had
+  // none at all. Every card now hands an agent paste-ready, AGENT-SHAPED
+  // install text (not a shell command).
+  //
+  // MIRRORED from src/lib/agentInstall.ts — the CANONICAL, unit-tested
+  // implementation — because this script carries `define:vars`, which forces
+  // Astro's is:inline mode where ESM imports are unavailable (exactly the
+  // situation likeControl.ts and federatedCounts.ts are already in).
+  // tests/unisearch-0709-agent-install.test.ts pins this mirror against the
+  // module so drift fails CI instead of shipping two different texts.
+  const LOOPSKILL_ORIGIN = 'https://app.loopskill.io';
+  const COPY_FOR_AGENT_LABEL = 'Copy for agent';
+  const COPY_FOR_AGENT_DONE = 'Copied ✓';
+
+  function isHttpUrl(u) { return typeof u === 'string' && /^https?:\/\//i.test(u); }
+
+  // Dedupe key for a federated row: lowercased "source:slug". NEVER used in
+  // copy text — it is lossy; an agent must be handed the raw install_ref.
+  function canonicalInstallRef(row) {
+    if (!row) return '';
+    let ref = row.install_ref ? String(row.install_ref).trim() : '';
+    if (!ref) {
+      const src = row.source ? String(row.source).trim() : '';
+      const slug = row.slug ? String(row.slug).trim() : '';
+      if (!slug) return '';
+      ref = src ? `${src}:${slug}` : slug;
+    }
+    if (ref.indexOf(':') === -1) {
+      const d = ref.indexOf('--'); // legacy "source--slug"; first occurrence only
+      if (d > 0) ref = `${ref.slice(0, d)}:${ref.slice(d + 2)}`;
+    }
+    return ref.toLowerCase();
+  }
+  function isFederatedSubject(row) { return canonicalInstallRef(row).indexOf(':') > 0; }
+
+  // FAILS CLOSED (sprint locked decision #4): anything we were not explicitly
+  // told is fetchable is deep_link. `install_path` (GET /api/skills/external)
+  // wins when present; `deployable` (GET /api/search) is the fallback spelling.
+  function federatedInstallPath(row) {
+    if (!row) return 'deep_link';
+    if (row.install_path === 'fetch_origin') return 'fetch_origin';
+    if (row.install_path === 'deep_link') return 'deep_link';
+    if (row.install_path) return 'deep_link';
+    return row.deployable === true ? 'fetch_origin' : 'deep_link';
+  }
+  function agentDisplayTitle(row) {
+    const t = row && row.title ? String(row.title).trim() : '';
+    if (t) return t;
+    const s2 = row && row.slug ? String(row.slug).trim() : '';
+    return s2 || 'This skill';
+  }
+  function agentInstallText(type, item) {
+    if (!item) return '';
+    const title = agentDisplayTitle(item);
+    const slug = item.slug ? String(item.slug).trim() : '';
+    if (isFederatedSubject(item)) {
+      const ref = String(item.install_ref || '').trim() || canonicalInstallRef(item);
+      if (federatedInstallPath(item) === 'fetch_origin') {
+        return `Install "${title}" from LoopSkill: call loopskill_install("${ref}") — or GET ${LOOPSKILL_ORIGIN}/api/skills/metasearch/install?install_ref=${ref}, then extract it to your skills directory.`;
+      }
+      if (isHttpUrl(item.origin_url)) {
+        return `"${title}" isn't redistributable through the registry (source license). Get it from ${item.origin_url}.`;
+      }
+      const src = item.source ? String(item.source).trim() : '';
+      return src
+        ? `"${title}" isn't redistributable through the registry (source license). Get it from its origin registry, ${src}.`
+        : `"${title}" isn't redistributable through the registry (source license). Get it from its origin — LoopSkill does not rehost it.`;
+    }
+    if (!slug) return '';
+    const t = String(type || '');
+    // Local catalog: /api/skills/metasearch/install does NOT resolve a bare
+    // local slug (probed 2026-09-08 -> 404 malformed_ref), so quoting the
+    // metasearch URL here would be a lie. Name the tool that really installs it.
+    if (t === 'bundle' || t === 'bundles') return `Install the "${title}" bundle from LoopSkill: call loopskill_bundle_install("${slug}").`;
+    if (t === 'loop' || t === 'loops') return `Load the "${title}" loop from LoopSkill: call loopskill_get_loop("${slug}").`;
+    if (t === 'personality' || t === 'personalities') return `Load the "${title}" personality from LoopSkill: call loopskill_get_personality("${slug}").`;
+    return `Install "${title}" from LoopSkill: call loopskill_install("${slug}") — or GET ${LOOPSKILL_ORIGIN}/api/skills/${slug}/install with your x-api-key header, then extract it to your skills directory.`;
+  }
+
+  // The button is a SIBLING of the card <a> inside .artifact-slot, never a
+  // descendant. Hover-revealed via CSS but never display:none — it stays in
+  // the tab order (see the .artifact-copy block in src/styles/global.css).
+  function copyForAgentHTML(type, item) {
+    const text = agentInstallText(type, item);
+    if (!text) return '';
+    const name = agentDisplayTitle(item);
+    return `<button type="button" class="artifact-copy" data-copy-text="${esc(text)}"`
+      + ` title="${esc(COPY_FOR_AGENT_LABEL)}"`
+      + ` aria-label="${esc(COPY_FOR_AGENT_LABEL)}: copy install instructions for ${esc(name)}">`
+      + `<span class="artifact-copy-label" aria-live="polite">${esc(COPY_FOR_AGENT_LABEL)}</span></button>`;
+  }
+
   function artifactCardHTML(type, item, mode) {
     const grad = GRAD[hashIdx(item.slug || item.title || 'x', GRAD.length)];
     const mono = ((item.title || item.slug || 'L').trim()[0] || 'L').toUpperCase();
@@ -413,7 +512,7 @@ const hasPrebuilt = prebuiltGroupsHtml.trim().length > 0;
       ${desc ? `<span class="artifact-desc">${esc(desc)}</span>` : ''}
       ${deployCTA}
     </a>`;
-    return `<div class="artifact-slot">${card}${likeButtonHTML(type, item)}</div>`;
+    return `<div class="artifact-slot">${card}${likeButtonHTML(type, item)}${copyForAgentHTML(type, item)}</div>`;
   }
 
   // ── URL state ──────────────────────────────────────────────────────────
@@ -620,6 +719,14 @@ const hasPrebuilt = prebuiltGroupsHtml.trim().length > 0;
         // _resolve_track_identity expects. Dropping it here made every
         // federated heart resolve as a LOCAL slug and 404.
         like_source: s.source || null,
+        // unisearch_0709/P3: install identity + verdict. Dropping install_ref
+        // here is what made the two federated pipelines un-dedupable, and
+        // dropping install_path is what left every card without an honest
+        // install affordance.
+        source: s.source || null,
+        install_ref: s.install_ref || null,
+        install_path: s.install_path || null,
+        origin_url: s.origin_url || null,
       }));
       // issue #82: bind header counts to the payload envelope — registry
       // count from enabled_sources (a source can be enabled yet return zero
@@ -682,48 +789,99 @@ const hasPrebuilt = prebuiltGroupsHtml.trim().length > 0;
     return { loops, skills, bundles, personalities };
   }
 
-  // issue #277 FIX 3 — Federated results group, sourced from the NEW
-  // `federated` key on GET /api/search (API PR in flight in parallel; rows
-  // shaped { slug, title, description, source, install_ref, origin_url,
-  // deployable } + a sibling federated_cache_status of 'warm'|'cold').
-  // Strictly defensive/additive, mirroring the exact patterns already used
-  // by fedGroupHTML above (artifactCardHTML, esc, group container markup):
-  //   - `federated` key absent (old API shape) → render nothing (returns
-  //     '') — zero regression against the current API.
-  //   - present and non-empty → a "Federated results" group whose cards
-  //     link to /skills/external/view?ref=<install_ref> (URL-encoded; the
-  //     canonical install_ref format is the colon form "source:slug").
-  //   - present but empty AND cache status is cold → a single muted line
-  //     noting the index is still warming up, instead of nothing at all.
-  //   - present but empty and NOT cold (e.g. warm-but-genuinely-empty) →
-  //     nothing, same as the absent case.
-  // The council review flagged that the API PR may land the cache-status
-  // field under either name — checked defensively; whichever key is
-  // present wins, absent means no note is shown.
-  function federatedApiGroupHTML(rows, cacheStatus) {
-    if (!Array.isArray(rows)) return ''; // key absent or malformed → old-API no-op
+  // ── Federated group: ONE group, ONE authority — unisearch_0709/P3 ────────
+  //
+  // WHAT WAS WRONG (verified live 2026-09-08): Browse fetched federated rows
+  // from TWO endpoints and rendered BOTH as separate sections —
+  // "Community skills" (GET /api/skills/external) and "Federated results"
+  // (the `federated` key on GET /api/search) — then added both lengths into
+  // totalCount. For q="graft" that was 2 rows counted twice on top of 38, and
+  // a visitor scrolling past two near-identical grids of the same skills.
+  //
+  // WHY BOTH FETCHES SURVIVE. Neither pipeline subsumes the other; measured
+  // install_ref overlap, live, 2026-09-08:
+  //     q            /api/search fed   /api/skills/external   overlap
+  //     graft                     2                     38          2
+  //     ponytail                 12                     60         12
+  //     seo                      20                     80          0
+  //     code review              20                     78          0
+  //     kubernetes               20                     72          1
+  // Retiring the external fetch would drop 36-80 real rows per query;
+  // retiring the /api/search group would drop up to 20 rows it alone finds.
+  // So /api/search is the AUTHORITY for identity and ORDER (it is the ranked,
+  // SWR-cached metasearch group P1/P2 warm), and the external pipeline is
+  // appended for whatever it alone knows about — deduped by canonical
+  // install_ref, one card per install_ref, one count.
+  //
+  // Defensiveness against the API shape is preserved exactly as issue #277
+  // built it: `federated` absent (old shape) contributes nothing; present but
+  // empty AND cold shows the warming-up note; present but empty and not cold
+  // shows nothing.
+
+  // /api/search's federated rows: { slug, title, description, source,
+  // install_ref, origin_url, deployable } — note NO install_path; the
+  // `deployable` flag is that endpoint's spelling of the same verdict.
+  function normalizeApiFedRow(r) {
+    const ref = r && r.install_ref ? String(r.install_ref) : '';
+    return {
+      slug: (r && r.slug) || '',
+      title: (r && (r.title || r.slug)) || 'Untitled',
+      description: (r && r.description) || '',
+      meta: (r && r.source) || 'community',
+      href: ref ? `/skills/external/view?ref=${encodeURIComponent(ref)}` : '#',
+      like_source: (r && r.source) || null,
+      source: (r && r.source) || null,
+      install_ref: ref || null,
+      install_path: null,
+      deployable: r && r.deployable === true,
+      origin_url: (r && r.origin_url) || null,
+    };
+  }
+
+  // The external pipeline's rows already carry install_path/install_ref (see
+  // fetchFederated). Only the href moves: a federated row now points at the
+  // LoopSkill viewer, which resolves BOTH pipelines' refs (probed 2026-09-08)
+  // and is where the install affordance lives. The old comment claiming
+  // "community skills have NO local detail page" predates
+  // /skills/external/view (issue #277 FIX 2) — the viewer links on to origin.
+  function normalizeExternalFedRow(r) {
+    const ref = r && r.install_ref ? String(r.install_ref) : '';
+    return Object.assign({}, r, {
+      href: ref ? `/skills/external/view?ref=${encodeURIComponent(ref)}` : (r && r.href) || '#',
+    });
+  }
+
+  // One card per canonical install_ref. Rows without any resolvable identity
+  // are kept (they are still real results) but can never collide.
+  function mergeFederated(apiRows, externalRows) {
+    const seen = new Set();
+    const out = [];
+    const push = (row) => {
+      if (!row) return;
+      const key = canonicalInstallRef(row);
+      if (key) {
+        if (seen.has(key)) return;
+        seen.add(key);
+      }
+      out.push(row);
+    };
+    (Array.isArray(apiRows) ? apiRows : []).forEach((r) => push(normalizeApiFedRow(r)));
+    (Array.isArray(externalRows) ? externalRows : []).forEach((r) => push(normalizeExternalFedRow(r)));
+    return out;
+  }
+
+  function federatedGroupHTML(rows, cacheStatus, counts) {
+    if (!Array.isArray(rows)) return ''; // key absent or malformed → no-op
     if (rows.length === 0) {
       if (cacheStatus === 'cold') {
         return `<p class="text-xs text-muted-soft py-2">Federated index warming up — check back shortly.</p>`;
       }
       return '';
     }
-    const cards = rows
-      .map((r) => {
-        const ref = r && r.install_ref ? String(r.install_ref) : '';
-        const item = {
-          slug: (r && r.slug) || '',
-          title: (r && (r.title || r.slug)) || 'Untitled',
-          description: (r && r.description) || '',
-          meta: (r && r.source) || 'community',
-          href: ref ? `/skills/external/view?ref=${encodeURIComponent(ref)}` : '#',
-        };
-        return artifactCardHTML('skill', item, 'grid');
-      })
-      .join('');
-    return `<section class="ls-section">
+    const cards = rows.map((it) => artifactCardHTML('skill', it, 'grid')).join('');
+    return `<section class="ls-section" data-federated-group="1">
         <div class="flex items-center justify-between ls-section-header">
-          <h2 class="ls-section-title text-text">Federated results</h2>
+          <h2 class="ls-section-title text-text">Community skills <span class="text-xs text-muted-soft font-normal">${federatedHeaderSuffix(counts)}</span></h2>
         </div>
         <div class="artifact-grid">
           ${cards}
@@ -786,16 +944,18 @@ const hasPrebuilt = prebuiltGroupsHtml.trim().length > 0;
     }
     hideLoading();
 
-    // issue #277 FIX 3 — read the new `federated` group defensively straight
-    // off whatever /api/search (or the empty-query defaults object, which
-    // never carries this key) returned. Absent on the current API shape —
-    // apiFederatedRows stays null and federatedApiGroupHTML() below is a
-    // guaranteed no-op, so this is zero-regression until the API PR ships.
+    // Read the `federated` group defensively straight off whatever
+    // /api/search (or the empty-query defaults object, which never carries
+    // this key) returned. Absent on an older API shape — apiFederatedRows
+    // stays null and contributes nothing to the merge.
     const apiFederatedRows = data && Array.isArray(data.federated) ? data.federated : null;
     const apiFederatedCacheStatus = data
       ? (data.federated_cache_status || data.federated_status || null)
       : null;
-    const apiFederatedGroupHTML = federatedApiGroupHTML(apiFederatedRows, apiFederatedCacheStatus);
+    // unisearch_0709/P3: ONE federated group from here down. `fedRows` is the
+    // single authority — one card per canonical install_ref — and it is the
+    // ONLY thing that feeds both the rendered cards and the count.
+    const fedRows = mergeFederated(apiFederatedRows, federated);
 
     const byType = {
       loops: data.loops || [],
@@ -804,33 +964,29 @@ const hasPrebuilt = prebuiltGroupsHtml.trim().length > 0;
       personalities: data.personalities || [],
     };
 
-    const totalCount = Object.values(byType).reduce((a, arr) => a + arr.length, 0) + federated.length + (apiFederatedRows ? apiFederatedRows.length : 0);
+    // The number a visitor reads must be the number of cards a visitor can
+    // see. Before P3 this added BOTH federated pipelines' lengths on top of
+    // each other, so every row the two shared was counted twice.
+    const totalCount = Object.values(byType).reduce((a, arr) => a + arr.length, 0) + fedRows.length;
     const countMsg = state.q
-      ? `${totalCount} result${totalCount === 1 ? '' : 's'} for "${state.q}"${federated.length ? ` (${federated.length} community)` : ''}`
+      ? `${totalCount} result${totalCount === 1 ? '' : 's'} for "${state.q}"${fedRows.length ? ` (${fedRows.length} community)` : ''}`
       : `${totalCount} item${totalCount === 1 ? '' : 's'}`;
     $('browse-live-count').textContent = countMsg;
 
     const results = $('browse-results');
-    const fedGroupHTML = federated.length
-      ? `<section class="ls-section">
-          <div class="flex items-center justify-between ls-section-header">
-            <h2 class="ls-section-title text-text">Community skills <span class="text-xs text-muted-soft font-normal">${federatedHeaderSuffix(fedCounts)}</span></h2>
-          </div>
-          <div class="artifact-grid">
-            ${federated.map((it) => artifactCardHTML('skill', it, 'grid')).join('')}
-          </div>
-        </section>`
-      : '';
+    // ONE federated group, always rendered AFTER the curated/native groups —
+    // curated never interleaves with federated (sprint locked decision #1).
+    const fedGroupHTML = federatedGroupHTML(fedRows, apiFederatedCacheStatus, fedCounts);
 
     if (state.type === 'all') {
       hide('browse-tag-chips');
       $('browse-tag-chips').innerHTML = '';
-      if (totalCount === 0 && !apiFederatedGroupHTML) {
+      if (totalCount === 0 && !fedGroupHTML) {
         show('browse-empty');
         $('browse-empty').textContent = state.q ? `No results for "${state.q}"` : 'Nothing is available right now.';
         return;
       }
-      results.innerHTML = GROUP_ORDER.map((t) => renderGroup(t, byType[t], 'all', state.q)).join('') + fedGroupHTML + apiFederatedGroupHTML;
+      results.innerHTML = GROUP_ORDER.map((t) => renderGroup(t, byType[t], 'all', state.q)).join('') + fedGroupHTML;
       refreshLikes();
       return;
     }
@@ -871,7 +1027,7 @@ const hasPrebuilt = prebuiltGroupsHtml.trim().length > 0;
       chipsEl.innerHTML = '';
     }
 
-    if (!loopChipItems.length && !federated.length && !(apiFederatedRows && apiFederatedRows.length) && !apiFederatedGroupHTML) {
+    if (!loopChipItems.length && !fedRows.length && !fedGroupHTML) {
       show('browse-empty');
       // feat/composite-loops-surface: the Loops empty state explains what a
       // loop actually IS (most visitors have never heard the term) instead of
@@ -886,10 +1042,10 @@ const hasPrebuilt = prebuiltGroupsHtml.trim().length > 0;
       return;
     }
     const grid = loopChipItems.map((it) => artifactCardHTML(state.type, it, 'grid')).join('');
-    const curatedHeader = state.type === 'skills' && federated.length
+    const curatedHeader = state.type === 'skills' && fedRows.length
       ? `<div class="ls-section-header"><h2 class="ls-section-title text-text">LoopSkill catalog <span class="text-xs text-muted-soft font-normal">verified · signed</span></h2></div>`
       : '';
-    results.innerHTML = (loopChipItems.length ? `${curatedHeader}<div class="artifact-grid">${grid}</div>` : '') + fedGroupHTML + apiFederatedGroupHTML;
+    results.innerHTML = (loopChipItems.length ? `${curatedHeader}<div class="artifact-grid">${grid}</div>` : '') + fedGroupHTML;
     refreshLikes();
   }
 
@@ -1014,6 +1170,76 @@ const hasPrebuilt = prebuiltGroupsHtml.trim().length > 0;
     } finally {
       btn.removeAttribute('aria-busy');
     }
+  });
+
+  // ── "Copy for agent" wiring — unisearch_0709/P3 ───────────────────────────
+  // Delegated so it survives every innerHTML re-render in load(), and so it
+  // also serves the build-time prerendered cards (which exist before this
+  // script runs). Mirrors createCopyForAgentController() in
+  // src/lib/agentInstall.ts — see the mirror note above artifactCardHTML.
+  //
+  // NEVER a silent no-op: navigator.clipboard is undefined on insecure
+  // origins and can reject on a permissions policy, so we fall back to
+  // execCommand and then, if that is gone too, to revealing the text
+  // pre-selected for manual copy. The visitor always ends up able to get it.
+  async function writeClipboard(text) {
+    if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+      try { await navigator.clipboard.writeText(text); return 'clipboard'; }
+      catch { /* insecure context / permission denied — try execCommand */ }
+    }
+    try {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.setAttribute('readonly', '');
+      ta.style.position = 'fixed'; ta.style.top = '-1000px'; ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      const ok = typeof document.execCommand === 'function' && document.execCommand('copy');
+      document.body.removeChild(ta);
+      if (ok) return 'exec';
+    } catch { /* execCommand unavailable/blocked — fall through to manual */ }
+    return 'manual';
+  }
+
+  function showManualCopyFallback(btn, text) {
+    const slot = (btn.closest && btn.closest('.artifact-slot')) || btn.parentElement;
+    if (!slot) return;
+    let ta = slot.querySelector('.artifact-copy-fallback');
+    if (!ta) {
+      ta = document.createElement('textarea');
+      ta.className = 'artifact-copy-fallback';
+      ta.setAttribute('readonly', '');
+      ta.setAttribute('aria-label', 'Install instructions — select and copy manually');
+      slot.appendChild(ta);
+    }
+    ta.value = text;
+    ta.hidden = false;
+    try { ta.focus(); ta.select(); } catch { /* detached DOM */ }
+  }
+
+  document.addEventListener('click', async (ev) => {
+    const btn = ev.target && ev.target.closest ? ev.target.closest('.artifact-copy') : null;
+    if (!btn) return;
+    // The button sits inside .artifact-slot next to the card <a> — stop the
+    // event so copying never navigates to the skill.
+    ev.preventDefault();
+    ev.stopPropagation();
+    const text = btn.getAttribute('data-copy-text') || '';
+    if (!text) return;
+    const label = btn.querySelector('.artifact-copy-label') || btn;
+    const how = await writeClipboard(text);
+    if (how === 'manual') {
+      label.textContent = 'Select & copy';
+      btn.setAttribute('data-copied', 'true');
+      showManualCopyFallback(btn, text);
+      return;
+    }
+    label.textContent = COPY_FOR_AGENT_DONE;
+    btn.setAttribute('data-copied', 'true');
+    setTimeout(() => {
+      label.textContent = COPY_FOR_AGENT_LABEL;
+      btn.removeAttribute('data-copied');
+    }, 1800);
   });
 
   syncTabsUI();
