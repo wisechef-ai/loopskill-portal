@@ -308,8 +308,12 @@ describe('issue#277 FIX 2 — /skills/external/view renders both install branche
 // ──────────────────────────────────────────────────────────────────────
 
 describe('issue#277 FIX 3 — browse.astro guards on absence of the `federated` key (source shape)', () => {
+  // unisearch_0709/P3 renamed federatedApiGroupHTML -> federatedGroupHTML:
+  // it no longer renders "the /api/search group" beside a second one, it
+  // renders THE federated group, merged from both pipelines and deduped by
+  // canonical install_ref. The defensive contract is unchanged.
   it('has a defensive helper that treats a missing/non-array federated key as a no-op', () => {
-    expect(BROWSE_SRC).toMatch(/function federatedApiGroupHTML/);
+    expect(BROWSE_SRC).toMatch(/function federatedGroupHTML/);
     expect(BROWSE_SRC).toMatch(/if \(!Array\.isArray\(rows\)\) return ''/);
   });
 
@@ -330,11 +334,15 @@ describe('issue#277 FIX 3 — browse.astro guards on absence of the `federated` 
     expect(BROWSE_SRC).toMatch(/\/skills\/external\/view\?ref=\$\{encodeURIComponent\(ref\)\}/);
   });
 
-  it('the new group is additive at every render call site (appended, never replacing existing output)', () => {
-    const appended = [...BROWSE_SRC.matchAll(/\+ apiFederatedGroupHTML/g)];
-    // Both live render call sites (the 'all' tab and the single-type tab)
-    // append apiFederatedGroupHTML rather than replacing existing output.
+  it('the federated group is appended at every render call site, never replacing existing output', () => {
+    // unisearch_0709/P3: there is now exactly ONE federated group variable
+    // (fedGroupHTML). Before P3 there were two — fedGroupHTML AND
+    // apiFederatedGroupHTML — rendered as two sections of overlapping rows
+    // and added together into totalCount. Both live render call sites (the
+    // 'all' tab and the single-type tab) append the one group.
+    const appended = [...BROWSE_SRC.matchAll(/\+ fedGroupHTML/g)];
     expect(appended.length).toBeGreaterThanOrEqual(2);
+    expect(BROWSE_SRC).not.toMatch(/apiFederatedGroupHTML/);
   });
 });
 
@@ -450,7 +458,7 @@ describe('issue#277 — no light-theme classes in new files', () => {
   });
 
   it('the new browse.astro federated-group markup carries only dark-theme tokens', () => {
-    const start = BROWSE_SRC.indexOf('function federatedApiGroupHTML');
+    const start = BROWSE_SRC.indexOf('function federatedGroupHTML');
     expect(start).toBeGreaterThan(-1);
     const chunk = BROWSE_SRC.slice(start, start + 2000);
     expect(chunk).not.toMatch(LIGHT_THEME_CLASSES);

@@ -40,6 +40,11 @@ import AppShell from '../layouts/AppShell.astro';
 <script>
   import { identiconSVG } from '../lib/identicon';
   import { likeButtonHTML, createLikeController } from '../lib/likeControl';
+  // unisearch_0709/P3 — Home shelves render the SAME ArtifactCard as Browse,
+  // so they get the same "Copy for agent" affordance. This is a PROCESSED
+  // <script>, so the canonical module is imported properly (browse.astro
+  // carries define:vars and has to mirror it inline).
+  import { copyForAgentHTML, createCopyForAgentController } from '../lib/agentInstall';
   const API_BASE = (import.meta as any).env?.PUBLIC_LOOPSKILL_API_BASE || (import.meta as any).env?.PUBLIC_RECIPES_API_BASE || 'https://app.loopskill.io';
   const $ = (id: string) => document.getElementById(id)!;
   const esc = (s: any) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' } as any)[c]);
@@ -95,7 +100,7 @@ import AppShell from '../layouts/AppShell.astro';
       <span class="artifact-title">${esc(item.title || item.slug)}</span>
       ${m ? `<span class="artifact-meta">${esc(m)}</span>` : ''}
     </a>`;
-    return `<div class="artifact-slot">${card}${likeButtonHTMLFor(type, item)}</div>`;
+    return `<div class="artifact-slot">${card}${likeButtonHTMLFor(type, item)}${copyForAgentHTML(type, item)}</div>`;
   }
   function shelfHTML(title: string, type: ShelfType, items: any[]): string {
     // Council §2: a shelf with zero rows does not render — NOT its header either.
@@ -161,6 +166,8 @@ import AppShell from '../layouts/AppShell.astro';
   }
 
   const likeControl = createLikeController({ apiBase: API_BASE });
+  // Delegated on document — survives every shelf re-render, no rebinding.
+  createCopyForAgentController();
 
   $('home-retry').addEventListener('click', loadShelves);
   loadShelves();

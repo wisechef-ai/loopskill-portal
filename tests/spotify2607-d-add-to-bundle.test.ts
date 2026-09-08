@@ -139,8 +139,12 @@ describe('portal wiring — Add to bundle REMOVED from browse.astro cards (2026-
     expect(browse).not.toContain('__atcWire');
   });
 
-  it('the artifact-slot still closes the card <a> before the heart — no atc picker appended after it', () => {
-    expect(browse).toMatch(/<div class="artifact-slot">\$\{card\}\$\{likeButtonHTML\(type, item\)\}<\/div>/);
+  // unisearch_0709/P3 added a THIRD slot sibling, "Copy for agent". The
+  // invariant this test protects is unchanged and still exact: the card <a>
+  // is CLOSED before any control, and the only controls in the slot are the
+  // heart and the copy button — never an atc picker.
+  it('the artifact-slot still closes the card <a> before its controls — no atc picker appended after it', () => {
+    expect(browse).toMatch(/<div class="artifact-slot">\$\{card\}\$\{likeButtonHTML\(type, item\)\}\$\{copyForAgentHTML\(type, item\)\}<\/div>/);
   });
 });
 
@@ -161,8 +165,8 @@ describe('portal wiring — Add to bundle REMOVED from home.astro shelves (2026-
     expect(home).not.toContain('__atcWire');
   });
 
-  it('the artifact-slot still closes the card <a> before the heart — no atc picker appended after it', () => {
-    expect(home).toMatch(/<div class="artifact-slot">\$\{card\}\$\{likeButtonHTMLFor\(type, item\)\}<\/div>/);
+  it('the artifact-slot still closes the card <a> before its controls — no atc picker appended after it', () => {
+    expect(home).toMatch(/<div class="artifact-slot">\$\{card\}\$\{likeButtonHTMLFor\(type, item\)\}\$\{copyForAgentHTML\(type, item\)\}<\/div>/);
   });
 });
 
