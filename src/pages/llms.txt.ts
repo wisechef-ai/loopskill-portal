@@ -65,6 +65,168 @@ export function foundingPricingLine(
   );
 }
 
+// ─────────────────────────────────────────────────────────────────────────
+// unisearch_0709 / P4 — register-FIRST cold-agent onboarding.
+//
+// The defect this fixes: llms.txt told an agent "point your MCP client at the
+// LoopSkill server and call these tools" without ever saying where a key comes
+// from or that one is required at all. It is required — a keyless call to the
+// MCP endpoint answers `401 {"detail":"Invalid or missing x-api-key header"}`
+// (verified live 2026-09-08). A cold agent with no credentials therefore
+// bounces off a 401 on its first call and has nothing in this file telling it
+// what to do next, so it gives up. That is the single highest-cost failure on
+// the surface built FOR agent buyers.
+//
+// The real cold-start path is enroll -> search -> install, and enrollment is
+// public: POST /api/agents/register mints a FREE-tier key against an Ed25519
+// proof-of-key, with no human and no prior credential.
+//
+// Everything variable here is read from the live /.well-known/agent.json at
+// build time, NOT restated as literals. The canonical string an agent signs
+// carries a version tag (`:v1:`) and the rate-limit constants are policy —
+// both will move, and a copy frozen in this file would keep telling agents to
+// sign the wrong bytes long after the server stopped accepting them. The
+// STRUCTURE (which endpoints exist, that the key rides in a header) is static
+// so the section — and the assert-dist guards over it — survive the API being
+// unreachable at build time; only the DETAIL degrades, to a pointer at
+// /.well-known/agent.json, which is the authority either way.
+interface WellKnownRegistration {
+  endpoint?: string;
+  method?: string;
+  version?: string;
+  algorithm?: string;
+  signature_encoding?: string;
+  authentication?: string;
+  canonical_string?: string;
+  request_fields?: Record<string, string>;
+  constraints?: Record<string, number>;
+  errors?: Record<string, string[]>;
+  grants?: string[];
+  denies?: string[];
+  issues?: {
+    header?: string;
+    key_prefix?: string;
+    tier?: string;
+    shown_once?: boolean;
+  };
+}
+export interface WellKnownAgent {
+  api_base?: string;
+  registration?: WellKnownRegistration;
+  mcp?: {
+    endpoint?: string;
+    transport?: string;
+    descriptor?: string;
+    authentication?: { type?: string; header?: string };
+  };
+  catalog?: Record<string, string>;
+}
+
+// Turn `registrations_per_ip_per_day` into `registrations per ip per day` —
+// the keys are policy names we do not control, so render them rather than
+// maintaining a translation table that silently drops a new constraint.
+function humanizeKey(k: string): string {
+  return k.replace(/_/g, ' ');
+}
+
+export function coldStartSection(agent: WellKnownAgent | null | undefined): string {
+  const reg = agent?.registration;
+  const wellKnown = `${SITE}/.well-known/agent.json`;
+  const registerUrl = reg?.endpoint || `${SITE}/api/agents/register`;
+  const registerMethod = (reg?.method || 'POST').toUpperCase();
+  const mcpUrl = agent?.mcp?.endpoint || `${SITE}/api/mcp/http`;
+  // Verified live: POST to the published no-slash form answers 307 to the
+  // trailing-slash form. A 307 preserves method and body, but a client that
+  // does not follow redirects on POST fails its first MCP call, so name the
+  // form that answers 200 directly.
+  const mcpPost = mcpUrl.endsWith('/') ? mcpUrl : `${mcpUrl}/`;
+  // The header name is the one thing an agent cannot guess and cannot recover
+  // from getting wrong — every code path below falls back to it rather than
+  // omitting it, because a section that renders without it is the exact 401
+  // dead end this whole block exists to remove.
+  const keyHeader =
+    agent?.mcp?.authentication?.header || reg?.issues?.header || 'x-api-key';
+
+  // Inline, one line, no code fence: this whole section is emitted inside a
+  // markdown bullet list and a fenced block would break the list for every
+  // reader that actually parses the markdown.
+  const canonical = reg?.canonical_string
+    ? `As of this build it is \`${reg.canonical_string}\`, but fetch it from \`registration.canonical_string\` at ${wellKnown} rather than copying that line — it is versioned and will move.`
+    : `Read it from \`registration.canonical_string\` at ${wellKnown}. Do not guess it — an unrecognised string fails signature verification with no useful hint.`;
+
+  const fields = reg?.request_fields
+    ? Object.entries(reg.request_fields)
+        .map(([k, v]) => `  - \`${k}\` — ${v}`)
+        .join('\n')
+    : `  - See \`registration.request_fields\` at ${wellKnown}.`;
+
+  const constraints = reg?.constraints
+    ? Object.entries(reg.constraints)
+        .map(([k, v]) => `${humanizeKey(k)}: ${v}`)
+        .join(' · ')
+    : '';
+  const constraintLine = constraints
+    ? `\n- Enrollment limits (live from \`registration.constraints\`): ${constraints}. Exceeding the per-IP cap returns \`429 {"error":"ip_registration_limit"}\` with a \`retry_after\` in seconds — back off, do not retry in a loop.`
+    : `\n- Enrollment is rate limited per IP and globally; see \`registration.constraints\` at ${wellKnown}. A \`429\` carries \`retry_after\` in seconds — back off, do not retry in a loop.`;
+
+  const errorLine = reg?.errors
+    ? `\n- Failure codes: ${Object.entries(reg.errors)
+        .map(([code, causes]) => `\`${code}\` (${(causes ?? []).join(', ')})`)
+        .join(' · ')}`
+    : '';
+
+  const grantLine = reg?.grants?.length
+    ? `\n- The minted key is FREE tier by construction. It grants: ${reg.grants
+        .map((g) => `\`${g}\``)
+        .join(', ')}.${
+        reg.denies?.length
+          ? ` It is denied: ${reg.denies.map((d) => `\`${d}\``).join(', ')} — do not attempt those, they will not be granted by retrying.`
+          : ''
+      }`
+    : `\n- The minted key is FREE tier by construction; see \`registration.grants\` and \`registration.denies\` at ${wellKnown} for exactly what it may do.`;
+
+  const issuedLine = (() => {
+    const parts: string[] = [];
+    if (reg?.issues?.key_prefix) parts.push(`prefixed \`${reg.issues.key_prefix}\``);
+    if (reg?.issues?.tier) parts.push(`tier \`${reg.issues.tier}\``);
+    const shape = parts.length ? ` (${parts.join(', ')})` : '';
+    const once =
+      reg?.issues?.shown_once === false
+        ? ''
+        : ' It is stored only as a hash and is shown exactly ONCE — persist it before you make your next call.';
+    return `- On success you get \`200\` with an \`api_key\`${shape}.${once}`;
+  })();
+
+  return `## Cold start — you have no key yet (enroll → search → install)
+You are an agent with no credentials and no prior knowledge of this service. This section is the whole path, in three calls. Nothing below needs a human.
+
+**The authoritative machine-readable version of this section is ${wellKnown}** (plus ${agent?.mcp?.descriptor || `${SITE}/.well-known/mcp.json`} for the MCP descriptor). If that document and this file ever disagree, that document wins — fetch it first.
+
+### Step 1 — Enroll: mint your own key (public, no credentials required)
+\`${registerMethod} ${registerUrl}\` — this endpoint takes NO api key. You authenticate by proving you hold an Ed25519 private key.
+- Generate an Ed25519 keypair and sign the UTF-8 bytes of the canonical registration string. ${canonical}
+- Send a JSON body with:
+${fields}
+${issuedLine}${grantLine}${constraintLine}${errorLine}
+
+### Step 2 — Search: find a skill
+**Every MCP call must carry your key in the \`${keyHeader}\` header.** Omit it and the server answers \`401 {"detail":"Invalid or missing ${keyHeader} header"}\` — that 401 is the single most common reason a cold agent stops here. It is not a rejection of your agent; it means you have not done Step 1 yet.
+- MCP endpoint: \`POST ${mcpPost}\` (streamable-http; \`${keyHeader}: <your key>\`). Post to the trailing-slash form — \`${mcpUrl}\` answers \`307\` to it, and a client that does not follow redirects on POST will fail its first call. Standard MCP handshake: \`initialize\` → \`notifications/initialized\` → \`tools/call\`.
+- \`loopskill_search\` — the curated-catalog search tool. Arguments: \`query\`, and optionally \`category\`, \`tier\`, \`limit\`. Response: \`{results, total, backend, hybrid_augmented}\`.
+- **Not using MCP, or want the federated superset?** \`GET ${SITE}/api/skills/metasearch?q=<query>\` is public — no key, no headers. It fans out across every enabled source and is where community skills that are not in the curated catalog show up. Only \`q\` is honoured; other query params are ignored, so do not rely on them to cap your result set.
+- The envelope carries \`skills\`, \`result_count\`, \`sources_ok\`, \`sources_degraded\`, \`source_count\`, \`render_contract\` and \`cache\`. Freshness is reported honestly, never faked: \`cache.cache_hit\`, \`cache.cache_age_s\` and \`cache.cache_ttl_s\` are always present, and a cache hit additionally reports \`cache.cache_stale\`. Any source that failed this fan-out is named in \`sources_degraded\` rather than silently dropped — a degraded source means fewer results, not wrong ones, so check it before concluding a skill does not exist.
+- Each row carries \`install_ref\`, \`deployable\`, \`install_path\`, \`quality\`, \`origin_url\`. **\`install_ref\` is the only identifier you need for Step 3** — carry it verbatim, it is source-qualified (e.g. \`skills-sh:trailhq--graft--graft\`).
+- A row with \`deployable: false\` / \`install_path: "deep_link"\` is a pointer, not a package: we cannot hand you its body (it is not redistributable or has no fetchable content). Go to its \`origin_url\`. Do not treat it as an install failure.
+
+### Step 3 — Install: fetch the skill body
+- MCP: \`loopskill_install\`. Its parameter is named \`slug\` and it accepts BOTH a curated catalog slug and a federated \`install_ref\` — pass the \`install_ref\` from Step 2 verbatim as \`slug\`. It returns the resolved skill including \`content\`, \`install_path\`, \`origin_url\`, \`raw_url\` and \`attribution\`.
+- Not using MCP: \`GET ${SITE}/api/skills/metasearch/install?install_ref=<install_ref>\` — public, no key. Returns \`{resolved, source, slug, body, origin_url, preview_only, reason, commands}\`, where \`body\` is the real SKILL.md from origin and \`commands\` carries a ready-to-run line per agent runtime.
+- An \`install_ref\` we cannot resolve returns \`404 {"resolved": false, "reason": "unresolvable"}\`. That is an honest miss, not an outage — re-search rather than retrying the same ref.
+- \`preview_only: true\` means you are being shown a preview, not given redistributable content. Respect it: fetch from \`origin_url\` and keep the \`attribution\`.
+
+`;
+}
+
 interface SnapshotCounts {
   skills_total?: number;
   free_skills?: number;
@@ -168,7 +330,7 @@ export const GET: APIRoute = async () => {
   // install-based trending is too thin to be representative (only a couple
   // of skills have install traction yet), whereas an empty-query search
   // returns a broad, current catalog slice across categories.
-  const [snapRes, catRes, fedRes, loopsRes, compositeRes, bundlesRes, personalitiesRes, statsRes] = await Promise.all([
+  const [snapRes, catRes, fedRes, loopsRes, compositeRes, bundlesRes, personalitiesRes, statsRes, agentRes] = await Promise.all([
     fetchApi<Snapshot>('/api/marketing/snapshot', { authed: false }),
     fetchApi<{ results?: CatalogSkill[] }>(
       '/api/skills/search?q=&limit=24',
@@ -216,6 +378,17 @@ export const GET: APIRoute = async () => {
     // 24-item catalog fetch (a full 56-line listing would balloon the file),
     // but the number quoted in prose is now the honest total.
     fetchApi<{ by_tier?: Record<string, number> }>('/api/stats', { authed: false }),
+    // unisearch_0709/P4 — the agent-discovery document. Public, no key. This is
+    // the ONE source for the register-first cold-start details (canonical
+    // signing string, request fields, rate-limit constraints, granted scopes,
+    // the MCP endpoint + auth header). Restating any of it as a literal here
+    // would drift the moment the API bumps the `:v1:` canonical tag or moves a
+    // cap, and a stale signing string does not degrade gracefully — it makes
+    // every registration attempt fail signature verification. If this fetch
+    // fails at build time the cold-start section still renders with its
+    // endpoints and header intact and points the reader at /.well-known/
+    // for the detail, so an agent is never left without a path.
+    fetchApi<WellKnownAgent>('/.well-known/agent.json', { authed: false }),
   ]);
 
   // Honest degradation: only trust counts we actually fetched. No invented
@@ -229,6 +402,12 @@ export const GET: APIRoute = async () => {
   // this endpoint already performs (line ~127). Never fabricated: falls back
   // to omitting the SKU entirely if the snapshot didn't carry it.
   const foundingLine = foundingPricingLine(snapRes.data?.founding);
+
+  // unisearch_0709/P4 — register-first cold start. Rendered unconditionally:
+  // an agent that cannot reach /.well-known at OUR build time still gets the
+  // endpoints and the x-api-key requirement, which is the part it cannot
+  // recover from on its own.
+  const coldStart = coldStartSection(agentRes.data);
 
   const counts = snapRes.data?.counts;
   const total: number | null =
@@ -484,8 +663,8 @@ ${connectorsNote}`;
 
 > LoopSkill is a curated marketplace of ${catalogSizePhrase} for AI coding agents — and a superset of the public agent-skill ecosystem${fedHeadline ? ` (it federates ${fedHeadline} more community skills, so you never need a second hub)` : ''}. Skills install the same way into Claude Code, Cursor, Cline, OpenClaw, Hermes, and Windsurf — no per-vendor rewrites. ${freeIntro}. Buyers here are agents: this file is the machine-readable index of what we sell and how to install it.
 
-## How an agent installs a skill
-LoopSkill exposes ${mcpTools.length} dedicated MCP tools (not a generic REST wrapper). Point your agent's MCP client at the LoopSkill server and call:
+${coldStart}## Everything else an agent can call
+LoopSkill exposes ${mcpTools.length} dedicated MCP tools (not a generic REST wrapper). Configure your MCP client with the endpoint and the \`x-api-key\` from Step 1 above — every one of these needs it — then call:
 ${mcpTools.map((t) => `- \`${t}\``).join('\n')}
 
 Or hit the public REST API directly (no key for read/search):
