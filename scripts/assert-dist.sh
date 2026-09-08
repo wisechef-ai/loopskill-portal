@@ -470,6 +470,42 @@ for surface in "${SEARCH_SURFACES[@]}"; do
   fi
 done
 
+# (n) llms.txt must teach a CREDENTIAL-LESS agent the whole path (unisearch_0709/P4).
+#
+# llms.txt is the surface built for our primary buyer: an agent. Before P4 it
+# listed the MCP tools without ever saying a key is required or where one comes
+# from — and a keyless MCP call answers `401 {"detail":"Invalid or missing
+# x-api-key header"}`. A cold agent therefore hit a 401 on its first call with
+# nothing in the file explaining it, and gave up. That failure is invisible to
+# every other check here: the build succeeds, the file is the right size, the
+# identity guards pass, and only an agent that actually tried notices.
+#
+# These four tokens are the four things it cannot recover from on its own:
+# where a key comes from, what to call, how to install, and the header that
+# carries the key. Each is a separate guard so a regression names the exact
+# step that went missing rather than "llms.txt changed".
+llms_path="$DIST_DIR/llms.txt"
+if [ ! -f "$llms_path" ]; then
+  fail_us "$llms_path is MISSING — the machine-readable agent manifest was not emitted"
+else
+  # Written as (token, what an agent loses without it) pairs.
+  COLD_START_TOKENS=(
+    "agents/register|the enrollment endpoint — an agent with no credentials has no way to obtain one"
+    "loopskill_search|the search tool name — an enrolled agent cannot find a skill"
+    "metasearch/install|the keyless install route — a non-MCP agent cannot fetch a skill body"
+    "x-api-key|the auth header — every MCP call 401s and the agent reads the 401 as a rejection"
+  )
+  for entry in "${COLD_START_TOKENS[@]}"; do
+    token="${entry%%|*}"
+    loses="${entry#*|}"
+    if ! grep -F -q "$token" "$llms_path"; then
+      fail_us "$llms_path does not mention '$token' — cold-agent onboarding is broken: $loses (unisearch_0709/P4)"
+    else
+      echo "OK:   $llms_path documents '$token'"
+    fi
+  done
+fi
+
 if [ "$us_failures" -gt 0 ]; then
   echo ""
   echo "BLOCKED: $us_failures unified-search guard(s) failed. Deploy aborted."
