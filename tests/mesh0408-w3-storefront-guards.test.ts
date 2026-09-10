@@ -406,16 +406,29 @@ if (!built) {
   console.warn('dist/ absent — skipping the built-surface guards. Run `npm run build` first.');
 }
 
+// Explicit timeout: these shell out to a real audit over the full built
+// site (8600+ links / 213 pages and growing) — the scripts themselves run
+// in ~2s standalone, but under a full concurrent suite run (hermes verify,
+// CI) vitest's 5000ms default trips on scheduling contention alone, not a
+// real regression. 20s gives headroom without masking an actual hang.
 describeBuilt('built surface · every internal link resolves', () => {
-  it('audit-links passes on dist/', async () => {
-    const { execFileSync } = await import('child_process');
-    execFileSync('node', [join(ROOT, 'scripts/audit-links.mjs'), DIST], { stdio: 'pipe' });
-  });
+  it(
+    'audit-links passes on dist/',
+    async () => {
+      const { execFileSync } = await import('child_process');
+      execFileSync('node', [join(ROOT, 'scripts/audit-links.mjs'), DIST], { stdio: 'pipe' });
+    },
+    20_000
+  );
 });
 
 describeBuilt('built surface · no false claim survives to a rendered page', () => {
-  it('audit-claims passes on dist/', async () => {
-    const { execFileSync } = await import('child_process');
-    execFileSync('node', [join(ROOT, 'scripts/audit-claims.mjs'), DIST], { stdio: 'pipe' });
-  });
+  it(
+    'audit-claims passes on dist/',
+    async () => {
+      const { execFileSync } = await import('child_process');
+      execFileSync('node', [join(ROOT, 'scripts/audit-claims.mjs'), DIST], { stdio: 'pipe' });
+    },
+    20_000
+  );
 });
