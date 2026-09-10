@@ -154,6 +154,19 @@ const EXPECTED_NON_2XX: StatusRule[] = [
   },
   {
     method: 'POST',
+    url: `${SITE}/api/agents/register`,
+    expectedStatus: 422,
+    reason:
+      'llms.txt documents this as the public no-key enrollment endpoint, but it requires a ' +
+      'signed Ed25519 payload (pubkey/timestamp/nonce/agent_name/signature over a canonical ' +
+      'string) that this generic executor cannot construct — it does not have a keypair to ' +
+      'sign with. The executor sends an empty body, and the server correctly 422s with ' +
+      '"Field required" for each missing field (verified live 2026-09-10). This is FastAPI\'s ' +
+      'request-validation contract firing exactly as documented, not a docs defect — the doc ' +
+      'never claims an empty POST succeeds.',
+  },
+  {
+    method: 'POST',
     url: `${SITE}/api/bundles`,
     expectedStatus: 401,
     reason: 'Documented as requiring auth ("All bundle endpoints require auth"); anonymous call correctly 401s.',
