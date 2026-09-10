@@ -176,6 +176,21 @@ const EXPECTED_NON_2XX: StatusRule[] = [
       '401s an invalid/placeholder x-api-key; this is the same MCP 401-anonymous contract ' +
       'from issue #217, not a docs defect. A real cbt_ token from a real bundle returns 2xx.',
   },
+  {
+    method: 'POST',
+    url: `${SITE}/api/agents/register`,
+    expectedStatus: 422,
+    reason:
+      'unisearch_0709/P4 register-first cold-start section (llms.txt.ts:135, PR #109) ' +
+      'documents the bare endpoint as a backtick command with no example body — by design, ' +
+      'the real request body is an Ed25519 proof-of-key ({pubkey, timestamp, nonce, ' +
+      'agent_name, signature}) the doc walks the agent through constructing, not a literal ' +
+      'JSON blob to copy-paste (unlike other documented POSTs). An empty/no-body POST ' +
+      'correctly 422s on the missing required fields (verified live 2026-09-10); this is ' +
+      'the same "auth/params required, doc explains how to get them" contract as the ' +
+      '/api/api-keys and /api/bundles 401 rules above, not a docs defect. A call carrying ' +
+      'a real signed proof-of-key returns 2xx.',
+  },
 ];
 
 /**
