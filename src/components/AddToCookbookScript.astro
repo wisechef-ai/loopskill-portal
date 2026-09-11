@@ -54,7 +54,7 @@ const API_BASE = import.meta.env.PUBLIC_LOOPSKILL_API_BASE || import.meta.env.PU
     // ── bundles cache (fetched once per page, refreshed after create) ──
     let bundles = null;     // null = not loaded; [] = loaded-empty; array = loaded
     let authState = 'unknown'; // 'ok' | 'anon'
-    async function loadCookbooks(force) {
+    async function loadBundles(force) {
       if (bundles !== null && !force) return bundles;
       let res;
       try {
@@ -75,12 +75,13 @@ const API_BASE = import.meta.env.PUBLIC_LOOPSKILL_API_BASE || import.meta.env.PU
       });
     }
 
-    async function addSkill(root, cookbookId, cookbookName) {
+    async function addSkill(root, bundleId, bundleName) {
       const btn = root.querySelector('.atc-btn');
       const slug = btn.getAttribute('data-atc-slug');
       const external = btn.getAttribute('data-atc-external') || '';
       // spotify_2607 Phase D: personalities and loops have their own
-      // cookbook-mutation routes (loopskill-api bundle_routes.py
+      // bundle-mutation routes (loopskill-api bundle_routes.py, legacy
+      // cookbook-named handlers:
       // add_personality_to_cookbook / add_loop_to_cookbook) — no body, slug
       // in the URL. Skills keep their existing route + body shape unchanged
       // (external_source is only meaningful there). Defaults to 'skill' so
@@ -90,13 +91,13 @@ const API_BASE = import.meta.env.PUBLIC_LOOPSKILL_API_BASE || import.meta.env.PU
       let url;
       let body;
       if (atcType === 'personality') {
-        url = API_BASE + '/api/cookbooks/' + encodeURIComponent(cookbookId) + '/personalities/' + encodeURIComponent(slug);
+        url = API_BASE + '/api/bundles/' + encodeURIComponent(bundleId) + '/personalities/' + encodeURIComponent(slug);
         body = null;
       } else if (atcType === 'loop') {
-        url = API_BASE + '/api/cookbooks/' + encodeURIComponent(cookbookId) + '/loops/' + encodeURIComponent(slug);
+        url = API_BASE + '/api/bundles/' + encodeURIComponent(bundleId) + '/loops/' + encodeURIComponent(slug);
         body = null;
       } else {
-        url = API_BASE + '/api/cookbooks/' + encodeURIComponent(cookbookId) + '/skills';
+        url = API_BASE + '/api/bundles/' + encodeURIComponent(bundleId) + '/skills';
         body = JSON.stringify(external ? { slug: slug, external_source: external } : { slug: slug });
       }
       let res;
@@ -110,7 +111,7 @@ const API_BASE = import.meta.env.PUBLIC_LOOPSKILL_API_BASE || import.meta.env.PU
       } catch (e) { toast('Network error — try again.', 'error'); return; }
 
       if (res.status === 201 || res.status === 200) {
-        toast('Added to ' + cookbookName, 'ok');
+        toast('Added to ' + bundleName, 'ok');
         closeAll();
         return;
       }
@@ -197,7 +198,7 @@ const API_BASE = import.meta.env.PUBLIC_LOOPSKILL_API_BASE || import.meta.env.PU
       if (res.status === 403) { toast('Bundle cap reached — upgrade for more.', 'error'); return; }
       if (res.status !== 201 && res.status !== 200) { toast('Could not create bundle (HTTP ' + res.status + ').', 'error'); return; }
       let cb; try { cb = await res.json(); } catch (e) { toast('Malformed response.', 'error'); return; }
-      await loadCookbooks(true);
+      await loadBundles(true);
       await addSkill(root, cb.id, cb.name || name);
     }
 
@@ -255,7 +256,7 @@ const API_BASE = import.meta.env.PUBLIC_LOOPSKILL_API_BASE || import.meta.env.PU
       const caret = root.querySelector('.atc-caret');
       if (caret) caret.style.transform = 'rotate(180deg)';
       root.querySelector('.atc-loading').classList.remove('hidden');
-      await loadCookbooks(false);
+      await loadBundles(false);
       renderMenu(root);
     }
 

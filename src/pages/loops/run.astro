@@ -2,7 +2,7 @@
 // loopskill_portal_0627 — Loop DETAIL + the "Run this loop" hero interaction.
 //
 // Static Astro can't pre-render per-slug routes, so this single page resolves
-// ?slug=<slug> client-side (same pattern as /cookbooks/view). It:
+// ?slug=<slug> client-side (same pattern as /bundles/view). It:
 //   1. fetches GET /api/loops/{slug} (public) → renders the vetted contract
 //   2. exposes "▶ Run this loop" → POST /api/loops/{slug}/run (auth required)
 //      → renders objective passed:true/false + confinement + duration + output

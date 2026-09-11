@@ -13,14 +13,11 @@
  *   const data = await fetchApi<MySkill[]>('/api/skills/search?page_size=200');
  *   if (data.error) { ...fall back... }
  *
- * TODO(qa0208-w3): the API is gaining /api/bundles/* aliases for the
- * existing /api/cookbooks/* routes (loopskill-api lane, parallel PR). Do
- * NOT switch this portal's fetch calls to the new paths yet — that API PR
- * may not be merged/deployed when this builds. Every /api/cookbooks/* call
- * site across src/ (this file, AppShell.astro, library.astro,
- * AddToCookbookScript.astro, sitemap.xml.ts, bundles/view.astro, etc.)
- * should move to /api/bundles/* together in a follow-up PR once the API
- * lane confirms the alias is live in prod.
+ * DONE (bundle-vocab cutover): /api/bundles/* aliases for the former
+ * /api/cookbooks/* routes are live in prod and return identical payloads
+ * (verified). The portal's fetch call sites now use /api/bundles/*; the
+ * /api/cookbooks/* paths remain accepted legacy aliases, and response
+ * readers still fall back to legacy `cookbooks`/`cookbook_id` keys.
  */
 
 const API_BASE =

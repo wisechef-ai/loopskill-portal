@@ -7,7 +7,8 @@
  * (Bundle.visibility server_default='private', models.py) — this module is
  * strictly about the OWNER-FACING one-click flip + its legibility.
  *
- * Deletion pass: `PATCH /api/cookbooks/{id}/visibility` already exists
+ * Deletion pass: `PATCH /api/bundles/{id}/visibility` already exists
+ * (`/api/cookbooks/{id}/visibility` legacy alias)
  * (bundle_routes.py set_cookbook_visibility, portal_0610 J2) and is already
  * called from ONE buried composer flow (library.astro's inline "New bundle"
  * panel). No new backend route needed — this only makes the control legible

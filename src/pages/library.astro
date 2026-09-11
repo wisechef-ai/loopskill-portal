@@ -718,7 +718,7 @@ import AppShell from '../layouts/AppShell.astro';
         : '';
       // feat/fleet-console-ui: cards link to the REAL bundle detail page
       // (was href="/library" — a self-link dead loop after the Spotify-IA
-      // restructure stubbed /cookbooks/view). Cover = hash gradient +
+      // restructure stubbed /cookbooks/view, now /bundles/view). Cover = hash gradient +
       // identicon, not one static violet for every bundle.
       const grad = GRAD_PALETTE[hashIdx(cb.id || cb.name || 'x', GRAD_PALETTE.length)];
       return `<a href="/bundles/view?id=${encodeURIComponent(cb.id)}" class="artifact-card" data-bundle-id="${cb.id}">
@@ -779,7 +779,7 @@ import AppShell from '../layouts/AppShell.astro';
   let curated: Skill[] = [];
   let community: Skill[] = [];
   let basket: Skill[] = [];
-  let currentCookbookId: string | null = null;
+  let currentBundleId: string | null = null;
   let currentVisibility = 'private';
   let searchTimer: number | undefined;
 
@@ -915,34 +915,34 @@ import AppShell from '../layouts/AppShell.astro';
   }
   async function removeBasket(i: number) {
     const s = basket[i]; basket.splice(i, 1); renderBasket(); renderResults();
-    if (currentCookbookId && s) {
-      await api(`/api/cookbooks/${currentCookbookId}/skills/${encodeURIComponent(s.slug)}`, { method: 'DELETE' });
+    if (currentBundleId && s) {
+      await api(`/api/bundles/${currentBundleId}/skills/${encodeURIComponent(s.slug)}`, { method: 'DELETE' });
       await refreshOutput();
     }
   }
 
-  async function ensureCookbook(): Promise<string | null> {
-    if (currentCookbookId) return currentCookbookId;
+  async function ensureBundle(): Promise<string | null> {
+    if (currentBundleId) return currentBundleId;
     const sel = $('composer-bundle') as HTMLSelectElement;
-    if (sel.value) { currentCookbookId = sel.value; return currentCookbookId; }
+    if (sel.value) { currentBundleId = sel.value; return currentBundleId; }
     const name = `Composer bundle ${new Date().toISOString().slice(0,10)}`;
     try {
       const r = await api('/api/bundles', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ name }) });
       if (r.status === 401) { toast('Sign in to compose.', 'error'); return null; }
       if (!r.ok) { toast('Could not create bundle.', 'error'); return null; }
       const cb = await r.json();
-      currentCookbookId = cb.id;
+      currentBundleId = cb.id;
       const o = document.createElement('option'); o.value = cb.id; o.textContent = cb.name; o.selected = true; sel.appendChild(o);
-      return currentCookbookId;
+      return currentBundleId;
     } catch { toast('Network error.', 'error'); return null; }
   }
 
   async function addToBasket(s: Skill) {
     if (inBasket(s)) return;
-    const cbId = await ensureCookbook();
+    const cbId = await ensureBundle();
     if (!cbId) return;
     const body: any = s.__community ? { slug: s.slug, external_source: s.source } : { slug: s.slug };
-    const r = await api(`/api/cookbooks/${cbId}/skills`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
+    const r = await api(`/api/bundles/${cbId}/skills`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
     if (r.status === 201 || r.status === 200) {
       basket.push(s); renderBasket(); renderResults();
       await persistOrder(); await refreshOutput();
@@ -1012,8 +1012,8 @@ import AppShell from '../layouts/AppShell.astro';
   }
 
   async function persistOrder() {
-    if (!currentCookbookId || !basket.length) return;
-    await api(`/api/cookbooks/${currentCookbookId}/reorder`, {
+    if (!currentBundleId || !basket.length) return;
+    await api(`/api/bundles/${currentBundleId}/reorder`, {
       method: 'PATCH', headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ order: basket.map(s => s.slug) }),
     }).catch(() => {});
@@ -1028,21 +1028,21 @@ import AppShell from '../layouts/AppShell.astro';
         x.classList.toggle('bg-accent/10', on); x.classList.toggle('text-accent', on); x.classList.toggle('font-medium', on);
         x.classList.toggle('text-muted', !on);
       });
-      if (currentCookbookId) {
-        await api(`/api/cookbooks/${currentCookbookId}/visibility`, { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ visibility: vis }) }).catch(() => {});
+      if (currentBundleId) {
+        await api(`/api/bundles/${currentBundleId}/visibility`, { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ visibility: vis }) }).catch(() => {});
         await refreshOutput();
       }
     });
   });
 
   async function refreshOutput() {
-    if (!currentCookbookId || !basket.length) { $('output-empty').classList.remove('hidden'); $('output-body').classList.add('hidden'); $('output-body').classList.remove('flex'); return; }
+    if (!currentBundleId || !basket.length) { $('output-empty').classList.remove('hidden'); $('output-body').classList.add('hidden'); $('output-body').classList.remove('flex'); return; }
     $('output-empty').classList.add('hidden'); $('output-body').classList.remove('hidden'); $('output-body').classList.add('flex');
-    let slug = currentCookbookId;
-    try { const r = await api(`/api/cookbooks/${currentCookbookId}`); if (r.ok) { const d = await r.json(); if (d.slug) slug = d.slug; } } catch {}
+    let slug = currentBundleId;
+    try { const r = await api(`/api/bundles/${currentBundleId}`); if (r.ok) { const d = await r.json(); if (d.slug) slug = d.slug; } } catch {}
     const shareUrl = currentVisibility === 'public'
       ? `${location.origin}/bundles/p?slug=${encodeURIComponent(String(slug))}`
-      : `loopskill_bundle_install(cookbook_id="${currentCookbookId}")`;
+      : `loopskill_bundle_install(cookbook_id="${currentBundleId}")`;
     ($('out-share') as HTMLElement).textContent = shareUrl;
     const lines = basket.map(s => s.__community
       ? `# ${s.slug} (community · ${s.source}) — install via bundle`
@@ -1078,10 +1078,10 @@ import AppShell from '../layouts/AppShell.astro';
 
   ($('composer-bundle') as HTMLSelectElement).addEventListener('change', async (e) => {
     const id = (e.target as HTMLSelectElement).value;
-    currentCookbookId = id || null;
+    currentBundleId = id || null;
     basket = [];
     if (id) {
-      try { const r = await api(`/api/cookbooks/${id}`); if (r.ok) { const d = await r.json();
+      try { const r = await api(`/api/bundles/${id}`); if (r.ok) { const d = await r.json();
         const sk = (d.skills || []).filter((x: any) => x.source !== 'disabled');
         basket = sk.map((x: any) => ({ slug: x.slug, title: x.title || x.slug, tier: x.tier, __community: x.source === 'external' }));
         currentVisibility = d.visibility || 'private';
@@ -1104,13 +1104,13 @@ import AppShell from '../layouts/AppShell.astro';
     el.textContent = msg; el.style.opacity = '1';
     setTimeout(() => { el!.style.transition = 'opacity .4s'; el!.style.opacity = '0'; }, 2800);
   }
-  function fleetCookbookName(id: string) { const cb = fleetBundles.find(c => c.id === id); return cb ? cb.name : id.slice(0, 8) + '…'; }
+  function fleetBundleName(id: string) { const cb = fleetBundles.find(c => c.id === id); return cb ? cb.name : id.slice(0, 8) + '…'; }
 
   function fleetCard(f: any): string {
     const subs = f.subscriptions || [];
     const subsHtml = subs.length
       ? subs.map((s: any) => `<div class="flex items-center justify-between gap-2 px-3 py-2 rounded-lg bg-bg-elev border border-border-soft text-xs">
-          <span class="text-text truncate">${esc(fleetCookbookName(s.cookbook_id))}</span>
+          <span class="text-text truncate">${esc(fleetBundleName(s.bundle_id ?? s.cookbook_id))}</span>
           <span class="text-[10px] uppercase tracking-wide px-1.5 py-0.5 rounded-full border border-accent/30 text-accent">${esc(s.channel)}</span>
         </div>`).join('')
       : '<p class="text-xs text-muted-soft px-1 py-2">No bundles subscribed yet.</p>';
@@ -1139,12 +1139,12 @@ import AppShell from '../layouts/AppShell.astro';
     </div>`;
   }
 
-  async function loadFleetCookbooks() {
+  async function loadFleetBundles() {
     try { const r = await api('/api/bundles'); if (r.ok) { const d = await r.json(); fleetBundles = (d.bundles || d.items || d || []); } } catch {}
   }
 
   async function loadFleets() {
-    await loadFleetCookbooks();
+    await loadFleetBundles();
     const wrap = $('fleets-list');
     const r = await api('/api/fleets');
     if (r.status === 401) { window.location.href = '/signin?next=/library?tab=fleets'; return; }
@@ -1288,10 +1288,10 @@ import AppShell from '../layouts/AppShell.astro';
         btn.textContent = 'Sync ▸'; btn.disabled = false;
         if (r.ok) {
           const d = await r.json();
-          const synced = d.cookbooks_synced || [];
+          const synced = d.bundles_synced ?? d.cookbooks_synced ?? [];
           out.classList.remove('hidden');
           out.textContent = synced.length
-            ? synced.map((c: any) => `${fleetCookbookName(c.cookbook_id)}: ${(c.changes || []).length} change(s)${c.applied ? ' ✓ applied' : ''}`).join('\n')
+            ? synced.map((c: any) => `${fleetBundleName(c.bundle_id ?? c.cookbook_id)}: ${(c.changes || []).length} change(s)${c.applied ? ' ✓ applied' : ''}`).join('\n')
             : 'Nothing to sync — all agents already converged.';
           fleetToast('Sync complete.');
         } else { fleetToast(`Sync failed (HTTP ${r.status}).`, 'error'); }
@@ -1381,7 +1381,7 @@ import AppShell from '../layouts/AppShell.astro';
 
   async function loadFeedbackConfig(cbId: string, card: HTMLElement) {
     try {
-      const r = await api(`/api/cookbooks/${cbId}/feedback-config`);
+      const r = await api(`/api/bundles/${cbId}/feedback-config`);
       if (!r.ok) return;
       const d = await r.json();
       const cur = card.querySelector('.ck-fb-current') as HTMLElement;
@@ -1401,7 +1401,7 @@ import AppShell from '../layouts/AppShell.astro';
     mintBtn?.addEventListener('click', async () => {
       const scope = (card.querySelector('.ck-scope') as HTMLSelectElement).value;
       mintBtn.textContent = 'Minting…'; mintBtn.disabled = true;
-      const r = await api(`/api/cookbooks/${cbId}/share-tokens`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ name: `handoff-${scope}`, scope }) });
+      const r = await api(`/api/bundles/${cbId}/share-tokens`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ name: `handoff-${scope}`, scope }) });
       mintBtn.textContent = 'Mint key'; mintBtn.disabled = false;
       if (r.status === 201 || r.status === 200) {
         const d = await r.json();
@@ -1419,14 +1419,14 @@ import AppShell from '../layouts/AppShell.astro';
       const repo = (card.querySelector('.ck-fb-repo') as HTMLInputElement).value.trim();
       const pat = (card.querySelector('.ck-fb-pat') as HTMLInputElement).value.trim();
       if (!repo || !pat) { deliveryToast('Repo and PAT required.', 'error'); return; }
-      const r = await api(`/api/cookbooks/${cbId}/feedback-config`, { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ repo, mode: 'pat', pat }) });
+      const r = await api(`/api/bundles/${cbId}/feedback-config`, { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ repo, mode: 'pat', pat }) });
       if (r.ok) { deliveryToast('Feedback bound to ' + repo); (card.querySelector('.ck-fb-pat') as HTMLInputElement).value = ''; loadFeedbackConfig(cbId, card); }
       else { const d = await r.json().catch(() => ({})); deliveryToast(typeof d.detail === 'string' ? d.detail : 'Bind failed.', 'error'); }
     });
 
     const clearBtn = card.querySelector('.ck-fb-clear') as HTMLButtonElement;
     clearBtn?.addEventListener('click', async () => {
-      const r = await api(`/api/cookbooks/${cbId}/feedback-config`, { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ repo: null }) });
+      const r = await api(`/api/bundles/${cbId}/feedback-config`, { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ repo: null }) });
       if (r.ok) { deliveryToast('Reverted to default routing.'); loadFeedbackConfig(cbId, card); }
       else { deliveryToast('Clear failed.', 'error'); }
     });
@@ -1434,7 +1434,7 @@ import AppShell from '../layouts/AppShell.astro';
 
   async function loadTokens(cbId: string, card: HTMLElement) {
     try {
-      const r = await api(`/api/cookbooks/${cbId}/share-tokens`);
+      const r = await api(`/api/bundles/${cbId}/share-tokens`);
       if (!r.ok) return;
       const d = await r.json();
       const toks = (d.tokens || d || []);
@@ -1462,7 +1462,7 @@ import AppShell from '../layouts/AppShell.astro';
       return;
     }
     const details = await Promise.all(cbs.map(async (cb: any) => {
-      try { const d = await api(`/api/cookbooks/${cb.id}`); return d.ok ? await d.json() : cb; } catch { return cb; }
+      try { const d = await api(`/api/bundles/${cb.id}`); return d.ok ? await d.json() : cb; } catch { return cb; }
     }));
     wrap.innerHTML = details.map(deliverableCard).join('');
     wrap.querySelectorAll<HTMLElement>('.cockpit-card').forEach(card => wireDeliveryCard(card));

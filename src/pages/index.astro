@@ -155,7 +155,7 @@ try {
 } catch {}
 
 // ─── Public-bundles rail (the shareable client stacks) ────────────────────
-// GET /api/cookbooks/discover is public + ranked by real installs.
+// GET /api/bundles/discover is public + ranked by real installs (/api/cookbooks/discover is the legacy alias).
 // NOTE: `theme` is an OBJECT ({label, accent, icon}) or null on the live API,
 // not a string — SkillCover's `category` prop expects a string it can
 // .toLowerCase(). Passing the raw theme object crashed the prerender build
@@ -167,11 +167,11 @@ type DiscoverCb = {
   skill_count?: number;
   theme?: { label?: string; accent?: string; icon?: string } | null;
 };
-let publicCookbooks: DiscoverCb[] = [];
+let publicBundles: DiscoverCb[] = [];
 try {
   const result = await fetchApi<{ bundles?: DiscoverCb[]; cookbooks?: DiscoverCb[]; items?: DiscoverCb[] }>('/api/bundles/discover?sort=installs&limit=8');
   const rows = result.ok && result.data ? (result.data.bundles || result.data.cookbooks || result.data.items || []) : [];
-  publicCookbooks = rows.filter(c => c.slug);
+  publicBundles = rows.filter(c => c.slug);
 } catch {} // Rationale: offline build — rail simply omits
 
 // ─── Drift-matrix columns — REAL catalog slugs + REAL versions ───────────
@@ -567,14 +567,14 @@ const stats: { num: string; label: string; live?: LiveOpts }[] = [
             </div>
 
             <div class="flex flex-col gap-4">
-              {publicCookbooks.length > 0 && (
+              {publicBundles.length > 0 && (
                 <div class="rounded-xl border border-border bg-bg-card/60 p-4">
                   <div class="flex items-center justify-between mb-3">
                     <p class="text-sm font-semibold text-text">Fork one of these instead of starting empty</p>
-                    <a href="/cookbooks" class="text-xs text-accent hover:opacity-80 shrink-0 ml-2">All →</a>
+                    <a href="/browse?type=bundles" class="text-xs text-accent hover:opacity-80 shrink-0 ml-2">All →</a>
                   </div>
                   <div class="flex gap-3 overflow-x-auto pb-2 -mx-1 px-1 snap-x">
-                    {publicCookbooks.slice(0, 6).map(cb => (
+                    {publicBundles.slice(0, 6).map(cb => (
                       <a href={`/bundles/p?slug=${cb.slug}`} class="skill-rail-card group shrink-0 w-[124px] snap-start">
                         <SkillCover slug={cb.slug!} title={cb.name} category={cb.theme?.icon || cb.theme?.label || 'general'} tier="bundle" />
                         <div class="mt-2 px-0.5">

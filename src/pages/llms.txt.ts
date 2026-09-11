@@ -355,14 +355,14 @@ export const GET: APIRoute = async () => {
     // fails at build time the section is omitted entirely (honest degradation,
     // never a fabricated slug).
     fetchApi<CompositeLoop[]>('/api/composite-loops', { authed: false }),
-    // mesh0408 T1-D: bundles (public cookbooks) — public, no key.
+    // mesh0408 T1-D: bundles (public bundle catalog) — public, no key.
     // 260901 fix: /api/cookbooks/discover returns { bundles: [...] } post
     // cookbook→bundle rename (P2, #92) — this still read the pre-rename
     // `cookbooks` key, so bundlesRes.data?.cookbooks was always undefined
     // and the ## Bundles section silently vanished from llms.txt despite
     // 10 live public bundles existing. Caught by loopskill-identity-canary.
     fetchApi<{ bundles?: CatalogBundle[]; cookbooks?: CatalogBundle[] }>(
-      '/api/cookbooks/discover?limit=24',
+      '/api/bundles/discover?limit=24',
       { authed: false }
     ),
     // mesh0408 T1-D: personalities — public, no key.
@@ -598,7 +598,8 @@ ${compositeLines.join('\n')}`
     : '';
 
   // mesh0408 T1-D — explicit per-type listing: bundles. Grounded in live
-  // /api/cookbooks/discover (public bundles, no key); omitted entirely if the
+  // /api/bundles/discover (public bundles, no key; /api/cookbooks/discover is
+  // the accepted legacy alias); omitted entirely if the
   // fetch failed rather than fabricating slugs.
   const bundles = (bundlesRes.data?.bundles ?? bundlesRes.data?.cookbooks ?? []).filter(
     (b: CatalogBundle) => b?.slug

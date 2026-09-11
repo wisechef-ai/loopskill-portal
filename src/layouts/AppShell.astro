@@ -293,7 +293,7 @@ const orgSchema = {
           </div>
         )}
         <div class={`border-t border-border px-3 py-3 shrink-0 ${isPublic ? 'hidden' : ''}`} data-shell-member>
-          <!-- Ambient fleet status (P4): "show don't tell" — live from /api/fleets + /api/cookbooks. -->
+          <!-- Ambient fleet status (P4): "show don't tell" — live from /api/fleets + /api/bundles. -->
           <p id="rail-fleet-status" class="hidden px-2 pb-2 text-[10px] text-muted-soft leading-relaxed"></p>
           <a href="/account" class={`flex items-center gap-2.5 px-2 py-2 rounded-lg transition ${active === 'account' ? 'bg-accent/12' : 'hover:bg-bg-card'}`}>
             <span id="rail-avatar" class="w-7 h-7 rounded-full bg-bg-card border border-border flex items-center justify-center text-xs font-semibold overflow-hidden shrink-0">·</span>
@@ -408,13 +408,13 @@ const orgSchema = {
         if (planEl) planEl.textContent = (paidActive && tier !== 'free') ? tier.replace('_', '+') : 'free';
 
         // Live bundle rail — "Recent bundles" preview, max 5 (§1: no plus button).
-        let userCookbooks: any[] = [];
+        let userBundles: any[] = [];
         try {
-          const cbRes = await fetch('/api/cookbooks', { credentials: 'include' });
+          const cbRes = await fetch('/api/bundles', { credentials: 'include' });
           if (cbRes.ok) {
             const data = await cbRes.json();
             const cbooks = (data && (data.bundles || data.cookbooks)) || []; // bundles key canonical (issue #157 Ph 3); cookbooks fallback for pre-flip cached API
-            userCookbooks = cbooks;
+            userBundles = cbooks;
             const wrap = document.getElementById('rail-bundles');
             const empty = document.getElementById('rail-bundles-empty');
             if (wrap && cbooks.length) {
@@ -426,7 +426,7 @@ const orgSchema = {
           }
         } catch { /* rail is best-effort */ }
         // Kept for any surface still reading window.__shellCookbooks.
-        (window as any).__shellCookbooks = userCookbooks;
+        (window as any).__shellCookbooks = userBundles;
 
         // ── Ambient fleet status (P4) — honest numbers only, hidden when zero.
         try {
@@ -435,9 +435,9 @@ const orgSchema = {
             const fl = await flRes.json();
             const fleets = (fl && (fl.fleets || fl.items)) || [];
             const el = document.getElementById('rail-fleet-status');
-            if (el && (fleets.length || userCookbooks.length)) {
+            if (el && (fleets.length || userBundles.length)) {
               const bits: string[] = [];
-              if (userCookbooks.length) bits.push(`${userCookbooks.length} bundle${userCookbooks.length === 1 ? '' : 's'}`);
+              if (userBundles.length) bits.push(`${userBundles.length} bundle${userBundles.length === 1 ? '' : 's'}`);
               if (fleets.length) bits.push(`${fleets.length} fleet${fleets.length === 1 ? '' : 's'} syncing`);
               el.textContent = bits.join(' · ');
               el.classList.remove('hidden');

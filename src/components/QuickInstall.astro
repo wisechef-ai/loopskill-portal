@@ -1,6 +1,6 @@
 ---
 // QuickInstall — portal_0610 J5: the omnipresent, ?ref-attributed quick-install
-// block for a single skill OR a whole cookbook. Drop it on every skill detail
+// block for a single skill OR a whole bundle. Drop it on every skill detail
 // page and every bundle page so the install motion is always one copy away.
 //
 // HONESTY: shows the REAL motions only.
@@ -8,7 +8,7 @@
 //     motion) + the working signed-URL install endpoint
 //     `/api/skills/install?slug=X&ref=…` (the `ref` query param is consumed by
 //     install_routes for UTM attribution — verified live).
-//   - cookbook: `loopskill_bundle_install(slug="…")` (MCP) +
+//   - bundle:  `loopskill_bundle_install(slug="…")` (MCP) +
 //     `loopskill_bundle_install from "bundle://<slug>"` for a public one.
 // We do NOT emit a `curl /i/<slug> | bash` line — that endpoint 404s (it was
 // aspirational on the old skills page). Every line here actually works.
@@ -16,14 +16,14 @@
 // `ref` defaults to "portal" so installs originating from a page click are
 // attributable; pages can pass a more specific ref (e.g. "skill-page").
 interface Props {
-  kind: 'skill' | 'cookbook';
+  kind: 'skill' | 'bundle';
   slug: string;                 // skill slug OR bundle slug
-  cookbookId?: string;          // required for kind='cookbook' (MCP call uses id)
+  bundleId?: string;            // required for kind='bundle' (MCP call uses id)
   visibility?: string;          // bundle only: 'public' shows the bundle:// clone line
   ref?: string;                 // attribution carrier; default 'portal'
   class?: string;
 }
-const { kind, slug, cookbookId = '', visibility = 'private', ref = 'portal', class: extra = '' } = Astro.props;
+const { kind, slug, bundleId = '', visibility = 'private', ref = 'portal', class: extra = '' } = Astro.props;
 
 const API = import.meta.env.PUBLIC_LOOPSKILL_API_BASE || import.meta.env.PUBLIC_RECIPES_API_BASE || 'https://app.loopskill.io';
 const refQ = encodeURIComponent(ref);
@@ -31,13 +31,13 @@ const refQ = encodeURIComponent(ref);
 // Build the canonical lines for this artifact.
 const mcpLine = kind === 'skill'
   ? `loopskill_install(slug="${slug}")`
-  : `loopskill_bundle_install(slug="${cookbookId}")`;
+  : `loopskill_bundle_install(slug="${bundleId}")`;
 
 const urlLine = kind === 'skill'
   ? `${API}/api/skills/install?slug=${encodeURIComponent(slug)}&ref=${refQ}`
   : (visibility === 'public'
       ? `loopskill_bundle_install from "bundle://${slug}"`
-      : `${API}/api/cookbooks/${cookbookId}/install`);
+      : `${API}/api/bundles/${bundleId}/install`);
 
 const urlLabel = kind === 'skill'
   ? 'Signed install URL (curl-able with your API key)'
