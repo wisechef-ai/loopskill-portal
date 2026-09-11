@@ -39,11 +39,16 @@ import AppShell from '../../layouts/AppShell.astro';
       click <strong class="text-text">Mint key</strong>. The token is shown once — copy it before
       you close the dialog.
     </p>
-    <pre class="bg-[#0d0d0d] border border-border rounded-xl p-4 text-sm text-text overflow-x-auto mb-10"><code>POST /api/bundles/{`{bundle_id}`}/share-tokens
-x-api-key: rec_live_your_key
+    <pre class="bg-[#0d0d0d] border border-border rounded-xl p-4 text-sm text-text overflow-x-auto mb-4"><code>POST /api/bundles/{`{bundle_id}`}/share-tokens
+x-api-key: ***
 content-type: application/json
 
 {`{"name": "handoff-install", "scope": "install"}`}</code></pre>
+    <p class="text-xs text-muted-soft leading-relaxed mb-10">
+      <code class="text-xs bg-bg-elev rounded px-1">/api/cookbooks/*</code> still works as a
+      backward-compatible alias for every endpoint on this page — new integrations should use
+      <code class="text-xs bg-bg-elev rounded px-1">/api/bundles</code>.
+    </p>
 
     <!-- Scopes -->
     <h2 class="text-xl font-semibold text-text mb-4">The three scopes</h2>
@@ -104,7 +109,7 @@ content-type: application/json
     <p class="text-xs text-muted-soft leading-relaxed mb-10">
       Empty <code class="text-xs bg-bg-elev rounded px-1">arguments</code> installs every active
       skill in the token's scoped bundle (bulk); the client's agent never sees a bundle ID or a
-      bundle UUID — the token already carries the scope, per the MCP tool description in the
+      cookbook UUID — the token already carries the scope, per the MCP tool description in the
       live registry ("cbt_token callers may omit cookbook_id — it defaults to the token's scoped
       bundle"). The full initialize/session handshake this call needs is the same one every MCP
       call uses — see <a href="/docs/mcp" class="text-accent hover:underline">MCP setup</a>.
@@ -119,7 +124,7 @@ content-type: application/json
     <ul class="flex flex-col gap-2 text-sm text-muted mb-10">
       <li class="flex items-start gap-2">
         <span class="text-muted-soft mt-0.5 shrink-0">✕</span>
-        <span>Any route outside <code class="text-xs bg-bg-elev rounded px-1">/api/bundles/*</code> (and its <code class="text-xs bg-bg-elev rounded px-1">/api/cookbooks/*</code> legacy alias) — your skill catalog, other bundles, account, billing — is rejected outright.</span>
+        <span>Any route outside <code class="text-xs bg-bg-elev rounded px-1">/api/bundles/*</code> (or its <code class="text-xs bg-bg-elev rounded px-1">/api/cookbooks/*</code> alias) — your skill catalog, other bundles, account, billing — is rejected outright.</span>
       </li>
       <li class="flex items-start gap-2">
         <span class="text-muted-soft mt-0.5 shrink-0">✕</span>
@@ -127,7 +132,7 @@ content-type: application/json
       </li>
       <li class="flex items-start gap-2">
         <span class="text-muted-soft mt-0.5 shrink-0">✕</span>
-        <span>A different bundle's ID in the URL — the token is bound to one bundle at mint time, so a request for another bundle returns <code class="text-xs bg-bg-elev rounded px-1">403 token scope mismatch</code>.</span>
+        <span>A different bundle's ID in the URL — the token is bound to one cookbook at mint time, so a request for another bundle returns <code class="text-xs bg-bg-elev rounded px-1">403 token scope mismatch</code>.</span>
       </li>
     </ul>
 
