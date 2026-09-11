@@ -39,11 +39,16 @@ import AppShell from '../../layouts/AppShell.astro';
       click <strong class="text-text">Mint key</strong>. The token is shown once — copy it before
       you close the dialog.
     </p>
-    <pre class="bg-[#0d0d0d] border border-border rounded-xl p-4 text-sm text-text overflow-x-auto mb-10"><code>POST /api/cookbooks/{`{cookbook_id}`}/share-tokens
-x-api-key: rec_live_your_key
+    <pre class="bg-[#0d0d0d] border border-border rounded-xl p-4 text-sm text-text overflow-x-auto mb-4"><code>POST /api/bundles/{`{bundle_id}`}/share-tokens
+x-api-key: ***
 content-type: application/json
 
 {`{"name": "handoff-install", "scope": "install"}`}</code></pre>
+    <p class="text-xs text-muted-soft leading-relaxed mb-10">
+      <code class="text-xs bg-bg-elev rounded px-1">/api/cookbooks/*</code> still works as a
+      backward-compatible alias for every endpoint on this page — new integrations should use
+      <code class="text-xs bg-bg-elev rounded px-1">/api/bundles</code>.
+    </p>
 
     <!-- Scopes -->
     <h2 class="text-xl font-semibold text-text mb-4">The three scopes</h2>
@@ -119,7 +124,7 @@ content-type: application/json
     <ul class="flex flex-col gap-2 text-sm text-muted mb-10">
       <li class="flex items-start gap-2">
         <span class="text-muted-soft mt-0.5 shrink-0">✕</span>
-        <span>Any route outside <code class="text-xs bg-bg-elev rounded px-1">/api/cookbooks/*</code> — your skill catalog, other bundles, account, billing — is rejected outright.</span>
+        <span>Any route outside <code class="text-xs bg-bg-elev rounded px-1">/api/bundles/*</code> (or its <code class="text-xs bg-bg-elev rounded px-1">/api/cookbooks/*</code> alias) — your skill catalog, other bundles, account, billing — is rejected outright.</span>
       </li>
       <li class="flex items-start gap-2">
         <span class="text-muted-soft mt-0.5 shrink-0">✕</span>
@@ -137,12 +142,12 @@ content-type: application/json
       Rotate a token to invalidate the old value and issue a new one under the same record — useful
       if you suspect a leak but still want the client connected:
     </p>
-    <pre class="bg-[#0d0d0d] border border-border rounded-xl p-4 text-sm text-text overflow-x-auto mb-6"><code>POST /api/cookbooks/{`{cookbook_id}`}/share-tokens/{`{token_id}`}/rotate</code></pre>
+    <pre class="bg-[#0d0d0d] border border-border rounded-xl p-4 text-sm text-text overflow-x-auto mb-6"><code>POST /api/bundles/{`{bundle_id}`}/share-tokens/{`{token_id}`}/rotate</code></pre>
     <p class="text-muted mb-4">
       Revoke a token entirely from <a href="/library" class="text-accent hover:opacity-80 underline">/library</a>
       → Client delivery, or directly:
     </p>
-    <pre class="bg-[#0d0d0d] border border-border rounded-xl p-4 text-sm text-text overflow-x-auto mb-6"><code>DELETE /api/cookbooks/{`{cookbook_id}`}/share-tokens/{`{token_id}`}</code></pre>
+    <pre class="bg-[#0d0d0d] border border-border rounded-xl p-4 text-sm text-text overflow-x-auto mb-6"><code>DELETE /api/bundles/{`{bundle_id}`}/share-tokens/{`{token_id}`}</code></pre>
     <p class="text-muted mb-10">
       Revocation is a soft-delete and takes effect immediately — the recipient's very next request
       gets <code class="text-xs bg-bg-elev rounded px-1">401 Invalid or revoked share token</code>.
