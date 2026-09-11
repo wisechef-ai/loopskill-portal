@@ -120,6 +120,24 @@ import AppShell from '../layouts/AppShell.astro';
               </div>
               <pre id="connect-agent-claude-json" class="font-mono text-[11px] bg-bg-elev border border-border rounded px-3 py-2 overflow-x-auto whitespace-pre"></pre>
             </div>
+
+            <!-- t_a2ba8443 — "Test connection": closes the revealed→first-use
+                 gap by letting the member fire one real authenticated call
+                 from the card. GET /api/connect/test authenticates with
+                 x-api-key (the SAME middleware path the member's agent
+                 uses), stamps last_used_at, and records the
+                 connect_agent.tested funnel event server-side. Both states
+                 rendered statically per Trap C: the reveal branch uses the
+                 displayed key; the generic branch shows a paste input (the
+                 plaintext key is never re-derivable there). -->
+            <div id="connect-agent-test-row" class="mt-1 pt-3 border-t border-border">
+              <div class="flex items-center gap-2 flex-wrap">
+                <button id="connect-agent-test-btn" type="button" class="px-3 py-2 rounded-lg border border-accent/50 text-accent text-xs font-semibold hover:bg-accent/10 shrink-0">Test connection</button>
+                <input id="connect-agent-test-key" type="password" placeholder="paste your API key (rec_live_…)" autocomplete="off" spellcheck="false"
+                       class="hidden font-mono text-xs bg-bg-elev border border-border rounded px-3 py-2 flex-1 min-w-[14rem]" />
+                <span id="connect-agent-test-status" class="text-xs text-muted" role="status" aria-live="polite"></span>
+              </div>
+            </div>
           </div>
         </div>
         <button id="connect-agent-dismiss" type="button" class="text-muted-soft hover:text-text text-lg leading-none px-1 shrink-0" aria-label="Dismiss">✕</button>
@@ -475,6 +493,9 @@ import AppShell from '../layouts/AppShell.astro';
         yamlEl.textContent = revealRes.config_blocks.hermes_yaml || '';
         jsonEl.textContent = revealRes.config_blocks.claude_desktop_json || '';
       }
+      // t_a2ba8443: reveal branch — the plaintext key IS on screen, test
+      // with it directly (no paste step).
+      connectAgentTestKeySource = 'reveal';
     } else {
       // Reveal already consumed / expired (returning session): show the
       // generic nudge with a placeholder config block — no plaintext key
@@ -489,10 +510,84 @@ import AppShell from '../layouts/AppShell.astro';
         null,
         2,
       );
+      // t_a2ba8443: generic branch — no plaintext key available; the
+      // paste input appears next to the button on first click.
+      connectAgentTestKeySource = 'generic';
     }
 
     card.hidden = false;
   }
+
+  // ── t_a2ba8443 — Test connection (revealed → first-use activation) ──────
+  // Fires one real authenticated call (GET /api/connect/test with the
+  // x-api-key header) — the SAME middleware path the member's agent uses,
+  // so a successful test stamps last_used_at AND records the
+  // connect_agent.tested funnel event server-side. UI states: 'reveal'
+  // uses the on-screen key; 'generic' reveals a paste input first (the
+  // plaintext key is never re-derivable there). Fail-quiet: every failure
+  // lands in the inline status line; the card stays fully functional.
+  let connectAgentTestKeySource: 'reveal' | 'generic' | null = null;
+  let connectAgentTestBusy = false;
+
+  async function runConnectAgentTest(): Promise<void> {
+    const btn = $('connect-agent-test-btn') as HTMLButtonElement | null;
+    const status = $('connect-agent-test-status');
+    const keyInput = $('connect-agent-test-key') as HTMLInputElement | null;
+    if (!btn || !status || connectAgentTestBusy) return;
+
+    let key = '';
+    if (connectAgentTestKeySource === 'reveal') {
+      key = ($('connect-agent-key')?.textContent || '').trim();
+    } else {
+      // First click in the generic branch reveals the paste input and
+      // stops there; a second click (with a key pasted, or Enter) tests.
+      if (keyInput && keyInput.classList.contains('hidden')) {
+        keyInput.classList.remove('hidden');
+        keyInput.style.display = '';
+        keyInput.focus();
+        status.textContent = 'Paste the API key from your account page, then click Test connection again.';
+        return;
+      }
+      key = (keyInput?.value || '').trim();
+      if (!key) {
+        status.textContent = 'Paste your API key first — it starts with rec_live_.';
+        return;
+      }
+    }
+
+    connectAgentTestBusy = true;
+    btn.disabled = true;
+    status.textContent = 'Testing…';
+    try {
+      const res = await fetch('/api/connect/test', {
+        headers: { 'x-api-key': key },
+      });
+      if (res.ok) {
+        status.textContent = '✓ Connected';
+        status.classList.remove('text-muted');
+        status.classList.add('text-accent');
+      } else if (res.status === 401) {
+        status.textContent = 'That key was rejected (401). Check you copied the full rec_live_ key — it is shown once, right after signup; a new one can be minted on your account page.';
+      } else {
+        status.textContent = `LoopSkill API returned an error (${res.status}). Try again in a moment — your config is unchanged.`;
+      }
+    } catch {
+      status.textContent = 'Could not reach app.loopskill.io. Check your network and try again.';
+    } finally {
+      connectAgentTestBusy = false;
+      btn.disabled = false;
+    }
+  }
+
+  $('connect-agent-test-btn')?.addEventListener('click', () => {
+    void runConnectAgentTest();
+  });
+  $('connect-agent-test-key')?.addEventListener('keydown', (e) => {
+    if ((e as KeyboardEvent).key === 'Enter') {
+      e.preventDefault();
+      void runConnectAgentTest();
+    }
+  });
 
   $('connect-agent-dismiss')?.addEventListener('click', () => {
     sessionStorage.setItem(CONNECT_AGENT_DISMISS_KEY, '1');
