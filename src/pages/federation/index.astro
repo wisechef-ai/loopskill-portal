@@ -25,7 +25,7 @@
 import AppShell from '../../layouts/AppShell.astro';
 import Icon from '../../components/Icon.astro';
 import LiveCount from '../../components/LiveCount.astro';
-import { getFederationOverview } from '../../lib/federation';
+import { getFederationOverview, isAggregatorSource } from '../../lib/federation';
 
 const overview = await getFederationOverview();
 const siteURL = 'https://app.loopskill.io';
@@ -121,14 +121,29 @@ const datasetSchema = (overview.ok && overview.total && overview.sources.length 
                 <tr class="border-b border-border-soft last:border-0 hover:bg-bg-card/40 transition">
                   <td class="px-4 py-3 font-medium text-text whitespace-nowrap">
                     <a href={`/federation/${s.slug}/`} class="hover:text-accent transition">{s.meta.name}</a>
+                    {isAggregatorSource(s.slug) && (
+                      <span class="ml-2 align-middle text-[10px] uppercase tracking-wide font-medium text-muted-soft border border-border rounded px-1.5 py-0.5">aggregator</span>
+                    )}
                   </td>
                   <td class="px-4 py-3 text-muted-soft">{s.meta.description}</td>
-                  <td class="px-4 py-3 text-right text-text tabular-nums">{s.total.toLocaleString()}</td>
+                  <td class="px-4 py-3 text-right text-text tabular-nums">
+                    {s.total.toLocaleString()}
+                    {isAggregatorSource(s.slug) && (
+                      <span class="block text-[11px] text-muted-soft font-normal">already counted below</span>
+                    )}
+                  </td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
+        <p class="mt-3 text-xs text-muted-soft max-w-3xl">
+          <strong class="text-muted">Why this column does not sum to the total.</strong> Rows marked
+          <span class="mx-1 text-[10px] uppercase tracking-wide border border-border rounded px-1 py-0.5">aggregator</span>
+          re-index skills that are already listed under their own upstream registry, so adding every row
+          would count the same skill twice. The headline figure above is the de-duplicated index: each
+          skill counted once, at the origin it actually lives at.
+        </p>
       </section>
     )}
 

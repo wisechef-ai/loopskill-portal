@@ -53,6 +53,40 @@
 
 import { fetchApi } from './api';
 
+/**
+ * AGGREGATOR sources (fedagg_0914) — slugs that are NOT upstream registries
+ * but wrappers that re-index OTHER sources already listed in this table.
+ * Their `indexed` count OVERLAPS the direct taps and must never be summed
+ * alongside them, or the page publishes a doubled total.
+ *
+ * `hermes-hub` proven by full enumeration of the federated index on
+ * 2026-09-14 (all 100,361 rows walked via GET /api/federation/filter):
+ *   - `?source=hermes-hub` returns 0 rows — nothing is natively ITS own
+ *   - every row carries `federated_source: "hermes-hub"` while its real
+ *     `upstream_source` is one of clawhub (78,243) / skills-sh (20,000) /
+ *     github (1,001) / lobehub (505) / browse-sh (467) / official (145),
+ *     summing to exactly 100,361.
+ * The API's own `per_source['hermes-hub'].deduped_indexed` (80,361 at that
+ * walk) is the honest de-duplicated figure.
+ */
+export const AGGREGATOR_SLUGS: ReadonlySet<string> = new Set(['hermes-hub']);
+
+/** True when `slug` re-indexes other listed sources rather than being one. */
+export function isAggregatorSource(slug: string): boolean {
+  return AGGREGATOR_SLUGS.has(slug);
+}
+
+/**
+ * Sum of DIRECT upstream taps only — aggregator rows excluded so the figure
+ * can never double-count. Use this anywhere a total is derived from the
+ * per-source column; never `sources.reduce(+total)` over the raw list.
+ */
+export function directTapTotal(sources: ReadonlyArray<{ slug: string; total: number }>): number {
+  return sources
+    .filter((s) => !isAggregatorSource(s.slug))
+    .reduce((acc, s) => acc + (Number.isFinite(s.total) ? s.total : 0), 0);
+}
+
 export interface FederationEntry {
   slug: string;
   title: string;
@@ -164,7 +198,8 @@ export const FALLBACK_SOURCE_SLUGS: string[] = [
 const SOURCE_META: Record<string, { name: string; description: string }> = {
   'hermes-hub': {
     name: 'Hermes Hub',
-    description: 'Nous Research bundled skills (MIT) — the largest single upstream source in the federated index.',
+    description:
+      'An aggregator, not an upstream registry: Nous Research bundles skills re-indexed from ClawHub, skills.sh and the GitHub taps listed below. Its entries are already counted in those rows — it is shown for provenance, never added to the total.',
   },
   'skills-sh': {
     name: 'skills.sh',
@@ -498,3 +533,11 @@ export async function getFederationSourcePages(): Promise<FederationSourcePage[]
   const overview = await getFederationOverview();
   return overview.sources;
 }
+
+/**
+ * Read-only view of SOURCE_META for tests (fedagg_0914). Exported so the
+ * aggregator-disclosure copy is pinned by a regression test without widening
+ * the module's real API surface — do not mutate.
+ */
+export const SOURCE_META_TEST_VIEW: Readonly<Record<string, { name: string; description: string }>> =
+  SOURCE_META;
