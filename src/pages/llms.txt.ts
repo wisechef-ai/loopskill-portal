@@ -101,6 +101,10 @@ interface WellKnownRegistration {
   request_fields?: Record<string, string>;
   constraints?: Record<string, number>;
   errors?: Record<string, string[]>;
+  // coldstart_0927: the API's 0.9.51 agent.json publishes the SUCCESS
+  // contract next to errors. Older snapshots lack it — the builder then
+  // renders the honest 'treat 200 and 201 both as success' fallback.
+  success?: { status?: number; description?: string };
   grants?: string[];
   denies?: string[];
   issues?: {
@@ -194,7 +198,19 @@ export function coldStartSection(agent: WellKnownAgent | null | undefined): stri
       reg?.issues?.shown_once === false
         ? ''
         : ' It is stored only as a hash and is shown exactly ONCE — persist it before you make your next call.';
-    return `- On success you get \`200\` with an \`api_key\`${shape}.${once}`;
+    // coldstart_0927: the success status is DERIVED from
+    // registration.success.status (served by the API since 0.9.51), never a
+    // local literal. The hardcoded `200` here was wrong — the route answers
+    // 201 — and a strict cold client discarded its shown-once key over the
+    // mismatch (eval run 20260927-df5287dd). Fallback says '201 or 200'
+    // because that is the honest accept-set for an API snapshot older than
+    // the field; a bare number that might be wrong is the defect, not the fix.
+    const status = reg?.success?.status;
+    const statusText =
+      typeof status === 'number'
+        ? `\`${status}\``
+        : `\`201\` (or \`200\` — treat both as success; see \`registration.success\` at ${wellKnown})`;
+    return `- On success you get ${statusText} with an \`api_key\`${shape}.${once}`;
   })();
 
   return `## Cold start — you have no key yet (enroll → search → install)
