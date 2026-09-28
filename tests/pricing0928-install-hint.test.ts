@@ -61,8 +61,8 @@ afterAll(() => {
   server?.kill();
 });
 
-function runInstall(env: Record<string, string>): string {
-  return execFileSync('bash', [INSTALL_SH, 'hint-demo'], {
+function runInstall(env: Record<string, string>, slug = 'hint-demo'): string {
+  return execFileSync('bash', [INSTALL_SH, slug], {
     env: { PATH: process.env.PATH ?? '', HOME: work, LOOPSKILL_API_BASE: base, LOOPSKILL_INSTALL_DIR: join(work, 'out'), ...env },
     encoding: 'utf-8',
   });
@@ -81,6 +81,12 @@ describe('install.sh account hint', () => {
     // Comes after the success line: installing never waits on it.
     expect(out.indexOf('Done.')).toBeLessThan(out.indexOf('Optional, free'));
     expect(out.match(/Optional, free/g)?.length).toBe(1);
+  });
+
+  it('attributes a pinned slug@version install to the base slug', () => {
+    const out = runInstall({}, 'hint-demo@1.0.0');
+    const hint = out.trim().split('\n').pop() ?? '';
+    expect(hint).toMatch(/utm_campaign=hint-demo$/);
   });
 
   it('prints no hint for a caller who already has a key', () => {
