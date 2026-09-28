@@ -101,3 +101,10 @@ rm -f /tmp/loopskill_install_$$.json
 
 echo ""
 echo "Done. Tell your agent: \"You have a new skill in ${DEST}/${SLUG} — read its SKILL.md and follow it.\""
+# pricing0928 (t_7f5808d2): one optional account line, anonymous installs only.
+# Never a gate: the skill is already installed above. The utm_* params survive
+# the OAuth hop (api: app/services/signup_attribution.py); ?ref= would not.
+if [ -z "${LOOPSKILL_API_KEY:-}" ]; then
+  # slug@1.2.3 pins a version; attribute it to the skill (/signin drops '@').
+  echo "Optional, free: sign in to save '${SLUG}' to a bundle and keep it in sync across your agents: ${API_BASE}/signin?next=/library&utm_source=install&utm_medium=cli&utm_campaign=${SLUG%%@*}"
+fi

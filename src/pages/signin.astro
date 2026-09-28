@@ -110,6 +110,21 @@ const isSignup = mode === 'signup';
       }
     }
 
+    // (d) pricing0928: utm_* passthrough. The API's /api/auth/*/login stamps
+    //     these into a cookie that survives OAuth and lands on User.utm_* at
+    //     signup (api: app/services/signup_attribution.py). The install path's
+    //     account hint links here with utm_source=install&utm_campaign=<slug>;
+    //     without this relay the attribution died on this page. The server
+    //     re-validates and length-bounds every value; this only filters shape.
+    ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content'].forEach(function (k) {
+      var v = p.get(k);
+      if (!v || !/^[A-Za-z0-9._:-]{1,64}$/.test(v)) return;
+      ['google-login', 'github-login'].forEach(function (id) {
+        var a = document.getElementById(id);
+        if (a) a.href += (a.href.indexOf('?') === -1 ? '?' : '&') + k + '=' + encodeURIComponent(v);
+      });
+    });
+
     // (b) Already-authed short-circuit. Use credentials so the JWT cookie travels.
     fetch('/api/auth/me', { credentials: 'include' })
       .then(function (r) {
