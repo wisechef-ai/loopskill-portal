@@ -136,7 +136,10 @@ describe('#218 — llms.txt install line documents the required slug param', () 
   const src = readSrc(LLMS_TXT_SRC);
 
   it('the install endpoint line includes ?slug=<slug>, not a bare path', () => {
-    expect(src).toMatch(/Install \(returns a signed tarball\).*\/api\/skills\/install\?slug=/);
+    // coldstart_1003: label extended to cross-reference the funnel ("the Step 3
+    // route for curated skills") — the pin's intent (install line carries
+    // ?slug=<slug>, not a bare path) is unchanged.
+    expect(src).toMatch(/Install \(curated slug → signed tarball[^)]*\).*\/api\/skills\/install\?slug=/);
   });
 });
 

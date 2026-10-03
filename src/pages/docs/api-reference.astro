@@ -3,6 +3,13 @@ import AppShell from '../../layouts/AppShell.astro';
 import CrossSell from '../../components/CrossSell.astro';
 
 // Pre-built code strings to avoid JSX curly-brace escaping issues
+// coldstart_1003: both examples below are pinned to the LIVE wire shape
+// (verified 2026-10-03 against prod): GET /api/skills/search returns
+// {total, results, backend, hybrid_augmented, ...}; GET /api/skills/install
+// returns the InstallResponse envelope (app/schemas.py) — checksum_sha256 is
+// the sha256 of the tarball bytes at tarball_url. The previous examples
+// documented a cdn.loopskill.io URL and a manifest.signature field that do
+// not exist in any response this API emits.
 const searchResponseEx = `{
   "total": 63,
   "results": [
@@ -15,21 +22,19 @@ const searchResponseEx = `{
       "last_verified": "2026-05-01",
       "category": "marketing"
     }
-  ]
+  ],
+  "backend": "postgres",
+  "hybrid_augmented": false
 }`;
 
 const installResponseEx = `{
   "slug": "super-memory",
-  "version": "1.4.2",
-  "tarball_url": "https://cdn.loopskill.io/skills/super-memory-1.4.2.tar.gz?token=...",
-  "manifest": {
-    "files": [
-      {"path": "SKILL.md", "sha256": "abc123..."},
-      {"path": "scripts/setup.sh", "sha256": "def456..."}
-    ],
-    "signature": "ed25519:base64...",
-    "signed_at": "2026-05-01T00:00:00Z"
-  }
+  "version": "1.0.2",
+  "tarball_url": "https://app.loopskill.io/api/skills/_download?token=eyJ...",
+  "checksum_sha256": "116bc81fce14d50dbfef15ed7280dd544b3bc78cb96f2364ddb964bd62d42cf1",
+  "size_bytes": 8393,
+  "expires_at": "2026-10-03T01:39:28Z",
+  "manifest": {"category": "automation", "tags": [], "tier": "free"}
 }`;
 
 const accessGrantedEx = `{"access": true, "tier": "pro", "slug": "seo-audit-engine"}`;
@@ -104,8 +109,7 @@ const telemetryBodyEx = `{
       </ul>
       <p><strong>Response 200:</strong></p>
       <pre><code set:text={installResponseEx}></code></pre>
-      <p><strong>Errors:</strong> <code>401</code> (no/invalid key), <code>403</code> (tier required),
-      <code>404</code> (slug not found).</p>
+      <p><strong>Errors:</strong> <code>401</code>/<code>403</code> (locked or private skill — gated content, not a bad key), <code>404</code> (slug not found). Verify the downloaded tarball's sha256 against <code>checksum_sha256</code> before unpacking.</p>
 
       <h3>GET /api/skills/access</h3>
       <p>Auth required. Pre-flight check before install — confirms tier without consuming an install slot.</p>

@@ -89,7 +89,10 @@ describe('llms.txt.ts source — five-group fetch + render wiring', () => {
 
   it('the five type sections appear in catalog order after the skill install line', () => {
     const idx = {
-      install: txt.indexOf('Install (returns a signed tarball)'),
+      // coldstart_1003: label extended to cross-reference the funnel — the
+      // pin's intent (locate the REST install line as the anchor for the
+      // per-type section ordering) is unchanged.
+      install: txt.indexOf('Install (curated slug'),
       loops: txt.indexOf('## Runnable loops'),
       composites: txt.indexOf('## Composite loops'),
       bundles: txt.indexOf('## Bundles'),
