@@ -226,17 +226,17 @@ ${fields}
 ${issuedLine}${grantLine}${constraintLine}${errorLine}
 
 ### Step 2 — Search: find a skill
-**Every MCP call must carry your key in the \`${keyHeader}\` header.** Omit it and the server answers \`401 {"detail":"Invalid or missing ${keyHeader} header"}\` — that 401 is the single most common reason a cold agent stops here. It is not a rejection of your agent; it means you have not done Step 1 yet.
-- MCP endpoint: \`POST ${mcpPost}\` (streamable-http; \`${keyHeader}: <your key>\`). Post to the trailing-slash form — \`${mcpUrl}\` answers \`307\` to it, and a client that does not follow redirects on POST will fail its first call. Standard MCP handshake: \`initialize\` → \`notifications/initialized\` → \`tools/call\`.
-- \`loopskill_search\` — the curated-catalog search tool. Arguments: \`query\`, and optionally \`category\`, \`tier\`, \`limit\`. Response: \`{results, total, backend, hybrid_augmented}\`.
-- **Not using MCP, or want the federated superset?** \`GET ${SITE}/api/skills/metasearch?q=<query>\` is public — no key, no headers. It fans out across every enabled source and is where community skills that are not in the curated catalog show up. Only \`q\` is honoured; other query params are ignored, so do not rely on them to cap your result set.
+- MCP (needs the Step-1 key): endpoint \`POST ${mcpPost}\` (streamable-http; post to the trailing-slash form — \`${mcpUrl}\` answers \`307\`). Every MCP call carries \`${keyHeader}\`; a \`401 {"detail":"Invalid or missing ${keyHeader} header"}\` means you have not done Step 1 yet, not that you are rejected. First call: \`loopskill_search\` — arguments \`query\`, and optionally \`category\`, \`tier\`, \`limit\`; response \`{results, total, backend, hybrid_augmented}\`.
+- REST, curated catalog (no key): \`GET ${SITE}/api/skills/search?q=<query>\` — returns \`{results, total, backend, hybrid_augmented}\`; each row's \`slug\` is the identifier for the curated install route in Step 3.
+- REST, federated superset (no key): \`GET ${SITE}/api/skills/metasearch?q=<query>\` fans out across every enabled source and is where community skills that are not in the curated catalog show up. Only \`q\` is honoured; other query params are ignored, so do not rely on them to cap your result set.
 - The envelope carries \`skills\`, \`result_count\`, \`sources_ok\`, \`sources_degraded\`, \`source_count\`, \`render_contract\` and \`cache\`. Freshness is reported honestly, never faked: \`cache.cache_hit\`, \`cache.cache_age_s\` and \`cache.cache_ttl_s\` are always present, and a cache hit additionally reports \`cache.cache_stale\`. Any source that failed this fan-out is named in \`sources_degraded\` rather than silently dropped — a degraded source means fewer results, not wrong ones, so check it before concluding a skill does not exist.
-- Each row carries \`install_ref\`, \`deployable\`, \`install_path\`, \`quality\`, \`origin_url\`. **\`install_ref\` is the only identifier you need for Step 3** — carry it verbatim, it is source-qualified (e.g. \`skills-sh:trailhq--graft--graft\`).
+- Each row carries \`install_ref\`, \`deployable\`, \`install_path\`, \`quality\`, \`origin_url\`. \`install_ref\` is what Step 3 needs for a FEDERATED row — carry it verbatim, it is source-qualified (e.g. \`skills-sh:trailhq--graft--graft\`). A row from the curated catalog route instead carries a plain \`slug\`, and that \`slug\` is what Step 3's curated route takes.
 - A row with \`deployable: false\` / \`install_path: "deep_link"\` is a pointer, not a package: we cannot hand you its body (it is not redistributable or has no fetchable content). Go to its \`origin_url\`. Do not treat it as an install failure.
 
 ### Step 3 — Install: fetch the skill body
-- MCP: \`loopskill_install\`. Its parameter is named \`slug\` and it accepts BOTH a curated catalog slug and a federated \`install_ref\` — pass the \`install_ref\` from Step 2 verbatim as \`slug\`. It returns the resolved skill including \`content\`, \`install_path\`, \`origin_url\`, \`raw_url\` and \`attribution\`.
-- Not using MCP: \`GET ${SITE}/api/skills/metasearch/install?install_ref=<install_ref>\` — public, no key. Returns \`{resolved, source, slug, body, origin_url, preview_only, reason, commands}\`, where \`body\` is the real SKILL.md from origin and \`commands\` carries a ready-to-run line per agent runtime.
+Which route depends on which identifier you hold. The MCP tool \`loopskill_install\` (parameter named \`slug\`) accepts BOTH identifier kinds — curated slug and federated \`install_ref\` verbatim.
+- Curated catalog skill (plain \`slug\` from \`/api/skills/search\` or the catalog pages): \`GET ${SITE}/api/skills/install?slug=<slug>\` — public, no key for public skills. Returns a signed tarball envelope \`{slug, version, tarball_url, checksum_sha256, size_bytes, expires_at, manifest}\`; download \`tarball_url\` and verify the sha256 of the downloaded bytes against \`checksum_sha256\` before unpacking. A locked/private skill answers \`401\`/\`403\` — that means the skill, not you, is gated; pick a free-tier \`slug\` (the funnel's Step-2 rows carry \`tier\`).
+- Federated skill (a source-qualified \`install_ref\` from metasearch): MCP \`loopskill_install\` (pass the \`install_ref\` as its \`slug\` param) or, without a key, \`GET ${SITE}/api/skills/metasearch/install?install_ref=<install_ref>\` — public, no key. Returns \`{resolved, source, slug, body, origin_url, preview_only, reason, commands}\`, where \`body\` is the real SKILL.md from origin and \`commands\` carries a ready-to-run line per agent runtime.
 - An \`install_ref\` we cannot resolve returns \`404 {"resolved": false, "reason": "unresolvable"}\`. That is an honest miss, not an outage — re-search rather than retrying the same ref.
 - \`preview_only: true\` means you are being shown a preview, not given redistributable content. Respect it: fetch from \`origin_url\` and keep the \`attribution\`.
 
@@ -688,7 +688,7 @@ Or hit the public REST API directly (no key for read/search):
 - Search: \`GET ${SITE}/api/skills/search?q=<query>\`
 - Detail: \`GET ${SITE}/api/skills/{slug}\`
 - Trending: \`GET ${SITE}/api/skills/trending\`
-- Install (returns a signed tarball): \`GET ${SITE}/api/skills/install?slug=<slug>\`${supersetSection}${loopsSection}${compositesSection}${bundlesSection}${personalitiesSection}${connectorsSection}
+- Install (curated slug → signed tarball — the Step 3 route for curated skills): \`GET ${SITE}/api/skills/install?slug=<slug>\`${supersetSection}${loopsSection}${compositesSection}${bundlesSection}${personalitiesSection}${connectorsSection}
 
 ## Start free
 ${freeLine}
