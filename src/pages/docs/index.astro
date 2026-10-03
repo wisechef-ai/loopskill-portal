@@ -1,7 +1,5 @@
 ---
 import AppShell from '../../layouts/AppShell.astro';
-import CrossSell from '../../components/CrossSell.astro';
-
 // Typed explicitly rather than inferred. Every card used to carry a `badge`,
 // so the inferred union happened to have one; when mesh0408 W3 removed the two
 // stale badges ("Coming soon" on bundles, which are live, and "Not shipped" on
@@ -164,5 +162,4 @@ curl -sL https://app.loopskill.io/skill -o ~/.claude/skills/loopskill/SKILL.md</
       <p class="text-xs text-muted-soft mt-3">Then ask your agent: "Install the loopskill skill, then list available skills." Done.</p>
     </div>
   </section>
-  <CrossSell />
 </AppShell>
