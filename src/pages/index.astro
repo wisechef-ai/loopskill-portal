@@ -29,7 +29,6 @@
 // an invented slug would be both fabricated catalog data and a dead link.
 // ─────────────────────────────────────────────────────────────────────────────
 import AppShell from '../layouts/AppShell.astro';
-import CrossSell from '../components/CrossSell.astro';
 import Icon from '../components/Icon.astro';
 import AgentLogos from '../components/AgentLogos.astro';
 import NeuronAnimation from '../components/NeuronAnimation.astro';
@@ -381,7 +380,7 @@ const stats: { num: string; label: string; live?: LiveOpts }[] = [
 <AppShell
   mode="public"
   title="LoopSkill — the toolkit for deploying AI agents for clients"
-  description="Deploying AI agents for clients is a job now. LoopSkill is its toolkit: point an agent at the registry on day 1, hand your first client one install line, prove a whole fleet converged with drift-proof locks, then publish or refer for revenue. Open source (MPL-2.0), MCP-native, free tier, Pro $9.95/mo, self-hostable."
+  description="Deploying AI agents for clients is a job now. LoopSkill is its toolkit: point an agent at the registry on day 1, hand your first client one install line, prove a whole fleet converged with drift-proof locks, then publish or refer for revenue. Open source (MPL-2.0), MCP-native, self-hostable. Install any skill free — no account needed."
 >
   <!-- launch/hidden-levers-0901: hidden-by-default founding-member banner.
        Ships no price in static HTML; see FoundingBanner.astro header comment. -->
@@ -920,5 +919,4 @@ const stats: { num: string; label: string; live?: LiveOpts }[] = [
     </div>
   </section>
 
-  <CrossSell variant="banner" title="Skip building this yourself." body="WiseChef — the team behind LoopSkill — installs, updates, and runs this exact skill catalog for you, end-to-end, from $199/month." />
 </AppShell>
