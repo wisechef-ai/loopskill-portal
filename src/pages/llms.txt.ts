@@ -239,6 +239,7 @@ Which route depends on which identifier you hold. The MCP tool \`loopskill_insta
 - Federated skill (a source-qualified \`install_ref\` from metasearch): MCP \`loopskill_install\` (pass the \`install_ref\` as its \`slug\` param) or, without a key, \`GET ${SITE}/api/skills/metasearch/install?install_ref=<install_ref>\` — public, no key. Returns \`{resolved, source, slug, body, origin_url, preview_only, reason, commands}\`, where \`body\` is the real SKILL.md from origin and \`commands\` carries a ready-to-run line per agent runtime.
 - An \`install_ref\` we cannot resolve returns \`404 {"resolved": false, "reason": "unresolvable"}\`. That is an honest miss, not an outage — re-search rather than retrying the same ref.
 - \`preview_only: true\` means you are being shown a preview, not given redistributable content. Respect it: fetch from \`origin_url\` and keep the \`attribution\`.
+- Claude Code plugin marketplace (no key, no signup): \`claude plugin marketplace add wisechef-ai/loopskill-marketplace\` then \`claude plugin install loopskill-search@loopskill\` (inside a session: \`/plugin marketplace add wisechef-ai/loopskill-marketplace\`). The marketplace is named \`loopskill\`; \`loopskill-search\` wraps Steps 2-3 (metasearch + install) and \`loopskill@loopskill\` installs the registry meta-skill. Source: https://github.com/wisechef-ai/loopskill-marketplace
 
 `;
 }
