@@ -82,6 +82,30 @@ import Icon from '../../components/Icon.astro';
       </div>
     </div>
 
+    <!-- Claude Code plugin marketplace — keyless, one command (plugmkt_1009) -->
+    <div class="bg-bg-card border border-border rounded-2xl p-6 mb-10" id="claude-code-plugin">
+      <p class="eyebrow mb-3">Claude Code · Plugin marketplace (no key)</p>
+      <h2 class="text-xl font-semibold tracking-tight mb-3">Add the LoopSkill marketplace to Claude Code</h2>
+      <p class="text-sm text-muted mb-4 leading-relaxed">
+        LoopSkill publishes a Claude Code plugin marketplace at
+        <a href="https://github.com/wisechef-ai/loopskill-marketplace" class="text-accent hover:underline">wisechef-ai/loopskill-marketplace</a>.
+        Add it once, then install plugins by name. No signup and no key for the search plugin.
+      </p>
+      <p class="text-xs text-muted-soft uppercase tracking-wider font-semibold mb-2">Inside a Claude Code session</p>
+      <pre class="text-xs bg-[#0d0d0d] border border-border rounded-lg p-4 overflow-x-auto mb-4"><code>/plugin marketplace add wisechef-ai/loopskill-marketplace
+/plugin install loopskill-search@loopskill</code></pre>
+      <p class="text-xs text-muted-soft uppercase tracking-wider font-semibold mb-2">From a shell</p>
+      <pre class="text-xs bg-[#0d0d0d] border border-border rounded-lg p-4 overflow-x-auto mb-4"><code>claude plugin marketplace add wisechef-ai/loopskill-marketplace
+claude plugin install loopskill-search@loopskill</code></pre>
+      <p class="text-xs text-muted-soft leading-relaxed">
+        <code class="text-[11px] bg-bg-elev border border-border-soft rounded px-1 py-0.5">loopskill-search</code> runs one
+        query across the curated catalog and the federated sources, so your agent can find an existing skill before
+        writing one. <code class="text-[11px] bg-bg-elev border border-border-soft rounded px-1 py-0.5">loopskill@loopskill</code>
+        installs the registry meta-skill. Run <code class="text-[11px] bg-bg-elev border border-border-soft rounded px-1 py-0.5">/plugin</code>
+        to browse the rest of the marketplace.
+      </p>
+    </div>
+
     <!-- Meta-skill path — for non-MCP agents -->
     <div class="bg-bg-card border border-border rounded-2xl p-6 mb-10">
       <p class="eyebrow mb-3">Alternative · Meta-skill (Markdown file)</p>
