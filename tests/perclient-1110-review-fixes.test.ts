@@ -109,7 +109,9 @@ const SHELL_REWRITE = 'signin?next=${encodeURIComponent(window.location.pathname
 
 (built ? describe : describe.skip)('B. built use-case page: every sign-in/checkout link keeps uc-per-client', () => {
   const html = read(DIST_PAGE);
-  const script = signinScript(read(DIST_SIGNIN));
+  // describe.skip still RUNS this body at collection time — never touch dist/
+  // unless it exists (CI's unit step runs before `npm run build`).
+  const script = built ? signinScript(read(DIST_SIGNIN)) : '';
   const doc = new JSDOM(html).window.document;
   const anchors = [...doc.querySelectorAll('a[href]')].filter((a) => {
     const h = a.getAttribute('href') ?? '';

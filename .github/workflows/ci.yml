@@ -128,6 +128,7 @@ jobs:
           npx vitest run tests/spotify-2607-browse-renders.test.ts
           npx vitest run tests/mesh0408-w3-storefront-guards.test.ts
           npx vitest run tests/mesh0408-t1d-llms-txt-groups.test.ts
+          npx vitest run tests/perclient-1110-review-fixes.test.ts
 
       - name: Executable-docs gate — run every documented llms.txt / docs/* command
         # bundles_0811 P0. tests/p0-docs-commands-execute.test.ts consumes
