@@ -253,7 +253,7 @@ describe('D. review copy fixes', () => {
 
   it('the stay-on-Free line is scoped, and the tombstoned Pro-only endpoints are a reason not to buy', () => {
     const scoped =
-      'Only putting catalog skills in bundles and re-running the install to update? Stay on Free.';
+      'One client bundle is enough (your Liked list takes the other Free slot), and you only put catalog skills in it? Stay on Free.';
     for (const t of [src, md]) {
       expect(t).not.toContain('Not hitting the cap? Stay on Free.');
       expect(t).toContain(scoped);

@@ -39,6 +39,6 @@ The full copy-paste instruction for your agent, the cap message and when Pro is 
 
 Free includes 2 private bundles and 1 API key. The Liked bundle is private and is created when you first open your Library, so it uses one of the 2 slots: in practice, one client bundle on Free. Pro $9.95/mo: 50 private bundles, 10 API keys. The 10 keys are for revoking one machine or one client separately, not a requirement.
 
-Only putting catalog skills in bundles and re-running the install to update? Stay on Free.
+One client bundle is enough (your Liked list takes the other Free slot), and you only put catalog skills in it? Stay on Free.
 
 A few little-used hosted endpoints (skill forks, draft-to-skill, sync streaming and some others) also require Pro; don't buy it for those, they may be retired.
