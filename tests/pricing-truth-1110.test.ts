@@ -128,7 +128,7 @@ describe('docs pages that compare Free and Pro include API keys', () => {
     expect(gs).toMatch(/your agent downloads each tarball, checks its sha256, and unpacks it/);
     expect(gs).not.toMatch(/loopskill_bundle_install<\/code> on each machine downloads and sha256-checks/);
     const hiw = read('src', 'pages', 'docs', 'how-it-works.astro').replace(/\s+/g, ' ');
-    expect(hiw).toMatch(/download, sha256-check and unpack each tarball it returns/);
+    expect(hiw).toMatch(/downloads, sha256-checks and unpacks each tarball it returns/);
   });
 
   it('never claims the tiers are otherwise identical (Pro gates authoring/deploy tools in code)', () => {
@@ -187,5 +187,25 @@ describe('docs pages that compare Free and Pro include API keys', () => {
     expect(gs).toMatch(/re-run the Step 3 install with the same slug/);
     expect(gs.indexOf('loopskill_compose_bundle_from_links')).toBeGreaterThan(-1);
     expect(gs.indexOf('loopskill_compose_bundle_from_links')).toBeLessThan(gs.indexOf('loopskill_sync'));
+  });
+
+  it('docs never present loopskill_sync as a step needed to update (unpinned bundles install latest; sync PINS)', () => {
+    // loopskill-api: bundle_install._resolve_version → pinned if set, else latest;
+    // compose leaves pinned_version NULL (224/224 prod rows 2026-10-12); sync writes pins.
+    const bad = /two moves|moves your bundle's version pins|agents do not auto-upgrade outside of an explicit sync|future syncs/i;
+    const hits = walk(PAGES).filter((f) => bad.test(readFileSync(f, 'utf-8')));
+    expect(hits).toEqual([]);
+    for (const f of ['getting-started.astro', 'how-it-works.astro']) {
+      const d = read('src', 'pages', 'docs', f).replace(/\s+/g, ' ');
+      expect(d, f).toMatch(/until you sync again/);
+    }
+  });
+
+  it('how-it-works install lifecycle states the real check: signed URL + sha256, no install-time signature', () => {
+    // loopskill-api: install returns an itsdangerous-signed URL + checksum_sha256;
+    // skill_versions stores no signature. (/security pages: tracked separately.)
+    const hiw = read('src', 'pages', 'docs', 'how-it-works.astro');
+    expect(hiw).not.toMatch(/ed25519 (signature|manifest)|verify signature/i);
+    expect(hiw.replace(/\s+/g, ' ')).toMatch(/checks the sha256 of the downloaded bytes before writing any file to disk/);
   });
 });
