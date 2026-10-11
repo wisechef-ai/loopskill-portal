@@ -170,4 +170,11 @@ describe('docs pages that compare Free and Pro include API keys', () => {
       expect(read('src', 'pages', 'docs', f)).toMatch(/re-run(ning)? <code>loopskill_bundle_install<\/code>/);
     }
   });
+
+  it('every stay-on-Free / only-worth-it line carries the legacy Pro-gated endpoint exception (codex r3 MUST)', () => {
+    const src = read('src', 'pages', 'pricing.astro');
+    const lines = src.split('\n').filter((l) => /only worth it|Free covers you/i.test(l));
+    expect(lines.length).toBeGreaterThanOrEqual(2);
+    for (const l of lines) expect(l).toMatch(/legacy Pro-gated endpoint/i);
+  });
 });
