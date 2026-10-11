@@ -258,7 +258,7 @@ describe('D. review copy fixes', () => {
       // Those endpoints are tombstoned (loopskill-api docs/ops/tombstones.md):
       // name them honestly as a reason NOT to buy, never as a Pro benefit.
       expect(t).toContain(
-        "A few little-used hosted authoring endpoints (skill forks, draft-to-skill, sync streaming) also require Pro; don't buy it for those, they may be retired.",
+        "A few little-used hosted endpoints (skill forks, draft-to-skill, sync streaming and some others) also require Pro; don't buy it for those, they may be retired.",
       );
       expect(t).not.toMatch(/Pro also unlocks|unlocks the hosted authoring tools/i);
       expect(t).not.toMatch(/\b(fork\w*|tailor\w*|draft into a skill|live sync)\b[^.\n]{0,60}\b(with|on|in) Pro\b/i);

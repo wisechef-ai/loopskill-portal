@@ -41,4 +41,4 @@ Free includes 2 private bundles and 1 API key. The Liked bundle is private and i
 
 Only putting catalog skills in bundles and re-running the install to update? Stay on Free.
 
-A few little-used hosted authoring endpoints (skill forks, draft-to-skill, sync streaming) also require Pro; don't buy it for those, they may be retired.
+A few little-used hosted endpoints (skill forks, draft-to-skill, sync streaming and some others) also require Pro; don't buy it for those, they may be retired.
