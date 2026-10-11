@@ -35,7 +35,7 @@ const tiers = [
     cadence: 'forever',
     currency: '$',
     tagline: 'Your hardware. Your rules.',
-    headline: 'Clone the repo and run the whole platform yourself — registry, runner, catalog. MPL-2.0. No account, no card, nothing phones home. This is the real product, not a trial of it.',
+    headline: 'Clone the repo and run the whole platform yourself — registry, runner, catalog. MPL-2.0. No LoopSkill account, no card, nothing phones home. This is the real product, not a trial of it.',
     badgeClass: 'badge-free',
     cta: 'Read the self-host guide',
     ctaAuthed: 'Read the self-host guide',
@@ -45,8 +45,8 @@ const tiers = [
     features: [
       'The entire platform, MPL-2.0 — no feature held back',
       'Runs on your own hardware; your data never leaves it',
-      'Unlimited everything — bundles, loops, installs',
-      'No account required at all',
+      'Your server, your limits — the caps live in config/tiers.yaml and you can raise them',
+      'No LoopSkill account — you sign in to your own server',
     ],
     notFor: 'You maintain it: updates, uptime, and the runner sandbox are yours.',
     moneyBack: null,
@@ -133,7 +133,7 @@ const theDifference = {
 const faqs = [
   {
     q: 'What is the difference between Self-host and Free?',
-    a: 'Who runs the server. Self-host means you clone the repo and run everything on your own hardware — no account, no limits, and we never see your data. Free means we run it for you and you get an account with 2 private bundles and 1 API key. Both cost nothing. Self-host has no caps at all; the trade is that updates, uptime and the runner sandbox are your job.',
+    a: 'Who runs the server. Self-host means you clone the repo and run everything on your own hardware, and we never see your data. You still sign in to your own server (GitHub OAuth) to mint an owner key, and it ships with the same default limits — but they live in config/tiers.yaml on your server, so you can raise them. Free means we run it for you and you get an account with 2 private bundles and 1 API key. Both cost nothing; with self-host, updates, uptime and the runner sandbox are your job.',
   },
   {
     q: 'What is the Founding Member offer?',

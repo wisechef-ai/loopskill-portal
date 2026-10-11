@@ -104,8 +104,31 @@ describe('docs pages that compare Free and Pro include API keys', () => {
   });
 
   it('docs/cookbooks explains the Liked bundle uses a private slot', () => {
-    const src = read('src', 'pages', 'docs', 'cookbooks.astro');
-    expect(src).toMatch(/Liked/);
+    // whitespace-normalised: the sentence wraps across source lines
+    const src = read('src', 'pages', 'docs', 'cookbooks.astro').replace(/\s+/g, ' ');
+    expect(src).toMatch(/Liked list is a private bundle too and takes one of those slots from the moment you first open your Library/);
+    expect(src).toMatch(/Free leaves room for one more/);
+  });
+
+  it('self-host FAQ does not promise "no account, no limits" (SELF_HOST.md: sign-in + owner key; caps from config/tiers.yaml)', () => {
+    const src = read('src', 'pages', 'pricing.astro');
+    expect(src).not.toMatch(/no account, no limits/i);
+    expect(src).not.toMatch(/Self-host has no caps at all/i);
+    expect(src).not.toMatch(/Unlimited everything/i);
+    expect(src).not.toMatch(/No account required at all/i);
+    for (const f of ['getting-started.astro', 'index.astro']) {
+      const d = read('src', 'pages', 'docs', f);
+      expect(d, f).not.toMatch(/no account, no (caps|card)/i);
+    }
+    expect(src).toMatch(/config\/tiers\.yaml on your server, so you can raise them/);
+  });
+
+  it('docs say the agent downloads, sha256-checks and unpacks what bundle_install returns (M1 step 2)', () => {
+    const gs = read('src', 'pages', 'docs', 'getting-started.astro').replace(/\s+/g, ' ');
+    expect(gs).toMatch(/your agent downloads each tarball, checks its sha256, and unpacks it/);
+    expect(gs).not.toMatch(/loopskill_bundle_install<\/code> on each machine downloads and sha256-checks/);
+    const hiw = read('src', 'pages', 'docs', 'how-it-works.astro').replace(/\s+/g, ' ');
+    expect(hiw).toMatch(/download, sha256-check and unpack each tarball it returns/);
   });
 
   it('never claims the tiers are otherwise identical (Pro gates authoring/deploy tools in code)', () => {

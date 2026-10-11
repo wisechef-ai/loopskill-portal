@@ -118,8 +118,9 @@ curl -sL https://app.loopskill.io/skill \
       <p>
         Skills are versioned. Updating is two moves: <code>loopskill_sync</code> moves your
         bundle's version pins to the latest releases on the server (it does not touch files on
-        your machine), then re-running <code>loopskill_bundle_install</code> on each machine
-        downloads and sha256-checks whatever changed. The standalone <code>loopskill</code>
+        your machine), then re-run <code>loopskill_bundle_install</code> on each machine. It
+        returns a download URL and sha256 for every skill; your agent downloads each tarball,
+        checks its sha256, and unpacks it into the skills folder — that is what changes the files. The standalone <code>loopskill</code>
         CLI does not have a <code>sync</code> subcommand today (it ships
         <code>import</code>/<code>diff</code>/<code>pull</code>/<code>apply</code> only).
       </p>
@@ -139,7 +140,7 @@ curl -sL https://app.loopskill.io/skill \
       <ul>
         <li><strong>Free:</strong> 1 API key (it works on all your machines at once), catalog access, all skills (including super-memory), 2 private bundles (your Liked list uses one from the moment you open your Library).</li>
         <li><strong>Pro ($9.95/mo):</strong> 50 private bundles, 10 API keys (revoke one machine or client without touching the rest), priority support. The full public catalog is already unlimited on Free — Pro raises limits, it doesn't unlock exclusive skills. Public bundles are unlimited on every tier, including Free.</li>
-        <li><strong>Self-host:</strong> run the whole platform yourself (MPL-2.0) — no account, no caps, no card. See the <a href="https://github.com/wisechef-ai/loopskill-api/blob/main/docs/SELF_HOST.md">self-host guide</a>.</li>
+        <li><strong>Self-host:</strong> run the whole platform yourself (MPL-2.0) — no LoopSkill account, no card; the caps live in config/tiers.yaml on your server, so you can raise them. See the <a href="https://github.com/wisechef-ai/loopskill-api/blob/main/docs/SELF_HOST.md">self-host guide</a>.</li>
       </ul>
 
       <h2>Next steps</h2>

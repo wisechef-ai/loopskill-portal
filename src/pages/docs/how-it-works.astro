@@ -127,8 +127,9 @@ anonymous telemetry ping (optional)`}</code></pre>
           <strong>Bundle sync (every tier):</strong> create a bundle, add skills to it, and
           run <code>loopskill_bundle_install</code> on each host. To update, call
           <code>loopskill_sync</code> once (it moves the bundle's pins on the server), then
-          re-run <code>loopskill_bundle_install</code> on each host. All agents stay on the
-          same pinned versions.
+          re-run <code>loopskill_bundle_install</code> on each host and have the agent download,
+          sha256-check and unpack each tarball it returns. All agents stay on the same pinned
+          versions.
         </li>
         <li>
           <strong>Fleet keys (Pro tier):</strong> issue a <code>rec_fleet_*</code> key
