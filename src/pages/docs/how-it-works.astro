@@ -124,10 +124,11 @@ anonymous telemetry ping (optional)`}</code></pre>
       </p>
       <ul>
         <li>
-          <strong>Bundle sync (Pro tier):</strong> create a bundle in the dashboard,
-          add skills to it, then call <code>loopskill_sync</code> via the MCP tool or meta-skill
-          on each host — the sync loop runs through the MCP tool, not a standalone CLI
-          subcommand today. All agents stay on the same pinned versions.
+          <strong>Bundle sync (every tier):</strong> create a bundle, add skills to it, and
+          run <code>loopskill_bundle_install</code> on each host. To update, call
+          <code>loopskill_sync</code> once (it moves the bundle's pins on the server), then
+          re-run <code>loopskill_bundle_install</code> on each host. All agents stay on the
+          same pinned versions.
         </li>
         <li>
           <strong>Fleet keys (Pro tier):</strong> issue a <code>rec_fleet_*</code> key

@@ -129,4 +129,21 @@ describe('docs pages that compare Free and Pro include API keys', () => {
     expect(src).toMatch(/every catalog skill is free on both tiers/i);
     expect(src).toMatch(/installing or updating a bundle on your machines works the same on both/i);
   });
+
+  it('FAQ never denies the Pro capability gates (codex r1 MUST)', () => {
+    const src = read('src', 'pages', 'pricing.astro');
+    expect(src).not.toMatch(/not a capability gate/i);
+    expect(src).not.toMatch(/Free does everything Pro does/i);
+    expect(src).not.toMatch(/Only worth it if you actually hit/i);
+    expect(src).toMatch(/need the hosted authoring tools/i);
+  });
+
+  it('no page says loopskill_sync updates installed skills or is Pro-only (M1 step 6, API#400)', () => {
+    const bad = /pull patch updates|Bundle sync \(Pro tier\)|on a Pro subscription who have your skill in a bundle/i;
+    const hits = walk(PAGES).filter((f) => bad.test(readFileSync(f, 'utf-8')));
+    expect(hits).toEqual([]);
+    for (const f of ['getting-started.astro', 'how-it-works.astro']) {
+      expect(read('src', 'pages', 'docs', f)).toMatch(/re-run(ning)? <code>loopskill_bundle_install<\/code>/);
+    }
+  });
 });
