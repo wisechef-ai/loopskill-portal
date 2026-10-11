@@ -14,7 +14,7 @@ If you run coding agents for several clients, you probably keep per-client skill
 - **Material not confidential?** Use a public bundle. Public bundles are free and unlimited on every tier.
 - **Material secret?** Self-host LoopSkill (free, MPL-2.0) so the bundles live on a server you run.
 
-Hosted private bundles are for the middle: private but not secret, on 2 or more machines, without maintaining a repo or running a server. One bundle per client, signed tarballs your agent checks by sha256, one install command per machine.
+Hosted private bundles are for the middle: private but not secret, on 2 or more machines, without maintaining a repo or running a server. One bundle per client, tarballs downloaded through signed URLs, each checked by its sha256, one install command per machine.
 
 ## What we reproduced (2026-10-11)
 
@@ -29,7 +29,9 @@ One thing that surprised us: `loopskill_sync` does not update a machine. It move
 
 ## How to set it up
 
-Sign in yourself and create an API key on your Library ([sign in](/signin?next=/library&utm_source=blog&utm_medium=blog&utm_campaign=uc-per-client)), then give the key to your agent. Do not let the agent register its own key for this: an agent-registered key is denied checkout by design, so that account can never be upgraded.
+Sign in yourself ([sign in](/signin?next=/library&utm_source=blog&utm_medium=blog&utm_campaign=uc-per-client)). Your Library shows the API key we generated when you signed up, once; if you already closed that reveal, create or revoke keys on your Account page. Give the key to your agent. Do not let the agent register its own key for this: an agent-registered key is denied checkout by design, so that account can never be upgraded.
+
+Then the agent does two different things. Create the bundle once, on the first machine only, and note its id: every compose call makes a new bundle, so composing again on a second machine would make a duplicate (and on Free can hit the cap). Then install it on every machine, including the first, from that id; to update a machine, re-run the install there. To add a skill, add it to the bundle once, then re-run the install on each machine.
 
 The full copy-paste instruction for your agent, the cap message and when Pro is worth it are on the [use-case page](/use-cases/one-private-bundle-per-client/?utm_source=blog&utm_medium=blog&utm_campaign=uc-per-client).
 
@@ -37,4 +39,6 @@ The full copy-paste instruction for your agent, the cap message and when Pro is 
 
 Free includes 2 private bundles and 1 API key. The Liked bundle is private and is created when you first open your Library, so it uses one of the 2 slots: in practice, one client bundle on Free. Pro $9.95/mo: 50 private bundles, 10 API keys. The 10 keys are for revoking one machine or one client separately, not a requirement.
 
-Not hitting the cap? Stay on Free.
+Only putting catalog skills in bundles and re-running the install to update? Stay on Free.
+
+To be complete: Pro also unlocks forking a skill into your own editable copy, turning a draft into a skill, and a live sync subscription. None of them is needed for this setup.

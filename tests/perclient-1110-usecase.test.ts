@@ -176,7 +176,7 @@ describe('use-case page: one private bundle per client', () => {
     expect(src).not.toMatch(/'None'/);
     expect(src).toMatch(/Liked/);
     expect(src).toContain('Pro $9.95/mo: 50 private bundles, 10 API keys');
-    expect(src).toContain('Not hitting the cap? Stay on Free.');
+    expect(src).toContain('Only putting catalog skills in bundles and re-running the install to update? Stay on Free.');
   });
 
   it('beacon: plain inline script, sendBeacon to /api/pv inside try/catch, no imports', () => {
