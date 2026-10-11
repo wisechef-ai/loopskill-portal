@@ -23,13 +23,13 @@ const SITE = 'https://app.loopskill.io';
 
 // Single source of truth for pricing copy — MUST stay consistent with
 // src/pages/pricing.astro. Free = self-host the whole platform (MPL-2.0,
-// no card). Pro = $9.95/mo hosted convenience; never a feature gate — every
-// capability that exists on Pro also exists in the free self-host.
+// no card). Hosted Free = 2 private bundles + 1 API key; Pro $9.95/mo = 50 + 10
+// (loopskill-api config/tiers.yaml). perclient_1110: Pro DOES gate those two limits.
 const PRICING_SUMMARY =
-  'Free: self-host the whole platform yourself (MPL-2.0, open source, no card needed). ' +
-  'Pro — $9.95/mo: we host it for you (managed registry + runner, auto-updated catalog, ' +
-  'ed25519-signed delivery). Pro is convenience only, never a feature gate — every ' +
-  'capability that exists on Pro also exists in the free self-host.';
+  'Self-host: run the whole platform yourself (MPL-2.0, open source, no card, no LoopSkill account). ' +
+  'Hosted Free: 2 private bundles and 1 API key; public bundles are unlimited. ' +
+  'Hosted Pro — $9.95/mo: 50 private bundles and 10 API keys you can revoke one at a time. ' +
+  'A few little-used hosted endpoints also require Pro; do not buy it for those, they may be retired.';
 
 // ahfounding_0906 — the capped one-time Founding SKU (#304) is surfaced on
 // /api/marketing/snapshot as a top-level `founding` key (#313) and rendered on

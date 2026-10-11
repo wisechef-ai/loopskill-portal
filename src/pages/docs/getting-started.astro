@@ -22,7 +22,7 @@ import CrossSell from '../../components/CrossSell.astro';
 
       <h2>Prerequisites</h2>
       <ul>
-        <li>A LoopSkill API key — free, no card required. Every catalog skill installs on the Free tier; Pro ($9.95/mo) raises limits (private bundles, fleet sync, key cap).</li>
+        <li>A LoopSkill API key — free, no card required. Every catalog skill installs on the Free tier; Pro ($9.95/mo) raises two limits: private bundles and API keys.</li>
 
         <li>One of the supported agent runtimes below.</li>
         <li>Your key exported: <code>export LOOPSKILL_API_KEY=rec_xx...</code></li>
@@ -107,18 +107,29 @@ curl -sL https://app.loopskill.io/skill \
         The agent calls <code>GET /api/skills/install?slug=super-memory&amp;mode=files</code>,
         downloads the tarball via an expiring signed URL, verifies its <code>checksum_sha256</code>,
         and writes the files locally.
-        A <code>_meta.json</code> records the install for future syncs.
+        A <code>_meta.json</code> records the skill's slug, version and install time.
       </p>
       <p>
         The free skill <strong>super-memory</strong> (Cognee + Postgres + pgvector, MIT-licensed)
         is a great first install — it works immediately with no subscription.
       </p>
 
-      <h2>Step 4 — Sync to stay current</h2>
+      <h2>Step 4 — Stay current</h2>
       <p>
-        Skills are versioned. Ask your agent — "sync my LoopSkill skills to latest" — to
-        pull patch updates. The sync loop runs via the <code>loopskill_sync</code> MCP tool
-        (or the LoopSkill meta-skill on a non-MCP agent); the standalone <code>loopskill</code>
+        <strong>One skill:</strong> re-run the Step 3 install with the same slug; you get the
+        latest version and its sha256.
+      </p>
+      <p>
+        <strong>Several skills, or several machines:</strong> put them in a bundle once
+        (<code>loopskill_compose_bundle_from_links</code> with your skill links — it returns the
+        bundle id), then run <code>loopskill_bundle_install</code> with that id on each machine.
+        To update, re-run <code>loopskill_bundle_install</code> on each machine: a bundle does not
+        pin versions unless you pin it, so the install always returns the latest version of every
+        skill — a download URL and sha256 each; your agent downloads each tarball, checks its
+        sha256, and unpacks it into the skills folder. <code>loopskill_sync</code> is only for
+        bundles you want pinned: it writes the current latest versions as the bundle's pins (it
+        does not touch files on your machine), and the bundle then stays on those versions until
+        you sync again. The standalone <code>loopskill</code>
         CLI does not have a <code>sync</code> subcommand today (it ships
         <code>import</code>/<code>diff</code>/<code>pull</code>/<code>apply</code> only).
       </p>
@@ -136,9 +147,9 @@ curl -sL https://app.loopskill.io/skill \
 
       <h2>Pricing</h2>
       <ul>
-        <li><strong>Free:</strong> API key, catalog access, all skills (including super-memory), 2 private bundles.</li>
-        <li><strong>Pro ($9.95/mo):</strong> 50 private bundles, fleet sync, priority support. The full public catalog is already unlimited on Free — Pro raises limits, it doesn't unlock exclusive skills. Public bundles are unlimited on every tier, including Free.</li>
-        <li><strong>Self-host:</strong> run the whole platform yourself (MPL-2.0) — no account, no caps, no card. See the <a href="https://github.com/wisechef-ai/loopskill-api/blob/main/docs/SELF_HOST.md">self-host guide</a>.</li>
+        <li><strong>Free:</strong> 1 API key (it works on all your machines at once), catalog access, all skills (including super-memory), 2 private bundles (your Liked list uses one from the moment you open your Library).</li>
+        <li><strong>Pro ($9.95/mo):</strong> 50 private bundles, 10 API keys (revoke one machine or client without touching the rest), priority support. The full public catalog is already unlimited on Free — Pro raises limits, it doesn't unlock exclusive skills. Public bundles are unlimited on every tier, including Free.</li>
+        <li><strong>Self-host:</strong> run the whole platform yourself (MPL-2.0) — no LoopSkill account, no card; the caps live in config/tiers.yaml on your server, so you can raise them. See the <a href="https://github.com/wisechef-ai/loopskill-api/blob/main/docs/SELF_HOST.md">self-host guide</a>.</li>
       </ul>
 
       <h2>Next steps</h2>

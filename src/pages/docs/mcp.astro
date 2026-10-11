@@ -81,7 +81,7 @@ import AppShell from '../../layouts/AppShell.astro';
     <p class="text-muted mb-6">
       Sign in at <a href="/library" class="text-accent hover:opacity-80 underline">app.loopskill.io/library</a>
       and generate one. Every MCP call needs a key — including free-tier lookups (free signup gives a free key).
-      The catalog installs the same on Free and Pro; <strong>Pro ($9.95/mo)</strong> raises limits — 50 private bundles and fleet sync.
+      The catalog installs the same on Free and Pro; <strong>Pro ($9.95/mo)</strong> raises two limits — 50 private bundles and 10 API keys.
     </p>
 
     <h2 class="text-xl font-semibold text-text mb-3">2. Configure your client</h2>
@@ -184,7 +184,7 @@ import AppShell from '../../layouts/AppShell.astro';
     <ul class="space-y-2 text-sm text-muted">
       <li><code class="text-xs bg-bg-elev rounded px-1">loopskill_search</code> — full-text + tier + category filter, returns compact JSON</li>
       <li><code class="text-xs bg-bg-elev rounded px-1">loopskill_install</code> — download, SHA256-verify, tar-slip-safe extract</li>
-      <li><code class="text-xs bg-bg-elev rounded px-1">loopskill_sync</code> — pull patch updates for all installed skills</li>
+      <li><code class="text-xs bg-bg-elev rounded px-1">loopskill_sync</code> — pin a bundle to the current latest versions (optional; an unpinned bundle always installs the latest — re-run <code class="text-xs bg-bg-elev rounded px-1">loopskill_bundle_install</code> and have the agent download, sha256-check and unpack each tarball)</li>
       <li><code class="text-xs bg-bg-elev rounded px-1">loopskill_skillify</code> — drop the master meta-skill into the agent's skills dir</li>
       <li><code class="text-xs bg-bg-elev rounded px-1">loopskill_recall</code> — search across bundles, loops, personalities, and connectors in one call</li>
       <li>Plus fleet ops (<code class="text-xs bg-bg-elev rounded px-1">loopskill_fleet_*</code>), loops (<code class="text-xs bg-bg-elev rounded px-1">loopskill_search_loops</code>, <code class="text-xs bg-bg-elev rounded px-1">loopskill_get_loop</code>), sharing, and more.</li>

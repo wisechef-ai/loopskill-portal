@@ -1,0 +1,229 @@
+/**
+ * perclient_1110 / M0.5 — the pricing copy must tell the measured truth.
+ *
+ * WHAT WAS FALSE
+ * --------------
+ * /pricing said "Private bundles: Free gives you 2, Pro gives you 50. That is
+ * the whole difference." and never mentioned API keys. Measured 2026-10-11
+ * (~/.hermes/state/perclient_1110/M1-transcript.md, M1.3.md, M1.7.md) and
+ * pinned by config/tiers.yaml in loopskill-api:
+ *
+ *   1. TWO limits differ: private bundles (Free 2, Pro 50) AND API keys
+ *      (Free 1, Pro 10). Pro ALSO gates some legacy authoring endpoints in
+ *      code (forks_routes require_operator, recipify _is_paid_tier,
+ *      sse_routes subscribe; bundle_deployment is gated too but is a non-working
+ *      surface the claims audit forbids advertising) — so
+ *      the page must never say "everything else is identical". What IS the
+ *      same: every catalog skill is free, and install/update works on both.
+ *   2. The Liked bundle is private and is created the first time you open your
+ *      Library (GET /api/bundles → ensure_liked_bundle), so from then on it
+ *      uses one of the private-bundle slots — on Free that leaves room for one
+ *      more (loopskill-api#398).
+ *   3. One API key works on several machines at once (6/6 concurrent calls OK
+ *      from two machines). Separate keys are a revocation convenience, never a
+ *      requirement — copy must not say you need one key per machine.
+ *
+ * Static-source assertions, matching the repo's existing pattern for page
+ * copy (e.g. issue247-fleet-key-cap-upgrade-wall.test.ts).
+ */
+import { readFileSync, readdirSync, statSync } from 'fs';
+import { join } from 'path';
+import { describe, it, expect } from 'vitest';
+
+const ROOT = join(new URL(import.meta.url).pathname, '../../');
+const PAGES = join(ROOT, 'src', 'pages');
+const read = (...p: string[]) => readFileSync(join(ROOT, ...p), 'utf-8');
+
+function walk(dir: string): string[] {
+  return readdirSync(dir).flatMap((name) => {
+    const p = join(dir, name);
+    return statSync(p).isDirectory() ? walk(p) : [p];
+  });
+}
+
+describe('no page claims bundles are the only Free/Pro difference', () => {
+  const files = walk(PAGES);
+
+  it('scans a real page tree (control)', () => {
+    expect(files.some((f) => f.endsWith('pricing.astro'))).toBe(true);
+  });
+
+  it('no file under src/pages contains "whole difference"', () => {
+    const hits = files.filter((f) => /whole difference/i.test(readFileSync(f, 'utf-8')));
+    expect(hits).toEqual([]);
+  });
+
+  it('no file under src/pages contains "only difference"', () => {
+    const hits = files.filter((f) => /only difference/i.test(readFileSync(f, 'utf-8')));
+    expect(hits).toEqual([]);
+  });
+
+  it('no file under src/pages says you need one key per machine', () => {
+    const hits = files.filter((f) =>
+      /(need|one) (an )?(api )?key (per|for each) machine/i.test(readFileSync(f, 'utf-8')),
+    );
+    expect(hits).toEqual([]);
+  });
+});
+
+describe('pricing.astro states both caps and the Liked-bundle rule', () => {
+  const src = read('src', 'pages', 'pricing.astro');
+
+  it('the Free/Pro answer names API keys with the caps Free 1 / Pro 10', () => {
+    expect(src).toMatch(/API keys: Free 1, Pro 10/);
+  });
+
+  it('the Free/Pro answer still names private bundles Free 2 / Pro 50', () => {
+    expect(src).toMatch(/Private bundles: Free 2, Pro 50/);
+  });
+
+  it('says the Liked list is a private bundle that counts once you open your Library', () => {
+    expect(src).toMatch(/Liked list is a private bundle and counts as one from the moment you open your Library/);
+  });
+
+  it('says one key works on every machine (no per-machine key requirement)', () => {
+    expect(src).toMatch(/one key works on every machine/i);
+  });
+
+  it('the Free card lists 1 API key and the Pro card lists 10 API keys', () => {
+    expect(src).toMatch(/'1 API key\b/);
+    expect(src).toMatch(/'10 API keys/);
+  });
+
+  it('the page meta description mentions API keys', () => {
+    const desc = src.match(/<AppShell[^>]*description="([^"]*)"/)?.[1] ?? '';
+    expect(desc).toMatch(/API keys/);
+  });
+});
+
+describe('docs pages that compare Free and Pro include API keys', () => {
+  it('docs/getting-started pricing list names 1 vs 10 API keys', () => {
+    const src = read('src', 'pages', 'docs', 'getting-started.astro');
+    expect(src).toMatch(/<strong>Free:<\/strong>[^<]*1 API key/);
+    expect(src).toMatch(/<strong>Pro \(\$9\.95\/mo\):<\/strong>[^<]*10 API keys/);
+  });
+
+  it('docs/cookbooks explains the Liked bundle uses a private slot', () => {
+    // whitespace-normalised: the sentence wraps across source lines
+    const src = read('src', 'pages', 'docs', 'cookbooks.astro').replace(/\s+/g, ' ');
+    expect(src).toMatch(/Liked list is a private bundle too and takes one of those slots from the moment you first open your Library/);
+    expect(src).toMatch(/Free leaves room for one more/);
+  });
+
+  it('self-host FAQ does not promise "no account, no limits" (SELF_HOST.md: sign-in + owner key; caps from config/tiers.yaml)', () => {
+    const src = read('src', 'pages', 'pricing.astro');
+    expect(src).not.toMatch(/no account, no limits/i);
+    expect(src).not.toMatch(/Self-host has no caps at all/i);
+    expect(src).not.toMatch(/Unlimited everything/i);
+    expect(src).not.toMatch(/No account required at all/i);
+    for (const f of ['getting-started.astro', 'index.astro']) {
+      const d = read('src', 'pages', 'docs', f);
+      expect(d, f).not.toMatch(/no account, no (caps|card)/i);
+    }
+    expect(src).toMatch(/config\/tiers\.yaml on your server, so you can raise them/);
+  });
+
+  it('docs say the agent downloads, sha256-checks and unpacks what bundle_install returns (M1 step 2)', () => {
+    const gs = read('src', 'pages', 'docs', 'getting-started.astro').replace(/\s+/g, ' ');
+    expect(gs).toMatch(/your agent downloads each tarball, checks its sha256, and unpacks it/);
+    expect(gs).not.toMatch(/loopskill_bundle_install<\/code> on each machine downloads and sha256-checks/);
+    const hiw = read('src', 'pages', 'docs', 'how-it-works.astro').replace(/\s+/g, ' ');
+    expect(hiw).toMatch(/downloads, sha256-checks and unpacks each tarball it returns/);
+  });
+
+  it('never claims the tiers are otherwise identical (Pro gates authoring/deploy tools in code)', () => {
+    const banned = /identical platform|every capability is identical|everything else is identical/i;
+    const hits = walk(PAGES).filter((f) => banned.test(readFileSync(f, 'utf-8')));
+    expect(hits).toEqual([]);
+  });
+
+  it('discloses the Pro-gated legacy endpoints without selling Pro on them (all tombstoned, 0 use in 30d)', () => {
+    const src = read('src', 'pages', 'pricing.astro');
+    // API docs/ops/tombstones.md: /api/forks/*, /api/recipify, /api/bundles/{id}/sync/sse
+    expect(src).toMatch(/little-used hosted endpoints \(skill forks, draft-to-skill, sync streaming and some others\) also require Pro; don\\'t buy it for those/);
+    expect(src).not.toMatch(/unlocks the hosted authoring tools/i);
+    expect(src).not.toMatch(/need the hosted authoring tools/i);
+    // bundle-deploy is Pro-gated in code but has no working terminal state
+    // (audit-claims rule bundle-deployment) — it must NOT be advertised.
+    expect(src).not.toMatch(/bundle deploy/i);
+  });
+
+  it('says catalog skills are free on both tiers and install/update works the same', () => {
+    const src = read('src', 'pages', 'pricing.astro');
+    expect(src).toMatch(/every catalog skill is free on both tiers/i);
+    expect(src).toMatch(/installing or updating a bundle on your machines works the same on both/i);
+  });
+
+  it('FAQ never denies the Pro capability gates (codex r1 MUST)', () => {
+    const src = read('src', 'pages', 'pricing.astro');
+    expect(src).not.toMatch(/not a capability gate/i);
+    expect(src).not.toMatch(/Free does everything Pro does/i);
+    expect(src).not.toMatch(/Only worth it if you actually hit/i);
+    expect(src).toMatch(/also require Pro; don\\'t buy it for those/);
+  });
+
+  it('no page says loopskill_sync updates installed skills or is Pro-only (M1 step 6, API#400)', () => {
+    const bad = /pull patch updates|Bundle sync \(Pro tier\)|on a Pro subscription who have your skill in a bundle/i;
+    const hits = walk(PAGES).filter((f) => bad.test(readFileSync(f, 'utf-8')));
+    expect(hits).toEqual([]);
+    for (const f of ['getting-started.astro', 'how-it-works.astro']) {
+      expect(read('src', 'pages', 'docs', f)).toMatch(/re-run(ning)? <code>loopskill_bundle_install<\/code>/);
+    }
+  });
+
+  it('every stay-on-Free / only-worth-it line carries the legacy Pro-gated endpoint exception (codex r3 MUST)', () => {
+    const src = read('src', 'pages', 'pricing.astro');
+    const lines = src.split('\n').filter((l) => /only worth it|Free covers you/i.test(l));
+    expect(lines.length).toBeGreaterThanOrEqual(2);
+    for (const l of lines) expect(l).toMatch(/legacy Pro-gated endpoint/i);
+  });
+
+  it('stay-on-Free FAQ names git + symlinks as a free alternative (persona honesty)', () => {
+    expect(read('src', 'pages', 'pricing.astro')).toMatch(/private git repo with symlinks already keeps your skills in sync, that works too and costs nothing/);
+  });
+
+  it('getting-started Step 4 creates the bundle before updating it, and covers single-skill reinstall', () => {
+    const gs = read('src', 'pages', 'docs', 'getting-started.astro').replace(/\s+/g, ' ');
+    expect(gs).toMatch(/re-run the Step 3 install with the same slug/);
+    expect(gs.indexOf('loopskill_compose_bundle_from_links')).toBeGreaterThan(-1);
+    expect(gs.indexOf('loopskill_compose_bundle_from_links')).toBeLessThan(gs.indexOf('loopskill_sync'));
+  });
+
+  it('docs never present loopskill_sync as a step needed to update (unpinned bundles install latest; sync PINS)', () => {
+    // loopskill-api: bundle_install._resolve_version → pinned if set, else latest;
+    // compose leaves pinned_version NULL (224/224 prod rows 2026-10-12); sync writes pins.
+    const bad = /two moves|moves your bundle's version pins|agents do not auto-upgrade outside of an explicit sync|future syncs/i;
+    const hits = walk(PAGES).filter((f) => bad.test(readFileSync(f, 'utf-8')));
+    expect(hits).toEqual([]);
+    for (const f of ['getting-started.astro', 'how-it-works.astro']) {
+      const d = read('src', 'pages', 'docs', f).replace(/\s+/g, ' ');
+      expect(d, f).toMatch(/until you sync again/);
+    }
+  });
+
+  it('how-it-works install lifecycle states the real check: signed URL + sha256, no install-time signature', () => {
+    // loopskill-api: install returns an itsdangerous-signed URL + checksum_sha256;
+    // skill_versions stores no signature. (/security pages: tracked separately.)
+    const hiw = read('src', 'pages', 'docs', 'how-it-works.astro');
+    expect(hiw).not.toMatch(/ed25519 (signature|manifest)|verify signature/i);
+    expect(hiw.replace(/\s+/g, ' ')).toMatch(/checks the sha256 of the downloaded bytes before writing any file to disk/);
+  });
+
+  it('no page claims "never a feature gate" (Pro gates 2 limits + legacy endpoints) — llms.txt, home, scope', () => {
+    const hits = walk(PAGES).filter((f) => /never a feature gate|convenience only/i.test(readFileSync(f, 'utf-8')));
+    expect(hits).toEqual([]);
+    const llms = read('src', 'pages', 'llms.txt.ts');
+    expect(llms).toMatch(/2 private bundles and 1 API key/);
+    expect(llms).toMatch(/50 private bundles and 10 API keys/);
+    expect(llms).not.toMatch(/ed25519-signed delivery|auto-updated catalog/);
+  });
+
+  it('_meta.json is described as a record only (no re-install skip logic exists anywhere)', () => {
+    const hits = walk(PAGES).filter((f) => /_meta\.json[\s\S]{0,200}?skip/i.test(readFileSync(f, 'utf-8')));
+    expect(hits).toEqual([]);
+  });
+
+  it('how-it-works does not claim free skills need a key (install_routes: anonymous free public install → 200)', () => {
+    expect(read('src', 'pages', 'docs', 'how-it-works.astro')).not.toMatch(/even free skills need a key/);
+  });
+});

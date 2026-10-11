@@ -45,11 +45,11 @@ import CrossSell from '../../components/CrossSell.astro';
             Returns up to 20 results ranked by quality_score + install count.</li>
         <li><strong>Agent picks the best match</strong> — description fit × rating × recency.</li>
         <li><strong>Agent calls <code>GET /api/skills/install?slug=seo-audit-engine&amp;mode=files</code>.</strong>
-            Auth required (even free skills need a key — this is how we track installs).</li>
-        <li><strong>Tarball downloaded and verified.</strong> The API returns a signed URL; the
-            meta-skill verifies the ed25519 signature before writing any file to disk.</li>
+            Free public skills install without a key; Pro-tier and private skills need one.</li>
+        <li><strong>Tarball downloaded and verified.</strong> The API returns an expiring signed
+            download URL and the tarball's sha256; the agent checks the sha256 of the downloaded bytes before writing any file to disk.</li>
         <li><strong>Files written locally.</strong> <code>_meta.json</code> records slug, version,
-            and install timestamp. Subsequent syncs use this to detect stale versions.</li>
+            and install timestamp.</li>
         <li><strong>Agent reads the new SKILL.md</strong>, follows its instructions, executes locally
             using your credentials and env vars.</li>
         <li><strong>Telemetry ping (optional).</strong> Anonymous: success/failure, duration,
@@ -70,9 +70,9 @@ GET /api/skills/search?q=seo+audit
   │  ranked results
   ▼
 GET /api/skills/install?slug=seo-audit-engine&mode=files
-  │  signed tarball URL + ed25519 manifest
+  │  signed tarball URL + sha256
   ▼
-verify signature → write files locally
+check sha256 → write files locally
   │
   ▼
 agent executes skill instructions
@@ -124,10 +124,12 @@ anonymous telemetry ping (optional)`}</code></pre>
       </p>
       <ul>
         <li>
-          <strong>Bundle sync (Pro tier):</strong> create a bundle in the dashboard,
-          add skills to it, then call <code>loopskill_sync</code> via the MCP tool or meta-skill
-          on each host — the sync loop runs through the MCP tool, not a standalone CLI
-          subcommand today. All agents stay on the same pinned versions.
+          <strong>Bundle sync (every tier):</strong> create a bundle, add skills to it, and
+          run <code>loopskill_bundle_install</code> on each host; the agent downloads, sha256-checks
+          and unpacks each tarball it returns. To update, re-run <code>loopskill_bundle_install</code> on each host — an
+          unpinned bundle always serves the latest versions. To hold every host on the same
+          versions, call <code>loopskill_sync</code>: it writes the current latest versions as
+          the bundle's pins, and installs stay on them until you sync again.
         </li>
         <li>
           <strong>Fleet keys (Pro tier):</strong> issue a <code>rec_fleet_*</code> key
@@ -136,8 +138,9 @@ anonymous telemetry ping (optional)`}</code></pre>
         </li>
       </ul>
       <p>
-        Skills installed from a bundle are version-pinned. The bundle owner controls when
-        to advance the pin — agents do not auto-upgrade outside of an explicit sync call.
+        A new bundle is not pinned: every install returns the latest version of each skill.
+        Once the owner pins it with <code>loopskill_sync</code>, installs stay on those versions
+        until the owner syncs again.
       </p>
 
       <h2>Catalog quality signal</h2>

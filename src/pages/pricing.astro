@@ -35,7 +35,7 @@ const tiers = [
     cadence: 'forever',
     currency: '$',
     tagline: 'Your hardware. Your rules.',
-    headline: 'Clone the repo and run the whole platform yourself — registry, runner, catalog. MPL-2.0. No account, no card, nothing phones home. This is the real product, not a trial of it.',
+    headline: 'Clone the repo and run the whole platform yourself — registry, runner, catalog. MPL-2.0. No LoopSkill account, no card, nothing phones home. This is the real product, not a trial of it.',
     badgeClass: 'badge-free',
     cta: 'Read the self-host guide',
     ctaAuthed: 'Read the self-host guide',
@@ -45,8 +45,8 @@ const tiers = [
     features: [
       'The entire platform, MPL-2.0 — no feature held back',
       'Runs on your own hardware; your data never leaves it',
-      'Unlimited everything — bundles, loops, installs',
-      'No account required at all',
+      'Your server, your limits — the caps live in config/tiers.yaml and you can raise them',
+      'No LoopSkill account — you sign in to your own server',
     ],
     notFor: 'You maintain it: updates, uptime, and the runner sandbox are yours.',
     moneyBack: null,
@@ -57,7 +57,7 @@ const tiers = [
     cadence: 'forever',
     currency: '$',
     tagline: 'Hosted by us. No card.',
-    headline: 'An account on our hosted registry. Browse and install everything, run public loops, and keep 2 private bundles. Most people never need more than this — and that is fine by us.',
+    headline: 'An account on our hosted registry. Browse and install everything, run public loops, and keep 2 private bundles and 1 API key. Most people never need more than this — and that is fine by us.',
     badgeClass: 'badge-free',
     cta: 'Start free',
     ctaAuthed: 'You\'re on Free',
@@ -67,7 +67,8 @@ const tiers = [
     features: [
       'Install every public skill and bundle — the whole catalog',
       'Run public loops and get objective pass/fail',
-      '2 private bundles',
+      '2 private bundles — your Liked list uses one from the moment you open your Library',
+      '1 API key — it works on all your machines at once',
       'Unlimited PUBLIC bundles — publishing is never rationed',
       'Cross-vendor: Codex, Claude Code, Cursor, OpenClaw, Hermes',
     ],
@@ -79,8 +80,8 @@ const tiers = [
     price: '9.95',
     cadence: 'per month',
     currency: '$',
-    tagline: 'When 2 private bundles stop being enough.',
-    headline: 'Identical platform, one difference that matters: 50 private bundles instead of 2. If you keep a separate private bundle per client, this is the tier that stops getting in your way.',
+    tagline: 'When 2 private bundles or 1 API key stop being enough.',
+    headline: 'Two limits change: 50 private bundles instead of 2, and 10 API keys instead of 1. If you keep a separate private bundle per client, or want to revoke one machine or client without touching the others, this is the tier that stops getting in your way.',
     badgeClass: 'badge-pro',
     cta: 'Upgrade to Pro — $9.95/mo',
     ctaAuthed: 'Switch to Pro',
@@ -89,11 +90,12 @@ const tiers = [
     accent: true,
     features: [
       '50 private bundles (Free gives you 2)',
+      '10 API keys (Free gives you 1) — revoke one machine or client without touching the rest',
       'Everything in Free — nothing is taken away',
       'Priority on catalog fixes and support',
       'Cancel anytime; installed skills keep working',
     ],
-    notFor: 'Only worth it if you actually hit the 2-bundle cap. If you haven\'t, stay on Free.',
+    notFor: 'Only worth it if you hit the 2-bundle cap or want separate keys you can revoke one at a time (or you still rely on one of the legacy Pro-gated endpoints listed below). If you don\'t, stay on Free.',
     moneyBack: null,
   },
   {
@@ -124,14 +126,14 @@ const tiers = [
 // nobody has to diff two feature lists to find it.
 const theDifference = {
   question: 'What is actually different between Free and Pro?',
-  answer: 'Private bundles: Free gives you 2, Pro gives you 50. That is the whole difference.',
-  detail: 'Every skill, every public loop, every install, and every capability is identical on both. Public bundles are unlimited on both — we never ration publishing, because a shared bundle helps everyone. Pro exists for people keeping one private bundle per client; if that is not you, Free is not a trial and does not expire.',
+  answer: 'Two limits differ. Private bundles: Free 2, Pro 50 — your Liked list is a private bundle and counts as one from the moment you open your Library, so Free leaves room for one more. API keys: Free 1, Pro 10 — one key works on every machine; separate keys let you revoke one machine or client without touching the rest. A few little-used hosted endpoints (skill forks, draft-to-skill, sync streaming and some others) also require Pro; don\'t buy it for those, they may be retired.',
+  detail: 'Every catalog skill is free on both tiers, and installing or updating a bundle on your machines works the same on both: re-run the install whenever you like. Public bundles are unlimited on both — we never ration publishing, because a shared bundle helps everyone. Pro exists for people keeping one private bundle per client, or wanting separate keys they can revoke one at a time; if that is not you, Free is not a trial and does not expire.',
 };
 
 const faqs = [
   {
     q: 'What is the difference between Self-host and Free?',
-    a: 'Who runs the server. Self-host means you clone the repo and run everything on your own hardware — no account, no limits, and we never see your data. Free means we run it for you and you get an account with 2 private bundles. Both cost nothing. Self-host has no caps at all; the trade is that updates, uptime and the runner sandbox are your job.',
+    a: 'Who runs the server. Self-host means you clone the repo and run everything on your own hardware, and we never see your data. You still sign in to your own server (GitHub OAuth) to mint an owner key, and it ships with the same default limits — but they live in config/tiers.yaml on your server, so you can raise them. Free means we run it for you and you get an account with 2 private bundles and 1 API key. Both cost nothing; with self-host, updates, uptime and the runner sandbox are your job.',
   },
   {
     q: 'What is the Founding Member offer?',
@@ -139,11 +141,11 @@ const faqs = [
   },
   {
     q: 'Is LoopSkill really open source? What\'s the catch?',
-    a: 'Yes — the whole platform is MPL-2.0. You can self-host the registry, the runner, and the catalog on your own hardware for free, forever. There is no feature locked behind Pro that the self-host does not have. Pro raises a hosted convenience limit (private bundles) and funds the hosting; it is not a capability gate.',
+    a: 'Yes — the whole platform is MPL-2.0. You can self-host the registry, the runner, and the catalog on your own hardware for free, forever. There is no feature locked behind Pro that the self-host does not have. On the hosted service, Pro raises two limits (private bundles and API keys) and funds the hosting. A few little-used hosted endpoints (skill forks, draft-to-skill, sync streaming and some others) also require Pro; don\'t buy it for those, they may be retired.',
   },
   {
     q: 'I only need a couple of bundles. Should I pay?',
-    a: 'No. If you are not hitting the 2-private-bundle cap, Free does everything Pro does and we would rather you stayed on it. We expect most people to. Upgrade when the cap actually gets in your way — not before.',
+    a: 'No. If you are not hitting the 2-private-bundle cap (your Liked list uses one of the two) and one API key covers all your machines (and you don\'t rely on one of the legacy Pro-gated endpoints: skill forks, draft-to-skill, sync streaming and some others), Free covers you and we would rather you stayed on it — we expect most people to. And if a private git repo with symlinks already keeps your skills in sync, that works too and costs nothing. Upgrade when the cap actually gets in your way — not before.',
   },
   {
     q: 'Does my install stop working if I cancel Pro?',
@@ -187,7 +189,7 @@ const offerSchema = buildAggregateOfferSchema(
 ---
 
 
-<AppShell title="Pricing — LoopSkill" description="Self-host free forever (MPL-2.0), a free hosted account, Pro at $9.95/mo for 50 private bundles, or talk to us for anything bespoke. The only difference between Free and Pro is private bundles: 2 vs 50." mode="public">
+<AppShell title="Pricing — LoopSkill" description="Self-host free forever (MPL-2.0), a free hosted account, Pro at $9.95/mo for 50 private bundles and 10 API keys, or talk to us for anything bespoke. Free and Pro differ in two limits: private bundles (2 vs 50) and API keys (1 vs 10)." mode="public">
   <Fragment slot="head">
     <script type="application/ld+json" set:html={JSON.stringify(offerSchema)}></script>
     <script type="application/ld+json" set:html={JSON.stringify(faqSchema)}></script>

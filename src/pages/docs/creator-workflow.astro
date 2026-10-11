@@ -205,9 +205,10 @@ loopskill_publish_request({
         through an expedited review. Major versions (1.x → 2.0.0) get a full review.
       </p>
       <p>
-        Users on a Pro subscription who have your skill in a bundle will see the update
-        the next time their agent calls <code>loopskill_sync</code> (MCP tool / meta-skill —
-        there is no standalone CLI <code>sync</code> subcommand today).
+        Users who have your skill in a bundle get the update the next time they re-run
+        <code>loopskill_bundle_install</code> on their machines (if they pinned the bundle with
+        <code>loopskill_sync</code>, after they sync again) — there is no standalone CLI
+        <code>sync</code> subcommand today.
       </p>
 
       <!-- ──── EARNINGS ──── -->
