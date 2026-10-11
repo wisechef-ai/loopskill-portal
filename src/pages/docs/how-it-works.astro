@@ -45,11 +45,11 @@ import CrossSell from '../../components/CrossSell.astro';
             Returns up to 20 results ranked by quality_score + install count.</li>
         <li><strong>Agent picks the best match</strong> — description fit × rating × recency.</li>
         <li><strong>Agent calls <code>GET /api/skills/install?slug=seo-audit-engine&amp;mode=files</code>.</strong>
-            Auth required (even free skills need a key — this is how we track installs).</li>
+            Free public skills install without a key; Pro-tier and private skills need one.</li>
         <li><strong>Tarball downloaded and verified.</strong> The API returns an expiring signed
             download URL and the tarball's sha256; the agent checks the sha256 of the downloaded bytes before writing any file to disk.</li>
         <li><strong>Files written locally.</strong> <code>_meta.json</code> records slug, version,
-            and install timestamp. A later re-install uses it to skip skills whose version has not changed.</li>
+            and install timestamp.</li>
         <li><strong>Agent reads the new SKILL.md</strong>, follows its instructions, executes locally
             using your credentials and env vars.</li>
         <li><strong>Telemetry ping (optional).</strong> Anonymous: success/failure, duration,

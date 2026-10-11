@@ -107,7 +107,7 @@ curl -sL https://app.loopskill.io/skill \
         The agent calls <code>GET /api/skills/install?slug=super-memory&amp;mode=files</code>,
         downloads the tarball via an expiring signed URL, verifies its <code>checksum_sha256</code>,
         and writes the files locally.
-        A <code>_meta.json</code> records the install so a later re-install can skip unchanged skills.
+        A <code>_meta.json</code> records the skill's slug, version and install time.
       </p>
       <p>
         The free skill <strong>super-memory</strong> (Cognee + Postgres + pgvector, MIT-licensed)

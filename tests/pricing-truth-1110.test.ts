@@ -208,4 +208,22 @@ describe('docs pages that compare Free and Pro include API keys', () => {
     expect(hiw).not.toMatch(/ed25519 (signature|manifest)|verify signature/i);
     expect(hiw.replace(/\s+/g, ' ')).toMatch(/checks the sha256 of the downloaded bytes before writing any file to disk/);
   });
+
+  it('no page claims "never a feature gate" (Pro gates 2 limits + legacy endpoints) — llms.txt, home, scope', () => {
+    const hits = walk(PAGES).filter((f) => /never a feature gate|convenience only/i.test(readFileSync(f, 'utf-8')));
+    expect(hits).toEqual([]);
+    const llms = read('src', 'pages', 'llms.txt.ts');
+    expect(llms).toMatch(/2 private bundles and 1 API key/);
+    expect(llms).toMatch(/50 private bundles and 10 API keys/);
+    expect(llms).not.toMatch(/ed25519-signed delivery|auto-updated catalog/);
+  });
+
+  it('_meta.json is described as a record only (no re-install skip logic exists anywhere)', () => {
+    const hits = walk(PAGES).filter((f) => /_meta\.json[\s\S]{0,200}?skip/i.test(readFileSync(f, 'utf-8')));
+    expect(hits).toEqual([]);
+  });
+
+  it('how-it-works does not claim free skills need a key (install_routes: anonymous free public install → 200)', () => {
+    expect(read('src', 'pages', 'docs', 'how-it-works.astro')).not.toMatch(/even free skills need a key/);
+  });
 });
