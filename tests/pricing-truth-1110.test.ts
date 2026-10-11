@@ -140,7 +140,7 @@ describe('docs pages that compare Free and Pro include API keys', () => {
   it('discloses the Pro-gated legacy endpoints without selling Pro on them (all tombstoned, 0 use in 30d)', () => {
     const src = read('src', 'pages', 'pricing.astro');
     // API docs/ops/tombstones.md: /api/forks/*, /api/recipify, /api/bundles/{id}/sync/sse
-    expect(src).toMatch(/little-used hosted authoring endpoints \(skill forks, draft-to-skill, sync streaming\) also require Pro; don\\'t buy it for those/);
+    expect(src).toMatch(/little-used hosted endpoints \(skill forks, draft-to-skill, sync streaming and some others\) also require Pro; don\\'t buy it for those/);
     expect(src).not.toMatch(/unlocks the hosted authoring tools/i);
     expect(src).not.toMatch(/need the hosted authoring tools/i);
     // bundle-deploy is Pro-gated in code but has no working terminal state
@@ -176,5 +176,16 @@ describe('docs pages that compare Free and Pro include API keys', () => {
     const lines = src.split('\n').filter((l) => /only worth it|Free covers you/i.test(l));
     expect(lines.length).toBeGreaterThanOrEqual(2);
     for (const l of lines) expect(l).toMatch(/legacy Pro-gated endpoint/i);
+  });
+
+  it('stay-on-Free FAQ names git + symlinks as a free alternative (persona honesty)', () => {
+    expect(read('src', 'pages', 'pricing.astro')).toMatch(/private git repo with symlinks already keeps your skills in sync, that works too and costs nothing/);
+  });
+
+  it('getting-started Step 4 creates the bundle before updating it, and covers single-skill reinstall', () => {
+    const gs = read('src', 'pages', 'docs', 'getting-started.astro').replace(/\s+/g, ' ');
+    expect(gs).toMatch(/re-run the Step 3 install with the same slug/);
+    expect(gs.indexOf('loopskill_compose_bundle_from_links')).toBeGreaterThan(-1);
+    expect(gs.indexOf('loopskill_compose_bundle_from_links')).toBeLessThan(gs.indexOf('loopskill_sync'));
   });
 });

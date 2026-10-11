@@ -114,9 +114,16 @@ curl -sL https://app.loopskill.io/skill \
         is a great first install — it works immediately with no subscription.
       </p>
 
-      <h2>Step 4 — Sync to stay current</h2>
+      <h2>Step 4 — Stay current</h2>
       <p>
-        Skills are versioned. Updating is two moves: <code>loopskill_sync</code> moves your
+        <strong>One skill:</strong> re-run the Step 3 install with the same slug; you get the
+        latest version and its sha256.
+      </p>
+      <p>
+        <strong>Several skills, or several machines:</strong> put them in a bundle once
+        (<code>loopskill_compose_bundle_from_links</code> with your skill links — it returns the
+        bundle id), then run <code>loopskill_bundle_install</code> with that id on each machine.
+        Updating a bundle is two moves: <code>loopskill_sync</code> moves your
         bundle's version pins to the latest releases on the server (it does not touch files on
         your machine), then re-run <code>loopskill_bundle_install</code> on each machine. It
         returns a download URL and sha256 for every skill; your agent downloads each tarball,

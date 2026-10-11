@@ -126,7 +126,7 @@ const tiers = [
 // nobody has to diff two feature lists to find it.
 const theDifference = {
   question: 'What is actually different between Free and Pro?',
-  answer: 'Two limits differ. Private bundles: Free 2, Pro 50 — your Liked list is a private bundle and counts as one from the moment you open your Library, so Free leaves room for one more. API keys: Free 1, Pro 10 — one key works on every machine; separate keys let you revoke one machine or client without touching the rest. A few little-used hosted authoring endpoints (skill forks, draft-to-skill, sync streaming) also require Pro; don\'t buy it for those, they may be retired.',
+  answer: 'Two limits differ. Private bundles: Free 2, Pro 50 — your Liked list is a private bundle and counts as one from the moment you open your Library, so Free leaves room for one more. API keys: Free 1, Pro 10 — one key works on every machine; separate keys let you revoke one machine or client without touching the rest. A few little-used hosted endpoints (skill forks, draft-to-skill, sync streaming and some others) also require Pro; don\'t buy it for those, they may be retired.',
   detail: 'Every catalog skill is free on both tiers, and installing or updating a bundle on your machines works the same on both: re-run the install whenever you like. Public bundles are unlimited on both — we never ration publishing, because a shared bundle helps everyone. Pro exists for people keeping one private bundle per client, or wanting separate keys they can revoke one at a time; if that is not you, Free is not a trial and does not expire.',
 };
 
@@ -141,11 +141,11 @@ const faqs = [
   },
   {
     q: 'Is LoopSkill really open source? What\'s the catch?',
-    a: 'Yes — the whole platform is MPL-2.0. You can self-host the registry, the runner, and the catalog on your own hardware for free, forever. There is no feature locked behind Pro that the self-host does not have. On the hosted service, Pro raises two limits (private bundles and API keys) and funds the hosting. A few little-used hosted authoring endpoints (skill forks, draft-to-skill, sync streaming) also require Pro; don\'t buy it for those, they may be retired.',
+    a: 'Yes — the whole platform is MPL-2.0. You can self-host the registry, the runner, and the catalog on your own hardware for free, forever. There is no feature locked behind Pro that the self-host does not have. On the hosted service, Pro raises two limits (private bundles and API keys) and funds the hosting. A few little-used hosted endpoints (skill forks, draft-to-skill, sync streaming and some others) also require Pro; don\'t buy it for those, they may be retired.',
   },
   {
     q: 'I only need a couple of bundles. Should I pay?',
-    a: 'No. If you are not hitting the 2-private-bundle cap (your Liked list uses one of the two) and one API key covers all your machines (and you don\'t rely on one of the legacy Pro-gated endpoints: skill forks, draft-to-skill, sync streaming), Free covers you and we would rather you stayed on it. We expect most people to. Upgrade when the cap actually gets in your way — not before.',
+    a: 'No. If you are not hitting the 2-private-bundle cap (your Liked list uses one of the two) and one API key covers all your machines (and you don\'t rely on one of the legacy Pro-gated endpoints: skill forks, draft-to-skill, sync streaming and some others), Free covers you and we would rather you stayed on it. And if a private git repo with symlinks already keeps your skills in sync, that works too and costs nothing. We expect most people to. Upgrade when the cap actually gets in your way — not before.',
   },
   {
     q: 'Does my install stop working if I cancel Pro?',
