@@ -9,7 +9,7 @@
  * pinned by config/tiers.yaml in loopskill-api:
  *
  *   1. TWO limits differ: private bundles (Free 2, Pro 50) AND API keys
- *      (Free 1, Pro 10). Pro ALSO gates the hosted authoring/deploy tools in
+ *      (Free 1, Pro 10). Pro ALSO gates some legacy authoring endpoints in
  *      code (forks_routes require_operator, recipify _is_paid_tier,
  *      sse_routes subscribe; bundle_deployment is gated too but is a non-working
  *      surface the claims audit forbids advertising) — so
@@ -114,14 +114,15 @@ describe('docs pages that compare Free and Pro include API keys', () => {
     expect(hits).toEqual([]);
   });
 
-  it('names the Pro-only hosted tools (fork, draft-to-skill, live sync) and never bundle deploys', () => {
+  it('discloses the Pro-gated legacy endpoints without selling Pro on them (all tombstoned, 0 use in 30d)', () => {
     const src = read('src', 'pages', 'pricing.astro');
-    expect(src).toMatch(/forking a skill into your own editable copy/i);
-    expect(src).toMatch(/turning a draft into a skill/i);
+    // API docs/ops/tombstones.md: /api/forks/*, /api/recipify, /api/bundles/{id}/sync/sse
+    expect(src).toMatch(/little-used hosted authoring endpoints \(skill forks, draft-to-skill, sync streaming\) also require Pro; don\\'t buy it for those/);
+    expect(src).not.toMatch(/unlocks the hosted authoring tools/i);
+    expect(src).not.toMatch(/need the hosted authoring tools/i);
     // bundle-deploy is Pro-gated in code but has no working terminal state
     // (audit-claims rule bundle-deployment) — it must NOT be advertised.
     expect(src).not.toMatch(/bundle deploy/i);
-    expect(src).toMatch(/live sync subscription/i);
   });
 
   it('says catalog skills are free on both tiers and install/update works the same', () => {
@@ -135,7 +136,7 @@ describe('docs pages that compare Free and Pro include API keys', () => {
     expect(src).not.toMatch(/not a capability gate/i);
     expect(src).not.toMatch(/Free does everything Pro does/i);
     expect(src).not.toMatch(/Only worth it if you actually hit/i);
-    expect(src).toMatch(/need the hosted authoring tools/i);
+    expect(src).toMatch(/also require Pro; don\\'t buy it for those/);
   });
 
   it('no page says loopskill_sync updates installed skills or is Pro-only (M1 step 6, API#400)', () => {
