@@ -8,8 +8,13 @@
  * (~/.hermes/state/perclient_1110/M1-transcript.md, M1.3.md, M1.7.md) and
  * pinned by config/tiers.yaml in loopskill-api:
  *
- *   1. TWO things differ: private bundles (Free 2, Pro 50) AND API keys
- *      (Free 1, Pro 10). Everything else is identical.
+ *   1. TWO limits differ: private bundles (Free 2, Pro 50) AND API keys
+ *      (Free 1, Pro 10). Pro ALSO gates the hosted authoring/deploy tools in
+ *      code (forks_routes require_operator, recipify _is_paid_tier,
+ *      sse_routes subscribe; bundle_deployment is gated too but is a non-working
+ *      surface the claims audit forbids advertising) — so
+ *      the page must never say "everything else is identical". What IS the
+ *      same: every catalog skill is free, and install/update works on both.
  *   2. The Liked bundle is private and is created the first time you open your
  *      Library (GET /api/bundles → ensure_liked_bundle), so from then on it
  *      uses one of the private-bundle slots — on Free that leaves room for one
@@ -101,5 +106,27 @@ describe('docs pages that compare Free and Pro include API keys', () => {
   it('docs/cookbooks explains the Liked bundle uses a private slot', () => {
     const src = read('src', 'pages', 'docs', 'cookbooks.astro');
     expect(src).toMatch(/Liked/);
+  });
+
+  it('never claims the tiers are otherwise identical (Pro gates authoring/deploy tools in code)', () => {
+    const banned = /identical platform|every capability is identical|everything else is identical/i;
+    const hits = walk(PAGES).filter((f) => banned.test(readFileSync(f, 'utf-8')));
+    expect(hits).toEqual([]);
+  });
+
+  it('names the Pro-only hosted tools (fork, draft-to-skill, live sync) and never bundle deploys', () => {
+    const src = read('src', 'pages', 'pricing.astro');
+    expect(src).toMatch(/forking a skill into your own editable copy/i);
+    expect(src).toMatch(/turning a draft into a skill/i);
+    // bundle-deploy is Pro-gated in code but has no working terminal state
+    // (audit-claims rule bundle-deployment) — it must NOT be advertised.
+    expect(src).not.toMatch(/bundle deploy/i);
+    expect(src).toMatch(/live sync subscription/i);
+  });
+
+  it('says catalog skills are free on both tiers and install/update works the same', () => {
+    const src = read('src', 'pages', 'pricing.astro');
+    expect(src).toMatch(/every catalog skill is free on both tiers/i);
+    expect(src).toMatch(/installing or updating a bundle on your machines works the same on both/i);
   });
 });
