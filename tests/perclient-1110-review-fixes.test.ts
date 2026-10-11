@@ -10,8 +10,9 @@
  *      with utm_campaign=uc-per-client, either directly or via `next`.
  *   C. Measurements are bound to their claims: swapping two numbers fails.
  *   D. Copy fixes: create-once / install-everywhere agent prompt, no
- *      "signed tarballs", a scoped stay-on-Free line plus the honest list of
- *      Pro-only features, and Step 1 points at the right pages for keys.
+ *      "signed tarballs", a scoped stay-on-Free line that names the
+ *      tombstoned Pro-only endpoints as no reason to buy, and Step 1 points
+ *      at the right pages for keys.
  */
 import { existsSync, readFileSync } from 'fs';
 import { join } from 'path';
@@ -248,15 +249,19 @@ describe('D. review copy fixes', () => {
     }
   });
 
-  it('the stay-on-Free line is scoped, and Pro-only features are named', () => {
+  it('the stay-on-Free line is scoped, and the tombstoned Pro-only endpoints are a reason not to buy', () => {
     const scoped =
       'Only putting catalog skills in bundles and re-running the install to update? Stay on Free.';
     for (const t of [src, md]) {
       expect(t).not.toContain('Not hitting the cap? Stay on Free.');
       expect(t).toContain(scoped);
-      expect(t).toMatch(
-        /Pro also unlocks forking a skill into your own editable copy, turning a draft into a skill, and a live sync subscription\./,
+      // Those endpoints are tombstoned (loopskill-api docs/ops/tombstones.md):
+      // name them honestly as a reason NOT to buy, never as a Pro benefit.
+      expect(t).toContain(
+        "A few little-used hosted authoring endpoints (skill forks, draft-to-skill, sync streaming) also require Pro; don't buy it for those, they may be retired.",
       );
+      expect(t).not.toMatch(/Pro also unlocks|unlocks the hosted authoring tools/i);
+      expect(t).not.toMatch(/\b(fork\w*|tailor\w*|draft into a skill|live sync)\b[^.\n]{0,60}\b(with|on|in) Pro\b/i);
       // audit-claims rule `bundle-deployment` marks bundle deploys as not shipped.
       expect(t).not.toMatch(/\bdeploy\w*\b[^.\n]{0,30}?\bbundles?\b|\bbundles?\b[^.\n]{0,30}?\bdeploy\w*\b/i);
     }
