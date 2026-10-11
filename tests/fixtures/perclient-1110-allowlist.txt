@@ -1,0 +1,11 @@
+# perclient_1110 claim-pinning allowlist (M3.2).
+#
+# Copied VERBATIM from the "## Digit allowlist for M3/M4 claim pinning" section
+# of ~/.hermes/state/perclient_1110/M1-transcript.md (the measured reproduction
+# of 2026-10-11, 22:45-22:50 CEST: Debian 13 x86_64 container + macOS 27 arm64).
+# That state dir lives outside this repo, so the section is committed here.
+# The test parses the line under the "## Digit allowlist" heading below; do not
+# add numbers to it unless they are first measured and added to the transcript.
+#
+## Digit allowlist for M3/M4 claim pinning
+1, 2, 3, 4, 6, 10, 50, 9.95, 49, 0.97, 1.28, 1.33, 27, 13, 3.9, 3.12, 2026-10-11, 72d57592, 169062a9, 397, 398, 399, 400, 401

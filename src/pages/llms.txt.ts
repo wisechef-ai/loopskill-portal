@@ -706,6 +706,7 @@ ${trendingLines.length ? trendingLines.join('\n') : '- Browse the full catalog a
 - Seeker (scan local installs, diff vs catalog): ${SITE}/seeker (tool: \`loopskill_seeker\`)
 - Skillify (runbook → installable skill): ${SITE}/skillify (tool: \`loopskill_skillify\`)
 - Share tokens (hand a client one install command): ${SITE}/docs/share-tokens
+- Use case — one private bundle per client, the same on every machine (reproduced on 2 machines, with the exact agent instructions): ${SITE}/use-cases/one-private-bundle-per-client
 - Runnable loops: ${SITE}/browse?type=loops (API: ${SITE}/api/loops)
 - Composite loops (scheduled): ${SITE}/browse?type=loops (API: ${SITE}/api/composite-loops)
 - Docs (install + MCP wiring): ${SITE}/docs

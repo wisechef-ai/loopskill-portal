@@ -57,6 +57,9 @@ const STATIC_ROUTES: { path: string; priority: string; changefreq: string }[] = 
   { path: '/publish', priority: '0.5', changefreq: 'monthly' },
   { path: '/security', priority: '0.4', changefreq: 'monthly' },
   { path: '/docs/share-tokens', priority: '0.6', changefreq: 'monthly' },
+  // perclient_1110 M3.4: use-case page (not in global nav; reached via
+  // search, llms.txt and the blog post).
+  { path: '/use-cases/one-private-bundle-per-client', priority: '0.6', changefreq: 'monthly' },
   { path: '/privacy', priority: '0.3', changefreq: 'monthly' },
   // G2-federation: the federation overview index. Per-source pages are
   // enumerated separately below (federationUrls) — same no-hard-500

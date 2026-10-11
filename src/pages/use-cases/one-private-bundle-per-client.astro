@@ -1,0 +1,185 @@
+---
+// perclient_1110 M3.3 — use case: one private bundle per client.
+// Every number on this page is pinned by tests/perclient-1110-usecase.test.ts
+// to the measured reproduction (M1-transcript.md, committed as
+// tests/fixtures/perclient-1110-allowlist.txt). Add a number here only after
+// it has been measured and added to that allowlist.
+import AppShell from '../../layouts/AppShell.astro';
+---
+
+<AppShell mode="public"
+  title="One private skill bundle per client, on every machine"
+  description="Keep each client's agent skills in their own private bundle and install it identically on every machine. Reproduced on Debian x86_64 and macOS arm64 on 2026-10-11, with the exact commands and when not to use it."
+>
+  <section class="max-w-3xl mx-auto px-6 pt-16 pb-24">
+    <p class="eyebrow mb-3">Use case</p>
+    <h1 class="text-4xl md:text-5xl font-semibold tracking-tight mb-6">
+      One private skill bundle per client, the same on every machine
+    </h1>
+    <p class="text-muted text-lg leading-relaxed mb-12">
+      You run coding agents for several clients, on more than one machine. Each client has its own
+      conventions, so you keep per-client skills, and the copies drift apart. Below: what other people
+      report, who this setup is (and is not) for, what we reproduced on two machines on 2026-10-11, and
+      the exact text to hand your agent.
+    </p>
+
+    <!-- What they report -->
+    <h2 class="text-xl font-semibold text-text mb-2">What people are doing — what they report</h2>
+    <p class="text-sm text-muted-soft mb-6">Their words, quoted from their own posts. These are their reports, not our measurements.</p>
+    <div class="space-y-5 mb-6">
+      <figure class="border-l-2 border-accent pl-4">
+        <blockquote class="text-text leading-relaxed">“Across two Claude accounts and a couple of machines it stops being manageable: every install is per profile and per box”</blockquote>
+        <figcaption class="text-sm text-muted mt-1">— Christopher Penkin,
+          <a href="https://www.penkin.me/ai/development/tools/dotfiles/2026/07/30/syncing-claude-skills-across-machines.html" target="_blank" rel="noopener" class="text-accent hover:opacity-80 underline">penkin.me</a>, 2026-07-30</figcaption>
+      </figure>
+      <figure class="border-l-2 border-accent pl-4">
+        <blockquote class="text-text leading-relaxed">“Or I improve a project skill on my MacBook and later discover that the Linux box still has the old version.”</blockquote>
+        <figcaption class="text-sm text-muted mt-1">— Maksym Prokopov,
+          <a href="https://prokopov.me/posts/skillsync-reusing-ai-agent-skills/" target="_blank" rel="noopener" class="text-accent hover:opacity-80 underline">prokopov.me</a>, 2026-05-11</figcaption>
+      </figure>
+      <figure class="border-l-2 border-accent pl-4">
+        <blockquote class="text-text leading-relaxed">“you write a skill for one workflow, it works great, and then you need something almost identical for another client. So you copy it.”</blockquote>
+        <figcaption class="text-sm text-muted mt-1">— MindStudio blog,
+          <a href="https://www.mindstudio.ai/blog/modular-skill-system-claude-code-multi-client-2" target="_blank" rel="noopener" class="text-accent hover:opacity-80 underline">mindstudio.ai</a>, 2026-05-25</figcaption>
+      </figure>
+    </div>
+    <p class="text-muted mb-12">
+      Prokopov solved it with a synced folder and a small local tool, with no cloud service. Penkin uses a public
+      registry plus a daily sync script. Both are reasonable answers.
+    </p>
+
+    <!-- Who this is for -->
+    <h2 class="text-xl font-semibold text-text mb-4">Who this is for, and who it is not for</h2>
+    <div class="space-y-4 mb-12">
+      <div class="bg-bg-card border border-border rounded-xl p-5">
+        <p class="text-text font-semibold mb-1">Comfortable with git?</p>
+        <p class="text-muted">
+          A private dotfiles repo plus symlinks, or a free open-source tool such as claude-sync, gaal or
+          chezmoi, solves cross-machine sync at no cost. If that already works for you, keep it.
+        </p>
+      </div>
+      <div class="bg-bg-card border border-border rounded-xl p-5">
+        <p class="text-text font-semibold mb-1">Client material is not confidential?</p>
+        <p class="text-muted">
+          Use a public bundle. Public bundles are free and unlimited on every tier, and nothing on this page
+          costs you anything.
+        </p>
+      </div>
+      <div class="bg-bg-card border border-border rounded-xl p-5">
+        <p class="text-text font-semibold mb-1">Client material is secret?</p>
+        <p class="text-muted">
+          Do not put it on anyone's hosted service, ours included. Self-host LoopSkill instead: it is free and
+          MPL-2.0, so the bundles live on a server you run
+          (<a href="https://github.com/wisechef-ai/loopskill-api/blob/main/docs/SELF_HOST.md" target="_blank" rel="noopener" class="text-accent hover:opacity-80 underline">self-host guide</a>).
+        </p>
+      </div>
+      <div class="bg-bg-card border border-accent rounded-xl p-5">
+        <p class="text-text font-semibold mb-1">Private but not secret, on 2 or more machines?</p>
+        <p class="text-muted">
+          This is what hosted private bundles are for: coding conventions, brand voice, runbooks. What you
+          get over a repo: no repo to maintain, one bundle per client kept separate, skills delivered as signed
+          tarballs your agent checks by sha256, one install command per machine, and on Pro, separate API keys
+          you can revoke per machine or per client. You do not run a server.
+        </p>
+      </div>
+    </div>
+
+    <!-- What we reproduced -->
+    <h2 class="text-xl font-semibold text-text mb-2">What we reproduced</h2>
+    <p class="text-sm text-muted-soft mb-4">Our own measurement, 2026-10-11. One Free account, one API key, used on both machines.</p>
+    <ul class="list-disc pl-5 space-y-2 text-muted mb-4">
+      <li><strong class="text-text">Two machines.</strong> A: Debian 13, x86_64, Python 3.12. B: macOS 27, arm64 (Apple silicon), Python 3.9 with the standard library only.</li>
+      <li><strong class="text-text">One bundle, installed on both.</strong> A client bundle with 3 skills: 1.28 s on A, 1.33 s on B. The folder fingerprint (sha256 over every file) was <code class="text-xs bg-bg-elev rounded px-1">72d57592…</code> on both machines: identical.</li>
+      <li><strong class="text-text">Change on one machine, update the other with one command.</strong> We added a skill to the bundle from A, then re-ran the install on B: 3 kept, 1 added, 0.97 s, so about a second. Fingerprint <code class="text-xs bg-bg-elev rounded px-1">169062a9…</code> on both: identical again.</li>
+      <li><strong class="text-text">One API key on both machines at once.</strong> The same key ran on A and B at the same time: 6 of 6 concurrent calls OK. You do not need a key per machine.</li>
+      <li><strong class="text-text">Remove leaves nothing.</strong> On B we deleted the 4 skill folders and the lockfile; nothing was left in the skills folder.</li>
+    </ul>
+    <p class="text-sm text-muted-soft mb-12">
+      What did not work as documented, filed as issues: our agent docs do not describe the private-bundle lifecycle yet
+      (loopskill-api#397); adding a skill to a bundle is a REST call with no MCP tool yet; the Liked bundle takes a
+      private slot (loopskill-api#398, see below); <code class="text-xs bg-bg-elev rounded px-1">loopskill_sync</code>
+      moves the bundle's pinned versions on the server and does not update a machine (loopskill-api#400).
+    </p>
+
+    <!-- Send this to your agent -->
+    <h2 class="text-xl font-semibold text-text mb-4">Send this to your agent</h2>
+    <p class="text-text font-semibold mb-2">Step 1 — you, in a browser</p>
+    <p class="text-muted mb-3">
+      <a href="/signin?next=/library&utm_source=usecase&utm_medium=page&utm_campaign=uc-per-client" class="text-accent hover:opacity-80 underline">Sign in</a>
+      and create an API key on your Library. Then give that key to your agent.
+    </p>
+    <p class="text-muted mb-6">
+      Why you and not the agent: an agent can register its own key, but an agent-registered key is denied checkout
+      by design, so that account can never be upgraded.
+    </p>
+
+    <p class="text-text font-semibold mb-2">Step 2 — paste this into your agent</p>
+    <div class="relative mb-12">
+      <button type="button" data-copy-prompt class="absolute top-2 right-2 text-xs px-2 py-1 rounded-md border border-border text-muted hover:text-text bg-bg-card">Copy</button>
+      <pre data-agent-prompt class="bg-[#0d0d0d] border border-border rounded-xl p-4 pr-16 text-sm text-text overflow-x-auto whitespace-pre-wrap"><code>Set up one private LoopSkill bundle per client on this machine. Use the API key I give you; do not register a new account or key yourself. Talk to the LoopSkill MCP endpoint https://app.loopskill.io/api/mcp/http/ and send the header x-api-key: &lt;MY_KEY&gt; on every call.
+1. Create the client bundle: call loopskill_compose_bundle_from_links with &#123;"links": ["skill://&lt;slug&gt;", ...], "name": "&lt;client-name&gt;"&#125; and note the bundle id it returns.
+2. To add a skill to the bundle later: POST https://app.loopskill.io/api/bundles/&lt;id&gt;/skills with the x-api-key header and the body &#123;"slug": "&lt;slug&gt;"&#125; (REST; there is no MCP tool for this yet).
+3. Install: call loopskill_bundle_install with &#123;"bundle_id": "&lt;id&gt;"&#125;. For each skill it returns a tarball URL and a sha256. Download each tarball, check the sha256 of the downloaded bytes and stop on a mismatch, unpack it into ~/.claude/skills/&lt;slug&gt;/ (or this agent's skills folder), and keep a lockfile with slug, version and sha256.
+4. To update this machine after the bundle changes, run step 3 again.
+Note: loopskill_sync does not update this machine. It only moves the bundle's pinned versions on the server. Re-running step 3 is what updates the machine.</code></pre>
+    </div>
+
+    <!-- At the cap -->
+    <h2 class="text-xl font-semibold text-text mb-4">At the cap</h2>
+    <p class="text-muted mb-4">
+      Free includes 2 private bundles and 1 API key. The Liked bundle is created the first time you open your Library,
+      and it is private, so it uses one of the 2 Free slots: in practice that leaves one client bundle. The next one
+      is refused with this message:
+    </p>
+    <pre class="bg-[#0d0d0d] border border-border rounded-xl p-4 text-sm text-text overflow-x-auto whitespace-pre-wrap mb-4"><code>private bundle limit reached for tier 'free' (2/2). Publishing a bundle frees its slot (public bundles are unlimited); or upgrade to compose more.</code></pre>
+    <p class="text-muted mb-6">
+      Publishing a client bundle does free its slot, but then that bundle is public. Only do that with material you
+      would show anyone.
+    </p>
+    <div class="bg-bg-card border border-border rounded-xl p-5 mb-4">
+      <p class="text-text font-semibold text-lg mb-2">Pro $9.95/mo: 50 private bundles, 10 API keys</p>
+      <p class="text-muted mb-4">
+        One key works on every machine; we ran the same key on both machines at the same time. The 10 keys are for
+        revoking one machine or one client separately, not a requirement.
+      </p>
+      <a href="/signin?next=/api/checkout/pro&utm_source=usecase&utm_medium=page&utm_campaign=uc-per-client" class="inline-block px-5 py-3 rounded-lg font-semibold text-sm bg-accent text-bg hover:bg-accent-soft transition">Upgrade to Pro</a>
+    </div>
+    <p class="text-text font-semibold mb-12">Not hitting the cap? Stay on Free.</p>
+
+    <p class="text-sm text-muted-soft">
+      See also: <a href="/pricing" class="text-accent hover:opacity-80 underline">pricing</a> ·
+      <a href="/docs/mcp" class="text-accent hover:opacity-80 underline">MCP setup</a>. Measured 2026-10-11.
+    </p>
+  </section>
+
+  <script is:inline>
+    // perclient_1110 page-view beacon. Plain inline script, no imports
+    // (define:vars/inline-script trap). /api/pv ships in a separate API PR and
+    // may 404 for a while; nothing here may ever break the page.
+    (function () {
+      try {
+        var p = new URLSearchParams(location.search);
+        navigator.sendBeacon('/api/pv', JSON.stringify({
+          path: location.pathname,
+          utm_source: p.get('utm_source'),
+          utm_medium: p.get('utm_medium'),
+          utm_campaign: p.get('utm_campaign'),
+          utm_content: p.get('utm_content'),
+          referrer: document.referrer
+        }));
+      } catch (e) {}
+      try {
+        var btn = document.querySelector('[data-copy-prompt]');
+        var pre = document.querySelector('[data-agent-prompt]');
+        if (btn && pre && navigator.clipboard) {
+          btn.addEventListener('click', function () {
+            navigator.clipboard.writeText(pre.innerText).then(function () {
+              btn.textContent = 'Copied';
+              setTimeout(function () { btn.textContent = 'Copy'; }, 1500);
+            }, function () {});
+          });
+        }
+      } catch (e) {}
+    })();
+  </script>
+</AppShell>
