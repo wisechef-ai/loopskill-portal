@@ -636,6 +636,21 @@ A bundle groups multiple skills (and connectors) into one install. Bundles are t
 ${bundleLines.join('\n')}`
     : '';
 
+  // loopskill-api#397 — the private-bundle lifecycle (create -> add -> install ->
+  // re-install to update a machine). Static on purpose: it describes verbs, not
+  // catalog rows, so it must render even when every catalog fetch above failed.
+  // Facts re-verified against loopskill-api: loopskill_compose_bundle_from_links
+  // creates a NEW private bundle; POST /api/bundles/{id}/skills is the only
+  // add-skill path (no MCP tool yet); loopskill_bundle_install is idempotent.
+  const privateBundlesSection = `
+
+## Private bundles across machines (one set of skills, identical everywhere)
+Use this when you want ONE private bundle per client, project or agent, and the same skills on every machine you run. Needs the Step-1 key (\`x-api-key\`); Free keeps up to 2 private bundles (your Liked list is one of them).
+1. Create a private bundle — MCP \`loopskill_compose_bundle_from_links\` with \`links\` (\`skill://<slug>\` for a catalog skill, \`bundle://<slug>\` for a public bundle, \`<source>:<slug>\` for a federated skill) and an optional \`name\`. It always creates a NEW private bundle you own and returns its id in the \`bundle\` field. Publishing it later makes it shareable and frees the private slot.
+2. Add a skill to an existing bundle — there is no MCP tool for this yet. REST: \`POST ${SITE}/api/bundles/{bundle_id}/skills\` with header \`x-api-key\` and JSON body \`{"slug": "<slug>"}\` (add \`"external_source": "<source>"\` when the slug is a federated skill). Answers \`201\`.
+3. Install on a machine — MCP \`loopskill_bundle_install\` with \`bundle_id\`. It returns every skill's tarball URL and sha256; download, verify the sha256, unpack.
+4. Update another machine later — run \`loopskill_bundle_install\` with the same \`bundle_id\` again and replace any skill whose sha256 changed (compare against a local lockfile of the previous run). An unpinned bundle always installs the newest versions. \`loopskill_sync\` is optional: it pins the bundle's versions on the server so every machine stays identical until you sync again; it writes nothing on your machine.`;
+
   // mesh0408 T1-D — explicit per-type listing: personalities. Grounded in
   // live /api/personalities (public, no key); omitted entirely if the fetch
   // failed rather than fabricating slugs.
@@ -689,7 +704,7 @@ Or hit the public REST API directly (no key for read/search):
 - Search: \`GET ${SITE}/api/skills/search?q=<query>\`
 - Detail: \`GET ${SITE}/api/skills/{slug}\`
 - Trending: \`GET ${SITE}/api/skills/trending\`
-- Install (curated slug → signed tarball — the Step 3 route for curated skills): \`GET ${SITE}/api/skills/install?slug=<slug>\`${supersetSection}${loopsSection}${compositesSection}${bundlesSection}${personalitiesSection}${connectorsSection}
+- Install (curated slug → signed tarball — the Step 3 route for curated skills): \`GET ${SITE}/api/skills/install?slug=<slug>\`${supersetSection}${loopsSection}${compositesSection}${bundlesSection}${privateBundlesSection}${personalitiesSection}${connectorsSection}
 
 ## Start free
 ${freeLine}
