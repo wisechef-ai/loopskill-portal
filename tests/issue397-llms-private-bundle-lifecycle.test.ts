@@ -24,7 +24,8 @@ function section(): string {
 describe('llms.txt: private bundles across machines (#397)', () => {
   it('has the section heading and is wired into the rendered body', () => {
     expect(section()).toContain('## Private bundles across machines');
-    expect(SRC).toContain('${bundlesSection}${privateBundlesSection}${personalitiesSection}');
+    expect(SRC).toContain('const bundlesSection = publicBundlesSection + privateBundlesSection;');
+    expect(SRC).toContain('${bundlesSection}${personalitiesSection}');
   });
 
   it('documents all four lifecycle steps with the real verbs', () => {

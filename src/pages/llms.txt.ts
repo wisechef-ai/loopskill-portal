@@ -626,7 +626,7 @@ ${compositeLines.join('\n')}`
     const count = typeof b.skill_count === 'number' ? ` (${b.skill_count} skills)` : '';
     return `- \`${b.slug}\` — ${b.name ?? b.slug}${count}${desc ? `: ${desc}` : ''}`;
   });
-  const bundlesSection = bundleLines.length
+  const publicBundlesSection = bundleLines.length
     ? `
 
 ## Bundles — curated skill collections (install one, get many)
@@ -650,6 +650,10 @@ Use this when you want ONE private bundle per client, project or agent, and the 
 2. Add a skill to an existing bundle — there is no MCP tool for this yet. REST: \`POST ${SITE}/api/bundles/{bundle_id}/skills\` with header \`x-api-key\` and JSON body \`{"slug": "<slug>"}\` (add \`"external_source": "<source>"\` when the slug is a federated skill). Answers \`201\`.
 3. Install on a machine — MCP \`loopskill_bundle_install\` with \`bundle_id\`. It returns every skill's tarball URL and sha256; download, verify the sha256, unpack.
 4. Update another machine later — run \`loopskill_bundle_install\` with the same \`bundle_id\` again and replace any skill whose sha256 changed (compare against a local lockfile of the previous run). An unpinned bundle always installs the newest versions. \`loopskill_sync\` is optional: it pins the bundle's versions on the server so every machine stays identical until you sync again; it writes nothing on your machine.`;
+
+  // The private-bundle lifecycle rides with the Bundles block: it is spliced in
+  // wherever `${bundlesSection}` is (mesh0408-t1d pins that splice).
+  const bundlesSection = publicBundlesSection + privateBundlesSection;
 
   // mesh0408 T1-D — explicit per-type listing: personalities. Grounded in
   // live /api/personalities (public, no key); omitted entirely if the fetch
@@ -704,7 +708,7 @@ Or hit the public REST API directly (no key for read/search):
 - Search: \`GET ${SITE}/api/skills/search?q=<query>\`
 - Detail: \`GET ${SITE}/api/skills/{slug}\`
 - Trending: \`GET ${SITE}/api/skills/trending\`
-- Install (curated slug → signed tarball — the Step 3 route for curated skills): \`GET ${SITE}/api/skills/install?slug=<slug>\`${supersetSection}${loopsSection}${compositesSection}${bundlesSection}${privateBundlesSection}${personalitiesSection}${connectorsSection}
+- Install (curated slug → signed tarball — the Step 3 route for curated skills): \`GET ${SITE}/api/skills/install?slug=<slug>\`${supersetSection}${loopsSection}${compositesSection}${bundlesSection}${personalitiesSection}${connectorsSection}
 
 ## Start free
 ${freeLine}
