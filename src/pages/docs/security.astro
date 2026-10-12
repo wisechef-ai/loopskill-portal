@@ -3,7 +3,7 @@ import AppShell from '../../layouts/AppShell.astro';
 import CrossSell from '../../components/CrossSell.astro';
 ---
 <AppShell mode="public" title="Security model — LoopSkill Docs"
-     description="Auth model, tier gating, signed tarballs, ed25519 verification, sandbox/firejail, and the public-skill review pipeline.">
+     description="Auth model, tier gating, publish-time ed25519 signature check, install-time sha256 checksum, sandbox/firejail, and the public-skill review pipeline.">
   <section class="max-w-3xl mx-auto px-6 pt-16 pb-12">
     <p class="eyebrow mb-2">Documentation · Security</p>
     <h1 class="text-4xl font-semibold tracking-tight mb-6">Security model.</h1>
@@ -24,9 +24,11 @@ import CrossSell from '../../components/CrossSell.astro';
           Inspect every line before running — it's just Markdown.
         </li>
         <li>
-          <strong>Signed tarballs.</strong> Every skill tarball is signed with an ed25519 key
-          at publish time. The meta-skill verifies the signature before writing any file to disk.
-          A corrupted or tampered tarball is rejected before extraction.
+          <strong>Checked tarballs.</strong> A publisher signs the tarball's sha256 with an
+          ed25519 key and the API verifies that signature at upload, before storing anything.
+          At install, the API returns the stored tarball's <code>checksum_sha256</code> and an
+          expiring download URL; compare the checksum with the hash of the bytes you downloaded
+          before extracting. The signature itself is not served to installers.
         </li>
         <li>
           <strong>Architecture-aware install.</strong> The runtime probe refuses to install on
@@ -91,24 +93,29 @@ import CrossSell from '../../components/CrossSell.astro';
         The meta-skill calls this before attempting an install.
       </p>
 
-      <h2>Signed tarballs &amp; ed25519 verification</h2>
+      <h2>Publish-time signature &amp; install-time checksum</h2>
       <p>
-        When you install a skill, the install endpoint returns a signed tarball URL and a
-        per-file manifest. The manifest includes:
+        Two different checks happen at two different moments. Only the first involves a
+        signature:
       </p>
       <ul>
-        <li>A list of files with their sha256 checksums</li>
-        <li>An ed25519 signature over the manifest JSON (signed with the LoopSkill publish key)</li>
-        <li>The public key fingerprint (so you can verify against the published key)</li>
+        <li>
+          <strong>At publish:</strong> the upload carries an ed25519 public key and a signature
+          over the sha256 of the tarball. The API verifies it
+          (<code>app/publisher_routes.py</code>) and rejects the upload on a mismatch.
+        </li>
+        <li>
+          <strong>At install:</strong> <code>GET /api/skills/install</code> returns an expiring
+          signed download URL (an HMAC-signed link, not a signature on the file) and
+          <code>checksum_sha256</code> for the stored tarball. The installer compares that
+          checksum with the sha256 of the bytes it downloaded and aborts on a mismatch. No
+          ed25519 signature or public key is served to installers, and installers do not verify
+          one.
+        </li>
       </ul>
       <p>
-        The meta-skill verifies the signature before extracting any file. If the signature is
-        invalid or the manifest checksum doesn't match the downloaded bytes, the install aborts
-        and no files are written.
-      </p>
-      <p>
-        The LoopSkill signing public key is published at
-        <code>https://app.loopskill.io/api/signing-key</code> and pinned in the meta-skill.
+        Versions are content-addressed (sha256) and pinned by version number, so a published
+        tarball cannot be swapped for another without the checksum changing.
       </p>
 
       <h2>Publish-time review pipeline</h2>
@@ -128,9 +135,9 @@ import CrossSell from '../../components/CrossSell.astro';
           reviewer before it lands in the catalog. We are the publisher.
         </li>
         <li>
-          <strong>ed25519 signing:</strong> approved tarballs are signed with the LoopSkill
-          publish key and stored in the CDN. The signature is immutable — patching a skill
-          requires a full re-publish and re-signing.
+          <strong>Signature check &amp; checksum:</strong> the upload's ed25519 signature is
+          verified before the tarball is stored, and its sha256 is recorded. Patching a skill
+          requires a full re-publish, which produces a new version and a new checksum.
         </li>
       </ol>
       <p>
