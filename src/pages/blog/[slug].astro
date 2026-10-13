@@ -84,4 +84,25 @@ const faqSchema = post.data.faqs.length > 0 ? buildFaqPageSchema(post.data.faqs)
       <a href="/blog" class="text-sm text-muted hover:text-text transition-colors">← All posts</a>
     </footer>
   </article>
+
+  <script is:inline>
+    // pv_1013 page-view beacon (mirrors src/pages/use-cases/one-private-bundle-per-client.astro,
+    // PR #124 — keep both copies in sync; plain inline script, no imports
+    // (define:vars/inline-script trap)). POST /api/pv (API #402, live: 204;
+    // allowed prefixes /blog/ and /use-cases/). Nothing here may ever break
+    // the page: try/catch, fire-and-forget, and a 404 endpoint is a no-op.
+    (function () {
+      try {
+        var p = new URLSearchParams(location.search);
+        navigator.sendBeacon('/api/pv', JSON.stringify({
+          path: location.pathname,
+          utm_source: p.get('utm_source'),
+          utm_medium: p.get('utm_medium'),
+          utm_campaign: p.get('utm_campaign'),
+          utm_content: p.get('utm_content'),
+          referrer: document.referrer
+        }));
+      } catch (e) {}
+    })();
+  </script>
 </AppShell>
