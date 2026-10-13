@@ -116,8 +116,18 @@ const isSignup = mode === 'signup';
     //     account hint links here with utm_source=install&utm_campaign=<slug>;
     //     without this relay the attribution died on this page. The server
     //     re-validates and length-bounds every value; this only filters shape.
+    //     perclient_1110: AppShell's public sign-in CTAs nest the landing
+    //     page's query inside next= (/signin?next=%2Fpage%3Futm_campaign%3D…),
+    //     so a campaign visitor who clicks the shell "Sign in" carried no
+    //     outer utm_*. When an outer key is absent, read it from next's own
+    //     query (path-safe next only). The outer value always wins; the same
+    //     shape filter applies to both.
+    var nextQ = null;
+    if (next && next.charAt(0) === '/' && next.indexOf('//') !== 0 && next.indexOf('?') !== -1) {
+      nextQ = new URLSearchParams(next.slice(next.indexOf('?') + 1).split('#')[0]);
+    }
     ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content'].forEach(function (k) {
-      var v = p.get(k);
+      var v = p.has(k) ? p.get(k) : (nextQ ? nextQ.get(k) : null);
       if (!v || !/^[A-Za-z0-9._:-]{1,64}$/.test(v)) return;
       ['google-login', 'github-login'].forEach(function (id) {
         var a = document.getElementById(id);
