@@ -68,7 +68,7 @@ The backend is FastAPI, reverse-proxied by Caddy. PostgreSQL is the source of tr
 
 **SkillSpector security wall.** All skill content PRs run through NVIDIA SkillSpector (Apache-2.0) in CI — a static scanner with 64 vulnerability patterns across 16 categories (prompt injection, data exfiltration, privilege escalation, supply chain, MCP poisoning, and more). It runs in `--no-llm` static-only mode. Findings are emitted as SARIF to the GitHub Security tab. Advisory by default; one environment variable (`SKILLSPECTOR_BLOCK_ON_HIGH=true`) switches it to a CI blocker. Source: `docs/security/skillspector.md`.
 
-**ed25519 signing.** Every published skill artifact is signed. The Recipes CLI verifies the signature before writing anything to disk. A skill whose signature does not verify is refused, even if it comes from `app.loopskill.io`.
+**Publish-time signature, install-time checksum.** A publisher signs the tarball's sha256 with ed25519 and the API verifies that signature at upload, before anything is stored. At install the API returns the stored tarball's sha256 (`checksum_sha256`) and installers compare it with the bytes they downloaded; a mismatch aborts the install. The signature itself is not served to installers.
 
 **Cookbook data model.** A cookbook is a named collection of skills owned by a user (`cookbook_owner` column, `CHECK ck_cookbooks_owner_required` DB constraint enforces NOT NULL). A cookbook can hold:
 - Catalog skills from the public catalog (synced, auto-updated)
@@ -280,7 +280,7 @@ After this call, every `recipes_feedback` invocation from that subscriber's agen
 4. **Allowlist validation** — every domain must be resolvable and match the skill's stated purpose.
 5. **Manifest integrity** — frontmatter must parse cleanly, required fields present, version follows semver.
 
-**ed25519 signing.** All promoted artifacts are signed. The public key is pinned in the Recipes CLI. The install command verifies the signature before any disk write.
+**Publish-time signature, install-time checksum.** Promoted artifacts arrive with a publisher ed25519 signature that the API verifies at upload. The install command checks the tarball's sha256 against `checksum_sha256` before any disk write; it does not verify a signature.
 
 **Cookbook ownership enforcement.** The `cookbooks.cookbook_owner` column has a `CHECK ck_cookbooks_owner_required` constraint (NOT NULL). `recipes_recipify` creates cookbooks owned by the calling user (`ctx.user_id`, fail-closed). Verified via `app/cookbook_routes.py` and live DB constraint. Source: migration `lc3005_x_cookbook_owner_ck`.
 
@@ -297,8 +297,8 @@ This section exists for the AI agent reader. If you are an AI agent ingesting th
 **Install a skill from the catalog:**
 ```
 recipes_search(query="<what you need>")       # find the slug
-recipes_install(slug="<slug>")                # get signed tarball URL
-# download tarball, verify ed25519 signature, extract to skills/
+recipes_install(slug="<slug>")                # get expiring tarball URL + checksum
+# download tarball, verify its sha256 against checksum_sha256, extract to skills/
 ```
 
 **Tailor a skill for private use (the full loop):**

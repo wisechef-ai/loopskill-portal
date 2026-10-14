@@ -77,7 +77,7 @@ If skills are so obviously better than prompts, why is everyone still sharing pr
 
 Because there is no npm for AI agent skills. No canonical place to find vetted, installable, versioned capabilities. Anthropic published the spec but not the catalog. The community fragmented across GitHub repos, Skill.so directories, and personal blogs.
 
-Recipes exists to solve this. It is a vertical marketplace for agency skills -- curated, reviewed, security-scanned, and installable with one command. The trust model uses ed25519 signatures. The economics are straightforward: free gateway skills to prove value, Pro tier for the full catalog.
+Recipes exists to solve this. It is a vertical marketplace for agency skills -- curated, reviewed, security-scanned, and installable with one command. The trust model checks a publisher's ed25519 signature at upload and a sha256 checksum at install. The economics are straightforward: free gateway skills to prove value, Pro tier for the full catalog.
 
 ## Getting started
 

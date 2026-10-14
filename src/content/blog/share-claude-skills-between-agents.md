@@ -14,7 +14,7 @@ faqs:
   - q: 'How do I keep a skill updated across five agents without doing it five times?'
     a: 'Bundles plus fleet sync. Put the skills in a bundle, create a fleet (loopskill_fleet_create), subscribe the bundle to it, distribute one fleet key to all five agents, and call loopskill_fleet_sync on each. Every agent pulls the same pinned versions from one place -- update the bundle once, sync propagates it.'
   - q: 'What actually happens when I run the install.sh script?'
-    a: 'It resolves the slug against the LoopSkill API, downloads a signed tarball (Ed25519-signed at publish, verified by the API before serving), and unpacks it into ~/.claude/skills/<slug> (or $LOOPSKILL_INSTALL_DIR if set). Free-tier skills need no key; Pro-tier skills require LOOPSKILL_API_KEY and fail loudly, not silently, if it is missing.'
+    a: 'It resolves the slug against the LoopSkill API, downloads the tarball from an expiring signed URL (the API checks the publisher Ed25519 signature at upload; the install response carries a sha256 checksum to compare against), and unpacks it into ~/.claude/skills/<slug> (or $LOOPSKILL_INSTALL_DIR if set). Free-tier skills need no key; Pro-tier skills require LOOPSKILL_API_KEY and fail loudly, not silently, if it is missing.'
 ---
 
 You install a skill on one agent. It works. Three weeks later you're setting up a second machine, or a second agent for a different client, and you can't remember which version of that skill you're running, whether you've since fixed a bug in it, or whether the copy on machine two is even the same file. This is skill drift, and it is the single most common failure mode once you're running more than one AI agent.
@@ -59,7 +59,7 @@ installed 'super-memory' v1.0.1 -> /home/adam/.claude/skills/super-memory
 Done. Tell your agent: "You have a new skill in /home/adam/.claude/skills/super-memory — read its SKILL.md and follow it."
 ```
 
-No account, no API key -- `super-memory` is one of the free-tier skills in the catalog (every skill in it installs free today; check [/skills](/skills) for the current lineup). The script pulled a versioned, Ed25519-signed tarball and unpacked it straight into `~/.claude/skills/`. Run the same command again on a second machine and you get the identical `v1.0.1` files, not "whatever was in the folder when someone last copied it."
+No account, no API key -- `super-memory` is one of the free-tier skills in the catalog (every skill in it installs free today; check [/skills](/skills) for the current lineup). The script pulled a versioned, sha256-checksummed tarball and unpacked it straight into `~/.claude/skills/`. Run the same command again on a second machine and you get the identical `v1.0.1` files, not "whatever was in the folder when someone last copied it."
 
 ### Install a whole stack at once (bundles)
 

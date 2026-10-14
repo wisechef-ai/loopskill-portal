@@ -12,7 +12,7 @@ const layers = [
     icon: 'shield',
     body: `Every published skill ships with a positive-allowlist manifest. The linter blocks merge if a skill reads, writes, or sends anything not on the list — credentials, environment variables, network destinations, file paths. We don't try to enumerate "bad" patterns; we explicitly enumerate the "good" ones.`,
     bullets: [
-      'ed25519 signed at publish, verified cryptographically at install',
+      'Publisher ed25519 signature over the tarball checked by the API at upload; install returns a sha256 checksum you verify against the downloaded bytes',
       'Layered scan before catalog entry: security + discipline + quality gates must all pass',
       'Two-stage trust: anonymous PRs land as drafts, require human reviewer approval before promotion',
       'Failed installs are filed as feedback issues and fed back through the pipeline → patches shipped within the same release cycle',
@@ -30,8 +30,8 @@ const layers = [
     num: '03',
     title: 'Creator track record',
     icon: 'check',
-    body: `Each skill is signed (Ed25519) by its creator. The signature, the published tarball SHA-256, and the source commit URL are stamped on the public skill page. Bad actors can't quietly replace a tarball — the hash mismatch is detectable by every install.`,
-    proof: 'GET /api/skills/install response includes manifest.signature + per-file sha256 — no dedicated `verify` command exists yet.',
+    body: `A publisher's upload carries an Ed25519 signature over the tarball's SHA-256, and the API verifies it before anything is stored. Every install returns the stored tarball's SHA-256 (checksum_sha256) next to an expiring download URL, so an installer can detect a replaced or corrupted tarball by comparing hashes. The signature itself is not served at install and is not re-verified by the installer.`,
+    proof: 'GET /api/skills/install returns checksum_sha256 — compare it with the SHA-256 of the downloaded bytes. Upload-time check: loopskill-api/app/publisher_routes.py (_verify_ed25519).',
   },
 ];
 

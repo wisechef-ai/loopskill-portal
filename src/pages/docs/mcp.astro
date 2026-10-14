@@ -59,9 +59,10 @@ import AppShell from '../../layouts/AppShell.astro';
         <li class="flex items-start gap-2.5">
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none" class="text-accent mt-0.5 shrink-0"><path d="M3 8.5L6 11.5L13 4.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
           <span>
-            <strong class="text-text">Signed tarballs with SHA256 verification.</strong> Every
-            skill tarball is signed at publish time and verified on install. A tampered tarball
-            is detected before it touches your skills directory — the agent rejects it and retries.
+            <strong class="text-text">SHA256 checksum on every install.</strong> The install
+            response carries the stored tarball's <code>checksum_sha256</code>. The agent compares it
+            with the bytes it downloaded, so a tampered or corrupted tarball is detected before it
+            touches your skills directory — the agent rejects it and retries.
           </span>
         </li>
         <li class="flex items-start gap-2.5">

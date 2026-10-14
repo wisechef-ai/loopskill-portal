@@ -134,7 +134,7 @@ loopskill_publish_request({
       </p>
       <ol>
         <li>Builds the final tarball from the approved submission</li>
-        <li>Signs with the LoopSkill ed25519 publish key</li>
+        <li>Signs the tarball's sha256 (ed25519); the API verifies the signature at upload</li>
         <li>Uploads to the CDN</li>
         <li>Creates the skill row in the catalog database</li>
         <li>Sends you a confirmation email with the published URL</li>

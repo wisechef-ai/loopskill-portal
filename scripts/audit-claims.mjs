@@ -282,6 +282,26 @@ export const RULES = [
       { when: /\b(out of date|outdated|superseded|no longer|former|previously|correction|historical)\b/i },
     ],
   },
+  {
+    id: 'install-time-signature',
+    // loopskill-portal#125. The API verifies a publisher's ed25519 signature at
+    // UPLOAD (app/publisher_routes.py::_verify_ed25519). Nothing signs with a
+    // "LoopSkill publish key", skill_versions has no signature column, and the
+    // install response carries an HMAC-signed URL + checksum_sha256 only — no
+    // signature, no public key, no /api/signing-key. The claim that kept coming
+    // back is "verified cryptographically AT INSTALL"; the pattern names that
+    // shape (signature word … verify word … install word, either order) plus the
+    // invented "signing key / publish key" artefacts.
+    pattern:
+      /\b(ed25519|signatures?|signed|signing)\b[^.\n]{0,70}?\b(verif\w*|check(?!sum)\w*)\b(?:(?!\b(?:upload|publish\w*)\b)[^.\n]){0,45}?\b(at|on|during|when|before)\s+(the\s+)?install\w*\b|\binstall\w*\b[^.\n]{0,45}?\b(verif\w*|check(?!sum)\w*)\b[^.\n]{0,30}?\b(signatures?|ed25519)\b|\b(verif\w*|check(?!sum)\w*)\b[^.\n]{0,40}?\b(signatures?|ed25519)\b(?:(?!\b(?:upload|publish\w*)\b)[^.\n]){0,30}?\b(at|on|during|when|before)\s+(the\s+)?install\w*\b|\bverif\w*\b[^.\n]{0,25}?\bsignatures?\b[^.\n]{0,25}?\bbefore\b[^.\n]{0,30}?\b(writ\w*|extract\w*|disk)\b|\bloopskill\s+(ed25519\s+)?(publish|signing)\s+(public\s+)?key\b|\bsigning\s+(public\s+)?key\b[^.\n]{0,30}?\b(published|pinned)\b/i,
+    claim: 'portal#125 — install-time ed25519 verification does not exist',
+    why:
+      'The API verifies the publisher signature at UPLOAD only. At install it returns an ' +
+      'expiring HMAC-signed URL and checksum_sha256; no signature or public key is served ' +
+      'and no installer verifies one. Say "checksum", not "signature", for install. ' +
+      'Fix the COPY; never soften this pattern.',
+    exonerations: [{ when: DENIAL }],
+  },
 ];
 
 /** Files whose rendered prose is product copy. Everything the build emits. */
