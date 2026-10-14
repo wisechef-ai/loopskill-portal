@@ -7,7 +7,7 @@
  *   - loopskill-api/AGENTS.md, "Cookbook share-tokens" section
  *   - src/pages/library.astro (real POST/GET /api/cookbooks/{id}/share-tokens client)
  */
-import { readFileSync, existsSync } from 'fs';
+import { readFileSync, existsSync, readdirSync, statSync } from 'fs';
 import { join } from 'path';
 
 const ROOT = join(new URL(import.meta.url).pathname, '../../');
@@ -15,6 +15,17 @@ const p = (...parts: string[]) => join(ROOT, ...parts);
 
 function readSrc(path: string): string {
   return existsSync(path) ? readFileSync(path, 'utf-8') : '';
+}
+
+function walkFiles(dir: string, exts: string[]): string[] {
+  if (!existsSync(dir)) return [];
+  const out: string[] = [];
+  for (const entry of readdirSync(dir)) {
+    const full = join(dir, entry);
+    if (statSync(full).isDirectory()) out.push(...walkFiles(full, exts));
+    else if (exts.some(e => full.endsWith(e))) out.push(full);
+  }
+  return out;
 }
 
 const SHARE_TOKENS = p('src/pages/docs/share-tokens.astro');
@@ -97,59 +108,38 @@ describe('FIX A — share-tokens.astro content accuracy', () => {
 
 // ---------------------------------------------------------------------------
 // (b) no source file advertises EUR pricing for this product; live charge is USD
+//
+// UPDATED 2026-09-12 (free-first pricing): the WiseChef <CrossSell> component
+// and its $199/month managed-service price were DELETED from the app. A second
+// company's larger price rendered on a free catalog page read as bait and
+// undercut the free-first posture; WiseChef marketing lives on wisechef.ai.
+// These tests now pin the ABSENCE (a regression guard against reintroduction)
+// instead of asserting the banner's copy.
 // ---------------------------------------------------------------------------
-describe('FIX B — no EUR currency advertised anywhere in src/', () => {
-  const filesToCheck = [
-    p('src/components/CrossSell.astro'),
-    p('src/pages/pricing.astro'),
-    p('src/pages/index.astro'),
-  ];
+describe('no EUR currency advertised anywhere in src/', () => {
+  const filesToCheck = [p('src/pages/pricing.astro'), p('src/pages/index.astro')];
 
   for (const file of filesToCheck) {
-    it(`${file.replace(ROOT, '')}: no literal €199`, () => {
-      const src = readSrc(file);
-      expect(src).not.toContain('€199');
-    });
-
     it(`${file.replace(ROOT, '')}: no euro sign at all`, () => {
-      const src = readSrc(file);
-      expect(src).not.toContain('€');
+      expect(readSrc(file)).not.toContain('\u20ac');
     });
   }
-
-  it('CrossSell.astro advertises $199/month (USD), matching the live Stripe charge', () => {
-    const src = readSrc(p('src/components/CrossSell.astro'));
-    expect(src).toMatch(/\$199\/month/);
-  });
-
-  it('CrossSell banner copy on index.astro and pricing.astro uses $199, not €199 or "Starting at €199"', () => {
-    const indexSrc = readSrc(p('src/pages/index.astro'));
-    const pricingSrc = readSrc(p('src/pages/pricing.astro'));
-    expect(indexSrc).toMatch(/\$199\/month/);
-    expect(pricingSrc).toMatch(/\$199\/month/);
-  });
 });
 
-// ---------------------------------------------------------------------------
-// FIX B — copy rewrite: banner keeps CrossSell, drops the cold "Book a call"
-// CTA + generic pitch for a concrete, truthful earn-the-click line.
-// ---------------------------------------------------------------------------
-describe('FIX B — CrossSell copy rewrite is concrete and does not invent proof', () => {
-  const src = readSrc(p('src/components/CrossSell.astro'));
-
-  it('banner variant no longer has a cold "Book a call" CTA', () => {
-    expect(src).not.toContain('Book a call');
+describe('WiseChef cross-sell is fully removed from the app', () => {
+  it('the CrossSell component no longer exists', () => {
+    expect(existsSync(p('src/components/CrossSell.astro'))).toBe(false);
   });
 
-  it('CrossSell component (banner variant) is still present/used on index.astro and pricing.astro', () => {
-    expect(readSrc(p('src/pages/index.astro'))).toMatch(/<CrossSell variant="banner"/);
-    expect(readSrc(p('src/pages/pricing.astro'))).toMatch(/<CrossSell variant="banner"/);
+  it('no page imports or renders <CrossSell>', () => {
+    const hits = walkFiles(p('src'), ['.astro', '.ts', '.js'])
+      .filter(f => /CrossSell/.test(readSrc(f)));
+    expect(hits).toEqual([]);
   });
 
-  it('copy does not invent unverifiable outcome numbers (no fabricated %/x claims)', () => {
-    // Guard against slipping in an invented stat like "10x faster" or "37% more"
-    // that isn't substantiated elsewhere in the repo.
-    expect(src).not.toMatch(/\d+x faster/i);
-    expect(src).not.toMatch(/\d+% (more|faster|higher)/i);
+  it('no $199/month managed-service price is advertised in the app', () => {
+    const hits = walkFiles(p('src'), ['.astro', '.ts', '.js'])
+      .filter(f => /\$\s?199\s*\/\s*(mo|month)/i.test(readSrc(f)));
+    expect(hits).toEqual([]);
   });
 });

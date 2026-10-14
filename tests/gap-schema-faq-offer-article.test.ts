@@ -163,15 +163,13 @@ describeBuilt('/pricing — AggregateOffer JSON-LD', () => {
     // Belt-and-suspenders on the actual bytes, independent of the JSON-LD
     // parse above — mirrors the audit-claims `unlocked-price` discipline.
     //
-    // six-fixes-c (fix/six-c): $199/mo is allowed here too — it is
-    // WiseChef's own managed-service cross-sell price (<CrossSell> banner),
-    // a different company's product rendered on this page, not a LoopSkill
-    // tier. See scripts/audit-claims.mjs's matching `unlocked-price`
-    // exoneration for the full rationale.
+    // free-first pricing (2026-09-12): the WiseChef <CrossSell> banner and its
+    // $199/month price were removed from the app, so 199 is no longer an
+    // allowed price on this page — only the LoopSkill ladder ($0 / $9.95).
     const html = readFileSync(join(DIST, 'pricing/index.html'), 'utf-8');
     const matches = [...html.matchAll(/\$\s?(\d[\d,]*(?:\.\d{2})?)\s*(?:\/\s*(?:mo|month))/gi)];
     for (const m of matches) {
-      expect(['0', '0.00', '9.95', '199']).toContain(m[1]);
+      expect(['0', '0.00', '9.95']).toContain(m[1]);
     }
   });
 });

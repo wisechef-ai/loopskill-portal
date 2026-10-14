@@ -1,6 +1,5 @@
 ---
 import AppShell from '../layouts/AppShell.astro';
-import CrossSell from './CrossSell.astro';
 import SkillCard from './SkillCard.astro';
 import Icon from './Icon.astro';
 import { VERTICALS, skillVertical, type VerticalSlug } from '../lib/verticals';
@@ -82,5 +81,4 @@ const pageDesc = description ?? `Production-grade ${meta.label.toLowerCase()} sk
       <p class="text-center text-muted py-16">No skills tagged <code class="text-accent">{vertical}</code> yet. Check back after the migration applies.</p>
     )}
   </section>
-  <CrossSell />
 </AppShell>

@@ -237,18 +237,6 @@ const orgSchema = {
           </a>
         </nav>
 
-        <!-- Pro pill (§1): one rail pill below primary nav, never a primary
-             nav item, never the primary gold active treatment. -->
-        <div class="px-3 pb-3">
-          <a href="/pricing"
-             class={`flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium transition border ${active === 'pricing' ? 'border-accent text-accent bg-accent/10' : 'border-border text-muted-soft hover:text-text hover:border-border-soft'}`}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-              <path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .962 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.582a.5.5 0 0 1 0 .962L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.962 0z"/>
-            </svg>
-            <span>Pro · $9.95/mo</span>
-          </a>
-        </div>
-
         <!-- Rail body: anon CTA (public default) ⇄ live bundle list (member).
              §1: anon body is ONE compact CTA, not a second story. Member body
              = "Recent bundles" preview, max 5, NO plus button in rail (the
@@ -258,8 +246,8 @@ const orgSchema = {
                body shrinks below the card's height; without overflow handling
                the card bled over the sticky sign-in footer below (cold-buyer
                audit 2026-09-01, seen on every public page). Scroll, never
-               overlap. The "Pro $9.95/mo" link was dropped — the nav row two
-               lines up already carries it. -->
+               overlap. Price is deliberately absent from global chrome —
+               it lives on /pricing only. -->
           <div class="px-3 pb-4 flex-1 min-h-0 overflow-y-auto" data-shell-anon>
             <div class="mx-3 rounded-xl border border-border bg-bg-card/50 p-4 flex flex-col gap-2.5">
               <p class="text-xs text-muted leading-relaxed">Save bundles and sync fleets.</p>
@@ -328,7 +316,6 @@ const orgSchema = {
                 <a href={isPublic ? '/signin?next=/library' : '/library'} data-signin-next={isPublic ? true : undefined} class="px-4 py-3 text-muted hover:text-text hover:bg-bg-card transition">Your Library</a>
                 <a href="/docs/install" class="px-4 py-3 text-muted hover:text-text hover:bg-bg-card transition">Add to your agent</a>
                 <a href="/federation/" class="px-4 py-3 text-muted hover:text-text hover:bg-bg-card transition">Federated</a>
-                <a href="/pricing" class="px-4 py-3 text-muted hover:text-text hover:bg-bg-card transition">Pro · $9.95/mo</a>
                 {isPublic && (
                   <a href="/signin" data-signin-next data-shell-anon class="px-4 py-3 text-accent font-medium hover:bg-bg-card transition border-t border-border">Sign in</a>
                 )}

@@ -1,6 +1,5 @@
 ---
 import AppShell from '../../layouts/AppShell.astro';
-import CrossSell from '../../components/CrossSell.astro';
 import { buildFaqPageSchema, type FaqItem } from '../../lib/schema';
 
 // Single source of truth for BOTH the visible FAQ (h3/p pairs below) AND the
@@ -220,6 +219,5 @@ loopskill_publish_request({
         </>
       ))}
     </div>
-    <CrossSell />
   </section>
 </AppShell>
