@@ -109,7 +109,7 @@ content-type: application/json
     <p class="text-xs text-muted-soft leading-relaxed mb-10">
       Empty <code class="text-xs bg-bg-elev rounded px-1">arguments</code> installs every active
       skill in the token's scoped bundle (bulk); the client's agent never sees a bundle ID or a
-      cookbook UUID — the token already carries the scope, per the MCP tool description in the
+      bundle UUID — the token already carries the scope, per the MCP tool description in the
       live registry ("cbt_token callers may omit cookbook_id — it defaults to the token's scoped
       bundle"). The full initialize/session handshake this call needs is the same one every MCP
       call uses — see <a href="/docs/mcp" class="text-accent hover:underline">MCP setup</a>.
@@ -132,7 +132,7 @@ content-type: application/json
       </li>
       <li class="flex items-start gap-2">
         <span class="text-muted-soft mt-0.5 shrink-0">✕</span>
-        <span>A different bundle's ID in the URL — the token is bound to one cookbook at mint time, so a request for another bundle returns <code class="text-xs bg-bg-elev rounded px-1">403 token scope mismatch</code>.</span>
+        <span>A different bundle's ID in the URL — the token is bound to one bundle at mint time, so a request for another bundle returns <code class="text-xs bg-bg-elev rounded px-1">403 token scope mismatch</code>.</span>
       </li>
     </ul>
 
