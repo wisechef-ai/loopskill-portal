@@ -76,6 +76,19 @@ describe('bundles_0811 P1 — auth-free install block on the public bundle page'
 
   it('wires a copy button for the auth-free line', () => {
     expect(src).toContain('id="copy-install-btn"');
-    expect(src).toMatch(/clipboard\.writeText\(installLine\)/);
+    // qa1018 C06: every Copy button goes through one wireCopy() helper that
+    // writes exactly the shown string; the terminal button copies installLine.
+    expect(src).toMatch(/wireCopy\(\$\("copy-install-btn"\),\s*\(\)\s*=>\s*installLine\)/);
+    expect(src).toMatch(/clipboard\.writeText\(text\)/);
+  });
+
+  it('qa1018 C06: the shell command is SECONDARY — the agent phrase renders before it', () => {
+    const agentIdx = src.indexOf('id="agent-line"');
+    const installIdx = src.indexOf('id="install-line"');
+    expect(agentIdx).toBeGreaterThan(-1);
+    expect(agentIdx).toBeLessThan(installIdx);
+    expect(src).toContain('Prefer a terminal?');
+    // The false "Runs in any shell" claim is gone (it needs bash + python3).
+    expect(src).not.toMatch(/Runs in any shell/);
   });
 });
