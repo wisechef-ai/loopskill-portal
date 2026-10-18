@@ -818,7 +818,7 @@ const stations = [
         <a href="/browse" class="rounded-xl border border-border bg-bg-card p-5 hover:border-accent transition flex flex-col gap-1.5">
           <p class="text-2xl font-bold text-text"><LiveCount endpoint="/api/marketing/snapshot" path="counts.skills_total" fallback={liveSkillCount} format="plain" /></p>
           <p class="text-sm font-semibold text-text">curated skills hosted here</p>
-          <p class="text-xs text-muted leading-relaxed">Reviewed before listing, SHA-256-checksummed delivery, version-pinned in bundles. Audit status is shown on each skill.</p>
+          <p class="text-xs text-muted leading-relaxed">Curated hosted skills pass an automated quality check before listing. Delivery is SHA-256-checksummed and version-pinned in bundles. A security audit is not done for every skill yet — each skill page shows its own audit status.</p>
         </a>
         <a href="/federation/" class="rounded-xl border border-border bg-bg-card p-5 hover:border-accent transition flex flex-col gap-1.5">
           <p class="text-2xl font-bold text-text"><LiveCount endpoint="/api/skills/external" path="counts.external_indexed" fallback={federatedSkillCount} format="floor1k-plus" /></p>
