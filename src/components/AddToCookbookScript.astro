@@ -202,6 +202,21 @@ const API_BASE = import.meta.env.PUBLIC_LOOPSKILL_API_BASE || import.meta.env.PU
       await addSkill(root, cb.id, cb.name || name);
     }
 
+    // qa1018 C23: the create-a-bundle form is for signed-in users ONLY. An
+    // anonymous visitor used to see "Loading… / Sign in to save / No bundles
+    // yet — create one below" all at once, plus a create form whose Add did
+    // nothing. Anonymous now gets exactly one line: sign in (next=here).
+    function setNewForm(root, visible) {
+      const form = root.querySelector('.atc-new');
+      const wrap = form ? (form.closest('.atc-new-wrap') || form.parentElement) : null;
+      if (!wrap) return;
+      wrap.classList.toggle('hidden', !visible);
+      wrap.style.display = visible ? '' : 'none';
+    }
+    function signinHref() {
+      return '/signin?next=' + encodeURIComponent(location.pathname + location.search);
+    }
+
     function renderMenu(root) {
       const list = root.querySelector('.atc-list');
       const loading = root.querySelector('.atc-loading');
@@ -218,15 +233,29 @@ const API_BASE = import.meta.env.PUBLIC_LOOPSKILL_API_BASE || import.meta.env.PU
       list.innerHTML = '';
 
       if (authState === 'anon') {
+        setNewForm(root, false);
         signin.classList.remove('hidden');
         // spotify_2607 Phase D acceptance gate: anonymous users get
         // "Sign in to save" -> /signin?next=<here>, never a silent no-op —
         // and never a bare /signup that drops them back to nowhere.
         const link = signin.querySelector('.atc-signin-link');
-        if (link) link.setAttribute('href', '/signin?next=' + encodeURIComponent(location.pathname + location.search));
+        if (link) link.setAttribute('href', signinHref());
         return;
       }
-      if (!bundles || bundles.length === 0) { empty.classList.remove('hidden'); return; }
+      if (authState !== 'ok') {
+        // Network/API failure: say so — never "No bundles yet" for a list we
+        // could not load, and never a create form that cannot work.
+        setNewForm(root, false);
+        empty.textContent = 'Could not load your bundles. Close this and try again.';
+        empty.classList.remove('hidden');
+        return;
+      }
+      setNewForm(root, true);
+      if (!bundles || bundles.length === 0) {
+        empty.textContent = 'No bundles yet — create one below.';
+        empty.classList.remove('hidden');
+        return;
+      }
 
       bundles.forEach(function (cb) {
         const item = document.createElement('button');
@@ -256,6 +285,7 @@ const API_BASE = import.meta.env.PUBLIC_LOOPSKILL_API_BASE || import.meta.env.PU
       const caret = root.querySelector('.atc-caret');
       if (caret) caret.style.transform = 'rotate(180deg)';
       root.querySelector('.atc-loading').classList.remove('hidden');
+      setNewForm(root, false);
       await loadBundles(false);
       renderMenu(root);
     }
@@ -275,6 +305,7 @@ const API_BASE = import.meta.env.PUBLIC_LOOPSKILL_API_BASE || import.meta.env.PU
         e.preventDefault(); e.stopPropagation();
         const input = root.querySelector('.atc-new-name');
         const name = (input.value || '').trim();
+        if (authState !== 'ok') { window.location.href = signinHref(); return; }
         if (!name) { input.focus(); return; }
         createAndAdd(root, name);
         input.value = '';

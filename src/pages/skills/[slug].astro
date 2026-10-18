@@ -11,6 +11,7 @@ import { AuditBars } from '../../components/skill/AuditBars';
 import AddToCookbook from '../../components/AddToCookbook.astro';
 import AddToCookbookScript from '../../components/AddToCookbookScript.astro';
 import QuickInstall from '../../components/QuickInstall.astro';
+import { freshAgentPhrase } from '../../lib/agentInstall';
 
 export async function getStaticPaths() {
   const result = await fetchApi<{ results: any[]; total: number }>(
@@ -222,6 +223,8 @@ const display = {
 const tierBadgeClassName = tierBadgeClass(display.tier);
 const tierDisplayText = tierBadgeText(display.tier);
 const isFree = display.tier === 'free';
+// qa1018 C02: the ONE phrase a fresh agent can act on — shown == copied.
+const agentPhrase = freshAgentPhrase('skill', display.slug as string);
 
 // Phase A: skill_variant + external_resources
 const skillVariant: string = skill?.skill_variant || '';
@@ -362,17 +365,15 @@ const skillSchema = {
           last_reviewed_at={display.last_reviewed_at}
         />
 
-        <!-- Quick install banner -->
-        <div class="bg-[#0d0d0d] border border-border rounded-xl p-5 flex flex-col gap-3">
+        <!-- Install banner — qa1018 C02: ONE recommended path first (the
+             fresh-agent phrase, shown == copied, with where to paste it); the
+             MCP call and the keyless REST endpoint sit under "Other ways". -->
+        <div id="install" class="bg-[#0d0d0d] border border-border rounded-xl p-5 flex flex-col gap-3 scroll-mt-24">
           <div class="flex items-center gap-2">
             <Icon name="terminal" size={14} class="text-accent" />
-            <p class="eyebrow">Install in your agent</p>
+            <h2 class="eyebrow">Install in your agent</h2>
           </div>
-          <div class="font-mono text-xs text-muted leading-relaxed mb-3">
-            <span class="text-success">→</span> First time? Tell your agent: <span class="text-accent">"install the loopskill skill from app.loopskill.io/skill"</span> — then the lines below add this skill.
-          </div>
-          {/* portal_0610 J5 — omnipresent ?ref-attributed quick-install (real motions only). */}
-          <QuickInstall kind="skill" slug={display.slug} ref="skill-page" />
+          <QuickInstall kind="skill" slug={display.slug} ref="skill-page" free={isFree} />
         </div>
 
         <!-- Auth-aware install gate (WIS-647) — hidden by default, populated by client-side script.
@@ -470,7 +471,7 @@ const skillSchema = {
             slug={display.slug}
             defaultPath="SKILL.md"
             skillTier={display.tier}
-            client:visible
+            client:idle
           />
         </section>
       </div>
@@ -479,10 +480,18 @@ const skillSchema = {
       <aside class="flex flex-col gap-4">
         <div class="bg-bg-card border border-border rounded-2xl p-5 flex flex-col gap-4 sticky top-20">
           {isFree ? (
-            <a href="/docs/install"
-               class="block text-center px-4 py-2.5 rounded-lg font-semibold text-sm bg-accent text-bg hover:bg-accent-soft transition glow-amber">
-              Install free
-            </a>
+            /* qa1018 C02: "Install free" used to be a link to the generic
+               /docs/install guide (which installs nothing). It now COPIES this
+               skill's fresh-agent phrase — the exact text shown above it. */
+            <div class="flex flex-col gap-2" data-sidebar-install>
+              <p class="text-sm font-semibold text-text">Install free</p>
+              <p class="text-xs text-muted">Paste this into your agent's chat (Claude Code, Codex, Cursor…) and press Enter:</p>
+              <code class="sidebar-phrase block font-mono text-xs bg-bg-elev border border-border rounded-lg px-3 py-2 text-accent" data-sidebar-phrase>{agentPhrase}</code>
+              <button type="button" id="sidebar-copy-install" data-copy-text={agentPhrase}
+                      class="sidebar-copy block w-full text-center px-4 rounded-lg font-semibold text-sm bg-accent text-bg hover:bg-accent-soft transition glow-amber">
+                Copy install phrase
+              </button>
+            </div>
           ) : (
             <a href="/pricing"
                class="block text-center px-4 py-2.5 rounded-lg font-semibold text-sm bg-accent text-bg hover:bg-accent-soft transition glow-amber">
@@ -490,7 +499,7 @@ const skillSchema = {
             </a>
           )}
           <div class="text-[11px] text-muted-soft text-center">
-            {isFree ? 'Free forever. No subscription required.' : `Requires ${display.tier} subscription`}
+            {isFree ? 'Free forever. No account or API key needed.' : `Requires ${display.tier} subscription`}
           </div>
           <!-- fedui_0604 Unit C — save this catalog skill to a bundle -->
           <div class="pt-3 border-t border-border-soft flex justify-center">
@@ -501,7 +510,7 @@ const skillSchema = {
         <!-- Audit bars (Phase Q) — 4 horizontal bars showing quality dimensions.
              client:visible so they lazy-hydrate when the sidebar scrolls into view. -->
         <div class="bg-bg-card border border-border rounded-2xl p-5">
-          <p class="eyebrow mb-3">Skill audit</p>
+          <h2 class="eyebrow mb-3">Skill audit</h2>
           <AuditBars
             qualityScore={display.quality_score}
             hasReadme={Boolean(display.readme)}
@@ -512,11 +521,10 @@ const skillSchema = {
         </div>
 
         <!-- Runtime panel (Phase Q) — fetches /runtime + /install-events client-side.
-             client:visible so the fetch only fires when the panel is visible. -->
-        <div class="bg-bg-card border border-border rounded-2xl p-5">
-          <p class="eyebrow mb-3">Runtime</p>
-          <RuntimePanel slug={display.slug} client:visible />
-        </div>
+             qa1018 C05: the panel now renders its OWN card + heading, and only
+             when there is data — anonymous visitors (both endpoints are
+             key-gated) no longer see an empty "RUNTIME" heading. -->
+        <RuntimePanel slug={display.slug} client:idle />
 
         <div class="bg-bg-card border border-border rounded-2xl p-5">
           <p class="eyebrow mb-3">Details</p>
@@ -635,6 +643,28 @@ const skillSchema = {
 </AppShell>
 
 <script>
+  // qa1018 C02: sidebar "Copy install phrase" — copies exactly the phrase
+  // rendered above it; on clipboard failure, selects it for manual copy.
+  {
+    const btn = document.getElementById('sidebar-copy-install');
+    if (btn) {
+      btn.addEventListener('click', async () => {
+        const text = btn.getAttribute('data-copy-text') || '';
+        const label = btn.textContent;
+        try {
+          await navigator.clipboard.writeText(text);
+          btn.textContent = 'Copied ✓';
+        } catch {
+          const code = document.querySelector('[data-sidebar-phrase]');
+          const sel = window.getSelection();
+          if (code && sel) { const r = document.createRange(); r.selectNodeContents(code); sel.removeAllRanges(); sel.addRange(r); }
+          btn.textContent = 'Select & copy';
+        }
+        setTimeout(() => { btn.textContent = label; }, 1600);
+      });
+    }
+  }
+
   // Auth-aware install gate (WIS-647)
   // Tier hierarchy: free < pro < pro_plus (with legacy slug shims)
   // RCP-INCIDENT-2026-05-11: 'cook', 'operator', 'studio' are legacy aliases.
@@ -701,6 +731,11 @@ const skillSchema = {
     }
   })();
 </script>
+
+<style>
+  .sidebar-phrase { white-space: pre-wrap; overflow-wrap: anywhere; }
+  .sidebar-copy { min-height: 44px; display: flex; align-items: center; justify-content: center; }
+</style>
 
 <!-- Phase Q: The old RCP-PUB-2026-05-18 body-hydration script has been replaced
      by the SkillFileExplorer React island which handles auth-aware file loading
