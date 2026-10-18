@@ -46,6 +46,19 @@
 /** The canonical public origin. Also asserted by scripts/assert-dist.sh. */
 export const LOOPSKILL_ORIGIN = 'https://app.loopskill.io';
 
+/**
+ * qa1018 (launch QA, 5/5 personas): the bootstrap phrase a FRESH agent can act on.
+ * One string, shown == copied, everywhere (home, InstallWidget, docs, skill and
+ * bundle pages). Full https URL, no trailing words. Free skills need NO key —
+ * the phrase must never carry a key placeholder.
+ */
+export const META_INSTALL_PHRASE = `Install the loopskill skill from ${LOOPSKILL_ORIGIN}/skill`;
+
+/** Phrase for one artifact that works from a fresh agent (bootstrap + target). */
+export function freshAgentPhrase(kind: 'skill' | 'bundle', slug: string): string {
+  return `${META_INSTALL_PHRASE}, then use it to install the "${slug}" ${kind}.`;
+}
+
 export type AgentArtifactType =
   | 'skill' | 'skills'
   | 'loop' | 'loops'
