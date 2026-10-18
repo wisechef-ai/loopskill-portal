@@ -109,4 +109,8 @@ const idRects = identiconRects(slug);
   .sc-tier { font-size:0.56rem; font-weight:700; letter-spacing:0.06em; padding:0.15rem 0.4rem; border-radius:0.4rem; background:rgba(0,0,0,0.45); color:#fff; backdrop-filter:blur(4px); }
   .sc-free { background:rgba(255,255,255,0.92); color:#0a0a0a; }
   .sc-src { font-size:0.52rem; font-weight:600; letter-spacing:0.04em; padding:0.12rem 0.4rem; border-radius:0.4rem; background:rgba(0,0,0,0.4); color:rgba(255,255,255,0.9); text-transform:lowercase; }
+  /* qa1018 C21: tier/source badges were 8-9px; floor them at 12px on phones. */
+  @media (max-width: 767px) {
+    .sc-tier, .sc-src { font-size: 12px; }
+  }
 </style>

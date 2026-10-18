@@ -1,0 +1,81 @@
+---
+// /terms — plain-language Terms (qa1018 C14, skeptic persona SKP-01).
+//
+// THE RULE FOR THIS PAGE: it may only RESTATE commitments the site already
+// makes elsewhere (/pricing, /privacy, /security, the licences in the repos).
+// It must not invent new ones — no refund policy, no SLA, no legal-entity
+// details we do not have. If you add a line here, link the page it restates.
+//
+// Founding Member wording mirrors pricing.astro (the founding card + the
+// "What is the Founding Member offer?" FAQ) word for word; the
+// qa1018 terms test pins both so they cannot drift apart.
+import AppShell from '../layouts/AppShell.astro';
+const lastUpdated = '2026-10-18';
+---
+<AppShell mode="public" title="Terms — LoopSkill" description="LoopSkill terms in plain language: open-source licences, the hosted service as-is, Free, Pro and Founding Member billing, acceptable use, and how to contact us.">
+  <article class="prose max-w-3xl mx-auto px-6 py-16 md:py-20" data-terms>
+    <p class="eyebrow mb-2">Trust &amp; legal</p>
+    <h1 class="text-4xl md:text-5xl font-semibold tracking-tight mb-3">Terms</h1>
+    <p><em>Last updated {lastUpdated}</em></p>
+    <p>
+      These are the terms for using LoopSkill, written in plain language. They only repeat
+      promises we already make on other pages of this site — each section links to its source.
+      If something here and the linked page ever disagree, tell us at
+      <a href="mailto:hello@loopskill.io">hello@loopskill.io</a> and we will fix it.
+    </p>
+
+    <h2>Who runs LoopSkill</h2>
+    <p>
+      LoopSkill is built by <a href="https://wisechef.ai">WiseChef</a>, Kraków, Poland.
+      Contact: <a href="mailto:hello@loopskill.io">hello@loopskill.io</a>.
+    </p>
+
+    <h2>The code is open source</h2>
+    <ul>
+      <li>The platform — the registry, the runner and this website — is licensed under the <strong>Mozilla Public License 2.0 (MPL-2.0)</strong>. <a href="https://github.com/wisechef-ai/loopskill-api">Source on GitHub</a>.</li>
+      <li>The free skills catalog is MIT-licensed (see <a href="/security">Security &amp; audit</a>).</li>
+      <li>Skills in the federated index belong to their authors and keep their own licences. We link to them as they are; we do not review them or host them.</li>
+      <li>If you self-host, you run the software under its licence. You do not need a LoopSkill account, and the rest of this page (which is about our hosted service) does not apply to your server. See the <a href="https://github.com/wisechef-ai/loopskill-api/blob/main/docs/SELF_HOST.md">self-host guide</a>.</li>
+    </ul>
+
+    <h2>The hosted service is provided as-is</h2>
+    <p>
+      app.loopskill.io is provided <strong>as-is, without warranty</strong> of any kind. We work to
+      keep it running and accurate, but we do not promise that it will always be available, or that
+      any skill will work for your purpose. Skills run on your own machine, under your control —
+      read a skill before you let an agent run it, especially on a client's machine. What we check
+      before a skill is listed, and what we do not check, is described on
+      <a href="/security">Security &amp; audit</a> and <a href="/docs/scope">What LoopSkill does and doesn't do</a>.
+    </p>
+
+    <h2>Accounts</h2>
+    <p>
+      Free skills install without an account. You create an account by signing in with Google or
+      GitHub. What we store, and what we record when you install a skill, is described on the
+      <a href="/privacy">Privacy</a> page.
+    </p>
+
+    <h2>Plans and payment</h2>
+    <p>Prices and limits are on the <a href="/pricing">Pricing</a> page. In short:</p>
+    <ul>
+      <li><strong>Free</strong> — $0, no card.</li>
+      <li><strong>Pro</strong> — a monthly subscription ($9.95 per month), billed by Stripe. Cancel anytime. If you cancel, the skills you already installed keep working; your account goes back to the Free limits, and nothing is deleted.</li>
+      <li><strong>Founding Member</strong> — a launch-day, one-time $49 payment for permanent Pro — not a subscription, never renews, never expires. No card on file after checkout. Capped at 100 seats. Once the counter on the pricing page hits 0, the offer is gone and the button stops working; there is no waitlist or re-open.</li>
+      <li>Payments and receipts are handled by Stripe — we never hold your money. EU VAT is included and handled through Stripe Tax.</li>
+    </ul>
+    <p>For billing questions, email <a href="mailto:hello@loopskill.io">hello@loopskill.io</a>.</p>
+
+    <h2>Acceptable use</h2>
+    <ul>
+      <li>Do not publish malware, or skills made to steal credentials or data.</li>
+      <li>Do not attack, overload or abuse the service, or other people who use it.</li>
+      <li>Anonymous contributions are saved as drafts, and a person reviews them before they are listed.</li>
+    </ul>
+
+    <h2>Contact</h2>
+    <p>
+      Questions about these terms or the product: <a href="mailto:hello@loopskill.io">hello@loopskill.io</a>.
+      Privacy questions: see the <a href="/privacy">Privacy</a> page.
+    </p>
+  </article>
+</AppShell>

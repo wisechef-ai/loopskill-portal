@@ -17,11 +17,11 @@
 // build-time user-data fetch).
 import AppShell from '../layouts/AppShell.astro';
 ---
-<AppShell mode="public" title="Home — LoopSkill" description="Explore runnable AI-agent artifacts — loops, skills, bundles, and personalities." active="home">
+<AppShell mode="public" title="Home — LoopSkill" description="Popular skills, loops, bundles and personalities you can add to your AI agent." active="home">
   <main class="ls-page max-w-6xl mx-auto pb-24">
     <header class="mb-8">
       <h1 class="ls-page-title text-text">Home</h1>
-      <p class="ls-body text-muted mt-1" id="home-subline">Explore runnable AI-agent artifacts.</p>
+      <p class="ls-body text-muted mt-1" id="home-subline">Popular skills, loops, bundles and personalities for your AI agent.</p>
     </header>
 
     <div id="home-shelves"></div>
@@ -130,7 +130,7 @@ import AppShell from '../layouts/AppShell.astro';
     // (client-side per AGENTS.md Trap B — never at build time).
     const me = await fetchJson(`${API_BASE}/api/auth/me`);
     const subline = $('home-subline');
-    if (subline) subline.textContent = me ? 'Pick up where your agents left off.' : 'Explore runnable AI-agent artifacts.';
+    if (subline) subline.textContent = me ? 'Pick up where your agents left off.' : 'Popular skills, loops, bundles and personalities for your AI agent.';
 
     const [loopsData, skillsData, bundlesDataPrimary, bundlesDataCompat, persData] = await Promise.all([
       fetchJson(`${API_BASE}/api/loops`),

@@ -52,12 +52,15 @@
         var cap = data && typeof data.cap === 'number' ? data.cap : null;
         if (price === null || cap === null) return; // incomplete payload -> stay hidden
         var priceText = '$' + (Number(price) % 1 === 0 ? String(Number(price)) : String(price));
+        // qa1018 C25 (mobile MOB-14): "100 of 100 seats left" read as zero
+        // traction. Untouched cap -> state the cap; otherwise the remainder.
+        var seatsText = remaining >= cap ? cap + ' seats in total.' : remaining + ' seats left.';
         el.textContent =
-          'Founding Member — ' + priceText + ' lifetime, ' + remaining + ' of ' + cap + ' seats left.';
+          'Founding Member — ' + priceText + ' one-time, Pro for life. ' + seatsText;
         var link = document.createElement('a');
         link.href = '/pricing';
-        link.className = 'ml-2 underline hover:opacity-80';
-        link.textContent = 'Claim yours →';
+        link.className = 'ml-2 underline hover:opacity-80 inline-flex items-center min-h-[44px] md:min-h-0';
+        link.textContent = 'See the offer →';
         el.appendChild(link);
         el.hidden = false;
       })

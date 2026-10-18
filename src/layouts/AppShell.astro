@@ -32,6 +32,7 @@
 import '../styles/global.css';
 import Footer from '../components/Footer.astro';
 import LoopMark from '../components/LoopMark.astro';
+import MemberOnly from '../components/MemberOnly.astro';
 
 interface Props {
   title?: string;
@@ -44,7 +45,7 @@ interface Props {
 
 const {
   title = 'LoopSkill',
-  description = 'LoopSkill — the open-source registry of vetted, runnable agent loops. Press run, get an objective pass/fail under enforced safety bounds. Plus an 80k+ skill library and shareable bundles.',
+  description = 'LoopSkill — free, open-source skills and runnable loops for AI agents. A small curated catalog you can install with no account, plus a search index of skills hosted in other registries.',
   active = '',
   mode = 'member',
   ogImage = '/og-default.png',
@@ -204,14 +205,19 @@ const orgSchema = {
               <span>Your Library</span>
             </a>
           )}
+          {/* qa1018 C13: in public mode the member variant ships inside an inert
+              <template> (MemberOnly defer) — present in static HTML (Trap C) but
+              NOT in the document/a11y tree until /api/auth/me confirms a session. */}
+          <MemberOnly defer={isPublic}>
           <a href="/library" data-shell-member
-             class={`rail-link flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition ${isPublic ? 'hidden' : ''} ${active === 'library' ? 'rail-active font-medium' : 'text-muted hover:text-text'}`}
+             class={`rail-link flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition ${active === 'library' ? 'rail-active font-medium' : 'text-muted hover:text-text'}`}
              aria-current={active === 'library' ? 'page' : undefined}>
             <svg class="rail-icon shrink-0" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
               <path d="m16 6 4 14"/><path d="M12 6v14"/><path d="M8 8v12"/><path d="M4 4v16"/>
             </svg>
             <span>Your Library</span>
           </a>
+          </MemberOnly>
           {/* Add to your agent — the human entry to the one-paste install
               (docs/install carries the phrase + all paths; /skill itself is
               the API-served agent-facing artifact, linked from the phrase).
@@ -258,7 +264,8 @@ const orgSchema = {
             </div>
           </div>
         )}
-        <div class={`px-3 pb-4 flex-1 min-h-0 ${isPublic ? 'hidden' : ''}`} data-shell-member>
+        <MemberOnly defer={isPublic}>
+        <div class="px-3 pb-4 flex-1 min-h-0" data-shell-member>
           <div class="flex items-center justify-between px-3 mb-1.5">
             <span class="text-[10px] uppercase tracking-widest text-muted-soft">Recent bundles</span>
           </div>
@@ -266,6 +273,7 @@ const orgSchema = {
             <p id="rail-bundles-empty" class="px-3 py-2 text-xs text-muted-soft">No bundles yet.</p>
           </div>
         </div>
+        </MemberOnly>
 
         <!-- Rail footer: sign-in (public default) ⇄ account (member). -->
         {isPublic && (
@@ -280,7 +288,8 @@ const orgSchema = {
             </a>
           </div>
         )}
-        <div class={`border-t border-border px-3 py-3 shrink-0 ${isPublic ? 'hidden' : ''}`} data-shell-member>
+        <MemberOnly defer={isPublic}>
+        <div class="border-t border-border px-3 py-3 shrink-0" data-shell-member>
           <!-- Ambient fleet status (P4): "show don't tell" — live from /api/fleets + /api/bundles. -->
           <p id="rail-fleet-status" class="hidden px-2 pb-2 text-[10px] text-muted-soft leading-relaxed"></p>
           <a href="/account" class={`flex items-center gap-2.5 px-2 py-2 rounded-lg transition ${active === 'account' ? 'bg-accent/12' : 'hover:bg-bg-card'}`}>
@@ -295,6 +304,7 @@ const orgSchema = {
             <span>Sign out</span>
           </button>
         </div>
+        </MemberOnly>
       </aside>
 
       <!-- ── Main content ──────────────────────────────────────────── -->
@@ -305,26 +315,37 @@ const orgSchema = {
             <LoopMark size={26} />
             <span>LoopSkill</span>
           </a>
+          {/* qa1018 C21 (mobile persona): the menu closes on an outside tap, on
+              Escape and on picking a link (script below); the 44x44 toggle shows
+              its open state (bars -> X, aria-expanded). <details> keeps it
+              working with JS off. */}
           <details class="relative" id="appshell-mobile-menu">
-            <summary class="list-none cursor-pointer p-2 text-muted hover:text-text" aria-label="Menu">
-              <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><rect y="3" width="20" height="2" rx="1" fill="currentColor"/><rect y="9" width="20" height="2" rx="1" fill="currentColor"/><rect y="15" width="20" height="2" rx="1" fill="currentColor"/></svg>
+            <summary class="list-none cursor-pointer flex items-center justify-center w-11 h-11 -mr-2 rounded-lg text-muted hover:text-text" aria-label="Menu" aria-expanded="false" aria-controls="appshell-mobile-panel">
+              <svg class="menu-icon-open" width="22" height="22" viewBox="0 0 20 20" fill="none" aria-hidden="true"><rect y="3" width="20" height="2" rx="1" fill="currentColor"/><rect y="9" width="20" height="2" rx="1" fill="currentColor"/><rect y="15" width="20" height="2" rx="1" fill="currentColor"/></svg>
+              <svg class="menu-icon-close" width="22" height="22" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M4 4l12 12M16 4L4 16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
             </summary>
-            <div class="absolute right-0 top-full mt-2 w-52 bg-bg-elev border border-border rounded-xl shadow-xl overflow-hidden z-50">
-              <nav class="flex flex-col text-sm">
-                <a href="/home" class="px-4 py-3 text-muted hover:text-text hover:bg-bg-card transition">Home</a>
-                <a href="/browse" class="px-4 py-3 text-muted hover:text-text hover:bg-bg-card transition">Browse</a>
-                <a href={isPublic ? '/signin?next=/library' : '/library'} data-signin-next={isPublic ? true : undefined} class="px-4 py-3 text-muted hover:text-text hover:bg-bg-card transition">Your Library</a>
-                <a href="/docs/install" class="px-4 py-3 text-muted hover:text-text hover:bg-bg-card transition">Add to your agent</a>
-                <a href="/federation/" class="px-4 py-3 text-muted hover:text-text hover:bg-bg-card transition">Federated</a>
+            <div id="appshell-mobile-panel" class="absolute right-0 top-full mt-2 w-60 bg-bg-elev border border-border rounded-xl shadow-xl overflow-hidden z-50">
+              <nav class="flex flex-col text-sm" aria-label="Mobile">
+                <a href="/home" class="flex items-center min-h-[44px] px-4 py-2 text-muted hover:text-text hover:bg-bg-card transition">Home</a>
+                <a href="/browse" class="flex items-center min-h-[44px] px-4 py-2 text-muted hover:text-text hover:bg-bg-card transition">Browse skills</a>
+                <a href={isPublic ? '/signin?next=/library' : '/library'} data-signin-next={isPublic ? true : undefined} class="flex items-center min-h-[44px] px-4 py-2 text-muted hover:text-text hover:bg-bg-card transition">Your Library</a>
+                <a href="/docs/install" class="flex items-center min-h-[44px] px-4 py-2 text-muted hover:text-text hover:bg-bg-card transition">Add to your agent</a>
+                <a href="/federation/" class="flex items-center min-h-[44px] px-4 py-2 text-muted hover:text-text hover:bg-bg-card transition">Federated</a>
+                <a href="/pricing" class="flex items-center min-h-[44px] px-4 py-2 text-muted hover:text-text hover:bg-bg-card transition">Pricing</a>
                 {isPublic && (
-                  <a href="/signin" data-signin-next data-shell-anon class="px-4 py-3 text-accent font-medium hover:bg-bg-card transition border-t border-border">Sign in</a>
+                  <a href="/signin" data-signin-next data-shell-anon class="flex items-center min-h-[44px] px-4 py-2 text-accent font-medium hover:bg-bg-card transition border-t border-border">Sign in</a>
                 )}
-                <a href="/account" data-shell-member class={`px-4 py-3 text-muted hover:text-text hover:bg-bg-card transition border-t border-border ${isPublic ? 'hidden' : ''}`}>Account</a>
-                <button id="rail-signout-mobile" type="button" data-shell-member class={`px-4 py-3 text-left text-muted hover:text-text hover:bg-bg-card transition border-t border-border ${isPublic ? 'hidden' : ''}`}>Sign out</button>
+                <MemberOnly defer={isPublic}>
+                <a href="/account" data-shell-member class="flex items-center min-h-[44px] px-4 py-2 text-muted hover:text-text hover:bg-bg-card transition border-t border-border">Account</a>
+                <button id="rail-signout-mobile" type="button" data-shell-member class="flex items-center min-h-[44px] px-4 py-2 text-left text-muted hover:text-text hover:bg-bg-card transition border-t border-border">Sign out</button>
+                </MemberOnly>
               </nav>
             </div>
           </details>
         </header>
+        <!-- Tap-outside scrim for the mobile menu (outside the header: the
+             header's backdrop-filter would trap a fixed child inside it). -->
+        <div id="appshell-mobile-scrim" hidden class="md:hidden fixed inset-0 z-30 bg-black/50" aria-hidden="true"></div>
 
         <main id="app-main" class="flex-1">
           <slot />
@@ -367,12 +388,23 @@ const orgSchema = {
         }
         gate?.remove();
 
+        // qa1018 C13: public mode ships member-only chrome inside inert
+        // <template>s (MemberOnly defer). Stamp them into the document NOW —
+        // only after the session is confirmed — before anything below looks
+        // up #rail-avatar / #rail-signout etc.
+        document.querySelectorAll<HTMLTemplateElement>('template[data-shell-member-tpl]').forEach((t) => {
+          t.replaceWith(t.content.cloneNode(true));
+        });
+
         // Member confirmed. In public mode, swap anon rail → member rail.
         // classList AND inline style.display: responsive variants (md:flex)
-        // outrank `.hidden` in the cascade (Trap A).
+        // outrank `.hidden` in the cascade (Trap A). `hidden` + aria-hidden
+        // also take the anon CTAs out of the accessibility tree.
         document.querySelectorAll<HTMLElement>('[data-shell-anon]').forEach((el) => {
           el.classList.add('hidden');
           el.style.display = 'none';
+          el.hidden = true;
+          el.setAttribute('aria-hidden', 'true');
         });
         document.querySelectorAll<HTMLElement>('[data-shell-member]').forEach((el) => {
           el.classList.remove('hidden');
@@ -446,6 +478,37 @@ const orgSchema = {
         };
         document.getElementById('rail-signout')?.addEventListener('click', _logout);
         document.getElementById('rail-signout-mobile')?.addEventListener('click', _logout);
+      })();
+    </script>
+
+    <script>
+      // qa1018 C21 — mobile menu: close on outside tap, Escape, or picking an
+      // item; mirror the state on aria-expanded and the scrim. Delegated so
+      // the member items stamped in later (MemberOnly) close it too.
+      (() => {
+        const menu = document.getElementById('appshell-mobile-menu') as HTMLDetailsElement | null;
+        if (!menu) return;
+        const summary = menu.querySelector('summary');
+        const scrim = document.getElementById('appshell-mobile-scrim');
+        const sync = () => {
+          summary?.setAttribute('aria-expanded', menu.open ? 'true' : 'false');
+          if (scrim) scrim.hidden = !menu.open;
+        };
+        menu.addEventListener('toggle', sync);
+        document.addEventListener('click', (e) => {
+          if (menu.open && !menu.contains(e.target as Node)) menu.open = false;
+        });
+        document.addEventListener('keydown', (e) => {
+          if (e.key === 'Escape' && menu.open) {
+            menu.open = false;
+            (summary as HTMLElement | null)?.focus();
+          }
+        });
+        menu.addEventListener('click', (e) => {
+          const t = e.target as HTMLElement | null;
+          if (t && t.closest && t.closest('nav a, nav button')) menu.open = false;
+        });
+        sync();
       })();
     </script>
 

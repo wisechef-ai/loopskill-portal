@@ -1,0 +1,27 @@
+---
+// MemberOnly.astro — qa1018 C13 (launch QA: breaker + impatient personas).
+//
+// Signed-in chrome (Sign out, the member "Your Library" link, the Account
+// footer) used to ship in every PUBLIC page's static HTML, merely hidden with
+// CSS. A screen reader, a keyboard user or anyone listing links/buttons saw
+// "Sign out" and two "Your Library" entries while signed out.
+//
+// With `defer` (AppShell public mode) the markup is wrapped in an inert
+// <template>: it is still IN the static HTML (AGENTS.md Trap C — both states
+// exist at build time, nothing is branched away), but a <template>'s content
+// is a detached DocumentFragment, so it is not part of the document or the
+// accessibility tree. AppShell's hydration script stamps it into place ONLY
+// after /api/auth/me returns a session.
+//
+// Without `defer` (member mode — the page already requires a session) the
+// slot renders directly, exactly as before.
+interface Props {
+  defer?: boolean;
+}
+const { defer = false } = Astro.props;
+---
+{defer ? (
+  <template data-shell-member-tpl><slot /></template>
+) : (
+  <slot />
+)}

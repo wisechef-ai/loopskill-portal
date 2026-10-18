@@ -3,7 +3,9 @@
 // (signin, signup, billing/success). onechrome_0611 P3.
 //
 // No rail, no nav: these are focused moments (OAuth choice, payment
-// confirmation) where chrome is noise. Footer kept for legal links.
+// confirmation) where chrome is noise. qa1018 C26: the full 5-column site
+// footer pushed the sign-in card into a scrolling page on a phone — only the
+// compact legal/contact row is kept.
 import '../styles/global.css';
 import Footer from '../components/Footer.astro';
 import LoopMark from '../components/LoopMark.astro';
@@ -45,6 +47,6 @@ const canonicalURL = new URL(Astro.url.pathname, 'https://app.loopskill.io');
     <main class="flex-1 flex flex-col">
       <slot />
     </main>
-    <Footer />
+    <Footer compact />
   </body>
 </html>

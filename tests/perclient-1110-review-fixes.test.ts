@@ -22,7 +22,8 @@ import { describe, expect, it } from 'vitest';
 const ROOT = join(new URL(import.meta.url).pathname, '../../');
 const PAGE = join(ROOT, 'src/pages/use-cases/one-private-bundle-per-client.astro');
 const POST = join(ROOT, 'src/content/blog/one-private-bundle-per-client.md');
-const SIGNIN_SRC = join(ROOT, 'src/pages/signin.astro');
+// qa1018 C08: /signin and /signup share one card + script in AuthPanel.astro.
+const SIGNIN_SRC = join(ROOT, 'src/components/AuthPanel.astro');
 const DIST_PAGE = join(ROOT, 'dist/use-cases/one-private-bundle-per-client/index.html');
 const DIST_SIGNIN = join(ROOT, 'dist/signin/index.html');
 const ORIGIN = 'https://app.loopskill.io';

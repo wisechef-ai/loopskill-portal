@@ -732,10 +732,13 @@ ${trendingLines.length ? trendingLines.join('\n') : '- Browse the full catalog a
 - Pricing: ${SITE}/pricing
 - Compatibility (supported agents): ${SITE}/compatibility
 - Blog (architecture + product notes): ${SITE}/blog
+- Security & audit: ${SITE}/security
+- Privacy: ${SITE}/privacy
+- Terms: ${SITE}/terms
 - Sitemap: ${SITE}/sitemap.xml
 
 ## About
-LoopSkill runs on a head-chef + line-cooks model: one orchestrating agent delegates to specialist skills. Skills are signed, versioned, and run with no cloud round-trip at execution time.
+LoopSkill runs on a head-chef + line-cooks model: one orchestrating agent delegates to specialist skills. Curated skills are versioned and SHA-256-checksummed at install (publisher signatures are checked at publish time), and they run with no cloud round-trip at execution time.
 `;
 
   return new Response(body, {

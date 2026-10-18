@@ -1,5 +1,7 @@
 ---
 import AppShell from '../../layouts/AppShell.astro';
+// qa1018 C04: ONE install phrase, shown == copied, from the canonical module.
+import { META_INSTALL_PHRASE } from '../../lib/agentInstall';
 ---
 <AppShell mode="public" title="Getting started — LoopSkill Docs"
      description="Install LoopSkill on Hermes, Claude Code, Claude Desktop, Codex, or Cursor in under 5 minutes.">
@@ -9,24 +11,27 @@ import AppShell from '../../layouts/AppShell.astro';
 
     <div class="prose">
       <div class="not-prose mb-6 rounded-2xl border border-accent/40 bg-accent/5 p-5">
-        <p class="text-xs uppercase tracking-wider text-accent font-semibold mb-2">The agent-first workflow</p>
-        <p class="text-base text-text leading-relaxed font-medium">
-          Tell your agent: <em>"install the relevant skills from app.loopskill.io"</em>.
+        <p class="text-xs uppercase tracking-wider text-accent font-semibold mb-2">The fastest way</p>
+        <p class="text-sm text-muted leading-relaxed">
+          Paste this into your agent's chat (Claude Code, Codex, Cursor…) and press Enter:
         </p>
-        <p class="text-sm text-muted mt-2 leading-relaxed">
-          The agent handles the rest via MCP — it searches the catalog, picks the best-scored skill
-          for your task, installs it, and reports back. You don't browse the website by hand.
+        <div class="mt-2 flex flex-col sm:flex-row sm:items-stretch gap-2">
+          <code class="flex-1 block font-mono text-sm bg-[#0d0d0d] border border-border rounded px-3 py-2.5 text-text break-words wrap-cmd" data-phrase>{META_INSTALL_PHRASE}</code>
+          <button type="button" class="phrase-copy-btn shrink-0 min-h-[44px] px-4 rounded-lg border border-border text-sm font-semibold text-text hover:border-accent transition" data-copy={META_INSTALL_PHRASE} aria-label="Copy the install phrase">Copy</button>
+        </div>
+        <p class="text-sm text-muted mt-3 leading-relaxed">
+          Your agent reads the LoopSkill skill and can then search the catalog and install skills for you.
+          Free skills need no account and no key.
         </p>
       </div>
 
       <h2>Prerequisites</h2>
       <ul>
-        <li>A LoopSkill API key — free, no card required. Every catalog skill installs on the Free tier; Pro ($9.95/mo) raises two limits: private bundles and API keys.</li>
-
         <li>One of the supported agent runtimes below.</li>
-        <li>Your key exported: <code>export LOOPSKILL_API_KEY=rec_xx...</code></li>
+        <li><strong>For free skills: nothing else.</strong> No account and no key — they install anonymously.</li>
+        <li><strong>An API key only if you need it</strong> — for the MCP tools (the Claude Desktop and Cursor setups below), saving to your Library, private bundles and fleets. The key is free, no card required. Every catalog skill installs on the Free tier; Pro ($9.95/mo) raises two limits: private bundles and API keys.</li>
       </ul>
-      <p>Get your key: <a href="/signin?mode=signup">Sign up</a> → Dashboard → API Keys → New key.</p>
+      <p>Get a key: <a href="/signup">create a free account</a> → Library → API keys → New key. Then export it: <code>export LOOPSKILL_API_KEY=rec_xx...</code></p>
 
       <h2>Step 1 — Install the meta-skill</h2>
       <p>
@@ -128,9 +133,28 @@ curl -sL https://app.loopskill.io/skill \
         sha256, and unpacks it into the skills folder. <code>loopskill_sync</code> is only for
         bundles you want pinned: it writes the current latest versions as the bundle's pins (it
         does not touch files on your machine), and the bundle then stays on those versions until
-        you sync again. The standalone <code>loopskill</code>
-        CLI does not have a <code>sync</code> subcommand today (it ships
-        <code>import</code>/<code>diff</code>/<code>pull</code>/<code>apply</code> only).
+        you sync again.
+      </p>
+
+      <h2 id="cli">Optional — the <code>loopskill</code> command-line tool</h2>
+      <p>
+        A small, free command-line tool (Python 3.9+, MIT, no dependencies) that shows which skills
+        are already on a machine and how two machines differ. You do not need it to install skills.
+      </p>
+      <pre><code>pip install loopskill</code></pre>
+      <p>
+        <code>loopskill import</code> lists the skills in <code>~/.claude/skills</code>,
+        <code>~/.codex/skills</code>, <code>~/.cursor/skills</code> and <code>~/.hermes/skills</code> as a
+        lockfile, and <code>loopskill diff</code> compares two lockfiles (or a lockfile and this machine).
+        Both make zero network calls and need no account.
+      </p>
+      <pre><code>loopskill import -o mine.lock.json
+loopskill diff mine.lock.json</code></pre>
+      <p>
+        <code>loopskill pull</code> and <code>loopskill apply</code> fetch a public bundle and write it to a
+        local folder (<code>apply</code> is a dry run until you add <code>--write</code>). Run
+        <code>loopskill --help</code> for every command. Source and full reference:
+        <a href="https://github.com/wisechef-ai/loopskill-api/tree/main/cli">cli/ on GitHub</a>.
       </p>
 
       <h2>What's in the catalog</h2>
@@ -161,3 +185,22 @@ curl -sL https://app.loopskill.io/skill \
     </div>
   </section>
 </AppShell>
+
+<script>
+  // Copy button for the install phrase: copies exactly the text shown.
+  import { writeClipboard } from '../../lib/agentInstall';
+  document.querySelectorAll<HTMLButtonElement>('.phrase-copy-btn').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      const text = btn.getAttribute('data-copy') || '';
+      const how = await writeClipboard(text);
+      if (how === 'manual') {
+        const code = btn.parentElement?.querySelector('[data-phrase]');
+        if (code) { const r = document.createRange(); r.selectNodeContents(code); const sel = window.getSelection(); sel?.removeAllRanges(); sel?.addRange(r); }
+        btn.textContent = 'Select & copy';
+        return;
+      }
+      btn.textContent = 'Copied ✓';
+      setTimeout(() => { btn.textContent = 'Copy'; }, 1600);
+    });
+  });
+</script>

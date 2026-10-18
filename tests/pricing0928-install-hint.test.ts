@@ -22,7 +22,8 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 const ROOT = join(new URL(import.meta.url).pathname, '../../');
 const INSTALL_SH = join(ROOT, 'public', 'install.sh');
-const SIGNIN = readFileSync(join(ROOT, 'src', 'pages', 'signin.astro'), 'utf-8');
+// qa1018 C08: the /signin script moved into the shared AuthPanel component.
+const SIGNIN = readFileSync(join(ROOT, 'src', 'components', 'AuthPanel.astro'), 'utf-8');
 
 let server: ReturnType<typeof spawn> | undefined;
 let base = '';

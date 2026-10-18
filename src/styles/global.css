@@ -376,3 +376,31 @@ body {
 }
 .rail-link.rail-active .rail-icon { color: #ffd166; }
 .rail-link:not(.rail-active):hover { background: rgba(255,255,255,0.055); color: #f5f5f5; }
+
+/* ─────────────────────────────────────────────────────────────────────────
+ * qa1018 C21 — mobile persona (375px): readable text + open-state menu.
+ * ───────────────────────────────────────────────────────────────────────── */
+
+/* Mobile menu toggle shows its state: bars when closed, X when open. */
+#appshell-mobile-menu > summary::-webkit-details-marker { display: none; }
+#appshell-mobile-menu .menu-icon-close { display: none; }
+#appshell-mobile-menu[open] .menu-icon-open { display: none; }
+#appshell-mobile-menu[open] .menu-icon-close { display: block; }
+#appshell-mobile-menu[open] > summary { color: var(--color-text); background: rgba(255,255,255,0.06); }
+
+/* No UI text below 12px on a phone. Tailwind's arbitrary sizes live in the
+   `utilities` cascade layer; these rules are unlayered, so they win without
+   !important. Desktop keeps the denser scale. */
+@media (max-width: 767px) {
+  .text-\[9px\],
+  .text-\[10px\],
+  .text-\[11px\],
+  .ls-eyebrow2,
+  .artifact-card .artifact-badge,
+  .artifact-copy,
+  .artifact-copy-fallback { font-size: 12px; line-height: 1.35; }
+
+  /* Long one-line commands wrap instead of running off a 375px screen.
+     Keeps them copyable (no inserted characters) — only the line breaks. */
+  pre, pre code, .wrap-cmd { white-space: pre-wrap; overflow-wrap: anywhere; word-break: break-word; }
+}
