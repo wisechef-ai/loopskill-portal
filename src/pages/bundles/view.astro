@@ -58,7 +58,8 @@ import AppShell from '../../layouts/AppShell.astro';
       <!-- Share link — surfaced immediately on publish (plan §3 #4), hidden while private. -->
       <div id="cb-share-row" hidden class="flex items-center gap-2 mt-1">
         <code id="cb-share-url" class="font-mono text-[11px] bg-bg-elev border border-border rounded px-2 py-1.5 break-all"></code>
-        <button type="button" id="cb-share-copy" class="px-2 py-1.5 rounded bg-accent text-bg text-[11px] font-semibold shrink-0">Copy</button>
+        <!-- qa1018 MOB-5: >=44px tap target (inline min-height so it never depends on a Tailwind arbitrary class). -->
+        <button type="button" id="cb-share-copy" class="px-4 py-2 rounded bg-accent text-bg text-sm font-semibold shrink-0" style="min-height:44px;min-width:88px;">Copy</button>
       </div>
     </header>
 

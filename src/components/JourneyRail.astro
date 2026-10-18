@@ -53,7 +53,7 @@ const { stations } = Astro.props;
   <div
     class="journey-tabs"
     role="tablist"
-    aria-label="The path from day one to a paying client's fleet"
+    aria-label="How LoopSkill works, step by step"
     id="journey-tablist"
   >
     {stations.map((s, i) => (
@@ -167,6 +167,10 @@ const { stations } = Astro.props;
     transition: color .18s ease;
   }
   .journey-tab-sub { font-size: 11px; line-height: 1.35; color: #737373; }
+  /* qa1018 C21: no UI text below 12px on a phone. */
+  @media (max-width: 767px) {
+    .journey-tab-num, .journey-tab-sub { font-size: 12px; }
+  }
   .journey-tab-icon {
     margin-left: auto; color: #ffd166; opacity: .35;
     transition: opacity .18s ease; padding-top: 2px;

@@ -22,7 +22,9 @@ const works = [
   {
     title: 'Browse and install skills from any agent',
     body: 'Search the public catalog and install a skill into Claude Code, Codex, Cursor, OpenClaw, Hermes, or anything else that speaks MCP. Installation is a pull: your agent fetches the skill. Nothing is pushed to your machine.',
-    proof: '492 recorded installs in production (verified 2026-08-13 via /api/stats).',
+    // qa1018 C25: the hardcoded "492 recorded installs" went stale (924 on
+    // 2026-10-18). Point at the live counter instead of freezing a number.
+    proof: 'Install events recorded in production — live total at GET /api/stats (total_installs_lifetime).',
   },
   {
     title: 'Run a loop and get an objective pass/fail',
@@ -68,7 +70,9 @@ const notBuilt = [
   },
   {
     title: 'Usage-based or per-agent billing',
-    body: 'Pricing is a flat subscription. We do not meter agents, runs, or seats, and we have no plans to — skills are plain text and metering them would be theatre.',
+    // qa1018 C25 (skeptic SKP-18): "a flat subscription" contradicted the
+    // one-time Founding Member offer on /pricing. Name what /pricing sells.
+    body: 'Prices are flat: Free, Pro (one fixed monthly price), or the one-time Founding Member payment — see /pricing. We do not meter agents, runs, or seats, and we have no plans to — skills are plain text and metering them would be theatre.',
   },
 ];
 ---
@@ -171,7 +175,8 @@ const notBuilt = [
 
     <p class="text-xs text-muted-soft mt-10">
       Something here inaccurate? That is a defect, not a nitpick — tell us and we
-      will correct it. Last reviewed 2026-08-07.
+      will correct it (<a href="mailto:hello@loopskill.io" class="text-accent hover:underline">hello@loopskill.io</a>).
+      Last reviewed 2026-08-07; pricing and install-count rows corrected 2026-10-18.
     </p>
   </div>
 </AppShell>

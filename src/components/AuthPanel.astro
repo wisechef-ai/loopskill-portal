@@ -1,0 +1,194 @@
+---
+// AuthPanel.astro — the ONE sign-in / sign-up card, used by /signin and /signup.
+//
+// qa1018 C08 (impatient, skeptic, non-native, breaker personas):
+//   * /signin greeted brand-new visitors with "Welcome back". The default copy
+//     is now neutral ("Sign in or create an account") — the same OAuth buttons
+//     do both, so the page must not assume which one you are.
+//   * /signin?mode=signup and /signup showed the same "Welcome back" card
+//     (this page is STATIC — Astro.url.searchParams is empty at build time, so
+//     the old build-time `mode` branch could never fire). Both variants are
+//     now in the static HTML and a tiny script picks one from the URL.
+//     /signup renders the sign-up variant directly — no redirect hop.
+//   * Terms + Privacy are linked right under the buttons.
+//   * An OAuth failure (/signin?auth=error&reason=…, sent by the API's
+//     _make_error_redirect) used to render the normal card with no message.
+//     It now shows a readable banner.
+//
+// Copy rule: everything stated here about stored data must match /privacy.
+interface Props {
+  /** Which variant the static HTML shows before the script runs. */
+  initialMode?: 'signin' | 'signup';
+}
+const { initialMode = 'signin' } = Astro.props;
+const isSignup = initialMode === 'signup';
+---
+<section class="max-w-md w-full mx-auto px-5 pt-10 md:pt-16 pb-8" data-auth-panel data-initial-mode={initialMode}>
+  <div class="bg-bg-card border border-border rounded-2xl p-6 md:p-8">
+    <div id="auth-error" role="alert" hidden class="mb-5 rounded-xl border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm text-text">
+      <p class="font-semibold">Sign-in did not finish.</p>
+      <p id="auth-error-text" class="text-muted mt-1">Try again.</p>
+      <p class="text-xs text-muted-soft mt-1">Error code: <code id="auth-error-code" class="font-mono"></code></p>
+    </div>
+
+    <div class="flex flex-col items-center text-center gap-2 mb-7">
+      <h1 class="text-2xl font-semibold tracking-tight">
+        <span data-mode-signin hidden={isSignup}>Sign in or create an account</span>
+        <span data-mode-signup hidden={!isSignup}>Create your free account</span>
+      </h1>
+      <p class="text-sm text-muted leading-relaxed" data-mode-signin hidden={isSignup}>
+        Use Google or GitHub. If you are new, the same button creates your free account.
+      </p>
+      <p class="text-sm text-muted leading-relaxed" data-mode-signup hidden={!isSignup}>
+        Free skills install without an account. An account adds a free API key (for the MCP tools),
+        a Library to save skills, private bundles and fleets.
+      </p>
+      <p id="ref-badge" class="hidden text-xs text-accent border border-accent/40 bg-accent/10 rounded-full px-2.5 py-0.5 mt-2">
+        🎟️ Referral code <code class="font-mono" id="ref-badge-code"></code> applied
+      </p>
+    </div>
+
+    <div class="flex flex-col gap-3">
+      <a href="/api/auth/google/login" id="google-login"
+         class="auth-btn flex items-center justify-center gap-2 min-h-[48px] px-4 py-3 rounded-lg border border-border bg-bg-elev hover:border-accent text-text text-sm font-medium transition">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+            <path d="M15.84 8.18c0-.59-.05-1.16-.15-1.71H8.16v3.24h4.31c-.19 1-.75 1.85-1.6 2.42v2.01h2.59c1.51-1.39 2.38-3.44 2.38-5.96z" fill="#4285F4"/>
+            <path d="M8.16 16c2.16 0 3.97-.72 5.3-1.94l-2.59-2.01c-.72.48-1.63.77-2.71.77-2.08 0-3.85-1.41-4.48-3.3H1.02v2.07A8 8 0 0 0 8.16 16z" fill="#34A853"/>
+            <path d="M3.68 9.52c-.16-.48-.25-.99-.25-1.52s.09-1.04.25-1.52V4.41H1.02a8 8 0 0 0 0 7.18l2.66-2.07z" fill="#FBBC05"/>
+            <path d="M8.16 3.18c1.18 0 2.23.41 3.06 1.2l2.29-2.29C12.13.79 10.32 0 8.16 0A8 8 0 0 0 1.02 4.41l2.66 2.07c.63-1.89 2.4-3.3 4.48-3.3z" fill="#EA4335"/>
+          </svg>
+        Continue with Google
+      </a>
+      <a href="/api/auth/github/login" id="github-login"
+         class="auth-btn flex items-center justify-center gap-2 min-h-[48px] px-4 py-3 rounded-lg border border-border bg-bg-elev hover:border-accent text-text text-sm font-medium transition">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+            <path d="M8 0a8 8 0 0 0-2.53 15.59c.4.07.55-.17.55-.38v-1.4c-2.23.48-2.7-.94-2.7-.94-.36-.93-.89-1.18-.89-1.18-.73-.5.05-.49.05-.49.81.06 1.23.83 1.23.83.72 1.23 1.88.88 2.34.67.07-.52.28-.88.51-1.08-1.78-.2-3.65-.89-3.65-3.96 0-.87.31-1.59.83-2.15-.08-.2-.36-1.02.08-2.13 0 0 .67-.21 2.2.82a7.65 7.65 0 0 1 4 0c1.53-1.04 2.2-.82 2.2-.82.44 1.11.16 1.93.08 2.13.51.56.83 1.28.83 2.15 0 3.08-1.87 3.76-3.66 3.96.29.25.55.74.55 1.49v2.21c0 .21.15.46.55.38A8 8 0 0 0 8 0z"/>
+          </svg>
+        Continue with GitHub
+      </a>
+    </div>
+
+    <p class="text-xs text-muted-soft text-center leading-relaxed mt-4" data-auth-legal>
+      By continuing you agree to the <a href="/terms" class="text-muted hover:text-accent underline underline-offset-2">Terms</a>
+      and the <a href="/privacy" class="text-muted hover:text-accent underline underline-offset-2">Privacy policy</a>.
+      We store your email and your Google or GitHub account ID.
+    </p>
+
+    <div class="mt-6 pt-5 border-t border-border">
+      <p class="text-sm text-muted-soft text-center" data-mode-signin hidden={isSignup}>
+        New to LoopSkill? <a id="signup-link" href="/signup" class="text-accent hover:opacity-80 underline underline-offset-2 inline-flex items-center min-h-[44px]">Create a free account →</a>
+      </p>
+      <p class="text-sm text-muted-soft text-center" data-mode-signup hidden={!isSignup}>
+        Already have an account? <a id="signin-link" href="/signin" class="text-accent hover:opacity-80 underline underline-offset-2 inline-flex items-center min-h-[44px]">Sign in →</a>
+      </p>
+    </div>
+  </div>
+</section>
+
+<script is:inline>
+  // Client-side because the page is static (no request-time query params).
+  //  (0) mode switch from ?mode=signup / ?mode=signin
+  //  (1) ?auth=error&reason=… → readable banner (reasons: app/auth_routes.py)
+  //  (a) ?ref= passthrough  (b) already-authed short-circuit
+  //  (c) ?next= propagation (d) utm_* passthrough — unchanged from rev 7.3 /
+  //      pricing0928 / perclient_1110; see git history of signin.astro.
+  (function () {
+    var p = new URLSearchParams(window.location.search);
+
+    // (0) Mode switch.
+    var mode = p.get('mode');
+    if (mode === 'signup' || mode === 'signin') {
+      var showSignup = mode === 'signup';
+      document.querySelectorAll('[data-mode-signin]').forEach(function (el) { el.hidden = showSignup; });
+      document.querySelectorAll('[data-mode-signup]').forEach(function (el) { el.hidden = !showSignup; });
+      if (showSignup) document.title = 'Create your free account — LoopSkill';
+    }
+
+    // (1) Auth error banner. Reason is shape-filtered and only ever written
+    //     with textContent — never innerHTML.
+    if (p.get('auth') === 'error') {
+      var reason = p.get('reason') || '';
+      if (!/^[a-z_]{1,40}$/.test(reason)) reason = 'unknown';
+      var MESSAGES = {
+        state_mismatch: 'Your sign-in session expired or was started in another tab. Start again with one of the buttons below.',
+        no_state: 'Your sign-in session expired. Start again with one of the buttons below.',
+        no_code: 'The sign-in was cancelled, or the provider did not send us a sign-in code. Try again.',
+        github_error: 'GitHub could not complete the sign-in. Try again, or continue with Google.',
+        google_error: 'Google could not complete the sign-in. Try again, or continue with GitHub.'
+      };
+      var box = document.getElementById('auth-error');
+      var txt = document.getElementById('auth-error-text');
+      var code = document.getElementById('auth-error-code');
+      if (box && txt && code) {
+        txt.textContent = MESSAGES[reason] || 'Something went wrong while signing you in. Try again.';
+        code.textContent = reason;
+        box.hidden = false;
+      }
+    }
+
+    // (a) Referral code propagation
+    var ref = p.get('ref');
+    if (ref && /^[A-Za-z0-9]{4,16}$/.test(ref)) {
+      var enc = encodeURIComponent(ref);
+      var google = document.getElementById('google-login');
+      if (google) google.href = '/api/auth/google/login?ref=' + enc;
+      var github = document.getElementById('github-login');
+      if (github) github.href = '/api/auth/github/login?ref=' + enc;
+      var signupLink = document.getElementById('signup-link');
+      if (signupLink) signupLink.href = '/signup?ref=' + enc;
+      var signinLink = document.getElementById('signin-link');
+      if (signinLink) signinLink.href = '/signin?ref=' + enc;
+      var badge = document.getElementById('ref-badge');
+      var badgeCode = document.getElementById('ref-badge-code');
+      if (badge && badgeCode) {
+        badgeCode.textContent = ref;
+        badge.classList.remove('hidden');
+      }
+    }
+
+    // (c) ?next= propagation — append to OAuth URLs (path-only, server allow-lists)
+    var next = p.get('next');
+    if (next && next.charAt(0) === '/' && next.indexOf('//') !== 0) {
+      var encNext = encodeURIComponent(next);
+      var googleBtn = document.getElementById('google-login');
+      if (googleBtn) {
+        googleBtn.href += (googleBtn.href.indexOf('?') === -1 ? '?' : '&') + 'next=' + encNext;
+      }
+      var githubBtn = document.getElementById('github-login');
+      if (githubBtn) {
+        githubBtn.href += (githubBtn.href.indexOf('?') === -1 ? '?' : '&') + 'next=' + encNext;
+      }
+    }
+
+    // (d) utm_* passthrough (pricing0928 / perclient_1110): outer value wins,
+    //     else read it from next's own query. Server re-validates.
+    var nextQ = null;
+    if (next && next.charAt(0) === '/' && next.indexOf('//') !== 0 && next.indexOf('?') !== -1) {
+      nextQ = new URLSearchParams(next.slice(next.indexOf('?') + 1).split('#')[0]);
+    }
+    ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content'].forEach(function (k) {
+      var v = p.has(k) ? p.get(k) : (nextQ ? nextQ.get(k) : null);
+      if (!v || !/^[A-Za-z0-9._:-]{1,64}$/.test(v)) return;
+      ['google-login', 'github-login'].forEach(function (id) {
+        var a = document.getElementById(id);
+        if (a) a.href += (a.href.indexOf('?') === -1 ? '?' : '&') + k + '=' + encodeURIComponent(v);
+      });
+    });
+
+    // (b) Already-authed short-circuit. Use credentials so the JWT cookie travels.
+    fetch('/api/auth/me', { credentials: 'include' })
+      .then(function (r) {
+        if (!r.ok) return null;
+        return r.json();
+      })
+      .then(function (user) {
+        if (!user || !user.id) return;
+        var target = '/library';
+        if (next && next.charAt(0) === '/' && next.indexOf('//') !== 0) {
+          target = next;
+        }
+        window.location.replace(target);
+      })
+      .catch(function () { /* Rationale: anonymous fallback is correct, just show signin UI */ });
+  })();
+</script>

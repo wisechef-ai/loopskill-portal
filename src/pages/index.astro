@@ -40,6 +40,8 @@ import LiveCount from '../components/LiveCount.astro';
 import FoundingBanner from '../components/FoundingBanner.astro';
 import { fetchApi } from '../lib/api';
 import type { CountFormat } from '../lib/liveCount';
+// qa1018 C04: the ONE install phrase, shown == copied (src/lib/agentInstall.ts).
+import { META_INSTALL_PHRASE } from '../lib/agentInstall';
 
 // Pull live skill count for the stats strip (retry+jitter; fallback below if API unreachable).
 // CANONICAL NUMBER = the BROWSABLE catalog (marketing SSOT).
@@ -90,13 +92,11 @@ try {
     mcpToolCount = r.data.tools.length;
   }
 } catch {}
-let hostedSkillCount: number | null = null;
-try {
-  const r = await fetchApi<{ total_skills?: number }>('/api/stats', { authed: false });
-  if (r.ok && typeof r.data?.total_skills === 'number' && r.data.total_skills > 0) {
-    hostedSkillCount = r.data.total_skills;
-  }
-} catch {}
+// qa1018 C12 (skeptic + mobile): the curated count used to come from THREE
+// sources with three labels (/api/stats "hosted here, versioned + signed",
+// /api/marketing/snapshot "Curated & signed", /api/skills/search). It is now
+// ONE number — counts.skills_total, the marketing SSOT — with ONE label,
+// wherever it appears on this page.
 
 // landing_onramp: the staged connector index. The matrix doc calls this
 // "unadvertised weapon #2" — 2,500+ MCP servers indexed behind a human review
@@ -116,16 +116,26 @@ try {
 // so the FEDERATION headline (product-owner priority #1) and the catalog
 // count self-correct between rebuilds without needing one.
 type LiveOpts = { endpoint: string; path: string; fallback: number; format: CountFormat };
+// qa1018 C12/C16: one labelled number per concept. The curated count says
+// "checksummed", never "signed" (signatures are checked at publish and are
+// not served at install), and the federated count says plainly that it is
+// NOT vetted — it must never read as part of the curated pitch.
+const CURATED_LABEL = 'curated skills hosted here — free, versioned, SHA-256 checksummed';
+const FEDERATED_LABEL = 'skills indexed across federated registries — linked as-is, not vetted by us';
 const agentProofStats: { value: string; label: string; href: string; live?: LiveOpts }[] = [];
-if (mcpToolCount) agentProofStats.push({ value: String(mcpToolCount), label: 'MCP tools — search, install, publish, fleet', href: '/docs/mcp' });
-if (hostedSkillCount) agentProofStats.push({ value: String(hostedSkillCount), label: 'skills hosted here, versioned + signed', href: '/browse' });
+agentProofStats.push({
+  value: String(liveSkillCount),
+  label: CURATED_LABEL,
+  href: '/browse',
+  live: { endpoint: '/api/marketing/snapshot', path: 'counts.skills_total', fallback: liveSkillCount, format: 'plain' },
+});
 agentProofStats.push({
   value: federatedSkillLabel,
-  label: 'skills indexed across federated registries',
+  label: FEDERATED_LABEL,
   href: '/federation/',
   live: { endpoint: '/api/skills/external', path: 'counts.external_indexed', fallback: federatedSkillCount, format: 'floor1k-plus' },
 });
-agentProofStats.push({ value: '0 humans', label: 'agents enrol themselves (Ed25519)', href: '/docs/new-agent' });
+if (mcpToolCount) agentProofStats.push({ value: String(mcpToolCount), label: 'MCP tools for agents (free API key needed)', href: '/docs/mcp' });
 
 // Spotlight — Pro skill highlights in the hero grid.
 // Phase H (recipes_2005): replaced hardcoded array with live API fetch to eliminate
@@ -356,31 +366,23 @@ const trackAccents: Record<string, { badge: string; dot: string; label: string }
 const fleetTrack = bootcampTracks.find((t) => t.id === 'agent-fleet');
 
 // ─── The rail ────────────────────────────────────────────────────────────
+// qa1018 C10 (non-native B1 persona): plain words on the critical path —
+// no "station", "supply chain", "converged" or "enrol". The ids stay stable
+// (deep links like /#station-fleet and the JourneyRail contract use them).
 const stations = [
-  { id: 'day-1' as const,        num: '01', label: 'Day 1',        sub: 'Point an agent at the registry', icon: 'lightning' },
-  { id: 'first-client' as const, num: '02', label: 'First client', sub: 'One bundle, one install line',   icon: 'box' },
-  { id: 'fleet' as const,        num: '03', label: 'Fleet',        sub: 'Prove every agent converged',    icon: 'chart' },
-  { id: 'get-paid' as const,     num: '04', label: 'Get paid',     sub: 'Publish, refer, or hand it off', icon: 'mail' },
+  { id: 'day-1' as const,        num: '01', label: 'Start',        sub: 'Add LoopSkill to your agent',            icon: 'lightning' },
+  { id: 'first-client' as const, num: '02', label: 'First client', sub: 'One bundle, one install line',           icon: 'box' },
+  { id: 'fleet' as const,        num: '03', label: 'Many agents',  sub: 'Check every agent has the right skills', icon: 'chart' },
+  { id: 'get-paid' as const,     num: '04', label: 'Get paid',     sub: 'Publish, refer, or hand it off',         icon: 'mail' },
 ];
-
-const stats: { num: string; label: string; live?: LiveOpts }[] = [
-  {
-    num: federatedSkillLabel,
-    label: 'Skills indexed across federated registries',
-    live: { endpoint: '/api/skills/external', path: 'counts.external_indexed', fallback: federatedSkillCount, format: 'floor1k-plus' },
-  },
-  {
-    num: `${liveSkillCount}`,
-    label: 'Curated & signed in this catalog',
-    live: { endpoint: '/api/marketing/snapshot', path: 'counts.skills_total', fallback: liveSkillCount, format: 'plain' },
-  },
-  { num: 'pass / fail', label: 'Every loop run, objective + bounded' },
-];
+// (qa1018 C12: the bottom stats strip that repeated both counts under two
+// more labels — "Curated & signed", "Skills indexed" — was removed; each
+// number now appears with the same label everywhere on the page.)
 ---
 <AppShell
   mode="public"
   title="LoopSkill — the toolkit for deploying AI agents for clients"
-  description="Deploying AI agents for clients is a job now. LoopSkill is its toolkit: point an agent at the registry on day 1, hand your first client one install line, prove a whole fleet converged with drift-proof locks, then publish or refer for revenue. Open source (MPL-2.0), MCP-native, self-hostable. Install any skill free — no account needed."
+  description="Free, open-source skills for AI agents like Claude Code, Codex and Cursor. Find a skill, paste one line into your agent's chat, and it installs — free skills need no account and no key. Bundles for client work, fleet checks, open source (MPL-2.0), self-hostable."
 >
   <!-- launch/hidden-levers-0901: hidden-by-default founding-member banner.
        Ships no price in static HTML; see FoundingBanner.astro header comment. -->
@@ -403,9 +405,9 @@ const stats: { num: string; label: string; live?: LiveOpts }[] = [
 
     <div class="max-w-6xl mx-auto px-6 pt-20 md:pt-28 pb-16 relative w-full">
       <div class="flex flex-col items-center text-center gap-6 max-w-3xl mx-auto">
-        <a href="/docs/getting-started" class="group inline-flex items-center gap-2 px-3 py-1 rounded-full border border-accent/40 text-xs text-accent hover:text-text hover:border-accent/60 transition backdrop-blur-sm bg-accent/5">
+        <a href="/docs/getting-started" class="group inline-flex items-center gap-2 min-h-[44px] px-4 py-1 rounded-full border border-accent/40 text-xs text-accent hover:text-text hover:border-accent/60 transition backdrop-blur-sm bg-accent/5">
           <span class="w-1.5 h-1.5 rounded-full bg-accent animate-pulse"></span>
-          Open-source toolkit for people who run agents for other people
+          Free and open source — new here? Start with the 60-second guide
           <Icon name="arrow-right" size={11} class="opacity-70 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all" />
         </a>
 
@@ -415,18 +417,26 @@ const stats: { num: string; label: string; live?: LiveOpts }[] = [
         </h1>
 
         <p class="text-lg md:text-xl text-muted leading-relaxed max-w-2xl">
-          From your first installed skill to a paying client's self-maintaining fleet —
-          <strong class="text-text font-semibold">one open-source platform for the whole path</strong>.
-          Pick the station you're standing on.
+          A <strong class="text-text font-semibold">skill</strong> is a set of instructions your AI agent
+          (Claude Code, Codex, Cursor…) installs and then uses. Find one here, give your agent one line,
+          and it is installed. Free skills need no account.
         </p>
 
-        <div class="flex flex-col sm:flex-row items-center gap-3 mt-1">
-          <a href="#station-day-1" class="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-accent text-bg font-semibold text-sm hover:bg-accent-soft transition">
-            Start Day 1 — free
-          </a>
-          <a href="/browse" class="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg border border-border text-text font-semibold text-sm hover:border-accent transition">
-            Browse what you'll deploy
-          </a>
+        {/* qa1018 C10 (impatient IMP-3): the primary CTA used to be an anchor
+            that only scrolled. It is now a real skill search that lands on
+            /browse?q= (browse honours ?q=). Plain GET form: works without JS. */}
+        <form action="/browse" method="get" role="search" class="w-full max-w-xl mt-1 flex flex-col sm:flex-row gap-2" data-hero-search>
+          <label for="hero-search" class="sr-only">Search for a skill</label>
+          <input id="hero-search" name="q" type="search" autocomplete="off" enterkeyhint="search"
+                 placeholder="What should your agent do? e.g. SEO"
+                 class="flex-1 min-h-[48px] px-4 rounded-lg bg-bg-card border border-border text-base text-text placeholder:text-muted-soft focus:outline-none focus:border-accent transition" />
+          <button type="submit" class="inline-flex items-center justify-center gap-2 min-h-[48px] px-6 rounded-lg bg-accent text-bg font-semibold text-sm hover:bg-accent-soft transition">
+            Find a skill
+          </button>
+        </form>
+        <div class="flex flex-wrap items-center justify-center gap-x-5 text-sm">
+          <a href="/browse" class="inline-flex items-center min-h-[44px] text-text font-semibold hover:text-accent transition underline underline-offset-4">Browse all skills</a>
+          <a href="#station-day-1" class="inline-flex items-center min-h-[44px] text-muted hover:text-accent transition underline underline-offset-4">How to add LoopSkill to your agent</a>
         </div>
 
         <!-- launch/hidden-levers-0901: ONE above-the-fold hook block -> /seeker.
@@ -435,14 +445,14 @@ const stats: { num: string; label: string; live?: LiveOpts }[] = [
              the strongest switch-to-us growth lever with zero public surface. -->
         <a href="/seeker" class="group flex items-center gap-3 mt-1 px-4 py-2.5 rounded-lg border border-accent/40 bg-accent/5 text-sm text-text hover:border-accent hover:bg-accent/10 transition">
           <span class="w-1.5 h-1.5 rounded-full bg-accent animate-pulse shrink-0"></span>
-          <span><strong class="font-semibold">What are your agents missing?</strong> One command scans your local Claude/Codex/Hermes/OpenCode installs and diffs against the catalog.</span>
+          <span><strong class="font-semibold">What are your agents missing?</strong> One command checks the skills on your machine (Claude, Codex, Hermes, OpenCode) and compares them with the catalog.</span>
           <Icon name="arrow-right" size={12} class="opacity-70 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all shrink-0" />
         </a>
 
         {/* ── Agent-proof bar: every number bound to a live endpoint at build
              time (fail-closed — an unfetchable stat is omitted, never
              invented). D-029: federated counts say "indexed", never "ours". ── */}
-        <div class="w-full max-w-4xl mt-6 grid grid-cols-2 md:grid-cols-4 gap-3 text-left">
+        <div class="w-full max-w-4xl mt-6 grid grid-cols-1 sm:grid-cols-3 gap-3 text-left" data-proof-stats>
           {agentProofStats.map(st => (
             <a href={st.href} class="group rounded-xl border border-border bg-bg-card px-4 py-3 hover:border-accent transition">
               <p class="text-xl font-bold text-text group-hover:text-accent transition">
@@ -450,7 +460,7 @@ const stats: { num: string; label: string; live?: LiveOpts }[] = [
                   <LiveCount endpoint={st.live.endpoint} path={st.live.path} fallback={st.live.fallback} format={st.live.format} />
                 ) : st.value}
               </p>
-              <p class="text-[11px] text-muted-soft leading-snug mt-0.5">{st.label}</p>
+              <p class="text-xs text-muted-soft leading-snug mt-0.5">{st.label}</p>
             </a>
           ))}
         </div>
@@ -459,63 +469,74 @@ const stats: { num: string; label: string; live?: LiveOpts }[] = [
 
       <!-- ══ THE RAIL ═══════════════════════════════════════════════════ -->
       <div class="mt-14">
-        <p class="eyebrow text-center mb-4">The path · click a station</p>
+        <p class="eyebrow text-center mb-4">How it works · pick a step</p>
 
         <JourneyRail stations={stations}>
           <!-- ─────────────── STATION 01 — DAY 1 ─────────────── -->
           <div slot="day-1" class="grid lg:grid-cols-2 gap-8 items-start">
             <div class="flex flex-col gap-4">
               <h2 class="text-2xl md:text-3xl font-bold tracking-tight" style="letter-spacing:-0.03em;">
-                You have an agent. Give it a supply chain.
+                You have an agent. Give it skills.
               </h2>
               <p class="text-muted leading-relaxed">
-                Day 1 costs nothing and needs no account. Point your agent at the registry, and it can
-                search, install and run vetted skills from inside its own conversation — one MCP surface
-                instead of forty copy-pasted markdown files.
+                Starting costs nothing. Add LoopSkill to your agent once; after that it can search for
+                skills and install them from inside its own chat.
               </p>
 
-              <div class="rounded-xl border border-border bg-bg-card/60 p-4">
-                <p class="text-[10px] font-bold uppercase tracking-widest text-muted-soft mb-2">A · the one-liner</p>
+              <div class="rounded-xl border border-border bg-bg-card/60 p-4" data-step-a>
+                <p class="text-xs font-bold uppercase tracking-widest text-muted-soft mb-2">Step A · add LoopSkill to your agent</p>
+                {/* qa1018 C01 + C04 + C10 (all 5 personas): say WHERE to paste;
+                    the key statement is the true one (free skills: no key; MCP
+                    + Library + private bundles + fleets: a free key); the phrase
+                    is the canonical constant and the button copies exactly it. */}
                 <p class="text-sm text-muted leading-relaxed mb-2">
-                  Tell your agent this. That is the whole install — no package to add, no key to paste.
+                  Paste this into your agent's chat (Claude Code, Codex, Cursor…) and press Enter:
                 </p>
-                <code class="block font-mono text-xs bg-[#0d0d0d] border border-border rounded px-3 py-2 text-text">"Install the loopskill skill from app.loopskill.io/skill"</code>
-                <a href="/docs/install" class="text-xs text-accent hover:opacity-80 inline-flex items-center gap-1.5 mt-2">
-                  Per-agent install guide — Claude Code, Codex, Cursor, Cline, Hermes, OpenClaw <Icon name="arrow-right" size={11} />
+                <div class="flex flex-col sm:flex-row sm:items-stretch gap-2">
+                  <code class="flex-1 block font-mono text-sm bg-[#0d0d0d] border border-border rounded px-3 py-2.5 text-text break-words wrap-cmd" data-phrase>{META_INSTALL_PHRASE}</code>
+                  <button type="button" class="phrase-copy-btn shrink-0 min-h-[44px] px-4 rounded-lg border border-border text-sm font-semibold text-text hover:border-accent transition" data-copy={META_INSTALL_PHRASE} aria-label="Copy the install phrase">Copy</button>
+                </div>
+                <p class="text-sm text-muted leading-relaxed mt-3" data-key-statement>
+                  Free skills install with no account and no key. You need a free API key only for the
+                  MCP tools, saving to your Library, private bundles and fleets.
+                </p>
+                <a href="/docs/install" class="text-sm text-accent hover:opacity-80 inline-flex items-center gap-1.5 min-h-[44px]">
+                  Step-by-step for your agent <Icon name="arrow-right" size={11} />
                 </a>
               </div>
 
               <div class="rounded-xl border border-border bg-bg-card/60 p-4">
-                <p class="text-[10px] font-bold uppercase tracking-widest text-muted-soft mb-2">B · not ready to sign up? Look at what you already have</p>
+                <p class="text-xs font-bold uppercase tracking-widest text-muted-soft mb-2">Optional · see the skills you already have</p>
+                {/* qa1018 C10 (NNS-5): was one 50+-word sentence of engineering
+                    proof. Short sentences; the proof lives in the CLI docs. */}
                 <p class="text-sm text-muted leading-relaxed mb-2">
+                  The free <code class="font-mono text-accent">loopskill</code> command-line tool lists the
+                  skills in <code class="font-mono">~/.claude</code>, <code class="font-mono">~/.codex</code>,
+                  <code class="font-mono">~/.cursor</code> and <code class="font-mono">~/.hermes</code>.
                   <code class="font-mono text-accent">loopskill import</code> and
-                  <code class="font-mono text-accent">loopskill diff</code> read the skills already sitting in
-                  <code class="font-mono">~/.claude</code>, <code class="font-mono">~/.codex</code>,
-                  <code class="font-mono">~/.cursor</code> and <code class="font-mono">~/.hermes</code>, and show you
-                  exactly how two machines have drifted. <strong class="text-text">Zero network calls</strong> —
-                  enforced structurally, not promised: the network-capable module is one the offline commands never import,
-                  and a test breaks <code class="font-mono">socket.socket</code> for their duration to prove it.
+                  <code class="font-mono text-accent">loopskill diff</code> show how two machines differ.
+                  They make zero network calls and need no account.
                 </p>
-                <a href="/docs/quickstart" class="text-xs text-accent hover:opacity-80 inline-flex items-center gap-1.5">
-                  Getting the CLI <Icon name="arrow-right" size={11} />
+                <a href="/docs/getting-started#cli" class="text-sm text-accent hover:opacity-80 inline-flex items-center gap-1.5 min-h-[44px]">
+                  Install the CLI (<code class="font-mono">pip install loopskill</code>) <Icon name="arrow-right" size={11} />
                 </a>
               </div>
 
-              <div class="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-soft">
-                <a href="/bootcamp" class="hover:text-accent transition underline underline-offset-2">Zero-to-Agent track →</a>
-                <a href="/docs/mcp" class="hover:text-accent transition underline underline-offset-2">Wire it over MCP →</a>
-                <a href="/docs/new-agent" class="hover:text-accent transition underline underline-offset-2">Let the agent enrol itself →</a>
+              <div class="flex flex-wrap gap-x-5 text-sm text-muted-soft">
+                <a href="/bootcamp" class="inline-flex items-center min-h-[44px] hover:text-accent transition underline underline-offset-2">Beginner track: Zero to Agent →</a>
+                <a href="/docs/mcp" class="inline-flex items-center min-h-[44px] hover:text-accent transition underline underline-offset-2">Connect over MCP (free key) →</a>
+                <a href="/docs/new-agent" class="inline-flex items-center min-h-[44px] hover:text-accent transition underline underline-offset-2">Let an agent register itself →</a>
               </div>
             </div>
 
             <div class="flex flex-col gap-4">
               <InstallWidget skillCount={liveSkillCount} federatedCount={federatedSkillLabel} />
               <div class="rounded-xl border border-border bg-bg-card/60 p-4">
-                <p class="text-sm font-semibold text-text mb-1">What day 1 actually buys you</p>
-                <ul class="text-xs text-muted leading-relaxed space-y-1.5 mt-2">
-                  <li>· One search surface over this catalog <em>and</em> {federatedSkillLabel} skills indexed across federated registries — we link to those, never rehost them.</li>
-                  <li>· Skills that ship a runnable loop: press run, get an objective pass/fail under enforced bounds. Not a model's opinion.</li>
-                  <li>· Nothing to un-pick later. Everything below is the same platform, no migration.</li>
+                <p class="text-sm font-semibold text-text mb-1">What you get on day one</p>
+                <ul class="text-sm text-muted leading-relaxed space-y-1.5 mt-2">
+                  <li>· One search over the curated catalog <em>and</em> {federatedSkillLabel} skills indexed across federated registries — linked as-is, not vetted by us, never rehosted.</li>
+                  <li>· Skills that ship a runnable loop: press run, get a real pass/fail result, within fixed limits. Not a model's opinion.</li>
+                  <li>· Nothing to undo later. Everything below is the same platform.</li>
                 </ul>
               </div>
             </div>
@@ -570,7 +591,7 @@ const stats: { num: string; label: string; live?: LiveOpts }[] = [
                 <div class="rounded-xl border border-border bg-bg-card/60 p-4">
                   <div class="flex items-center justify-between mb-3">
                     <p class="text-sm font-semibold text-text">Fork one of these instead of starting empty</p>
-                    <a href="/browse?type=bundles" class="text-xs text-accent hover:opacity-80 shrink-0 ml-2">All →</a>
+                    <a href="/browse?type=bundles" class="text-sm text-accent hover:opacity-80 shrink-0 ml-2 inline-flex items-center min-h-[44px]">All bundles →</a>
                   </div>
                   <div class="flex gap-3 overflow-x-auto pb-2 -mx-1 px-1 snap-x">
                     {publicBundles.slice(0, 6).map(cb => (
@@ -593,7 +614,7 @@ const stats: { num: string; label: string; live?: LiveOpts }[] = [
                   <li>· Anonymous contributions land as drafts and need a human reviewer before promotion.</li>
                   <li>· Packs are content-addressed: the same source rebuilds byte-identical, sha256 verifiable.</li>
                 </ul>
-                <a href="/security" class="text-xs text-accent hover:opacity-80 inline-flex items-center gap-1.5 mt-2">
+                <a href="/security" class="text-sm text-accent hover:opacity-80 inline-flex items-center gap-1.5 min-h-[44px] mt-2">
                   The trust stack, in detail <Icon name="arrow-right" size={11} />
                 </a>
               </div>
@@ -615,7 +636,7 @@ const stats: { num: string; label: string; live?: LiveOpts }[] = [
                   Drive the matrix below.
                 </p>
               </div>
-              <a href="/docs/fleet" class="text-xs text-accent hover:opacity-80 inline-flex items-center gap-1.5 shrink-0">
+              <a href="/docs/fleet" class="text-sm text-accent hover:opacity-80 inline-flex items-center gap-1.5 min-h-[44px] shrink-0">
                 Fleet + locks guide <Icon name="arrow-right" size={11} />
               </a>
             </div>
@@ -641,7 +662,7 @@ const stats: { num: string; label: string; live?: LiveOpts }[] = [
                 </p>
               </div>
               <div class="rounded-xl border border-border bg-bg-card/60 p-4">
-                <p class="text-sm font-semibold text-text mb-1">Agents enrol themselves</p>
+                <p class="text-sm font-semibold text-text mb-1">Agents register themselves</p>
                 <p class="text-xs text-muted leading-relaxed">
                   An agent proves possession of an Ed25519 key and registers itself. No OAuth screen, no
                   session, no human clicking through a console on a client's laptop.
@@ -649,11 +670,11 @@ const stats: { num: string; label: string; live?: LiveOpts }[] = [
                 </p>
               </div>
               <div class="rounded-xl border border-border bg-bg-card/60 p-4">
-                <p class="text-sm font-semibold text-text mb-1">Convergence is a poll, not a push</p>
+                <p class="text-sm font-semibold text-text mb-1">Agents pull updates; nothing is pushed</p>
                 <p class="text-xs text-muted leading-relaxed">
-                  Nothing is pushed to a client machine and nothing is real-time — an agent reconciles on the
-                  schedule you install. That is a security property, and we would rather state the interval
-                  than call it "instant".
+                  Nothing is pushed to a client machine and nothing is real-time — an agent checks for
+                  updates on the schedule you install. That is a security property, and we would rather state
+                  the interval than call it "instant".
                 </p>
               </div>
             </div>
@@ -662,7 +683,7 @@ const stats: { num: string; label: string; live?: LiveOpts }[] = [
               <div class="rounded-xl border border-violet-500/30 bg-violet-500/[0.06] p-4">
                 <div class="flex items-center gap-2 mb-2">
                   <span class="w-1.5 h-1.5 rounded-full bg-violet-400"></span>
-                  <p class="text-sm font-semibold text-text">{fleetTrack.title} — the curriculum for this station</p>
+                  <p class="text-sm font-semibold text-text">{fleetTrack.title} — the learning track for this step</p>
                 </div>
                 <p class="text-xs text-muted leading-relaxed mb-3">{fleetTrack.outcome}</p>
                 <div class="flex flex-wrap gap-2">
@@ -678,7 +699,7 @@ const stats: { num: string; label: string; live?: LiveOpts }[] = [
                     )
                   ))}
                 </div>
-                <a href="/bootcamp" class="text-xs text-accent hover:opacity-80 inline-flex items-center gap-1.5 mt-3">
+                <a href="/bootcamp" class="text-sm text-accent hover:opacity-80 inline-flex items-center gap-1.5 min-h-[44px] mt-3">
                   Open the track <Icon name="arrow-right" size={11} />
                 </a>
               </div>
@@ -706,7 +727,7 @@ const stats: { num: string; label: string; live?: LiveOpts }[] = [
                   through a quality gate and a human review before it's listed — the same gate everyone
                   else's does.
                 </p>
-                <a href="/docs/creator-workflow" class="text-xs text-accent hover:opacity-80 inline-flex items-center gap-1.5 mt-auto">
+                <a href="/docs/creator-workflow" class="text-sm text-accent hover:opacity-80 inline-flex items-center gap-1.5 min-h-[44px] mt-auto">
                   Creator workflow <Icon name="arrow-right" size={11} />
                 </a>
               </div>
@@ -717,7 +738,7 @@ const stats: { num: string; label: string; live?: LiveOpts }[] = [
                   Refer a Pro subscriber and earn 50% of every invoice they pay for your first 50 referrals,
                   30% after — monthly, for as long as they stay. Paid out via Stripe Connect.
                 </p>
-                <a href="/docs/referrals" class="text-xs text-accent hover:opacity-80 inline-flex items-center gap-1.5 mt-auto">
+                <a href="/docs/referrals" class="text-sm text-accent hover:opacity-80 inline-flex items-center gap-1.5 min-h-[44px] mt-auto">
                   Referral terms <Icon name="arrow-right" size={11} />
                 </a>
               </div>
@@ -728,7 +749,7 @@ const stats: { num: string; label: string; live?: LiveOpts }[] = [
                   If a client wants the outcome and not the operations, WiseChef runs the same stack as a
                   managed service. Same skills, someone else's pager.
                 </p>
-                <a href="/publish" class="text-xs text-accent hover:opacity-80 inline-flex items-center gap-1.5 mt-auto">
+                <a href="/publish" class="text-sm text-accent hover:opacity-80 inline-flex items-center gap-1.5 min-h-[44px] mt-auto">
                   Publish or get help <Icon name="arrow-right" size={11} />
                 </a>
               </div>
@@ -752,7 +773,7 @@ const stats: { num: string; label: string; live?: LiveOpts }[] = [
         <div class="w-full max-w-5xl mx-auto mt-16 text-left">
           <div class="flex items-center justify-between mb-3">
             <h2 class="text-sm font-semibold uppercase tracking-widest text-muted-soft">Popular skills</h2>
-            <a href="/browse" class="text-xs text-accent hover:opacity-80">Browse all →</a>
+            <a href="/browse" class="text-sm text-accent hover:opacity-80 inline-flex items-center min-h-[44px]">Browse all skills →</a>
           </div>
           <div class="flex gap-3 overflow-x-auto pb-2 -mx-1 px-1 snap-x">
             {popularSkills.map(s => (
@@ -760,7 +781,10 @@ const stats: { num: string; label: string; live?: LiveOpts }[] = [
                 <SkillCover slug={s.slug} title={s.title || s.name} category={s.category} tier={s.tier} />
                 <div class="mt-2 px-0.5">
                   <p class="text-sm font-semibold text-text group-hover:text-accent transition truncate">{s.title || s.name || s.slug}</p>
-                  <p class="text-[11px] text-muted-soft capitalize truncate">{s.category || 'general'}{typeof s.install_count_total === 'number' && s.install_count_total > 0 ? ` · ${s.install_count_total.toLocaleString()}` : ''}</p>
+                  {/* qa1018 C25 (SKP-14): the number was unlabelled and read like a
+                      category code; a missing category was shown as an invented
+                      "general". Label the installs; show a category only if set. */}
+                  <p class="text-xs text-muted-soft truncate">{[s.category ? s.category.charAt(0).toUpperCase() + s.category.slice(1) : '', typeof s.install_count_total === 'number' && s.install_count_total > 0 ? `${s.install_count_total.toLocaleString()} install${s.install_count_total === 1 ? '' : 's'}` : ''].filter(Boolean).join(' · ')}</p>
                 </div>
               </a>
             ))}
@@ -768,32 +792,24 @@ const stats: { num: string; label: string; live?: LiveOpts }[] = [
         </div>
       )}
 
-      <div class="grid grid-cols-3 gap-4 mt-16 pt-12 border-t border-border" id="stats-strip">
-        {stats.map(s => (
-          <div class="flex flex-col gap-1">
-            <div class="text-3xl md:text-5xl font-bold text-text tracking-tight" style="letter-spacing: -0.03em;">
-              {s.live ? (
-                <LiveCount endpoint={s.live.endpoint} path={s.live.path} fallback={s.live.fallback} format={s.live.format} />
-              ) : s.num}
-            </div>
-            <div class="text-xs text-muted">{s.label}</div>
-          </div>
-        ))}
-      </div>
     </div>
   </section>
 
-  <!-- ══ THE SUPPLY SIDE — what fills the bundles ═════════════════════ -->
+  <!-- ══ WHAT FILLS THE BUNDLES — curated core vs federated index ═══════ -->
   <section class="border-t border-border bg-bg-card/30">
     <div class="max-w-6xl mx-auto px-6 py-20">
       <div class="flex flex-col gap-3 mb-10 max-w-2xl">
         <p class="eyebrow text-accent">What fills the bundles</p>
         <h2 class="text-3xl md:text-4xl font-bold tracking-tight" style="letter-spacing: -0.03em;">
-          A small signed core, inside a very large index.
+          A small curated core, inside a very large index.
         </h2>
+        {/* qa1018 C16 + C12: "every entry is audited and signed" was false —
+            skill pages show "Not yet audited", and signatures are checked at
+            publish, not served at install. Say exactly what is true. */}
         <p class="text-muted text-lg leading-relaxed">
-          The curated catalog is deliberately small — every entry is audited and signed. Around it sits a
-          federated index of everything else worth finding. We link to indexed skills; we never rehost them,
+          The curated catalog is deliberately small. Each skill is reviewed before it is listed, delivered
+          with a SHA-256 checksum, and shows its own audit status on its page. Around it sits a federated
+          index of skills from other registries: we link to those as-is — we do not vet or rehost them,
           and we never count them as ours.
         </p>
       </div>
@@ -801,13 +817,13 @@ const stats: { num: string; label: string; live?: LiveOpts }[] = [
       <div class="grid md:grid-cols-3 gap-3">
         <a href="/browse" class="rounded-xl border border-border bg-bg-card p-5 hover:border-accent transition flex flex-col gap-1.5">
           <p class="text-2xl font-bold text-text"><LiveCount endpoint="/api/marketing/snapshot" path="counts.skills_total" fallback={liveSkillCount} format="plain" /></p>
-          <p class="text-sm font-semibold text-text">curated here</p>
-          <p class="text-xs text-muted leading-relaxed">Audited on every push, sha256-checksummed delivery, version-pinned in bundles.</p>
+          <p class="text-sm font-semibold text-text">curated skills hosted here</p>
+          <p class="text-xs text-muted leading-relaxed">Reviewed before listing, SHA-256-checksummed delivery, version-pinned in bundles. Audit status is shown on each skill.</p>
         </a>
         <a href="/federation/" class="rounded-xl border border-border bg-bg-card p-5 hover:border-accent transition flex flex-col gap-1.5">
           <p class="text-2xl font-bold text-text"><LiveCount endpoint="/api/skills/external" path="counts.external_indexed" fallback={federatedSkillCount} format="floor1k-plus" /></p>
-          <p class="text-sm font-semibold text-text">indexed, federated</p>
-          <p class="text-xs text-muted leading-relaxed">Searched across upstream registries in one query, with an honest per-source breakdown of what is indexed vs actually installable.</p>
+          <p class="text-sm font-semibold text-text">skills indexed across federated registries</p>
+          <p class="text-xs text-muted leading-relaxed">Linked as-is, not vetted by us. One search across upstream registries, with a per-source breakdown of what is indexed and what is actually installable.</p>
         </a>
         {stagedConnectorCount ? (
           <a href="/docs/scope" class="rounded-xl border border-border bg-bg-card p-5 hover:border-accent transition flex flex-col gap-1.5">
@@ -824,7 +840,7 @@ const stats: { num: string; label: string; live?: LiveOpts }[] = [
       </div>
 
       <div class="mt-4 text-center">
-        <a href="/browse" class="text-sm text-muted hover:text-accent inline-flex items-center gap-1.5 transition">
+        <a href="/browse" class="text-sm text-muted hover:text-accent inline-flex items-center gap-1.5 min-h-[44px] transition">
           Browse everything <Icon name="arrow-right" size={11} />
         </a>
       </div>
@@ -839,7 +855,7 @@ const stats: { num: string; label: string; live?: LiveOpts }[] = [
       <div class="flex flex-col gap-3 mb-10 max-w-2xl">
         <p class="eyebrow text-accent">Skill spotlight</p>
         <h2 class="text-3xl md:text-4xl font-bold tracking-tight" style="letter-spacing: -0.03em;">These are not prompts.<br/>They are <span class="text-accent">products</span>.</h2>
-        <p class="text-muted text-lg">Signed, audited and version-pinned — the trusted core you put in front of a client. Every one replaces a SaaS subscription or a freelancer hour, run locally by their agent.</p>
+        <p class="text-muted text-lg">Curated, checksummed and version-pinned — the core you put in front of a client, run locally by their agent. Each skill's page shows its audit status.</p>
       </div>
       <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
         {spotlight.map(s => {
@@ -868,7 +884,7 @@ const stats: { num: string; label: string; live?: LiveOpts }[] = [
         })}
       </div>
       <div class="text-center mt-10">
-        <a href="/browse" class="text-sm text-muted hover:text-accent inline-flex items-center gap-1.5 transition">
+        <a href="/browse" class="text-sm text-muted hover:text-accent inline-flex items-center gap-1.5 min-h-[44px] transition">
           See all <LiveCount endpoint="/api/marketing/snapshot" path="counts.skills_total" fallback={liveSkillCount} format="plain" suffix="+" /> skills <Icon name="arrow-right" size={11} />
         </a>
       </div>
@@ -881,7 +897,7 @@ const stats: { num: string; label: string; live?: LiveOpts }[] = [
     <div class="max-w-5xl mx-auto px-6 py-20">
       <div class="grid lg:grid-cols-[1fr_1fr] gap-10 items-start">
         <div class="flex flex-col gap-3">
-          <p class="eyebrow text-accent">Before you bet a client on this</p>
+          <p class="eyebrow text-accent">Before you use this for a client</p>
           <h2 class="text-3xl md:text-4xl font-bold tracking-tight" style="letter-spacing:-0.03em;">
             We publish what this does <span class="text-accent">not</span> do.
           </h2>
@@ -891,7 +907,7 @@ const stats: { num: string; label: string; live?: LiveOpts }[] = [
             blind spots, half-shipped surfaces, and the exact probe behind every "verified" claim.
           </p>
           <div class="mt-2">
-            <a href="/docs/scope" class="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg border border-border text-text font-semibold text-sm hover:border-accent transition">
+            <a href="/docs/scope" class="inline-flex items-center gap-2 min-h-[44px] px-5 py-2.5 rounded-lg border border-border text-text font-semibold text-sm hover:border-accent transition">
               What LoopSkill does &amp; does not do <Icon name="arrow-right" size={12} />
             </a>
           </div>
@@ -900,7 +916,7 @@ const stats: { num: string; label: string; live?: LiveOpts }[] = [
           <div class="rounded-xl border border-border bg-bg-card/60 p-4">
             <p class="text-sm font-semibold text-text mb-1">Example: the never-run blind spot</p>
             <p class="text-xs text-muted leading-relaxed">
-              The fleet view shows which assignments converged and which are failing. It does
+              The fleet view shows which assignments are up to date and which are failing. It does
               <strong class="text-text"> not</strong> yet age a never-run assignment into an alarm — a loop
               assigned and never fired looks healthy at the top level. That is on the scope page, not buried in a changelog.
             </p>
@@ -919,4 +935,22 @@ const stats: { num: string; label: string; live?: LiveOpts }[] = [
     </div>
   </section>
 
+  <script>
+    // qa1018 C04: Step A copy button — copies exactly the phrase shown.
+    import { writeClipboard } from '../lib/agentInstall';
+    document.querySelectorAll<HTMLButtonElement>('.phrase-copy-btn').forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        const text = btn.getAttribute('data-copy') || '';
+        const how = await writeClipboard(text);
+        if (how === 'manual') {
+          const code = btn.parentElement?.querySelector('[data-phrase]');
+          if (code) { const r = document.createRange(); r.selectNodeContents(code); const sel = window.getSelection(); sel?.removeAllRanges(); sel?.addRange(r); }
+          btn.textContent = 'Select & copy';
+          return;
+        }
+        btn.textContent = 'Copied ✓';
+        setTimeout(() => { btn.textContent = 'Copy'; }, 1600);
+      });
+    });
+  </script>
 </AppShell>

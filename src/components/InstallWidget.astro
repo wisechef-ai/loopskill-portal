@@ -1,8 +1,10 @@
 ---
+import { META_INSTALL_PHRASE } from '../lib/agentInstall';
 // InstallWidget — agent-install dialogue block.
-// LoopSkill is installed by telling your agent to fetch the skill via MCP —
-// NOT via npm/pip/curl (no such package exists). This block shows the actual
-// first-contact motion: paste one phrase to your agent, it installs LoopSkill.
+// LoopSkill is installed by telling your agent to fetch its SKILL.md from
+// /skill (plain HTTPS, no key for free skills). The optional `loopskill` CLI
+// on PyPI is a separate local-diff tool, not the install. This block shows the
+// first-contact motion: paste one phrase into your agent's chat.
 // Inspired by the larrybrain.com / AgentPact /skill install pattern.
 
 interface Props {
@@ -16,11 +18,16 @@ interface Props {
   federatedCount?: string;
 }
 
-const { skillCount, federatedCount = '80,000+' } = Astro.props;
-const countLabel = skillCount && skillCount > 0 ? `${skillCount}+ skills` : 'the full catalog';
+// qa1018 C12: the dialogue no longer repeats the federated count — the hero
+// shows each number once, labelled. The props stay declared so existing
+// callers type-check; they are intentionally unused.
 
 // The single phrase the user pastes into their agent. This IS the install.
-const installPhrase = 'Install the loopskill skill from app.loopskill.io/skill please';
+// qa1018 C04 (4 personas): this used to be a private copy with a trailing
+// "please" and no https:// — the visible text and the clipboard differed from
+// every other surface. It is now the canonical constant; the button copies
+// exactly the string rendered in the dialogue below.
+const installPhrase = META_INSTALL_PHRASE;
 ---
 
 <div
@@ -34,10 +41,10 @@ const installPhrase = 'Install the loopskill skill from app.loopskill.io/skill p
       <div class="w-2.5 h-2.5 rounded-full bg-[#ffbd2e]"></div>
       <div class="w-2.5 h-2.5 rounded-full bg-[#27c93f]"></div>
     </div>
-    <span class="text-xs text-muted-soft ml-2 font-mono">agent session</span>
+    <span class="text-xs text-muted-soft ml-2 font-mono">your agent's chat (example)</span>
     <button
       type="button"
-      class="install-copy-btn ml-auto shrink-0 px-3 py-1.5 text-[11px] font-semibold text-muted hover:text-accent border border-border-soft rounded-md transition"
+      class="install-copy-btn ml-auto shrink-0 min-h-[44px] px-4 text-xs font-semibold text-text hover:text-accent border border-border rounded-md transition"
       data-copy={installPhrase}
       aria-label="Copy the install phrase for your agent"
     >
@@ -51,10 +58,10 @@ const installPhrase = 'Install the loopskill skill from app.loopskill.io/skill p
     <div class="text-text mb-3" data-command>{installPhrase}</div>
 
     <div class="text-accent">$ agent</div>
-    <div class="text-muted mb-1">→ Fetching SKILL.md from app.loopskill.io/skill</div>
-    <div class="text-muted mb-1">→ Wiring LoopSkill MCP — run loops · search · install · bundles</div>
+    <div class="text-muted mb-1">→ Reading SKILL.md from app.loopskill.io/skill</div>
+    <div class="text-muted mb-1">→ I can now search the catalog and install skills (free ones need no key)</div>
     <div class="text-success font-semibold">
-      ✓ LoopSkill installed. The runnable registry + <span class="text-text">{federatedCount} skills</span> — ready.
+      ✓ LoopSkill installed. The curated catalog and the federated index are searchable.
     </div>
     <div class="text-muted mt-2 mb-3">Just tell me what you need.</div>
 
@@ -70,8 +77,8 @@ const installPhrase = 'Install the loopskill skill from app.loopskill.io/skill p
   </div>
 
   <!-- runtime affordance -->
-  <div class="px-5 py-3 border-t border-border bg-bg-elev/50 text-[11px] text-muted-soft">
-    Works in Claude Code, Cursor, Cline, OpenClaw, Hermes &amp; Windsurf — any MCP-capable agent.
+  <div class="px-5 py-3 border-t border-border bg-bg-elev/50 text-xs text-muted-soft">
+    Paste the first line into your agent's chat and press Enter. Works in Claude Code, Codex, Cursor, Cline, OpenClaw, Hermes &amp; Windsurf.
   </div>
 </div>
 
@@ -85,7 +92,7 @@ const installPhrase = 'Install the loopskill skill from app.loopskill.io/skill p
           try {
             await navigator.clipboard.writeText(text);
             const original = btn.textContent;
-            btn.textContent = 'Copied!';
+            btn.textContent = 'Copied ✓';
             btn.classList.add('text-success');
             setTimeout(function () {
               btn.textContent = original;

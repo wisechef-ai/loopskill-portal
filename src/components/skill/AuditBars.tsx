@@ -137,12 +137,16 @@ export function AuditBars({
     !lastVerifiedAt;
   if (neverAudited) {
     return (
-      <p className="text-xs text-muted-soft">
-        Not yet audited.{' '}
+      // qa1018 C05: say exactly what IS true for an un-audited curated skill
+      // (curated + SHA-256-checksummed download) and what is not (no audit
+      // has run yet) — never imply a review that did not happen.
+      <div className="text-xs text-muted-soft flex flex-col gap-1.5" data-audit-state="not-audited">
+        <p><span className="text-text font-semibold">Not yet audited.</span> No automated audit has run on this skill yet.</p>
+        <p>What is true today: it is in the curated LoopSkill catalog, and every download is SHA-256 checksummed.</p>
         <a href="/security" className="text-accent hover:underline">
-          How we audit →
+          How auditing works →
         </a>
-      </p>
+      </div>
     );
   }
 
@@ -155,7 +159,7 @@ export function AuditBars({
       {sourceUrl && (
         <p className="text-[10px] text-muted-soft mt-1">
           <a href={sourceUrl} target="_blank" rel="noopener noreferrer" className="text-accent hover:underline truncate block">
-            ↗ Source audited
+            ↗ View source
           </a>
         </p>
       )}

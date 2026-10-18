@@ -2,8 +2,11 @@
 import AppShell from '../layouts/AppShell.astro';
 import Icon from '../components/Icon.astro';
 
-// Build-time stamp for "Last audited" indicators across the site.
-const lastAuditedAt = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+// qa1018 C25 (skeptic SKP-13): this used to print `new Date()` at BUILD time
+// as "Last full audit pass" — i.e. it claimed a fresh audit on every CI
+// rebuild. It is now a fixed, hand-maintained date for when THIS PAGE's
+// content was last reviewed. Per-skill audit status is shown on each skill.
+const pageUpdatedAt = '2026-10-18';
 
 const layers = [
   {
@@ -44,24 +47,29 @@ const guarantees = [
   // was true of none of them. A licence is the one claim on this page a reader
   // may act on legally — name the real ones.
   { label: 'MIT skills, MPL-2.0 platform', body: 'The free skills catalog is MIT; the registry, runner and this site are MPL-2.0. You can read, fork, audit, or replace anything you install.' },
-  { label: 'No telemetry by default',     body: 'Skills run on your machine. We see install events; we do not see your data.' },
+  // qa1018 C15: "No telemetry by default" contradicted /privacy (the daily
+  // heartbeat is opt-OUT) and omitted install events. Same facts as /privacy.
+  { label: 'Telemetry: minimal, and you can opt out', body: 'When you install a skill we record an install event (skill, version, time, ref/utm tag, IP address, and your API key if you used one) to count installs. Installer clients send one anonymous daily heartbeat (a random salt + the date) unless you set RECIPES_TELEMETRY=off. Skills run on your machine; we do not see what they do there. Full details: /privacy.' },
   { label: 'Reproducible tarballs',       body: 'Mtime/uid/gid stripped. Two packs of the same source produce byte-identical archives.' },
-  { label: 'Public review log',           body: 'Every audit decision is in the GitHub issue/PR history of the awesome-agent-recipes monorepo.' },
+  // qa1018: the repo keeps its pre-rename name; say so instead of letting a
+  // differently-named repo read like a mistake.
+  { label: 'Public review history',       body: 'Changes to the free skills catalog are reviewed in public, in the GitHub issues and pull requests of wisechef-ai/awesome-agent-recipes (the catalog repo still carries its name from before the LoopSkill rename).' },
 ];
 ---
 
 <AppShell mode="public"
   title="Security & audit — LoopSkill"
-  description="How LoopSkill audits skills before they ship: allowlist linter + sandbox runner + creator track record. Triple-layer review with verifiable signatures on every skill."
+  description="How LoopSkill reviews skills before they are listed: allowlist linter, sandbox runner and publisher signatures checked at publish. Every install returns a SHA-256 checksum you can verify. Audit status is shown on each skill."
 >
   <section class="max-w-4xl mx-auto px-6 pt-16 pb-10">
     <p class="eyebrow text-accent">Security &amp; audit</p>
     <h1 class="text-4xl md:text-6xl font-bold tracking-tight mt-3" style="letter-spacing: -0.03em;">
-      Triple-layer review.<br/>Every skill. Every release.
+      Three layers of review.<br/>Audit status on every skill.
     </h1>
     <p class="text-lg text-muted leading-relaxed mt-5 max-w-2xl">
       A skill is a piece of software your AI agent will execute on your machine. LoopSkill treats it that way.
-      Below is exactly what happens between a creator pushing code and an install command landing on your laptop.
+      Below is what happens between a creator publishing a skill and an install landing on your laptop —
+      and what does not happen. Each skill's page shows its own audit status; some say "Not yet audited".
     </p>
   </section>
 
@@ -117,17 +125,20 @@ const guarantees = [
   <section class="max-w-4xl mx-auto px-6 py-16">
     <div class="bg-[#0d0d0d] border border-border rounded-2xl p-6 md:p-8 flex flex-col gap-4">
       <p class="eyebrow">Verify a skill yourself</p>
-      <code class="font-mono text-sm text-text">curl "https://app.loopskill.io/api/skills/super-memory"</code>
+      <code class="font-mono text-sm text-text break-all wrap-cmd">curl "https://app.loopskill.io/api/skills/install?slug=super-memory"</code>
       <p class="text-xs text-muted-soft">
-        The skill-detail response includes the tarball SHA-256 and signature. Recompute the hash
-        yourself against the downloaded tarball to confirm nothing drifted from what we published.
+        The install response includes <code class="font-mono">checksum_sha256</code> and a short-lived
+        <code class="font-mono">tarball_url</code>. Download the tarball, compute its SHA-256 yourself
+        (<code class="font-mono">sha256sum</code>) and compare. This catches a corrupted or swapped download.
+        It does not protect against a compromised server, because the same server sends both: the
+        publisher's signature is checked when a skill is published, and it is not included in this response.
       </p>
     </div>
   </section>
 
   <section class="max-w-4xl mx-auto px-6 pb-20">
-    <p class="text-xs text-muted-soft" data-last-audited>
-      Last full audit pass: <time datetime={lastAuditedAt} class="text-text">{lastAuditedAt}</time> ·
+    <p class="text-xs text-muted-soft" data-page-updated>
+      This page last updated: <time datetime={pageUpdatedAt} class="text-text">{pageUpdatedAt}</time> ·
       Source on
       <a href="https://github.com/wisechef-ai/loopskill-api" class="text-accent hover:underline">GitHub</a> ·
       MPL-2.0 licensed

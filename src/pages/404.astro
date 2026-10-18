@@ -4,7 +4,7 @@ import AppShell from '../layouts/AppShell.astro';
 // Phase D (top1pct_1105) — custom 404 with did-you-mean suggestions.
 // Static list of top-visited paths; Phase G could swap to analytics-driven.
 const POPULAR_PATHS: { path: string; label: string; description: string }[] = [
-  { path: '/skills', label: 'Skills catalog', description: 'Browse every skill — free and Pro.' },
+  { path: '/browse', label: 'Browse skills', description: 'Search the curated catalog and the federated index.' },
   { path: '/pricing', label: 'Pricing', description: 'Free to self-host, Pro $9.95/mo hosted.' },
   { path: '/docs/getting-started', label: 'Getting started', description: 'Install the meta-skill in 60 seconds.' },
   { path: '/docs/mcp', label: 'MCP setup', description: 'Wire LoopSkill into any MCP-aware agent.' },
@@ -18,7 +18,8 @@ const POPULAR_PATHS: { path: string; label: string; description: string }[] = [
     <h1 class="text-4xl md:text-5xl font-semibold tracking-tight mb-4">That page doesn't exist.</h1>
     <p class="text-muted text-lg leading-relaxed mb-12">
       The URL you tried isn't part of LoopSkill (yet). If you arrived from a link
-      we promoted, that's our bug — please tell us via
+      we promoted, that's our bug — tell us at
+      <a href="mailto:hello@loopskill.io" class="text-accent underline hover:opacity-80">hello@loopskill.io</a> or open
       <a href="https://github.com/wisechef-ai/loopskill-api/issues" class="text-accent underline hover:opacity-80">an issue</a>.
     </p>
 

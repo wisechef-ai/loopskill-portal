@@ -43,6 +43,11 @@ import {
   createCopyForAgentController,
   COPY_FOR_AGENT_LABEL,
   LOOPSKILL_ORIGIN,
+  META_INSTALL_PHRASE,
+  SOURCE_LINK_LABEL,
+  agentSourceUrl,
+  freshAgentPhrase,
+  sourceOwnerRepo,
 } from '../src/lib/agentInstall';
 
 const ROOT = resolve(__dirname, '..');
@@ -78,12 +83,26 @@ const DEEP_LINK_ROW = {
 };
 
 describe('unisearch_0709/P3 — the agent-shaped install text', () => {
-  it('a deployable federated row names the MCP tool AND the plain-HTTP fallback', () => {
+  // qa1018 C09: the old text ("call loopskill_install(...)") only worked in an
+  // agent ALREADY connected to LoopSkill with a key. Every copyable string is
+  // now the fresh-agent phrase — bootstrap first, then the raw install_ref.
+  it('a deployable federated row copies the FRESH-AGENT phrase naming the raw install_ref', () => {
     expect(agentInstallText('skill', FETCH_ORIGIN_ROW)).toBe(
-      'Install "graft" from LoopSkill: call loopskill_install("hermes-hub:skills-sh-schrepa-graft-graft")'
-        + ' — or GET https://app.loopskill.io/api/skills/metasearch/install?install_ref=hermes-hub:skills-sh-schrepa-graft-graft,'
-        + ' then extract it to your skills directory.',
+      'Install the loopskill skill from https://app.loopskill.io/skill,'
+        + ' then use it to install the "hermes-hub:skills-sh-schrepa-graft-graft" skill.',
     );
+    expect(agentInstallText('skill', FETCH_ORIGIN_ROW)).toBe(freshAgentPhrase('skill', FETCH_ORIGIN_ROW.install_ref));
+  });
+
+  it('no copyable phrase assumes a pre-connected agent, a key, or says "please"', () => {
+    for (const [type, row] of [
+      ['skill', FETCH_ORIGIN_ROW], ['skills', { slug: 'copywriting' }], ['bundles', { slug: 'b' }],
+      ['loops', { slug: 'l' }], ['personalities', { slug: 'p' }],
+    ] as Array<[string, any]>) {
+      const text = agentInstallText(type, row);
+      expect(text.startsWith(META_INSTALL_PHRASE), text).toBe(true);
+      expect(text).not.toMatch(/loopskill_[a-z_]+\(|x-api-key|api key|please/i);
+    }
   });
 
   it('is NOT a shell command — the old viewer button copied one, an agent cannot act on it', () => {
@@ -91,35 +110,61 @@ describe('unisearch_0709/P3 — the agent-shaped install text', () => {
     expect(text).not.toMatch(/curl|mkdir|\bcd\b|~\/\.claude/);
   });
 
-  it('a deep-link row says it is not redistributable and says where to get it', () => {
-    expect(agentInstallText('skill', DEEP_LINK_ROW)).toBe(
-      '"Antibody Humanizer" isn\'t redistributable through the registry (source license).'
-        + ' Get it from https://clawhub.ai/aipoch-ai/skills/antibody-humanizer.',
-    );
+  // qa1018 C09 (NNS-10): a deep-link card used to copy a REFUSAL sentence
+  // under "Copied ✓". Now there is nothing to copy; the card links to source.
+  it('a deep-link row has NOTHING to copy — it gets its source URL instead', () => {
+    expect(agentInstallText('skill', DEEP_LINK_ROW)).toBe('');
+    expect(agentSourceUrl(DEEP_LINK_ROW)).toBe('https://clawhub.ai/aipoch-ai/skills/antibody-humanizer');
   });
 
   it('a deep-link row NEVER offers an install call (sprint locked decision #4)', () => {
     expect(agentInstallText('skill', DEEP_LINK_ROW)).not.toContain('loopskill_install');
     expect(agentInstallText('skill', DEEP_LINK_ROW)).not.toContain('metasearch/install');
+    expect(agentSourceUrl(FETCH_ORIGIN_ROW)).toBe('');
+    expect(agentSourceUrl({ slug: 'copywriting' })).toBe('');
+  });
+
+  it('a deep-link card renders a "Get it from source ↗" LINK, never a copy button', () => {
+    const html = copyForAgentHTML('skill', DEEP_LINK_ROW);
+    const dom = new JSDOM(`<div class="artifact-slot">${html}</div>`);
+    const doc = dom.window.document;
+    expect(doc.querySelector('button.artifact-copy')).toBeNull();
+    const a = doc.querySelector('a.artifact-source')!;
+    expect(a).toBeTruthy();
+    expect(a.textContent).toBe(SOURCE_LINK_LABEL);
+    expect(a.getAttribute('href')).toBe(DEEP_LINK_ROW.origin_url);
+    expect(a.getAttribute('target')).toBe('_blank');
+    expect(a.getAttribute('rel')).toContain('noopener');
+    // NOT .artifact-copy — the delegated copy handler would preventDefault() it.
+    expect(a.classList.contains('artifact-copy')).toBe(false);
+  });
+
+  it('sourceOwnerRepo disambiguates identically-titled federated rows', () => {
+    expect(sourceOwnerRepo({ origin_url: 'https://github.com/coreyhaines31/marketingskills/tree/main/skills/ai-seo' })).toBe('coreyhaines31/marketingskills');
+    expect(sourceOwnerRepo({ origin_url: 'https://www.skills.sh/addyosmani/web-quality-skills/seo' })).toBe('addyosmani/web-quality-skills');
+    expect(sourceOwnerRepo({ origin_url: 'https://clawhub.ai/emersonbraun/skills/eb-seo' })).toBe('emersonbraun · clawhub');
+    expect(sourceOwnerRepo({ origin_url: null, description: 'Indexed by skills.sh from iannuttall/seo' })).toBe('iannuttall/seo');
+    expect(sourceOwnerRepo({ origin_url: 'javascript:alert(1)' })).toBe('');
+    expect(sourceOwnerRepo(null)).toBe('');
   });
 
   it('uses the RAW install_ref, never the lowercased dedupe key (an agent must send it back verbatim)', () => {
     const row = { ...FETCH_ORIGIN_ROW, install_ref: 'GitHub-OSS:Some--Mixed-Case' };
-    expect(agentInstallText('skill', row)).toContain('loopskill_install("GitHub-OSS:Some--Mixed-Case")');
+    expect(agentInstallText('skill', row)).toContain('install the "GitHub-OSS:Some--Mixed-Case" skill');
     expect(canonicalInstallRef(row)).toBe('github-oss:some--mixed-case');
   });
 
-  it('degrades honestly when a deep-link row has no usable origin_url', () => {
-    const text = agentInstallText('skill', { ...DEEP_LINK_ROW, origin_url: null });
-    expect(text).toContain('isn\'t redistributable');
-    expect(text).toContain('hermes-hub');
-    expect(text).not.toContain('null');
-    expect(text).not.toContain('undefined');
+  it('degrades honestly when a deep-link row has no usable origin_url: no button, no link', () => {
+    const row = { ...DEEP_LINK_ROW, origin_url: null };
+    expect(agentInstallText('skill', row)).toBe('');
+    expect(agentSourceUrl(row)).toBe('');
+    expect(copyForAgentHTML('skill', row)).toBe('');
   });
 
   it('refuses a javascript: origin_url as a destination (it is upstream-controlled)', () => {
-    const text = agentInstallText('skill', { ...DEEP_LINK_ROW, origin_url: 'javascript:alert(1)' });
-    expect(text).not.toContain('javascript:');
+    const row = { ...DEEP_LINK_ROW, origin_url: 'javascript:alert(1)' };
+    expect(agentSourceUrl(row)).toBe('');
+    expect(copyForAgentHTML('skill', row)).not.toContain('javascript:');
   });
 
   it('returns nothing at all when there is no identity — a button that copies nothing is worse than no button', () => {
@@ -157,19 +202,19 @@ describe('unisearch_0709/P3 — local-catalog cards get honest text, not the fed
     expect(isFederatedSubject(FETCH_ORIGIN_ROW)).toBe(true);
   });
 
-  it('a local skill never quotes the metasearch URL — probed 2026-09-08, it 404s on a bare local slug', () => {
+  it('a local skill copies freshAgentPhrase(skill) — never the metasearch URL (404s on a bare local slug)', () => {
     const text = agentInstallText('skills', { slug: 'copywriting', title: 'copywriting' });
-    expect(text).toContain('loopskill_install("copywriting")');
-    expect(text).toContain(`${LOOPSKILL_ORIGIN}/api/skills/copywriting/install`);
+    expect(text).toBe(freshAgentPhrase('skill', 'copywriting'));
+    expect(text).toContain(`${LOOPSKILL_ORIGIN}/skill`);
     expect(text).not.toContain('metasearch/install');
-    // The local install route is key-gated (probed: 401 without x-api-key).
-    expect(text).toContain('x-api-key');
+    // qa1018: free skills need no key — the phrase never carries one.
+    expect(text).not.toContain('x-api-key');
   });
 
-  it('bundles, loops and personalities name the tool that actually loads them', () => {
-    expect(agentInstallText('bundles', { slug: 'b', title: 'B' })).toContain('loopskill_bundle_install("b")');
-    expect(agentInstallText('loops', { slug: 'l', title: 'L' })).toContain('loopskill_get_loop("l")');
-    expect(agentInstallText('personalities', { slug: 'p', title: 'P' })).toContain('loopskill_get_personality("p")');
+  it('bundles copy freshAgentPhrase(bundle); loops/personalities the fresh "load" phrase', () => {
+    expect(agentInstallText('bundles', { slug: 'b', title: 'B' })).toBe(freshAgentPhrase('bundle', 'b'));
+    expect(agentInstallText('loops', { slug: 'l', title: 'L' })).toBe(`${META_INSTALL_PHRASE}, then use it to load the "l" loop.`);
+    expect(agentInstallText('personalities', { slug: 'p', title: 'P' })).toBe(`${META_INSTALL_PHRASE}, then use it to load the "p" personality.`);
   });
 });
 
@@ -195,8 +240,12 @@ function loadMirror(src: string, endMarker: string): (type: string, item: any) =
     ? ''
     : 'function isHttpUrl(u) { return typeof u === "string" && /^https?:\\/\\//i.test(u); }\n';
   // eslint-disable-next-line no-new-func
-  const factory = new Function(`${shim}${body}\nreturn agentInstallText;`);
-  return factory() as (type: string, item: any) => string;
+  const factory = new Function(`${shim}${body}\nreturn { agentInstallText, agentSourceUrl, sourceOwnerRepo };`);
+  const fns = factory() as any;
+  const call = ((type: string, item: any) => fns.agentInstallText(type, item)) as any;
+  call.agentSourceUrl = fns.agentSourceUrl;
+  call.sourceOwnerRepo = fns.sourceOwnerRepo;
+  return call as (type: string, item: any) => string;
 }
 
 const MIRROR_SUBJECTS: Array<[string, any]> = [
@@ -215,18 +264,23 @@ const MIRROR_SUBJECTS: Array<[string, any]> = [
 
 describe('unisearch_0709/P3 — ONE format across the site (inline mirrors match the module)', () => {
   it('browse.astro\'s inline mirror produces byte-identical text to src/lib/agentInstall.ts', () => {
-    const mirror = loadMirror(BROWSE_SRC, '\n  // The button is a SIBLING');
+    const mirror = loadMirror(BROWSE_SRC, '\n  // The button is a SIBLING') as any;
     for (const [type, subject] of MIRROR_SUBJECTS) {
       expect(mirror(type, subject), `browse mirror drifted for ${JSON.stringify(subject)}`)
         .toBe(agentInstallText(type as any, subject));
+      expect(mirror.agentSourceUrl(subject), `browse agentSourceUrl drifted for ${JSON.stringify(subject)}`)
+        .toBe(agentSourceUrl(subject));
+      expect(mirror.sourceOwnerRepo(subject), `browse sourceOwnerRepo drifted for ${JSON.stringify(subject)}`)
+        .toBe(sourceOwnerRepo(subject));
     }
   });
 
   it('skills/external/view.astro\'s inline mirror produces byte-identical text to src/lib/agentInstall.ts', () => {
-    const mirror = loadMirror(VIEWER_SRC, '\n  // NEVER a silent no-op');
+    const mirror = loadMirror(VIEWER_SRC, '\n  // NEVER a silent no-op') as any;
     for (const [type, subject] of MIRROR_SUBJECTS) {
       expect(mirror(type, subject), `viewer mirror drifted for ${JSON.stringify(subject)}`)
         .toBe(agentInstallText(type as any, subject));
+      expect(mirror.agentSourceUrl(subject)).toBe(agentSourceUrl(subject));
     }
   });
 
@@ -266,16 +320,21 @@ describe('unisearch_0709/P3 — the Copy for agent control', () => {
   });
 
   it('escapes the copied text into the attribute — upstream titles/URLs are not trusted', () => {
+    const evil = '"><img src=x onerror=alert(1)>';
     const html = copyForAgentHTML('skill', {
-      ...DEEP_LINK_ROW,
-      title: '"><img src=x onerror=alert(1)>',
+      ...FETCH_ORIGIN_ROW,
+      title: evil,
+      install_ref: `hermes-hub:${evil}`,
     });
     expect(html).not.toContain('<img');
     const dom = new JSDOM(`<div class="artifact-slot">${html}</div>`);
     expect(dom.window.document.querySelector('img')).toBeNull();
     // …and the real text still round-trips out of the attribute intact.
     const btn = dom.window.document.querySelector('button.artifact-copy')!;
-    expect(btn.getAttribute('data-copy-text')).toContain('"><img src=x onerror=alert(1)>');
+    expect(btn.getAttribute('data-copy-text')).toContain(evil);
+    // The deep-link variant (title lands in the link's aria-label) is escaped too.
+    const link = copyForAgentHTML('skill', { ...DEEP_LINK_ROW, title: evil });
+    expect(link).not.toContain('<img');
   });
 
   it('is hover-revealed but NEVER display:none/visibility:hidden — it must stay in the tab order', () => {
@@ -489,18 +548,29 @@ describe('unisearch_0709/P3 — Browse renders ONE federated group (built output
     expect(lastNative).toBeLessThan(firstFederated);
   });
 
-  it.runIf(browseBuilt)('every federated card carries a Copy for agent button with the right text for its install path', async () => {
+  it.runIf(browseBuilt)('installable federated cards copy the fresh phrase; deep-link cards link to source (qa1018 C09)', async () => {
     const { dom } = await renderBrowseQuery('graft');
     const group = dom.window.document.querySelector('#browse-results [data-federated-group]')!;
     const buttons = Array.from(group.querySelectorAll('button.artifact-copy'));
-    expect(buttons.length, 'a federated card shipped without an install affordance').toBe(3);
-    const texts = buttons.map((b) => b.getAttribute('data-copy-text') || '');
     // deployable:true (no install_path on /api/search rows) -> installable.
-    expect(texts.some((t) => t.includes('loopskill_install("hermes-hub:shared")'))).toBe(true);
-    // deployable:false and install_path deep_link -> honest, no install call.
-    const notInstallable = texts.filter((t) => t.includes("isn't redistributable"));
-    expect(notInstallable.length).toBe(2);
-    for (const t of notInstallable) expect(t).not.toContain('loopskill_install');
+    expect(buttons.length, 'expected exactly one installable federated card').toBe(1);
+    expect(buttons[0].getAttribute('data-copy-text')).toBe(freshAgentPhrase('skill', 'hermes-hub:shared'));
+    // deployable:false and install_path deep_link -> a source link, no copy.
+    const links = Array.from(group.querySelectorAll('a.artifact-source'));
+    expect(links.length, 'a deep-link card shipped without its source link').toBe(2);
+    for (const a of links) {
+      expect(a.textContent).toBe(SOURCE_LINK_LABEL);
+      expect(a.getAttribute('href')).toMatch(/^https:\/\/example\.invalid\//);
+    }
+    expect(group.innerHTML).not.toContain("isn't redistributable");
+  });
+
+  it.runIf(browseBuilt)('federated cards show their source as a subtitle (qa1018 C07)', async () => {
+    const { dom } = await renderBrowseQuery('graft');
+    const group = dom.window.document.querySelector('#browse-results [data-federated-group]')!;
+    const metas = Array.from(group.querySelectorAll('.artifact-meta')).map((m) => m.textContent || '');
+    expect(metas.length).toBe(3);
+    for (const m of metas) expect(m).toMatch(/^from example\.invalid\//);
   });
 
   it.runIf(browseBuilt)('native cards get a Copy for agent button too', async () => {
@@ -510,7 +580,7 @@ describe('unisearch_0709/P3 — Browse renders ONE federated group (built output
       .find((s) => s.querySelector('[data-artifact-slug="native-graft"]'))!;
     expect(nativeCard, 'native skill card not rendered').toBeTruthy();
     const btn = nativeCard.querySelector('button.artifact-copy')!;
-    expect(btn.getAttribute('data-copy-text')).toContain('loopskill_install("native-graft")');
+    expect(btn.getAttribute('data-copy-text')).toBe(freshAgentPhrase('skill', 'native-graft'));
   });
 
   it.runIf(browseBuilt)('both pipelines are still queried — neither subsumes the other', async () => {

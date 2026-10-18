@@ -61,6 +61,8 @@ const STATIC_ROUTES: { path: string; priority: string; changefreq: string }[] = 
   // search, llms.txt and the blog post).
   { path: '/use-cases/one-private-bundle-per-client', priority: '0.6', changefreq: 'monthly' },
   { path: '/privacy', priority: '0.3', changefreq: 'monthly' },
+  // qa1018 C14: plain-language Terms page.
+  { path: '/terms', priority: '0.3', changefreq: 'monthly' },
   // G2-federation: the federation overview index. Per-source pages are
   // enumerated separately below (federationUrls) — same no-hard-500
   // contract, built from the same getFederationSourcePages() call the

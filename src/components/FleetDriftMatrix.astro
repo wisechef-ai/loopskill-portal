@@ -443,6 +443,13 @@ function installedFor(declared: string, c: { state: CellState }) {
     .dm-dot, .dm-row, .dm-agent-id { transition: none; }
     .dm-cell[data-just-converged] .dm-dot { animation: none; }
   }
+  /* qa1018 C21: no UI text below 12px on a phone (scoped styles above are
+     not reached by the global mobile floor in global.css). */
+  @media (max-width: 767px) {
+    .dm-demo-chip, .dm-lock, .dm-reset, .dm-caption, .dm-corner, .dm-col-link,
+    .dm-col-ver, .dm-agent-id, .dm-agent-meta, .dm-converge, .dm-inspect-hint kbd,
+    .dm-verdict, .dm-kv dt, .dm-legend, .dm-foot { font-size: 12px; }
+  }
 </style>
 
 <script is:inline>

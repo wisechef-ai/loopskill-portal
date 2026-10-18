@@ -1,38 +1,15 @@
 ---
-// /signup → /signin?mode=signup redirect.
+// /signup — renders the sign-up variant of the auth card DIRECTLY.
 //
-// Background: external sites (X posts, blog comments, docs CTAs) sometimes
-// link to /signup directly. Before this page that 404'd. This page is
-// statically pre-rendered so the redirect target is set client-side; the
-// inline script preserves any ?ref=CODE for referral attribution and
-// redirects via window.location.replace.
-//
-// The bare meta-refresh is a fallback for crawlers / no-JS browsers.
+// qa1018 C08: this used to be a meta-refresh + JS redirect to
+// /signin?mode=signup — an extra page load (painful on 3G), and the target
+// page then showed "Welcome back" anyway because the static build could not
+// read ?mode. Skill pages and external sites link here, so it must land.
+// ?ref= / ?next= / utm_* are handled by AuthPanel's client script exactly as
+// on /signin.
+import AuthEdge from '../layouts/AuthEdge.astro';
+import AuthPanel from '../components/AuthPanel.astro';
 ---
-<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta http-equiv="refresh" content="0; url=/signin?mode=signup" />
-    <link rel="canonical" href="https://app.loopskill.io/signin?mode=signup" />
-    <title>Get access — LoopSkill</title>
-    <meta name="robots" content="noindex" />
-  </head>
-  <body>
-    <p>Redirecting to <a href="/signin?mode=signup">Get access</a>…</p>
-    <script is:inline>
-      // Client-side: preserve ?ref= attribution if present.
-      // Validates against the same regex as Base.astro stamper to avoid
-      // forwarding a malformed code.
-      (function () {
-        var p = new URLSearchParams(window.location.search);
-        var ref = p.get('ref');
-        var target = '/signin?mode=signup';
-        if (ref && /^[A-Za-z0-9]{4,16}$/.test(ref)) {
-          target += '&ref=' + encodeURIComponent(ref);
-        }
-        window.location.replace(target);
-      })();
-    </script>
-  </body>
-</html>
+<AuthEdge title="Create your free account — LoopSkill" description="Create a free LoopSkill account with Google or GitHub. Free skills install without one; an account adds an API key, a Library, private bundles and fleets.">
+  <AuthPanel initialMode="signup" />
+</AuthEdge>

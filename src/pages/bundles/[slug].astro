@@ -21,8 +21,8 @@
 // suppresses the "no account needed" install line for those bundles.
 import AppShell from '../../layouts/AppShell.astro';
 import Icon from '../../components/Icon.astro';
-import QuickInstall from '../../components/QuickInstall.astro';
 import { fetchApi } from '../../lib/api';
+import { freshAgentPhrase } from '../../lib/agentInstall';
 
 interface BundleSkill {
   slug: string;
@@ -146,7 +146,7 @@ const publicSkillSlugs = new Set<string>();
 const display = {
   slug: slug as string,
   name: bundle.name || (slug as string).replace(/-/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase()),
-  description: bundle.description || 'A public, security-vetted skill stack for AI agents.',
+  description: bundle.description || 'A public skill bundle for AI agents.',
   skillCount: bundle.skill_count ?? bundle.skills?.length ?? 0,
   skills: bundle.skills || [],
   requiresPro: bundle.requires_pro === true,
@@ -157,7 +157,34 @@ const display = {
   installCommand: bundle.install_command || `curl -fsSL https://app.loopskill.io/api/bundles/install.sh | bash -s -- ${slug}`,
   installCommandRequiresAuth: bundle.install_command_requires_auth === true,
   cloneLine: bundle.clone_line || `loopskill_bundle_install from "bundle://${slug}"`,
+  cloneLineRequiresAuth: bundle.clone_line_requires_auth !== false,
+  // qa1018 C06: the PRIMARY install — canonical phrase from src/lib/agentInstall.ts.
+  agentLine: freshAgentPhrase('bundle', slug as string),
 };
+
+// "github.com/<owner>/<repo>/…" -> "owner/repo"; other http(s) URL -> hostname;
+// relative/invalid -> ''. Rendered through Astro's {…} (auto-escaped).
+function sourceLabel(url: string | null | undefined): string {
+  if (typeof url !== 'string' || !/^https?:\/\//i.test(url)) return '';
+  try {
+    const u = new URL(url);
+    const host = u.hostname.replace(/^www\./, '');
+    if (host === 'github.com') {
+      const seg = u.pathname.split('/').filter(Boolean);
+      if (seg.length >= 2) return `${seg[0]}/${seg[1]}`;
+    }
+    return host;
+  } catch {
+    return '';
+  }
+}
+const isCommunity = (s: BundleSkill) => {
+  const scan = (s.scan_status || '').toLowerCase();
+  if (scan && scan !== 'unscanned') return false;
+  return s.is_public === false || !s.loopskill_url;
+};
+const communityCount = display.skills.filter(isCommunity).length;
+const allDeepLink = display.skills.length > 0 && display.skills.every((s) => !s.loopskill_url);
 
 const siteURL = 'https://app.loopskill.io';
 
@@ -232,31 +259,66 @@ const bundleSchema = {
           <Icon name="shield" size={14} class="text-accent" />
           <h2 class="text-base font-semibold">This bundle requires Pro</h2>
         </div>
-        <p class="text-sm text-muted mb-4">Every skill in this bundle is Pro-tier. The one-line install below will not work without an active Pro subscription and API key — there is no free path through this bundle.</p>
+        <p class="text-sm text-muted mb-4">Every skill in this bundle is Pro-tier. Installing it needs an active Pro subscription and API key — there is no free path through this bundle.</p>
         <a href="/pricing" class="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-accent text-bg font-semibold text-sm hover:bg-accent-soft transition">
           See Pro plans →
         </a>
       </section>
     ) : (
+      <!-- qa1018 C06: PRIMARY = the agent phrase; curl|bash is SECONDARY
+           ("Prefer a terminal?"); the key-gated MCP line lives in "Other ways to
+           install". Replaces the QuickInstall block, which led with an MCP call
+           that 401s for a visitor without a key. -->
       <section class="bg-bg-card border border-accent/30 rounded-2xl p-6 mb-10">
-        <div class="flex items-center justify-between gap-3 mb-3 flex-wrap">
-          <h2 class="text-base font-semibold">Install this whole stack — one line</h2>
+        <div class="flex items-center justify-between gap-3 mb-2 flex-wrap">
+          <h2 class="text-base font-semibold">Install this bundle with your agent</h2>
           <span class="text-[11px] text-muted-soft">{display.installCommandRequiresAuth ? 'requires an API key' : 'no account needed'}</span>
         </div>
-        <div class="relative">
-          <pre class="bg-[#0d0d0d] border border-border rounded-xl p-4 pr-12 text-sm text-accent overflow-x-auto"><code id="install-line">{display.installCommand}</code></pre>
-          <button id="copy-install-btn" class="absolute top-3 right-3 px-2.5 py-1 rounded-md bg-bg-elev border border-border text-xs text-muted hover:text-accent hover:border-accent/40 transition" type="button" data-copy={display.installCommand}>Copy</button>
+        <p class="text-sm text-text mb-3">Paste this into your agent's chat (Claude Code, Codex, Cursor…) and press Enter.</p>
+        <div class="bd-cmd">
+          <pre class="bd-pre bg-[#0d0d0d] border border-border rounded-xl p-4 text-sm text-accent"><code id="agent-line">{display.agentLine}</code></pre>
+          <button id="copy-agent-btn" class="bd-copy" type="button" data-copy={display.agentLine} aria-label="Copy the install sentence for your agent">Copy</button>
         </div>
-        <p class="text-xs text-muted-soft mt-3">
-          Runs in any shell. Every free skill in this bundle installs verbatim with <strong>no account and no API key</strong>; paid-tier members are reported by name rather than silently skipped.
-        </p>
+        {allDeepLink && (
+          <p class="text-xs text-muted mt-3">Skills install straight from their original GitHub repos (LoopSkill does not host a copy).</p>
+        )}
+        {communityCount > 0 && (
+          <p class="bd-community-note text-xs mt-3">
+            {communityCount === display.skills.length
+              ? "Heads-up: these are community skills from other people's GitHub repos. LoopSkill has not reviewed them — open each one below to read it before you install."
+              : `Heads-up: ${communityCount} of these ${display.skills.length} skills are community skills from other people's GitHub repos. LoopSkill has not reviewed them — open each one below to read it before you install.`}
+          </p>
+        )}
+
+        <div class="mt-6 pt-5 border-t border-border-soft">
+          <h3 class="text-sm font-semibold text-text mb-2">Prefer a terminal?</h3>
+          <div class="bd-cmd">
+            <pre class="bd-pre bg-[#0d0d0d] border border-border rounded-xl p-4 text-sm text-accent"><code id="install-line" class="bd-break">{display.installCommand}</code></pre>
+            <button id="copy-install-btn" class="bd-copy" type="button" data-copy={display.installCommand} aria-label="Copy the terminal command">Copy</button>
+          </div>
+          <p class="text-xs text-muted-soft mt-3">
+            Run this in a terminal (not in your agent's chat). It writes the skills to <code>~/.claude/skills</code> and needs <code>bash</code> and <code>python3</code>. Free skills install with <strong>no account and no API key</strong>; paid-tier members are reported by name rather than silently skipped.
+          </p>
+        </div>
+
+        <details class="bd-other mt-5">
+          <summary class="bd-other-summary">Other ways to install</summary>
+          <div class="mt-4">
+            <div class="flex items-center justify-between gap-3 mb-2 flex-wrap">
+              <h3 class="text-sm font-semibold text-text">Already have LoopSkill connected (API key)?</h3>
+              <span class="text-[11px] px-2 py-0.5 rounded-md border border-border text-muted-soft">{display.cloneLineRequiresAuth ? 'requires a free API key' : 'no key required'}</span>
+            </div>
+            <div class="bd-cmd">
+              <pre class="bd-pre bg-[#0d0d0d] border border-border rounded-xl p-4 text-sm text-accent"><code class="bd-break">{display.cloneLine}</code></pre>
+              <button class="bd-copy" type="button" data-copy={display.cloneLine} aria-label="Copy the MCP install line">Copy</button>
+            </div>
+            <p class="text-xs text-muted-soft mt-3">
+              If LoopSkill is already connected to your agent over MCP, this pulls every skill below in a single call. The MCP endpoint authenticates every request — <a href="/pricing" class="text-accent hover:underline">get a free key</a> first, or use the sentence at the top, which needs no account.
+            </p>
+          </div>
+        </details>
       </section>
     )}
-
-    <!-- Quick install (MCP + signed URL forms) -->
-    <div class="mb-10">
-      <QuickInstall kind="bundle" slug={display.slug} bundleId={display.slug} visibility="public" ref="bundle-page" />
-    </div>
 
     <!-- Member list -->
     <section>
@@ -285,18 +347,26 @@ const bundleSchema = {
             const hasLocalPage = !!internalSlug && publicSkillSlugs.has(internalSlug);
             const href = isExternal ? raw : hasLocalPage ? `/skills/${internalSlug}` : '';
             const label = s.title || s.slug;
+            // MOB-8 / SKP-07 / BRK-11: owner/repo subtitle tells duplicate names apart.
+            const origin = sourceLabel(s.source_url);
+            // NNS-12: "custom-added" is internal jargon — no badge for it.
+            const sourceText = s.source === 'custom-added' ? '' : s.source === 'catalog' ? 'LoopSkill catalog' : (s.source || '');
             return (
               <li class="skill-row">
-                {href ? (
-                  <a href={href} target={isExternal ? '_blank' : undefined} rel={isExternal ? 'noopener' : undefined} class="font-medium text-text hover:text-accent transition">
-                    {label}
-                  </a>
-                ) : (
-                  /* No public page and no real origin url — render the name as
-                     text rather than a link that 404s. */
-                  <span class="font-medium text-text">{label}</span>
-                )}
-                {s.source && <span class="skill-source-badge">{s.source}</span>}
+                <div class="flex flex-col min-w-0 gap-0.5">
+                  {href ? (
+                    <a href={href} target={isExternal ? '_blank' : undefined} rel={isExternal ? 'noopener' : undefined} class="font-medium text-text hover:text-accent transition">
+                      {label}
+                    </a>
+                  ) : (
+                    /* No public page and no real origin url — render the name as
+                       text rather than a link that 404s. */
+                    <span class="font-medium text-text">{label}</span>
+                  )}
+                  {origin && <span class="skill-origin">from {origin}</span>}
+                  {isCommunity(s) && <span class="skill-community">Community skill — not reviewed by LoopSkill</span>}
+                </div>
+                {sourceText && <span class="skill-source-badge">{sourceText}</span>}
               </li>
             );
           })}
@@ -307,7 +377,7 @@ const bundleSchema = {
     <section class="mt-12 bg-bg-card border border-border rounded-2xl p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
       <div>
         <p class="font-semibold mb-1">Build your own bundle</p>
-        <p class="text-sm text-muted">Compose a security-vetted skill stack and share it as one link.</p>
+        <p class="text-sm text-muted">Pick the skills you want and share them as one link.</p>
       </div>
       <a href="/pricing" class="shrink-0 inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-accent text-bg font-semibold text-sm hover:bg-accent-soft transition">Get started</a>
     </section>
@@ -322,23 +392,41 @@ const bundleSchema = {
   .badge-editorial { color: #c084fc; background: rgba(192,132,252,.1); border-color: rgba(192,132,252,.35); }
   .skill-row { display: flex; align-items: center; justify-content: space-between; gap: .5rem; padding: .9rem 1rem; background: var(--bg-card, #14171d); border: 1px solid var(--border, #2a2f3a); border-radius: .85rem; transition: border-color .15s ease; }
   .skill-row:hover { border-color: var(--accent, #5b9bf5); }
-  .skill-source-badge { display: inline-flex; align-items: center; font-size: 10px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted-soft, #9aa3b2); background: var(--bg-elev, #1b1f27); border: 1px solid var(--border-soft, #2a2f3a); border-radius: 999px; padding: .1rem .5rem; shrink: 0; }
+  .skill-source-badge { display: inline-flex; align-items: center; font-size: 10px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted-soft, #9aa3b2); background: var(--bg-elev, #1b1f27); border: 1px solid var(--border-soft, #2a2f3a); border-radius: 999px; padding: .1rem .5rem; flex-shrink: 0; }
+  /* qa1018 C06 */
+  .skill-origin { font-size: 12px; color: var(--muted, #9aa3b2); overflow-wrap: anywhere; }
+  .skill-community { font-size: 11px; color: #fbbf24; }
+  .bd-community-note { color: #fbbf24; }
+  /* MOB-10: long commands wrap at 375px — no side-scrolling <pre>. */
+  .bd-pre { white-space: pre-wrap; overflow-wrap: anywhere; overflow-x: hidden; margin: 0; }
+  .bd-pre code { white-space: pre-wrap; overflow-wrap: anywhere; }
+  .bd-pre code.bd-break { word-break: break-all; }
+  .bd-cmd { display: flex; flex-direction: column; gap: .5rem; }
+  /* MOB-5: >=44px Copy targets. */
+  .bd-copy { align-self: flex-start; min-height: 44px; min-width: 96px; padding: .6rem 1.1rem; border-radius: .6rem; font-size: .875rem; font-weight: 600; background: var(--accent, #ffd166); color: var(--bg, #0a0a0a); border: 1px solid var(--accent, #ffd166); cursor: pointer; }
+  .bd-copy:hover { filter: brightness(1.08); }
+  /* MOB-11: >=44px disclosure with a clear chevron. */
+  .bd-other-summary { display: flex; align-items: center; gap: .6rem; min-height: 44px; padding: .6rem .9rem; border: 1px solid var(--border, #2a2f3a); border-radius: .75rem; font-size: .9rem; font-weight: 600; color: var(--text, #e6e9ef); cursor: pointer; list-style: none; }
+  .bd-other-summary::-webkit-details-marker { display: none; }
+  .bd-other-summary::before { content: "▸"; display: inline-block; transition: transform .15s ease; color: var(--accent, #ffd166); }
+  .bd-other[open] > .bd-other-summary::before { transform: rotate(90deg); }
 </style>
 
 <script is:inline>
+  // Every Copy button copies its own data-copy, which is the exact text shown
+  // next to it (shown === copied).
   (function () {
-    var btn = document.getElementById('copy-install-btn');
-    if (!btn) return;
-    btn.addEventListener('click', async function () {
-      var txt = btn.getAttribute('data-copy') || '';
-      try {
-        await navigator.clipboard.writeText(txt);
-        var orig = btn.textContent;
-        btn.textContent = 'Copied';
-        setTimeout(function () { btn.textContent = orig; }, 1600);
-      } catch (e) {
-        btn.textContent = 'Select & copy';
-      }
+    document.querySelectorAll('button.bd-copy[data-copy]').forEach(function (btn) {
+      btn.addEventListener('click', async function () {
+        var txt = btn.getAttribute('data-copy') || '';
+        try {
+          await navigator.clipboard.writeText(txt);
+          btn.textContent = 'Copied ✓';
+          setTimeout(function () { btn.textContent = 'Copy'; }, 1600);
+        } catch (e) {
+          btn.textContent = 'Select & copy';
+        }
+      });
     });
   })();
 </script>

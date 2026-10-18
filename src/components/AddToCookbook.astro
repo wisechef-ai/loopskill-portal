@@ -68,13 +68,14 @@ const pad = size === 'md' ? 'px-4 py-2 text-sm' : 'px-3 py-1.5 text-xs';
     <div class="atc-list flex flex-col gap-0.5 max-h-56 overflow-y-auto"></div>
     <div class="atc-loading px-3 py-2 text-xs text-muted">Loading your bundles…</div>
     <div class="atc-signin hidden px-3 py-3 text-xs text-muted">
-      <a href="/signup" class="atc-signin-link text-accent hover:underline font-semibold">Sign in</a> to save skills to a bundle.
+      <a href="/signin" class="atc-signin-link text-accent hover:underline font-semibold">Sign in</a> to save skills to a bundle.
     </div>
     <div class="atc-empty hidden px-3 py-2 text-xs text-muted">No bundles yet — create one below.</div>
     <div class="atc-cap hidden px-3 py-2 text-xs text-amber-300">
       Private-bundle cap reached on this tier. <a href="/pricing" class="text-accent hover:underline">Upgrade to Pro</a> for more.
     </div>
-    <div class="border-t border-border-soft mt-1 pt-1">
+    <!-- qa1018 C23: hidden until the script confirms a signed-in session. -->
+    <div class="atc-new-wrap hidden border-t border-border-soft mt-1 pt-1">
       <form class="atc-new flex items-center gap-1.5 px-1.5 py-1">
         <input
           type="text"

@@ -1,77 +1,83 @@
 ---
-// QuickInstall — portal_0610 J5: the omnipresent, ?ref-attributed quick-install
-// block for a single skill OR a whole bundle. Drop it on every skill detail
-// page and every bundle page so the install motion is always one copy away.
+// QuickInstall — the install block on every skill detail page.
 //
-// HONESTY: shows the REAL motions only.
-//   - skill: the MCP tool call `loopskill_install(slug="X")` (the canonical agent
-//     motion) + the working signed-URL install endpoint
-//     `/api/skills/install?slug=X&ref=…` (the `ref` query param is consumed by
-//     install_routes for UTM attribution — verified live).
-//   - bundle:  `loopskill_bundle_install(slug="…")` (MCP) +
-//     `loopskill_bundle_install from "bundle://<slug>"` for a public one.
-// We do NOT emit a `curl /i/<slug> | bash` line — that endpoint 404s (it was
-// aspirational on the old skills page). Every line here actually works.
+// qa1018 C02 (launch QA, 4/5 personas): this block used to lead with an MCP
+// call (`loopskill_install(slug="X")`) that only works in an agent that is
+// ALREADY connected to LoopSkill with an API key, under an empty "QUICK
+// INSTALL" label, plus a "Signed install URL (curl-able with your API key)"
+// whose label was wrong twice: the endpoint needs NO key for a free skill,
+// and it returns JSON with a download link that expires after 1 hour — not
+// the skill itself.
 //
-// `ref` defaults to "portal" so installs originating from a page click are
-// attributable; pages can pass a more specific ref (e.g. "skill-page").
+// Now, in order:
+//   1. PRIMARY — the fresh-agent phrase (src/lib/agentInstall.ts
+//      freshAgentPhrase), shown verbatim and copied verbatim, with the plain
+//      instruction of WHERE to paste it. Works from an agent that has never
+//      heard of LoopSkill; free skills need no key.
+//   2. "Already have LoopSkill connected (API key)?" — the MCP call.
+//   3. The keyless REST endpoint, labelled for what it really returns.
+//
+// `ref` is consumed by install_routes for install attribution (the server
+// records install events with this tag to count installs).
+import { freshAgentPhrase } from '../lib/agentInstall';
+
 interface Props {
-  kind: 'skill' | 'bundle';
-  slug: string;                 // skill slug OR bundle slug
-  bundleId?: string;            // required for kind='bundle' (MCP call uses id)
-  visibility?: string;          // bundle only: 'public' shows the bundle:// clone line
+  kind?: 'skill';
+  slug: string;
   ref?: string;                 // attribution carrier; default 'portal'
+  /** false for paid skills: the "no key" reassurance is only true for free ones. */
+  free?: boolean;
   class?: string;
 }
-const { kind, slug, bundleId = '', visibility = 'private', ref = 'portal', class: extra = '' } = Astro.props;
+const { slug, ref = 'portal', free = true, class: extra = '' } = Astro.props;
 
 const API = import.meta.env.PUBLIC_LOOPSKILL_API_BASE || import.meta.env.PUBLIC_RECIPES_API_BASE || 'https://app.loopskill.io';
 const refQ = encodeURIComponent(ref);
 
-// Build the canonical lines for this artifact.
-const mcpLine = kind === 'skill'
-  ? `loopskill_install(slug="${slug}")`
-  : `loopskill_bundle_install(slug="${bundleId}")`;
-
-const urlLine = kind === 'skill'
-  ? `${API}/api/skills/install?slug=${encodeURIComponent(slug)}&ref=${refQ}`
-  : (visibility === 'public'
-      ? `loopskill_bundle_install from "bundle://${slug}"`
-      : `${API}/api/bundles/${bundleId}/install`);
-
-const urlLabel = kind === 'skill'
-  ? 'Signed install URL (curl-able with your API key)'
-  : (visibility === 'public' ? 'Public clone (any agent)' : 'Install URL (your API key)');
+const agentLine = freshAgentPhrase('skill', slug);
+const mcpLine = `loopskill_install(slug="${slug}")`;
+const restLine = `${API}/api/skills/install?slug=${encodeURIComponent(slug)}&ref=${refQ}`;
 ---
-<div class={`quick-install bg-[#0d0d0d] border border-border rounded-2xl overflow-hidden ${extra}`} data-quick-install>
-  <div class="flex items-center gap-2 px-4 py-2.5 border-b border-border bg-bg-elev">
-    <svg width="13" height="13" viewBox="0 0 20 20" fill="none" class="text-accent"><path d="M5 7l5 5 5-5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
-    <span class="text-[11px] uppercase tracking-wider text-muted-soft font-semibold">Quick install</span>
-    <span class="ml-auto text-[10px] text-muted-soft font-mono">{kind === 'skill' ? slug : 'bundle'}</span>
+<div class={`quick-install flex flex-col gap-4 ${extra}`} data-quick-install>
+  <div>
+    <p class="text-sm text-text mb-2" data-qi-paste-hint>Paste this into your agent's chat (Claude Code, Codex, Cursor…) and press Enter.</p>
+    <code class="qi-code qi-primary block font-mono text-sm bg-bg-elev border border-accent/40 rounded-lg px-3 py-3 text-accent" data-qi-agent-line>{agentLine}</code>
+    <div class="flex items-center gap-3 mt-2 flex-wrap">
+      <button type="button" class="qi-copy qi-copy--primary px-4 rounded-lg bg-accent text-bg text-sm font-semibold" data-qi-copy={agentLine}>Copy install phrase</button>
+      <span class="text-xs text-muted-soft">{free ? 'Free skill: no account, no API key.' : 'This skill needs a paid plan — see Pricing.'}</span>
+    </div>
   </div>
 
-  <div class="p-4 flex flex-col gap-3">
-    <!-- MCP motion (the canonical agent call) -->
-    <div>
-      <div class="text-[10px] uppercase tracking-wider text-muted-soft mb-1.5">In your agent (MCP)</div>
-      <div class="flex items-center gap-1.5">
-        <code class="qi-code font-mono text-xs bg-bg-elev border border-border rounded px-2.5 py-2 flex-1 break-all text-accent">{mcpLine}</code>
-        <button class="qi-copy px-2.5 py-2 rounded bg-accent text-bg text-[11px] font-semibold shrink-0" data-qi-copy={mcpLine}>Copy</button>
+  <details class="qi-more border-t border-border-soft pt-3">
+    <summary class="qi-summary text-sm text-muted cursor-pointer">Other ways to install</summary>
+    <div class="flex flex-col gap-4 mt-3">
+      <div>
+        <div class="text-xs text-muted-soft mb-1.5">Already have LoopSkill connected (API key)? Ask your agent to run:</div>
+        <div class="flex items-start gap-2">
+          <code class="qi-code font-mono text-xs bg-bg-elev border border-border rounded px-2.5 py-2 flex-1 text-accent">{mcpLine}</code>
+          <button type="button" class="qi-copy px-3 rounded border border-border-soft text-muted hover:text-accent hover:border-accent text-xs font-semibold shrink-0 transition" data-qi-copy={mcpLine}>Copy</button>
+        </div>
       </div>
-    </div>
-
-    <!-- Working URL / clone line -->
-    <div>
-      <div class="text-[10px] uppercase tracking-wider text-muted-soft mb-1.5">{urlLabel}</div>
-      <div class="flex items-center gap-1.5">
-        <code class="qi-code font-mono text-xs bg-bg-elev border border-border rounded px-2.5 py-2 flex-1 break-all text-muted">{urlLine}</code>
-        <button class="qi-copy px-2.5 py-2 rounded border border-border-soft text-muted hover:text-accent hover:border-accent text-[11px] font-semibold shrink-0 transition" data-qi-copy={urlLine}>Copy</button>
+      {free && (
+      <div>
+        <div class="text-xs text-muted-soft mb-1.5">REST endpoint (no key needed): returns JSON with a download link that works for 1 hour, plus its SHA-256 checksum.</div>
+        <div class="flex items-start gap-2">
+          <code class="qi-code font-mono text-xs bg-bg-elev border border-border rounded px-2.5 py-2 flex-1 text-muted">{restLine}</code>
+          <button type="button" class="qi-copy px-3 rounded border border-border-soft text-muted hover:text-accent hover:border-accent text-xs font-semibold shrink-0 transition" data-qi-copy={restLine}>Copy</button>
+        </div>
       </div>
+      )}
     </div>
-
-    <p class="text-[10px] text-muted-soft">Works in any MCP-capable agent — Claude Code, Cursor, Cline, OpenClaw, Hermes, Windsurf.</p>
-  </div>
+  </details>
 </div>
+
+<style>
+  /* Long lines wrap at 375px instead of side-scrolling (qa1018 MOB-10). */
+  .qi-code { white-space: pre-wrap; overflow-wrap: anywhere; word-break: break-word; }
+  /* >=44px tap targets (qa1018 C21). */
+  .qi-copy { min-height: 44px; }
+  .qi-summary { min-height: 44px; display: flex; align-items: center; }
+</style>
 
 <script is:inline>
   (function () {
@@ -80,11 +86,23 @@ const urlLabel = kind === 'skill'
         if (btn.__qiWired) return; btn.__qiWired = true;
         btn.addEventListener('click', async function () {
           const txt = btn.getAttribute('data-qi-copy') || '';
+          const o = btn.textContent;
           try {
             await navigator.clipboard.writeText(txt);
-            const o = btn.textContent; btn.textContent = 'Copied ✓';
-            setTimeout(function () { btn.textContent = o; }, 1400);
-          } catch (e) { /* clipboard unavailable */ }
+            btn.textContent = 'Copied ✓';
+          } catch (e) {
+            // Clipboard unavailable (insecure origin / denied): select the
+            // visible text so it can be copied by hand. Never a silent no-op
+            // on a button that says it copies.
+            const box = btn.parentElement && btn.parentElement.parentElement;
+            const code = box ? box.querySelector('.qi-code') : null;
+            if (code && window.getSelection) {
+              const r = document.createRange(); r.selectNodeContents(code);
+              const sel = window.getSelection(); sel.removeAllRanges(); sel.addRange(r);
+            }
+            btn.textContent = 'Select & copy';
+          }
+          setTimeout(function () { btn.textContent = o; }, 1600);
         });
       });
     });

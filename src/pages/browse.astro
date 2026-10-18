@@ -132,7 +132,7 @@ function renderPrebuiltGroup(type: string, items: RawItem[]): string {
   return `<section class="ls-section">
       <div class="flex items-center justify-between ls-section-header">
         <h2 class="ls-section-title text-text">${GROUP_LABEL_SSR[type]}</h2>
-        <a href="/browse?type=${type}" class="text-xs text-accent hover:opacity-80 shrink-0">See all ${type} →</a>
+        <a href="/browse?type=${type}" class="text-xs text-accent hover:opacity-80 shrink-0 inline-flex items-center min-h-[44px] px-2">See all ${type} →</a>
       </div>
       <div class="shelf-row">${cards}</div>
     </section>`;
@@ -160,12 +160,13 @@ const hasPrebuilt = prebuiltGroupsHtml.trim().length > 0;
              class="absolute left-4 top-1/2 -translate-y-1/2 text-muted-soft pointer-events-none">
           <path d="M8.5 14a5.5 5.5 0 100-11 5.5 5.5 0 000 11zM17 17l-3.5-3.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
         </svg>
-        <input id="browse-search" type="search" placeholder="Search loops, skills, bundles, personalities"
-               autocomplete="off"
-               class="w-full pl-11 pr-10 py-3 rounded-lg bg-bg-card border border-border text-base text-text placeholder:text-muted-soft focus:outline-none focus:border-accent transition" />
+        <input id="browse-search" type="search" placeholder="Search skills, bundles…"
+               aria-label="Search loops, skills, bundles and personalities"
+               autocomplete="off" maxlength="200"
+               class="browse-search-input w-full pl-11 pr-12 py-3 rounded-lg bg-bg-card border border-border text-base text-text placeholder:text-muted-soft focus:outline-none focus:border-accent transition" />
         <button id="browse-search-clear" type="button" aria-label="Clear search"
-                class="hidden absolute right-3 top-1/2 -translate-y-1/2 text-muted-soft hover:text-text p-1">
-          <svg width="14" height="14" viewBox="0 0 18 18" fill="none" aria-hidden="true"><path d="M4 4L14 14M14 4L4 14" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+                class="hidden absolute right-1 top-1/2 -translate-y-1/2 text-muted-soft hover:text-text w-11 h-11">
+          <span class="flex items-center justify-center w-full h-full"><svg width="14" height="14" viewBox="0 0 18 18" fill="none" aria-hidden="true"><path d="M4 4L14 14M14 4L4 14" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></span>
         </button>
       </div>
       <p id="browse-live-count" class="sr-only" aria-live="polite"></p>
@@ -197,10 +198,10 @@ const hasPrebuilt = prebuiltGroupsHtml.trim().length > 0;
          each state becomes true (see show()/hide() and the load() error
          branch below), so a non-JS reader never sees error/loading copy at
          all, only the real pre-rendered cards below. -->
-    <div id="browse-loading" class="ls-body text-muted py-12 text-center" hidden></div>
+    <div id="browse-loading" class="ls-body text-muted py-2" hidden></div>
     <div id="browse-tag-chips" hidden class="tag-chips mb-6" role="group" aria-label="Filter loops by tag"></div>
     <div id="browse-error" hidden class="ls-body text-muted py-12 text-center"></div>
-    <div id="browse-empty" hidden class="ls-body text-muted py-16 text-center"></div>
+    <div id="browse-empty" hidden class="browse-empty ls-body text-muted py-16 text-center"></div>
     <!-- Build-time prerendered "All tab, empty query" catalog (bugfix
          2026-08-20 — see frontmatter above). This is real public catalog
          data baked at build time so curl/non-JS crawlers see an actual
@@ -216,6 +217,39 @@ const hasPrebuilt = prebuiltGroupsHtml.trim().length > 0;
   </main>
 </AppShell>
 
+<style is:global>
+  /* qa1018 C21/MOB-15: ONE clear control — hide the native search-cancel
+     glyph so it never doubles up with #browse-search-clear. */
+  .browse-search-input::-webkit-search-cancel-button { -webkit-appearance: none; appearance: none; display: none; }
+  /* qa1018 C22/BRK-4: an echoed query must wrap, never widen the page. */
+  .browse-empty, .browse-empty-q, #browse-live-count { overflow-wrap: anywhere; word-break: break-word; }
+  .browse-empty-q { font-weight: 600; }
+  .browse-empty-suggs { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-top: 10px; }
+  .browse-empty-sugg {
+    display: inline-flex; align-items: center; min-height: 44px; padding: 0 14px; border-radius: 999px;
+    border: 1px solid rgba(255,255,255,0.14); color: #f5f5f5; text-decoration: none;
+  }
+  .browse-empty-sugg:hover, .browse-empty-sugg:focus-visible { border-color: rgba(255,209,102,0.55); color: #ffd166; }
+  .browse-empty-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; margin-top: 18px; }
+  .browse-empty-btn {
+    display: inline-flex; align-items: center; min-height: 44px; padding: 0 16px; border-radius: 8px;
+    border: 1px solid rgba(255,209,102,0.35); color: #ffd166; background: transparent; text-decoration: none; cursor: pointer;
+  }
+  .browse-empty-btn:hover, .browse-empty-btn:focus-visible { border-color: #ffd166; }
+  /* qa1018 C11: skeleton cards while results load. */
+  #browse-loading[data-silent] { padding: 0; }
+  .artifact-skeleton { display: flex; flex-direction: column; gap: 8px; }
+  .artifact-skeleton .sk-cover { display: block; width: 100%; aspect-ratio: 1/1; border-radius: 8px; }
+  .artifact-skeleton .sk-line { display: block; height: 12px; width: 80%; border-radius: 4px; }
+  .artifact-skeleton .sk-line--short { width: 50%; }
+  .artifact-skeleton .sk-cover, .artifact-skeleton .sk-line {
+    background: linear-gradient(90deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.10) 50%, rgba(255,255,255,0.05) 100%);
+    background-size: 200% 100%; animation: sk-shimmer 1.2s ease-in-out infinite;
+  }
+  @keyframes sk-shimmer { 0% { background-position: 100% 0; } 100% { background-position: -100% 0; } }
+  @media (prefers-reduced-motion: reduce) { .artifact-skeleton .sk-cover, .artifact-skeleton .sk-line { animation: none; } }
+</style>
+
 <script define:vars={{ API_BASE, hasPrebuilt }}>
   const $ = (id) => document.getElementById(id);
   const TYPES = ['all', 'loops', 'skills', 'bundles', 'personalities'];
@@ -225,6 +259,7 @@ const hasPrebuilt = prebuiltGroupsHtml.trim().length > 0;
   const GROUP_ORDER = ['loops', 'skills', 'bundles', 'personalities'];
   const MAX_DESKTOP = 6;
   const MAX_MOBILE = 4;
+  const MAX_QUERY = 200;
 
   function isMobile() { return window.innerWidth < 640; }
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
@@ -440,32 +475,51 @@ const hasPrebuilt = prebuiltGroupsHtml.trim().length > 0;
     const s2 = row && row.slug ? String(row.slug).trim() : '';
     return s2 || 'This skill';
   }
+  // qa1018 C09: every copyable string is a FRESH-AGENT phrase; deep-link
+  // rows copy NOTHING and get a "Get it from source ↗" link instead.
+  const META_INSTALL_PHRASE = `Install the loopskill skill from ${LOOPSKILL_ORIGIN}/skill`;
+  const SOURCE_LINK_LABEL = 'Get it from source ↗';
+  function freshAgentPhrase(kind, slug) {
+    return `${META_INSTALL_PHRASE}, then use it to install the "${slug}" ${kind}.`;
+  }
+  function freshAgentLoadPhrase(kind, slug) {
+    return `${META_INSTALL_PHRASE}, then use it to load the "${slug}" ${kind}.`;
+  }
   function agentInstallText(type, item) {
     if (!item) return '';
-    const title = agentDisplayTitle(item);
     const slug = item.slug ? String(item.slug).trim() : '';
     if (isFederatedSubject(item)) {
-      const ref = String(item.install_ref || '').trim() || canonicalInstallRef(item);
-      if (federatedInstallPath(item) === 'fetch_origin') {
-        return `Install "${title}" from LoopSkill: call loopskill_install("${ref}") — or GET ${LOOPSKILL_ORIGIN}/api/skills/metasearch/install?install_ref=${ref}, then extract it to your skills directory.`;
-      }
-      if (isHttpUrl(item.origin_url)) {
-        return `"${title}" isn't redistributable through the registry (source license). Get it from ${item.origin_url}.`;
-      }
-      const src = item.source ? String(item.source).trim() : '';
-      return src
-        ? `"${title}" isn't redistributable through the registry (source license). Get it from its origin registry, ${src}.`
-        : `"${title}" isn't redistributable through the registry (source license). Get it from its origin — LoopSkill does not rehost it.`;
+      const r = String(item.install_ref || '').trim() || canonicalInstallRef(item);
+      if (federatedInstallPath(item) === 'fetch_origin') return freshAgentPhrase('skill', r);
+      return '';
     }
     if (!slug) return '';
     const t = String(type || '');
-    // Local catalog: /api/skills/metasearch/install does NOT resolve a bare
-    // local slug (probed 2026-09-08 -> 404 malformed_ref), so quoting the
-    // metasearch URL here would be a lie. Name the tool that really installs it.
-    if (t === 'bundle' || t === 'bundles') return `Install the "${title}" bundle from LoopSkill: call loopskill_bundle_install("${slug}").`;
-    if (t === 'loop' || t === 'loops') return `Load the "${title}" loop from LoopSkill: call loopskill_get_loop("${slug}").`;
-    if (t === 'personality' || t === 'personalities') return `Load the "${title}" personality from LoopSkill: call loopskill_get_personality("${slug}").`;
-    return `Install "${title}" from LoopSkill: call loopskill_install("${slug}") — or GET ${LOOPSKILL_ORIGIN}/api/skills/${slug}/install with your x-api-key header, then extract it to your skills directory.`;
+    if (t === 'bundle' || t === 'bundles') return freshAgentPhrase('bundle', slug);
+    if (t === 'loop' || t === 'loops') return freshAgentLoadPhrase('loop', slug);
+    if (t === 'personality' || t === 'personalities') return freshAgentLoadPhrase('personality', slug);
+    return freshAgentPhrase('skill', slug);
+  }
+  function agentSourceUrl(item) {
+    if (!item || !isFederatedSubject(item)) return '';
+    if (federatedInstallPath(item) === 'fetch_origin') return '';
+    return isHttpUrl(item.origin_url) ? String(item.origin_url) : '';
+  }
+  function sourceOwnerRepo(item) {
+    if (!item) return '';
+    const u = item.origin_url;
+    if (isHttpUrl(u)) {
+      try {
+        const url = new URL(u);
+        const host = url.hostname.replace(/^www\./, '');
+        const parts = url.pathname.split('/').filter(Boolean);
+        if ((host === 'github.com' || host === 'skills.sh') && parts.length >= 2) return `${parts[0]}/${parts[1]}`;
+        if (host === 'clawhub.ai' && parts.length >= 1) return `${parts[0]} · clawhub`;
+        return parts.length ? `${host}/${parts[0]}` : host;
+      } catch { /* fall through to the description */ }
+    }
+    const m = String(item.description || '').match(/from ([A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+)/);
+    return m ? m[1] : '';
   }
 
   // The button is a SIBLING of the card <a> inside .artifact-slot, never a
@@ -473,19 +527,34 @@ const hasPrebuilt = prebuiltGroupsHtml.trim().length > 0;
   // the tab order (see the .artifact-copy block in src/styles/global.css).
   function copyForAgentHTML(type, item) {
     const text = agentInstallText(type, item);
-    if (!text) return '';
-    const name = agentDisplayTitle(item);
+    const name = agentDisplayTitle(item || {});
+    if (!text) {
+      // qa1018 C09: deep-link rows link out — never a copy button over a
+      // refusal. .artifact-source, NOT .artifact-copy, so the delegated copy
+      // handler below never preventDefault()s the navigation.
+      const src = agentSourceUrl(item);
+      if (!src) return '';
+      return `<a class="artifact-source" href="${esc(src)}" target="_blank" rel="noopener nofollow"`
+        + ` aria-label="${esc(SOURCE_LINK_LABEL)}: ${esc(name)} is not hosted by LoopSkill (opens its source)">`
+        + `${esc(SOURCE_LINK_LABEL)}</a>`;
+    }
     return `<button type="button" class="artifact-copy" data-copy-text="${esc(text)}"`
-      + ` title="${esc(COPY_FOR_AGENT_LABEL)}"`
-      + ` aria-label="${esc(COPY_FOR_AGENT_LABEL)}: copy install instructions for ${esc(name)}">`
+      + ` title="${esc(text)}"`
+      + ` aria-label="${esc(COPY_FOR_AGENT_LABEL)}: copy the install phrase for ${esc(name)} to paste into your agent's chat">`
       + `<span class="artifact-copy-label" aria-live="polite">${esc(COPY_FOR_AGENT_LABEL)}</span></button>`;
   }
 
   function artifactCardHTML(type, item, mode) {
     const grad = GRAD[hashIdx(item.slug || item.title || 'x', GRAD.length)];
     const mono = ((item.title || item.slug || 'L').trim()[0] || 'L').toUpperCase();
-    const meta = artifactMeta(type, item);
-    const desc = mode === 'grid' ? (item.description || '') : '';
+    // qa1018 C07: federated rows carry no meta of their own, so five cards
+    // titled "seo" were indistinguishable. Show the source owner/repo as the
+    // subtitle, and drop the "Indexed by skills.sh from <owner>/<repo>" stub
+    // description when it only repeats that subtitle.
+    const owner = isFederatedSubject(item) ? sourceOwnerRepo(item) : '';
+    const meta = owner ? `from ${owner}` : artifactMeta(type, item);
+    let desc = mode === 'grid' ? (item.description || '') : '';
+    if (owner && /^Indexed by [^ ]+ from [^ ]+$/i.test(String(desc).trim())) desc = '';
     const ariaLabel = `${TYPE_SINGULAR[type] || 'Item'}: ${item.title || item.slug}${meta ? '. ' + meta : ''}`;
     const href = artifactHref(type, item);
     // External (federated/community) hrefs point off-site at the source
@@ -520,7 +589,9 @@ const hasPrebuilt = prebuiltGroupsHtml.trim().length > 0;
     const p = new URLSearchParams(location.search);
     let type = (p.get('type') || 'all').toLowerCase();
     if (!TYPES.includes(type)) type = 'all';
-    const q = p.get('q') || '';
+    // qa1018 C22: cap the query (a 5,000-char ?q= used to be echoed unwrapped
+    // and blew the page out to ~39,500px wide). Mirrors maxlength="200".
+    const q = (p.get('q') || '').slice(0, MAX_QUERY);
     const tag = (type === 'loops') ? (p.get('tag') || '') : '';
     return { type, q, tag };
   }
@@ -597,7 +668,7 @@ const hasPrebuilt = prebuiltGroupsHtml.trim().length > 0;
   clearBtn.classList.toggle('hidden', !state.q);
 
   input.addEventListener('input', () => {
-    const q = input.value.trim();
+    const q = input.value.trim().slice(0, MAX_QUERY);
     clearBtn.classList.toggle('hidden', !q);
     state.q = q;
     pushState(state.type, state.q, true);
@@ -635,17 +706,47 @@ const hasPrebuilt = prebuiltGroupsHtml.trim().length > 0;
   // the instant each state actually becomes true. A curl/non-JS reader never
   // executes this script, so it never sees either string; a real visitor
   // whose JS runs still gets the exact same UX as before.
+  // qa1018 C11: skeleton cards, not a bare "Loading…" word that read as a
+  // broken page on a slow connection. The status text stays for screen
+  // readers (sr-only), the visible state is card-shaped placeholders.
   function showLoading() {
     const e = $('browse-loading');
     if (!e) return;
-    e.textContent = 'Loading…';
+    const n = isMobile() ? 4 : 6;
+    let cards = '';
+    for (let i = 0; i < n; i++) {
+      cards += '<div class="artifact-slot artifact-skeleton" aria-hidden="true"><span class="sk-cover"></span><span class="sk-line"></span><span class="sk-line sk-line--short"></span></div>';
+    }
+    e.innerHTML = `<span class="sr-only" role="status">Loading results…</span><div class="artifact-grid">${cards}</div>`;
+    e.setAttribute('aria-busy', 'true');
     e.hidden = false;
   }
   function hideLoading() {
     const e = $('browse-loading');
     if (!e) return;
     e.hidden = true;
-    e.textContent = '';
+    e.removeAttribute('aria-busy');
+    e.removeAttribute('data-silent');
+    e.innerHTML = '';
+  }
+
+  // qa1018 C22/BRK-6: the zero-result state was a dead end that echoed the
+  // raw query unwrapped. Now: the (escaped, wrapped) query, a few broad
+  // suggestions, a clear-search control, and the Federated index link.
+  const EMPTY_SUGGESTIONS = ['seo', 'code review', 'marketing', 'testing', 'writing'];
+  function renderEmpty(q, fallbackText) {
+    const e = $('browse-empty');
+    if (!e) return;
+    show('browse-empty');
+    if (!q) { e.textContent = fallbackText || 'Nothing is available right now.'; return; }
+    const sugg = EMPTY_SUGGESTIONS.map((w) => `<a class="browse-empty-sugg" href="/browse?q=${encodeURIComponent(w)}">${esc(w)}</a>`).join('');
+    e.innerHTML = `<p class="browse-empty-q text-text">No results for \u201c${esc(q)}\u201d</p>`
+      + `<p class="mt-3">Try a shorter or more general word:</p>`
+      + `<div class="browse-empty-suggs">${sugg}</div>`
+      + `<div class="browse-empty-actions"><button type="button" id="browse-empty-clear" class="browse-empty-btn">Clear search</button>`
+      + `<a class="browse-empty-btn" href="/federation/">Search the Federated index ↗</a></div>`;
+    const clr = $('browse-empty-clear');
+    if (clr) clr.addEventListener('click', () => { input.value = ''; input.focus(); input.dispatchEvent(new Event('input')); });
   }
   function showError() {
     const e = $('browse-error');
@@ -883,6 +984,7 @@ const hasPrebuilt = prebuiltGroupsHtml.trim().length > 0;
         <div class="flex items-center justify-between ls-section-header">
           <h2 class="ls-section-title text-text">Community skills <span class="text-xs text-muted-soft font-normal">${federatedHeaderSuffix(counts)}</span></h2>
         </div>
+        <p class="ls-meta mb-3">From other public skill registries. LoopSkill lists them so you can find them, but has not reviewed them. Some install through LoopSkill; the rest link to their source.</p>
         <div class="artifact-grid">
           ${cards}
         </div>
@@ -897,7 +999,7 @@ const hasPrebuilt = prebuiltGroupsHtml.trim().length > 0;
       ? TYPE_LABEL[type]
       : ({ loops: 'Popular loops', skills: 'Curated skills', bundles: 'Public bundles', personalities: 'Personalities' })[type];
     const seeAll = items.length > max || mode === 'all'
-      ? `<a href="/browse?type=${type}${seeAllQ ? '&q=' + encodeURIComponent(seeAllQ) : ''}" class="text-xs text-accent hover:opacity-80 shrink-0">See all ${TYPE_LABEL[type].toLowerCase()} →</a>`
+      ? `<a href="/browse?type=${type}${seeAllQ ? '&q=' + encodeURIComponent(seeAllQ) : ''}" class="text-xs text-accent hover:opacity-80 shrink-0 inline-flex items-center min-h-[44px] px-2">See all ${TYPE_LABEL[type].toLowerCase()} →</a>`
       : '';
     return `<section class="ls-section">
       <div class="flex items-center justify-between ls-section-header">
@@ -910,11 +1012,26 @@ const hasPrebuilt = prebuiltGroupsHtml.trim().length > 0;
     </section>`;
   }
 
+  // qa1018 C11: the build-time prerendered All-tab shelf is real content.
+  // On the FIRST load of that exact view keep it on screen while the live
+  // re-fetch runs (no wipe-to-spinner flash); if the re-fetch fails, keep it
+  // rather than replacing real cards with an error.
+  let keepPrebuilt = !!hasPrebuilt && state.type === 'all' && !state.q;
   async function load() {
     const mySeq = ++seq;
+    const softRefresh = keepPrebuilt && state.type === 'all' && !state.q;
+    keepPrebuilt = false;
     hideError(); hide('browse-empty');
-    showLoading();
-    $('browse-results').innerHTML = '';
+    if (!softRefresh) {
+      showLoading();
+      $('browse-results').innerHTML = '';
+    } else {
+      // Busy but invisible: the prerendered cards ARE the loading state. The
+      // element still un-hides so "#browse-loading[hidden] == load() done"
+      // stays a true completion signal (tests + any observer rely on it).
+      const e = $('browse-loading');
+      if (e) { e.innerHTML = '<span class="sr-only" role="status">Refreshing results…</span>'; e.setAttribute('data-silent', ''); e.setAttribute('aria-busy', 'true'); e.hidden = false; }
+    }
 
     let data;
     let federated = [];
@@ -939,6 +1056,7 @@ const hasPrebuilt = prebuiltGroupsHtml.trim().length > 0;
       data = { loops: [], skills: [], bundles: [], personalities: [] };
     } else {
       hideLoading();
+      if (softRefresh) return; // the prerendered shelf stays — better than an error
       showError();
       return;
     }
@@ -982,8 +1100,7 @@ const hasPrebuilt = prebuiltGroupsHtml.trim().length > 0;
       hide('browse-tag-chips');
       $('browse-tag-chips').innerHTML = '';
       if (totalCount === 0 && !fedGroupHTML) {
-        show('browse-empty');
-        $('browse-empty').textContent = state.q ? `No results for "${state.q}"` : 'Nothing is available right now.';
+        renderEmpty(state.q, 'Nothing is available right now.');
         return;
       }
       results.innerHTML = GROUP_ORDER.map((t) => renderGroup(t, byType[t], 'all', state.q)).join('') + fedGroupHTML;
@@ -1028,22 +1145,21 @@ const hasPrebuilt = prebuiltGroupsHtml.trim().length > 0;
     }
 
     if (!loopChipItems.length && !fedRows.length && !fedGroupHTML) {
-      show('browse-empty');
       // feat/composite-loops-surface: the Loops empty state explains what a
       // loop actually IS (most visitors have never heard the term) instead of
       // the generic "nothing available" copy.
       if (state.type === 'loops' && !state.q) {
-        $('browse-empty').textContent = state.tag
+        renderEmpty('', state.tag
           ? `No loops tagged "${state.tag}" right now.`
-          : 'A loop = schedule + skills + sub-agents + a verifier gate — deployable to your own agent. Nothing is available right now.';
+          : 'A loop = schedule + skills + sub-agents + a verifier gate — deployable to your own agent. Nothing is available right now.');
       } else {
-        $('browse-empty').textContent = state.q ? `No results for "${state.q}"` : 'Nothing is available right now.';
+        renderEmpty(state.q, 'Nothing is available right now.');
       }
       return;
     }
     const grid = loopChipItems.map((it) => artifactCardHTML(state.type, it, 'grid')).join('');
     const curatedHeader = state.type === 'skills' && fedRows.length
-      ? `<div class="ls-section-header"><h2 class="ls-section-title text-text">LoopSkill catalog <span class="text-xs text-muted-soft font-normal">verified · signed</span></h2></div>`
+      ? `<div class="ls-section-header"><h2 class="ls-section-title text-text">LoopSkill catalog <span class="text-xs text-muted-soft font-normal">curated · checksummed</span></h2></div>`
       : '';
     results.innerHTML = (loopChipItems.length ? `${curatedHeader}<div class="artifact-grid">${grid}</div>` : '') + fedGroupHTML;
     refreshLikes();

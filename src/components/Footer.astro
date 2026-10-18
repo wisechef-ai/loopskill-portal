@@ -1,53 +1,93 @@
 ---
-// Build-time stamp for the "Last audited" footer line. Surfaced on every page.
-const lastAuditedAt = new Date().toISOString().slice(0, 10);
+// Footer — every page (AppShell) and, in `compact` form, the sign-in edge.
+//
+// qa1018 (launch QA, skeptic + mobile personas):
+//   * C14 — Terms + Privacy were linked from NOWHERE. Both now sit in a
+//     "Trust & legal" column, and a "Who runs this" block names the builder
+//     and the product contact. Legal-entity details (registration no., street
+//     address) are deliberately absent: we do not know them, so we do not
+//     print them.
+//   * C25 — the old "Last audited <date>" stamp was `new Date()` at BUILD
+//     time, i.e. it claimed an audit every time CI rebuilt the site. It is now
+//     labelled for what it is: the build date.
+//   * C21 — every footer link is a >=44px tap target on phones.
+//   * Contact is unified on hello@loopskill.io (MX verified).
+interface Props {
+  /** Minimal one-row variant for focused pages (sign-in). */
+  compact?: boolean;
+}
+const { compact = false } = Astro.props;
+
+// Build date — honest label: this is when the static site was generated,
+// NOT an audit. Per-skill audit status lives on each skill page.
+const siteBuiltAt = new Date().toISOString().slice(0, 10);
+
+const linkCls = 'inline-flex items-center min-h-[44px] md:min-h-0 md:py-0.5 hover:text-text transition';
 ---
-<footer class="border-t border-border mt-24">
-  <div class="max-w-7xl mx-auto px-6 py-12 grid grid-cols-2 md:grid-cols-5 gap-8 text-sm text-muted">
-    <div class="col-span-2 flex flex-col gap-2">
-      <span class="text-text font-semibold">LoopSkill</span>
-      <span class="text-xs text-muted-soft">Built by <a href="https://wisechef.ai" class="text-muted hover:text-accent transition underline underline-offset-2">WiseChef</a></span>
-      <span class="text-xs text-muted-soft">Kraków, Poland</span>
-      <span class="text-xs text-muted-soft mt-2">© 2026 WiseChef</span>
+{compact ? (
+  <footer class="border-t border-border mt-12" data-footer-compact>
+    <div class="max-w-3xl mx-auto px-6 py-3 flex flex-wrap items-center justify-center gap-x-5 text-xs text-muted-soft">
+      <a href="/terms" class={linkCls}>Terms</a>
+      <a href="/privacy" class={linkCls}>Privacy</a>
+      <a href="/security" class={linkCls}>Security</a>
+      <a href="mailto:hello@loopskill.io" class={linkCls}>hello@loopskill.io</a>
+      <span class="inline-flex items-center min-h-[44px] md:min-h-0">© 2026 WiseChef · Kraków, Poland</span>
     </div>
-    <div class="flex flex-col gap-2">
-      <span class="text-text font-medium text-xs uppercase tracking-wider mb-1">Product</span>
-      <a href="/browse?type=loops" class="hover:text-text transition">Loops</a>
-      <a href="/browse?type=skills" class="hover:text-text transition">Skills</a>
-      <a href="/browse?type=bundles" class="hover:text-text transition">Bundles</a>
-      <a href="/browse?type=personalities" class="hover:text-text transition">Personalities</a>
-      <a href="/federation/" class="hover:text-text transition">Federated index</a>
-      <a href="/pricing" class="hover:text-text transition">Pricing</a>
-    </div>
-    <div class="flex flex-col gap-2">
-      <span class="text-text font-medium text-xs uppercase tracking-wider mb-1">Resources</span>
-      <a href="/docs" class="hover:text-text transition">Docs</a>
-      <a href="/docs/api-reference" class="hover:text-text transition">API reference</a>
-      <a href="/docs/install" class="hover:text-text transition">Install guide</a>
-      <a href="/skill" class="hover:text-text transition">Meta-skill (.md)</a>
-      <a href="/security" class="hover:text-text transition">Security &amp; audit</a>
-    </div>
-    <div class="flex flex-col gap-2">
-      <span class="text-text font-medium text-xs uppercase tracking-wider mb-1">Open source</span>
-      <a href="https://github.com/wisechef-ai/loopskill-api" target="_blank" rel="noopener" class="hover:text-text transition">GitHub repo</a>
-      <a href="https://github.com/wisechef-ai/loopskill-api/blob/main/docs/SELF_HOST.md" target="_blank" rel="noopener" class="hover:text-text transition">Self-host it</a>
-      <a href="/creators" class="hover:text-text transition">Publish a loop</a>
-      <a href="mailto:hi@wisechef.ai?subject=LoopSkill" class="hover:text-text transition">Contact</a>
-    </div>
-  </div>
-  <div class="border-t border-border-soft">
-    <div class="max-w-7xl mx-auto px-6 py-4 flex flex-col md:flex-row md:items-center md:justify-between gap-2 text-[11px] text-muted-soft">
-      <div class="flex flex-wrap items-center gap-x-4 gap-y-1">
-        <a href="https://github.com/wisechef-ai/loopskill-api" target="_blank" rel="noopener" class="hover:text-accent transition inline-flex items-center gap-1.5" data-footer-github>
-          <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0a8 8 0 0 0-2.53 15.59c.4.07.55-.17.55-.38v-1.4c-2.23.48-2.7-.94-2.7-.94-.36-.93-.89-1.18-.89-1.18-.73-.5.05-.49.05-.49.81.06 1.23.83 1.23.83.72 1.23 1.88.88 2.34.67.07-.52.28-.88.51-1.08-1.78-.2-3.65-.89-3.65-3.96 0-.87.31-1.59.83-2.15-.08-.2-.36-1.02.08-2.13 0 0 .67-.21 2.2.82a7.65 7.65 0 0 1 4 0c1.53-1.04 2.2-.82 2.2-.82.44 1.11.16 1.93.08 2.13.51.56.83 1.28.83 2.15 0 3.08-1.87 3.76-3.66 3.96.29.25.55.74.55 1.49v2.21c0 .21.15.46.55.38A8 8 0 0 0 8 0z"/></svg>
-          GitHub
-        </a>
-        <span data-footer-license>MPL-2.0</span>
-        <a href="/security" class="hover:text-accent transition" data-footer-audited>
-          Last audited <time datetime={lastAuditedAt}>{lastAuditedAt}</time>
-        </a>
+  </footer>
+) : (
+  <footer class="border-t border-border mt-24">
+    <div class="max-w-7xl mx-auto px-6 py-12 grid grid-cols-2 md:grid-cols-6 gap-x-8 gap-y-6 text-sm text-muted">
+      <div class="col-span-2 flex flex-col gap-2" data-footer-who>
+        <span class="text-text font-semibold">LoopSkill</span>
+        <span class="text-xs uppercase tracking-wider text-muted-soft mt-1">Who runs this</span>
+        <span class="text-sm text-muted">Built by <a href="https://wisechef.ai" class="text-muted hover:text-accent transition underline underline-offset-2">WiseChef</a>, Kraków, Poland.</span>
+        <span class="text-sm text-muted">Contact: <a href="mailto:hello@loopskill.io" class="text-muted hover:text-accent transition underline underline-offset-2" data-footer-contact>hello@loopskill.io</a></span>
+        <span class="text-xs text-muted-soft mt-1">© 2026 WiseChef</span>
       </div>
-      <span class="text-muted-soft/70">loopskill.io</span>
+      <div class="flex flex-col md:gap-2">
+        <span class="text-text font-medium text-xs uppercase tracking-wider mb-1">Product</span>
+        <a href="/browse?type=skills" class={linkCls}>Skills</a>
+        <a href="/browse?type=loops" class={linkCls}>Loops</a>
+        <a href="/browse?type=bundles" class={linkCls}>Bundles</a>
+        <a href="/browse?type=personalities" class={linkCls}>Personalities</a>
+        <a href="/federation/" class={linkCls}>Federated index</a>
+        <a href="/pricing" class={linkCls}>Pricing</a>
+      </div>
+      <div class="flex flex-col md:gap-2">
+        <span class="text-text font-medium text-xs uppercase tracking-wider mb-1">Resources</span>
+        <a href="/docs" class={linkCls}>Docs</a>
+        <a href="/docs/getting-started" class={linkCls}>Getting started</a>
+        <a href="/docs/install" class={linkCls}>Install guide</a>
+        <a href="/docs/api-reference" class={linkCls}>API reference</a>
+        <a href="/skill" class={linkCls}>Meta-skill (.md)</a>
+      </div>
+      <div class="flex flex-col md:gap-2">
+        <span class="text-text font-medium text-xs uppercase tracking-wider mb-1">Trust &amp; legal</span>
+        <a href="/terms" class={linkCls} data-footer-terms>Terms</a>
+        <a href="/privacy" class={linkCls} data-footer-privacy>Privacy</a>
+        <a href="/security" class={linkCls}>Security</a>
+        <a href="/docs/scope" class={linkCls}>What it does &amp; doesn't</a>
+      </div>
+      <div class="flex flex-col md:gap-2">
+        <span class="text-text font-medium text-xs uppercase tracking-wider mb-1">Open source</span>
+        <a href="https://github.com/wisechef-ai/loopskill-api" target="_blank" rel="noopener" class={linkCls}>GitHub repo</a>
+        <a href="https://github.com/wisechef-ai/loopskill-api/blob/main/docs/SELF_HOST.md" target="_blank" rel="noopener" class={linkCls}>Self-host it</a>
+        <a href="/creators" class={linkCls}>Publish a loop</a>
+        <a href="mailto:hello@loopskill.io?subject=LoopSkill" class={linkCls}>Contact</a>
+      </div>
     </div>
-  </div>
-</footer>
+    <div class="border-t border-border-soft">
+      <div class="max-w-7xl mx-auto px-6 py-4 flex flex-col md:flex-row md:items-center md:justify-between gap-2 text-xs text-muted-soft">
+        <div class="flex flex-wrap items-center gap-x-4 gap-y-1">
+          <a href="https://github.com/wisechef-ai/loopskill-api" target="_blank" rel="noopener" class="hover:text-accent transition inline-flex items-center gap-1.5 min-h-[44px] md:min-h-0" data-footer-github>
+            <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0a8 8 0 0 0-2.53 15.59c.4.07.55-.17.55-.38v-1.4c-2.23.48-2.7-.94-2.7-.94-.36-.93-.89-1.18-.89-1.18-.73-.5.05-.49.05-.49.81.06 1.23.83 1.23.83.72 1.23 1.88.88 2.34.67.07-.52.28-.88.51-1.08-1.78-.2-3.65-.89-3.65-3.96 0-.87.31-1.59.83-2.15-.08-.2-.36-1.02.08-2.13 0 0 .67-.21 2.2.82a7.65 7.65 0 0 1 4 0c1.53-1.04 2.2-.82 2.2-.82.44 1.11.16 1.93.08 2.13.51.56.83 1.28.83 2.15 0 3.08-1.87 3.76-3.66 3.96.29.25.55.74.55 1.49v2.21c0 .21.15.46.55.38A8 8 0 0 0 8 0z"/></svg>
+            GitHub
+          </a>
+          <span data-footer-license>Code: MPL-2.0</span>
+          <span data-footer-built>Site built <time datetime={siteBuiltAt}>{siteBuiltAt}</time></span>
+        </div>
+        <span class="text-muted-soft/70">loopskill.io</span>
+      </div>
+    </div>
+  </footer>
+)}

@@ -315,6 +315,37 @@ body {
 .artifact-copy .artifact-copy-label { pointer-events: none; }
 /* Touch devices have no hover — always show the control. */
 @media (hover: none) { .artifact-copy { opacity: 1; pointer-events: auto; } }
+/* qa1018 C09: deep-link (non-redistributable) rows get an outbound link in
+   the copy slot instead of a copy button that copied a refusal. Same
+   placement and reveal rules as .artifact-copy. */
+.artifact-source {
+  position: absolute; top: 28px; left: 6px; z-index: 2;
+  display: inline-flex; align-items: center;
+  max-width: calc(100% - 12px); white-space: nowrap; overflow: hidden;
+  padding: 3px 8px; border-radius: 999px; text-decoration: none;
+  background: rgba(0,0,0,0.62); border: 1px solid rgba(255,255,255,0.14);
+  color: rgba(255,255,255,0.85); font-size: 11px; line-height: 15px; font-weight: 600;
+  backdrop-filter: blur(4px);
+  opacity: 0; pointer-events: none;
+  transition: opacity .16s ease, color .16s ease, border-color .16s ease;
+}
+.artifact-slot:hover .artifact-source,
+.artifact-slot:focus-within .artifact-source,
+.artifact-source:focus-visible { opacity: 1; pointer-events: auto; }
+.artifact-source:hover { border-color: rgba(255,209,102,0.55); color: #ffd166; }
+.artifact-source:focus-visible { outline: 2px solid #ffd166; outline-offset: 2px; }
+/* qa1018 C21/MOB-5: on touch devices the Copy pill (99x23) sat on the cover
+   art right next to a 30px heart — easy to mis-tap. Touch gets 44px targets:
+   the heart grows to 44x44 in its corner, and Copy / Get-it-from-source
+   leave the cover and become a full-width 44px row under the card text. */
+@media (hover: none), (pointer: coarse) {
+  .artifact-like { width: 44px; height: 44px; top: 4px; right: 4px; opacity: 1; transform: scale(1); }
+  .artifact-copy, .artifact-source {
+    position: static; display: flex; justify-content: center; width: 100%; max-width: none;
+    min-height: 44px; margin-top: 10px; padding: 0 10px; border-radius: 8px;
+    font-size: 13px; opacity: 1; pointer-events: auto;
+  }
+}
 /* Honest degradation when neither clipboard transport is available: the text
    is revealed, pre-selected, for the visitor to copy by hand. Never a silent
    no-op on a button that claims to have copied something. */
@@ -376,3 +407,31 @@ body {
 }
 .rail-link.rail-active .rail-icon { color: #ffd166; }
 .rail-link:not(.rail-active):hover { background: rgba(255,255,255,0.055); color: #f5f5f5; }
+
+/* ─────────────────────────────────────────────────────────────────────────
+ * qa1018 C21 — mobile persona (375px): readable text + open-state menu.
+ * ───────────────────────────────────────────────────────────────────────── */
+
+/* Mobile menu toggle shows its state: bars when closed, X when open. */
+#appshell-mobile-menu > summary::-webkit-details-marker { display: none; }
+#appshell-mobile-menu .menu-icon-close { display: none; }
+#appshell-mobile-menu[open] .menu-icon-open { display: none; }
+#appshell-mobile-menu[open] .menu-icon-close { display: block; }
+#appshell-mobile-menu[open] > summary { color: var(--color-text); background: rgba(255,255,255,0.06); }
+
+/* No UI text below 12px on a phone. Tailwind's arbitrary sizes live in the
+   `utilities` cascade layer; these rules are unlayered, so they win without
+   !important. Desktop keeps the denser scale. */
+@media (max-width: 767px) {
+  .text-\[9px\],
+  .text-\[10px\],
+  .text-\[11px\],
+  .ls-eyebrow2,
+  .artifact-card .artifact-badge,
+  .artifact-copy,
+  .artifact-copy-fallback { font-size: 12px; line-height: 1.35; }
+
+  /* Long one-line commands wrap instead of running off a 375px screen.
+     Keeps them copyable (no inserted characters) — only the line breaks. */
+  pre, pre code, .wrap-cmd { white-space: pre-wrap; overflow-wrap: anywhere; word-break: break-word; }
+}

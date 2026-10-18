@@ -67,6 +67,13 @@ const datasetSchema = (overview.ok && overview.total && overview.sources.length 
   })),
   variableMeasured: 'Indexed external agent skill count',
 } : null;
+// qa1018 C20 / BRK-1: the propose form's repo URL must be a public GitHub
+// repo. Passed as an EXPRESSION, not a literal attribute: the Astro compiler
+// emits literal attribute text into a JS template literal, where `\.`/`\-`
+// would be cooked to `.`/`-` — an unescaped '-' in a class is a v-flag
+// syntax error and the browser would silently drop the whole pattern.
+// Browsers anchor `pattern` and compile it with the v flag; '-' is escaped.
+const PROPOSE_REPO_URL_PATTERN = String.raw`https://github\.com/[A-Za-z0-9_.\-]+/[A-Za-z0-9_.\-]+/?`;
 ---
 
 <AppShell title={title} description={description} mode="public" active="browse">
@@ -163,20 +170,25 @@ const datasetSchema = (overview.ok && overview.total && overview.sources.length 
       <div class="flex flex-col gap-3 max-w-xl">
         <div>
           <label for="propose-repo-url" class="text-[10px] uppercase tracking-wider text-muted-soft font-semibold block mb-1">Repo URL <span class="text-accent">*</span></label>
+          <!-- qa1018 C20 / BRK-1: only public GitHub repo URLs (pattern from
+               frontmatter). The submit JS re-checks the same rule before any
+               fetch — never rely on the browser alone. -->
           <input id="propose-repo-url" type="url" inputmode="url" placeholder="https://github.com/owner/repo" required
+                 pattern={PROPOSE_REPO_URL_PATTERN}
+                 title="Must be a public GitHub repo URL like https://github.com/owner/repo"
+                 aria-describedby="propose-repo-url-help"
+                 class="w-full px-3 py-2.5 rounded-lg bg-bg-elev border border-border text-sm text-text placeholder:text-muted-soft focus:outline-none focus:border-accent transition" />
+          <p id="propose-repo-url-help" class="text-xs text-muted-soft mt-1">Must be a public GitHub repo URL like https://github.com/owner/repo</p>
+        </div>
+        <div>
+          <label for="propose-contact" class="text-[10px] uppercase tracking-wider text-muted-soft font-semibold block mb-1">Contact (optional)</label>
+          <input id="propose-contact" type="text" placeholder="you@example.com or @handle"
                  class="w-full px-3 py-2.5 rounded-lg bg-bg-elev border border-border text-sm text-text placeholder:text-muted-soft focus:outline-none focus:border-accent transition" />
         </div>
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <div>
-            <label for="propose-contact" class="text-[10px] uppercase tracking-wider text-muted-soft font-semibold block mb-1">Contact (optional)</label>
-            <input id="propose-contact" type="text" placeholder="you@example.com or @handle"
-                   class="w-full px-3 py-2.5 rounded-lg bg-bg-elev border border-border text-sm text-text placeholder:text-muted-soft focus:outline-none focus:border-accent transition" />
-          </div>
-          <div>
-            <label for="propose-why" class="text-[10px] uppercase tracking-wider text-muted-soft font-semibold block mb-1">Why this source? (optional)</label>
-            <input id="propose-why" type="text" placeholder="What makes it worth indexing?"
-                   class="w-full px-3 py-2.5 rounded-lg bg-bg-elev border border-border text-sm text-text placeholder:text-muted-soft focus:outline-none focus:border-accent transition" />
-          </div>
+        <div>
+          <label for="propose-why" class="text-[10px] uppercase tracking-wider text-muted-soft font-semibold block mb-1">Why this source? (optional, max 2048 characters)</label>
+          <textarea id="propose-why" rows="3" maxlength="2048" placeholder="What makes it worth indexing?"
+                    class="w-full px-3 py-2.5 rounded-lg bg-bg-elev border border-border text-sm text-text placeholder:text-muted-soft focus:outline-none focus:border-accent transition"></textarea>
         </div>
         <div class="flex items-center gap-3 flex-wrap">
           <button id="propose-submit" type="button" class="px-4 py-2.5 rounded-lg bg-accent text-bg text-sm font-semibold hover:bg-accent-soft transition shrink-0">Propose source</button>
@@ -210,24 +222,84 @@ const datasetSchema = (overview.ok && overview.total && overview.sources.length 
   // server-side preflight). Render outcome honestly — review_channel_open
   // tells us whether a GitHub issue actually opened (bundles_0811 lesson:
   // "pending_review" alone over-promised).
+  //
+  // qa1018 C20 (BRK-1, BRK-2):
+  //  - the repo URL is validated HERE before any fetch (same rule as the
+  //    input's pattern attribute) — 'javascript:alert(1)' never reaches the API;
+  //  - a non-2xx answer always shows a reason: FastAPI 422
+  //    {detail:[{loc,msg}]} -> "Not filed: Why — String should have at most
+  //    2048 characters"; a string detail is shown as-is; anything else gets
+  //    the HTTP status + generic text. Never a blank "Not filed:".
+  //  - every server-supplied string is rendered via textContent / DOM nodes,
+  //    never parsed as HTML.
   (function () {
     var btn = document.getElementById('propose-submit');
     if (!btn) return;
     var statusEl = document.getElementById('propose-status');
     var resultEl = document.getElementById('propose-result');
+    var urlInput = document.getElementById('propose-repo-url');
+    var REPO_URL_RE = /^https:\/\/github\.com\/[A-Za-z0-9_.\-]+\/[A-Za-z0-9_.\-]+\/?$/;
+    var REPO_URL_HELP = 'Must be a public GitHub repo URL like https://github.com/owner/repo';
+    var WHY_MAX = 2048;
+    var FIELD_LABELS = { repo_url: 'Repo URL', why: 'Why', contact: 'Contact' };
+    var ISSUES_URL = 'https://github.com/wisechef-ai/loopskill-api/issues?q=is%3Aissue+label%3Afederation-registry';
 
-    function show(kind, html) {
+    // parts: array of strings and {href, text} link objects.
+    function show(kind, parts) {
       resultEl.hidden = false;
       resultEl.className = 'text-sm rounded-lg border px-4 py-3 ' + (
         kind === 'ok' ? 'border-success/40 bg-success/10 text-success' :
         kind === 'warn' ? 'border-accent/40 bg-accent/10 text-text' :
         'border-red-500/40 bg-red-500/10 text-red-400');
-      resultEl.innerHTML = html;
+      resultEl.textContent = '';
+      (Array.isArray(parts) ? parts : [parts]).forEach(function (part) {
+        if (part && typeof part === 'object') {
+          var a = document.createElement('a');
+          a.className = 'underline';
+          a.href = part.href;
+          a.rel = 'noopener';
+          a.textContent = part.text || part.href;
+          resultEl.appendChild(a);
+        } else {
+          resultEl.appendChild(document.createTextNode(String(part == null ? '' : part)));
+        }
+      });
+    }
+
+    // Only ever link to GitHub URLs the server hands back.
+    function issueLink(url) {
+      return (typeof url === 'string' && /^https:\/\/github\.com\//.test(url)) ? { href: url, text: url } : null;
+    }
+
+    function errorText(status, d) {
+      var det = d && d.detail;
+      if (Array.isArray(det) && det.length) {
+        var lines = det.map(function (e) {
+          var loc = (e && Array.isArray(e.loc)) ? e.loc.filter(function (p) { return p !== 'body'; }) : [];
+          var field = loc.length ? (FIELD_LABELS[loc[0]] || loc.join('.')) : '';
+          var msg = (e && typeof e.msg === 'string' && e.msg) ? e.msg : 'invalid value';
+          return field ? field + ' — ' + msg : msg;
+        });
+        return lines.join('; ');
+      }
+      if (typeof det === 'string' && det) {
+        if (det === 'rate_limit_exceeded') return 'Rate limit: too many proposals from this address — try again later (24h dedupe window per repo).';
+        return det;
+      }
+      if (det && typeof det === 'object') {
+        var inner = det.detail || det.error || det.message;
+        if (inner === 'rate_limit_exceeded') return 'Rate limit: too many proposals from this address — try again later (24h dedupe window per repo).';
+        if (typeof inner === 'string' && inner) return inner;
+      }
+      return 'the server answered HTTP ' + (status || '?') + '. Check the repo URL and try again, or use the curl line below.';
     }
 
     btn.addEventListener('click', function () {
-      var repoUrl = (document.getElementById('propose-repo-url')?.value || '').trim();
-      if (!repoUrl) { show('err', 'Paste a repo URL first (e.g. https://github.com/owner/repo).'); return; }
+      var repoUrl = (urlInput?.value || '').trim();
+      var why = (document.getElementById('propose-why')?.value || '').trim();
+      if (!repoUrl) { show('err', 'Paste a repo URL first (e.g. https://github.com/owner/repo).'); urlInput?.focus(); return; }
+      if (!REPO_URL_RE.test(repoUrl)) { show('err', 'Not filed: Repo URL — ' + REPO_URL_HELP + '.'); urlInput?.focus(); return; }
+      if (why.length > WHY_MAX) { show('err', 'Not filed: Why — keep it under ' + WHY_MAX + ' characters (now ' + why.length + ').'); return; }
       btn.disabled = true;
       statusEl.textContent = 'Checking the repo and filing the proposal…';
       fetch('https://app.loopskill.io/api/federation/propose', {
@@ -236,34 +308,40 @@ const datasetSchema = (overview.ok && overview.total && overview.sources.length 
         body: JSON.stringify({
           repo_url: repoUrl,
           contact: (document.getElementById('propose-contact')?.value || '').trim() || null,
-          why: (document.getElementById('propose-why')?.value || '').trim() || null
+          why: why || null
         })
-      }).then(function (r) { return r.json().then(function (d) { return { ok: r.ok, d: d }; }); })
+      }).then(function (r) {
+        // A non-JSON body (e.g. a 502 HTML page) must still yield a reason.
+        return r.text().then(function (t) {
+          var d = {};
+          try { d = t ? JSON.parse(t) : {}; } catch (e) { d = {}; }
+          return { ok: r.ok, status: r.status, d: d || {} };
+        });
+      })
         .then(function (res) {
           var d = res.d || {};
           statusEl.textContent = '';
-          if (d.ok) {
+          if (res.ok && d.ok) {
             var pf = d.preflight || {};
             var pfLine = pf.repo_exists ? (pf.skill_md_count + ' SKILL.md files found') : '';
+            var link = issueLink(d.issue_url);
             if (d.status === 'already_registered') {
               show('warn', 'This repo is already registered in the federation index — nothing to propose.');
             } else if (d.status === 'already_proposed' || d.deduped) {
-              show('warn', 'Already proposed recently (deduped per 24h). ' + (d.issue_url ? 'Review issue: <a class="underline" href="' + d.issue_url + '">' + d.issue_url + '</a>' : 'A review issue already tracks it.'));
-            } else if (d.review_channel_open && d.issue_url) {
-              show('ok', 'Proposal filed ✓ ' + (pfLine ? pfLine + ' · ' : '') + 'Review issue: <a class="underline" href="' + d.issue_url + '">' + d.issue_url + '</a>');
+              show('warn', link ? ['Already proposed recently (deduped per 24h). Review issue: ', link] : 'Already proposed recently (deduped per 24h). A review issue already tracks it.');
+            } else if (d.review_channel_open && link) {
+              show('ok', ['Proposal filed ✓ ' + (pfLine ? pfLine + ' · ' : '') + 'Review issue: ', link]);
             } else if (d.review_channel_open) {
               // Verified live 2026-09-02: the GitHub issue is opened ASYNC by the
               // dispatch workflow seconds after this response, so issue_url is
               // legitimately empty here while review_channel_open=true. Never
               // claim the channel did not open — that was a lie this branch told.
-              show('ok', 'Proposal filed ✓ ' + (pfLine ? pfLine + ' · ' : '') + 'A review issue is opening on GitHub — check <a class="underline" href="https://github.com/wisechef-ai/loopskill-api/issues?q=is%3Aissue+label%3Afederation-registry">federation-registry issues</a> in a few seconds.');
+              show('ok', ['Proposal filed ✓ ' + (pfLine ? pfLine + ' · ' : '') + 'A review issue is opening on GitHub — check ', { href: ISSUES_URL, text: 'federation-registry issues' }, ' in a few seconds.']);
             } else {
               show('warn', 'Proposal recorded ✓ ' + (pfLine ? pfLine + ' · ' : '') + 'status: ' + (d.status || 'pending') + '. No review issue opened automatically — it will be picked up from the proposal queue.');
             }
           } else {
-            var detail = (d.detail && typeof d.detail === 'object') ? (d.detail.detail || d.detail.error || '') : (d.detail || 'Proposal rejected.');
-            if (detail === 'rate_limit_exceeded') detail = 'Rate limit: too many proposals from this address — try again later (24h dedupe window per repo).';
-            show('err', 'Not filed: ' + detail);
+            show('err', 'Not filed: ' + errorText(res.status, d));
           }
         })
         .catch(function () {

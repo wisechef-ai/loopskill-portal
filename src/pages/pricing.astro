@@ -156,7 +156,7 @@ const faqs = [
   },
   {
     q: 'Is this a real subscription or one-time?',
-    a: 'Real monthly subscription handled by Stripe. EU pricing includes Stripe Tax / VAT MOSS. Receipts come from Stripe — we never custody your money.',
+    a: 'Pro is a real monthly subscription handled by Stripe; cancel anytime. The one exception is the Founding Member offer above: a single one-time payment, not a subscription. EU VAT is included (Stripe Tax). Receipts come from Stripe — we never custody your money. Written terms: /terms.',
   },
 ];
 
@@ -223,10 +223,10 @@ const offerSchema = buildAggregateOfferSchema(
             <span class="text-xs text-muted-soft">One-time payment, not a subscription</span>
           </div>
           <h3 class="text-xl font-semibold text-text mb-1">Founding Member — $49, forever</h3>
-          <p class="text-sm text-muted leading-relaxed">Pay once, get Pro for life. No renewal, no expiry, no card on file after checkout. Capped at 100 seats — when they're gone, they're gone.</p>
+          <p class="text-sm text-muted leading-relaxed">Pay once, get Pro for life. No renewal, no expiry, no card on file after checkout. Capped at 100 seats — when they're gone, they're gone. <a href="/terms" class="text-muted hover:text-accent underline underline-offset-2">Terms</a></p>
           <p class="text-sm font-semibold text-accent mt-2" id="founding-counter" aria-live="polite">&nbsp;</p>
         </div>
-        <a href="/signin?next=/api/checkout/founding" data-founding-cta class="shrink-0 text-center px-5 py-3 rounded-lg font-semibold text-sm bg-accent text-bg hover:bg-accent-soft transition">
+        <a href="/signin?next=/api/checkout/founding" data-founding-cta class="shrink-0 text-center min-h-[44px] px-5 py-3 rounded-lg font-semibold text-sm bg-accent text-bg hover:bg-accent-soft transition">
           Become a Founding Member — $49
         </a>
       </div>
@@ -268,7 +268,7 @@ const offerSchema = buildAggregateOfferSchema(
              data-tier={t.ctaTier}
              data-cta-anon={t.cta}
              data-cta-authed={t.ctaAuthed}
-             class={`tier-cta block text-center px-4 py-2.5 rounded-lg font-semibold text-sm transition mt-auto ${t.accent ? 'bg-accent text-bg hover:bg-accent-soft' : 'border border-border hover:border-accent text-text'}`}>
+             class={`tier-cta flex items-center justify-center text-center min-h-[44px] px-4 py-2.5 rounded-lg font-semibold text-sm transition mt-auto ${t.accent ? 'bg-accent text-bg hover:bg-accent-soft' : 'border border-border hover:border-accent text-text'}`}>
             {t.cta}
           </a>
         </div>
@@ -282,10 +282,14 @@ const offerSchema = buildAggregateOfferSchema(
         <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold tracking-wider badge-free">FREE</span>
         <span>Open-source skills like <a href="/skills/super-memory" class="text-accent hover:underline">super-memory</a> (MIT) install free. No subscription, no card. <span class="text-muted-soft">Try the engine before you pay.</span></span>
       </div>
-      <a href="/skills?tier=free" class="text-xs text-accent hover:underline whitespace-nowrap">Browse free skills →</a>
+      <a href="/skills?tier=free" class="text-sm text-accent hover:underline whitespace-nowrap inline-flex items-center min-h-[44px]">Browse free skills →</a>
     </div>
 
-    <p class="text-center text-xs text-muted-soft mt-8">Cancel anytime. EU pricing includes VAT MOSS. Receipts via Stripe.</p>
+    <p class="text-center text-xs text-muted-soft mt-8" data-pricing-legal>
+      Cancel anytime. EU VAT included (Stripe Tax). Receipts via Stripe.
+      <a href="/terms" class="text-muted hover:text-accent underline underline-offset-2 inline-flex items-center min-h-[44px] md:min-h-0">Terms</a> ·
+      <a href="/privacy" class="text-muted hover:text-accent underline underline-offset-2 inline-flex items-center min-h-[44px] md:min-h-0">Privacy</a>
+    </p>
   </section>
 
   <section class="border-t border-border">
@@ -358,7 +362,11 @@ const offerSchema = buildAggregateOfferSchema(
         if (!data.configured || typeof data.remaining !== 'number' || data.remaining <= 0) {
           return; // sold out or not configured — stays hidden
         }
-        counter.textContent = `${data.remaining} of ${data.cap} left`;
+        // qa1018 C25 (mobile MOB-14): "100 of 100 left" read as zero traction.
+        // Untouched cap -> say the cap; once seats go -> say what remains.
+        counter.textContent = data.remaining >= data.cap
+          ? `${data.cap} seats in total`
+          : `${data.remaining} seats left`;
         card.classList.remove('hidden');
         card.style.display = '';
 
