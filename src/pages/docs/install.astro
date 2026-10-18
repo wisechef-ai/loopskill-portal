@@ -1,62 +1,70 @@
 ---
 import AppShell from '../../layouts/AppShell.astro';
 import Icon from '../../components/Icon.astro';
+// qa1018 NNS-14: the ONE recommended path is the canonical keyless phrase.
+// Rendered from the shared constant so shown text === copied text.
+import { META_INSTALL_PHRASE } from '../../lib/agentInstall';
 ---
-<AppShell mode="public" title="Install guide — LoopSkill Docs" description="Install LoopSkill in any AI coding agent. MCP-first, zero-friction for free skills, one-line setup for the whole catalog.">
+<AppShell mode="public" title="Install guide — LoopSkill Docs" description="Install LoopSkill in any AI coding agent. One paste for Claude Code, Codex or Cursor. Free skills need no key; MCP tools need a free API key.">
   <section class="max-w-3xl mx-auto px-6 pt-16 pb-12">
     <p class="eyebrow mb-2">Documentation · Install guide</p>
     <h1 class="text-4xl font-semibold tracking-tight mb-4">Install in seconds.</h1>
-    <p class="text-muted mb-10 leading-relaxed">
-      LoopSkill works two ways: as an <strong class="text-text">MCP server</strong> your agent connects to,
-      or as a plain Markdown <strong class="text-text">meta-skill</strong> any agent can read.
-      <strong class="text-text">Free skills install with no API key.</strong>
-      The MCP server itself requires an API key for every call, including free-tier lookups —
-      see the note below.
+    <p class="text-muted mb-6 leading-relaxed" id="docs-install-keys">
+      <strong class="text-text">Free skills: no key. MCP tools: need a free API key.</strong>
+      Start with the one paste below — it needs no account at all.
     </p>
 
-<!-- The one-paste install: the single phrase a customer hands to their agent.
-     Keyed variant is generated per-user on /library (one-time key reveal);
-     the keyless variant below is the honest static default — free skills
-     install with no key at all. -->
-<div class="bg-bg-card border border-accent/40 rounded-2xl p-6 mb-10">
-  <p class="eyebrow text-accent mb-2">Fastest · one paste</p>
-  <h2 class="text-xl font-semibold tracking-tight mb-3">Just tell your agent</h2>
-  <p class="text-sm text-muted mb-4 leading-relaxed">
-    Copy this into any AI agent (Claude Code, Cursor, Hermes, Codex, OpenClaw…). It fetches the
-    LoopSkill meta-skill and wires everything up — no config files on your side. Signed in?
-    <a href="/library" class="text-accent hover:underline">Your library</a> generates this phrase
-    with your API key already in it.
+<!-- qa1018 NNS-14: ONE recommended path at the top. The keyless phrase is the
+     honest static default (free skills install with no key at all); the keyed
+     variant is generated per-user on /library (one-time key reveal). Every
+     other way to connect lives under "Other ways" below. -->
+<div class="bg-bg-card border border-accent/40 rounded-2xl p-6 mb-10" id="recommended">
+  <p class="eyebrow text-accent mb-2">Recommended · one paste</p>
+  <h2 class="text-xl font-semibold tracking-tight mb-3">Using Claude Code, Codex or Cursor? Paste this into the chat</h2>
+  <pre class="install-cmd text-sm bg-[#0d0d0d] border border-border rounded-lg px-4 py-3 mb-3"><code id="docs-install-phrase">{META_INSTALL_PHRASE}</code></pre>
+  <button type="button" id="docs-install-phrase-copy" class="min-h-[44px] px-4 py-2.5 rounded-lg bg-accent text-bg text-sm font-semibold hover:bg-accent-soft transition">Copy</button>
+  <p class="text-sm text-text mt-4 leading-relaxed">
+    Paste this into your agent's chat (Claude Code, Codex, Cursor…) and press Enter.
   </p>
-  <div class="flex items-center gap-3 flex-wrap">
-    <code class="font-mono text-xs bg-[#0d0d0d] border border-border rounded-lg px-4 py-3 flex-1 min-w-[16rem] break-words" id="docs-install-phrase">Install the loopskill skill from https://app.loopskill.io/skill and use the API key YOUR_KEY_FROM_LIBRARY as LOOPSKILL_API_KEY.</code>
-    <button type="button" id="docs-install-phrase-copy" class="px-4 py-2.5 rounded-lg bg-accent text-bg text-xs font-semibold hover:bg-accent-soft transition shrink-0">Copy install phrase</button>
-  </div>
+  <p class="text-sm text-muted mt-2 leading-relaxed">
+    Your agent downloads the LoopSkill skill file (plain Markdown) and can then find and install
+    free skills for you — no key, no config files. Works the same in Hermes, OpenClaw and any agent
+    that can read a web page.
+  </p>
   <p class="text-xs text-muted-soft mt-3 leading-relaxed">
-    No key yet? Free skills install with <strong class="text-text">no key at all</strong> — tell your agent
-    “Install the loopskill skill from https://app.loopskill.io/skill” and start with the free catalog.
+    Signed in? <a href="/library" class="text-accent hover:underline">Your library</a> shows the same
+    phrase with your API key already in it. You only need the key for MCP tools, saving to bundles,
+    private content and fleets.
   </p>
 </div>
 
-    <!-- MCP path — recommended -->
-    <div class="bg-bg-card border border-accent/30 rounded-2xl p-6 mb-10">
+    <h2 class="text-2xl font-semibold tracking-tight mb-2" id="other-ways">Other ways</h2>
+    <p class="text-sm text-muted mb-6 leading-relaxed">
+      You do not need these if the paste above worked. Pick one only if your setup needs it.
+    </p>
+
+    <!-- MCP path -->
+    <div class="bg-bg-card border border-border rounded-2xl p-6 mb-10" id="mcp-server">
       <div class="flex items-center justify-between gap-3 mb-3 flex-wrap">
-        <p class="eyebrow text-accent">Recommended · MCP server (StreamableHTTP)</p>
+        <p class="eyebrow">MCP server · needs a free API key</p>
       </div>
-      <h2 class="text-xl font-semibold tracking-tight mb-3">Connect your agent in one config block</h2>
+      <h2 class="text-xl font-semibold tracking-tight mb-3">Connect your agent to the LoopSkill server</h2>
       <p class="text-sm text-muted mb-4 leading-relaxed">
-        Cursor, Claude Desktop, Cline, Continue.dev, Zed — every MCP-aware client wires up the same way.
-        Your agent gets <code class="text-[11px] bg-bg-elev border border-border-soft rounded px-1 py-0.5">loopskill_search</code>,
+        MCP is a standard way for an AI app to use outside tools. Cursor, Claude Desktop, Cline,
+        Continue.dev, Zed — every MCP-aware app connects the same way: you give it a URL and your key.
+        Your agent then gets <code class="text-[11px] bg-bg-elev border border-border-soft rounded px-1 py-0.5">loopskill_search</code>,
         <code class="text-[11px] bg-bg-elev border border-border-soft rounded px-1 py-0.5">loopskill_install</code>,
         and <code class="text-[11px] bg-bg-elev border border-border-soft rounded px-1 py-0.5">loopskill_recall</code>
         as tools it can call mid-conversation.
       </p>
       <p class="text-xs text-muted-soft leading-relaxed mb-4">
-        <strong class="text-text">MCP server requires an API key for all operations</strong> — including
-        free-tier skill lookups. If you want a truly keyless path, use the meta-skill or raw REST paths below instead.
+        <strong class="text-text">The MCP server requires an API key for all operations</strong> — including
+        free-tier skill lookups. The key is free. If you want no key at all, use the one paste above,
+        the skill file or the plain HTTP calls below.
       </p>
 
       <p class="text-xs text-muted-soft uppercase tracking-wider font-semibold mb-2">Claude Desktop / Cursor / Cline</p>
-      <pre class="text-xs bg-[#0d0d0d] border border-border rounded-lg p-4 overflow-x-auto mb-4"><code>{`{
+      <pre class="install-cmd text-xs bg-[#0d0d0d] border border-border rounded-lg p-4 mb-4"><code>{`{
   "mcpServers": {
     "loopskill": {
       "url": "https://app.loopskill.io/api/mcp/http/",
@@ -69,9 +77,10 @@ import Icon from '../../components/Icon.astro';
         gives you a free-tier key immediately.
       </p>
       <p class="text-xs text-muted-soft leading-relaxed mt-3">
-        Client only supports a local stdio process, not a raw StreamableHTTP URL? Run
+        Your app can only start a local program, not connect to a URL? Run
         <code class="text-[11px] bg-bg-elev border border-border-soft rounded px-1 py-0.5">uvx loopskill-mcp</code>
-        instead — a published PyPI bridge that proxies to the same hosted endpoint. See
+        instead — a small helper program (published on PyPI, the Python package index) that forwards
+        every call to the same hosted server. See
         <a href="/docs/mcp" class="text-accent hover:underline">MCP setup</a> for the config block.
       </p>
       <div class="mt-4 pt-4 border-t border-border-soft">
@@ -91,34 +100,35 @@ import Icon from '../../components/Icon.astro';
         Add it once, then install plugins by name. No signup and no key for the search plugin.
       </p>
       <p class="text-xs text-muted-soft uppercase tracking-wider font-semibold mb-2">Inside a Claude Code session</p>
-      <pre class="text-xs bg-[#0d0d0d] border border-border rounded-lg p-4 overflow-x-auto mb-4"><code>/plugin marketplace add wisechef-ai/loopskill-marketplace
+      <pre class="install-cmd text-xs bg-[#0d0d0d] border border-border rounded-lg p-4 mb-4"><code>/plugin marketplace add wisechef-ai/loopskill-marketplace
 /plugin install loopskill-search@loopskill</code></pre>
       <p class="text-xs text-muted-soft uppercase tracking-wider font-semibold mb-2">From a shell</p>
-      <pre class="text-xs bg-[#0d0d0d] border border-border rounded-lg p-4 overflow-x-auto mb-4"><code>claude plugin marketplace add wisechef-ai/loopskill-marketplace
+      <pre class="install-cmd text-xs bg-[#0d0d0d] border border-border rounded-lg p-4 mb-4"><code>claude plugin marketplace add wisechef-ai/loopskill-marketplace
 claude plugin install loopskill-search@loopskill</code></pre>
       <p class="text-xs text-muted-soft leading-relaxed">
         <code class="text-[11px] bg-bg-elev border border-border-soft rounded px-1 py-0.5">loopskill-search</code> runs one
         query across the curated catalog and the federated sources, so your agent can find an existing skill before
         writing one. <code class="text-[11px] bg-bg-elev border border-border-soft rounded px-1 py-0.5">loopskill@loopskill</code>
-        installs the registry meta-skill. Run <code class="text-[11px] bg-bg-elev border border-border-soft rounded px-1 py-0.5">/plugin</code>
+        installs the LoopSkill skill file. Run <code class="text-[11px] bg-bg-elev border border-border-soft rounded px-1 py-0.5">/plugin</code>
         to browse the rest of the marketplace.
       </p>
     </div>
 
-    <!-- Meta-skill path — for non-MCP agents -->
-    <div class="bg-bg-card border border-border rounded-2xl p-6 mb-10">
-      <p class="eyebrow mb-3">Alternative · Meta-skill (Markdown file)</p>
-      <h2 class="text-xl font-semibold tracking-tight mb-3">For Claude Code, Codex, Hermes, OpenClaw</h2>
+    <!-- Skill file by hand — what the one paste does for you -->
+    <div class="bg-bg-card border border-border rounded-2xl p-6 mb-10" id="skill-file">
+      <p class="eyebrow mb-3">By hand · Skill file (no key)</p>
+      <h2 class="text-xl font-semibold tracking-tight mb-3">Save the skill file yourself</h2>
       <p class="text-sm text-muted mb-4 leading-relaxed">
-        Any agent that can read files and call HTTP can use LoopSkill. Drop the meta-skill into your skills directory and tell your agent to follow it.
+        This is what the one paste does for you. The LoopSkill skill is one Markdown file
+        that tells your agent how to search and install skills. Save it in your agent's skills folder:
       </p>
 
       <p class="text-xs text-muted-soft uppercase tracking-wider font-semibold mb-2">Claude Code</p>
-      <pre class="text-xs bg-[#0d0d0d] border border-border rounded-lg p-4 overflow-x-auto mb-4"><code>mkdir -p ~/.claude/skills/loopskill
+      <pre class="install-cmd text-xs bg-[#0d0d0d] border border-border rounded-lg p-4 mb-4"><code>mkdir -p ~/.claude/skills/loopskill
 curl -sL https://app.loopskill.io/skill -o ~/.claude/skills/loopskill/SKILL.md</code></pre>
 
       <p class="text-xs text-muted-soft uppercase tracking-wider font-semibold mb-2">Hermes / Codex / OpenClaw</p>
-      <pre class="text-xs bg-[#0d0d0d] border border-border rounded-lg p-4 overflow-x-auto mb-4"><code>mkdir -p ~/.hermes/skills/loopskill  # or ~/.codex/skills, ~/.openclaw/skills
+      <pre class="install-cmd text-xs bg-[#0d0d0d] border border-border rounded-lg p-4 mb-4"><code>mkdir -p ~/.hermes/skills/loopskill  # or ~/.codex/skills, ~/.openclaw/skills
 curl -sL https://app.loopskill.io/skill -o ~/.hermes/skills/loopskill/SKILL.md</code></pre>
 
       <p class="text-sm text-muted leading-relaxed">
@@ -128,18 +138,18 @@ curl -sL https://app.loopskill.io/skill -o ~/.hermes/skills/loopskill/SKILL.md</
     </div>
 
     <!-- Pure HTTP path — for scripts/automation -->
-    <div class="bg-bg-card border border-border rounded-2xl p-6 mb-10">
-      <p class="eyebrow mb-3">For scripts · Raw HTTP</p>
+    <div class="bg-bg-card border border-border rounded-2xl p-6 mb-10" id="raw-http">
+      <p class="eyebrow mb-3">For scripts · Plain HTTP</p>
       <h2 class="text-xl font-semibold tracking-tight mb-3">curl works too</h2>
 
       <p class="text-xs text-muted-soft uppercase tracking-wider font-semibold mb-2">Browse free skills (no auth)</p>
-      <pre class="text-xs bg-[#0d0d0d] border border-border rounded-lg p-4 overflow-x-auto mb-4"><code>curl -sS "https://app.loopskill.io/api/skills/search?tier=free&page_size=50"</code></pre>
+      <pre class="install-cmd text-xs bg-[#0d0d0d] border border-border rounded-lg p-4 mb-4"><code>curl -sS "https://app.loopskill.io/api/skills/search?tier=free&page_size=50"</code></pre>
 
       <p class="text-xs text-muted-soft uppercase tracking-wider font-semibold mb-2">Install a free skill (no auth)</p>
-      <pre class="text-xs bg-[#0d0d0d] border border-border rounded-lg p-4 overflow-x-auto mb-4"><code>curl -sS "https://app.loopskill.io/api/skills/install?slug=super-memory"</code></pre>
+      <pre class="install-cmd text-xs bg-[#0d0d0d] border border-border rounded-lg p-4 mb-4"><code>curl -sS "https://app.loopskill.io/api/skills/install?slug=super-memory"</code></pre>
 
       <p class="text-xs text-muted-soft uppercase tracking-wider font-semibold mb-2">Install with a key (bundle-scoped or private skills)</p>
-      <pre class="text-xs bg-[#0d0d0d] border border-border rounded-lg p-4 overflow-x-auto"><code>curl -sS -H "x-api-key: $LOOPSKILL_API_KEY" \
+      <pre class="install-cmd text-xs bg-[#0d0d0d] border border-border rounded-lg p-4"><code>curl -sS -H "x-api-key: $LOOPSKILL_API_KEY" \
   "https://app.loopskill.io/api/skills/install?slug=super-memory"</code></pre>
       <p class="text-xs text-muted-soft leading-relaxed mt-2">
         The catalog carries no paid-tier skills today, so no free skill actually needs this
@@ -151,7 +161,7 @@ curl -sL https://app.loopskill.io/skill -o ~/.hermes/skills/loopskill/SKILL.md</
     <!-- Verify -->
     <div class="bg-bg-card border border-border rounded-2xl p-6">
       <p class="eyebrow mb-3">Verify the install</p>
-      <pre class="text-xs bg-[#0d0d0d] border border-border rounded-lg p-4 overflow-x-auto mb-3"><code>curl https://app.loopskill.io/api/healthz</code></pre>
+      <pre class="install-cmd text-xs bg-[#0d0d0d] border border-border rounded-lg p-4 mb-3"><code>curl https://app.loopskill.io/api/healthz</code></pre>
       <p class="text-xs text-muted-soft leading-relaxed">
         Should return <code class="text-text">{`{"status":"ok"}`}</code>. If your agent connected via MCP, ask it: <em class="text-text">"call loopskill_search with query=test and show me the top 3 results."</em>
       </p>
@@ -159,18 +169,30 @@ curl -sL https://app.loopskill.io/skill -o ~/.hermes/skills/loopskill/SKILL.md</
 
   </section>
 
+<style>
+  /* qa1018 MOB-10 / NNS-14: long commands wrap at 375px instead of side-scrolling. */
+  .install-cmd {
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+</style>
+
 <script is:inline>
-  // One-paste install phrase copy button.
+  // One-paste install phrase copy button. Copies exactly the shown text.
   (function () {
     var btn = document.getElementById('docs-install-phrase-copy');
     if (!btn) return;
     btn.addEventListener('click', function () {
-      var txt = document.getElementById('docs-install-phrase')?.textContent || '';
-      navigator.clipboard.writeText(txt.trim()).then(function () {
-        var original = btn.textContent;
-        btn.textContent = 'Copied ✓';
+      var txt = (document.getElementById('docs-install-phrase')?.textContent || '').trim();
+      var original = btn.textContent;
+      function flash(label) {
+        btn.textContent = label;
         setTimeout(function () { btn.textContent = original; }, 1500);
-      }).catch(function () {});
+      }
+      if (!navigator.clipboard) { flash('Select the text and copy'); return; }
+      navigator.clipboard.writeText(txt).then(function () { flash('Copied ✓'); })
+        .catch(function () { flash('Select the text and copy'); });
     });
   })();
 </script>

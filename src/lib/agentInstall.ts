@@ -19,9 +19,10 @@
  *
  * HONESTY CONTRACT (sprint locked decision #4: deep-link rows are NEVER
  * deployable and never get a fake install button)
- *   - fetch_origin  -> the registry really can serve the body; the text names
- *                      the MCP tool AND the plain HTTP fallback.
- *   - deep_link     -> the text says so, and says where to actually get it.
+ *   - fetch_origin  -> the registry really can serve the body; the text is a
+ *                      fresh-agent phrase (qa1018) naming the raw install_ref.
+ *   - deep_link     -> NOTHING to copy; the card links out ("Get it from
+ *                      source ↗") instead (qa1018 C09).
  *   - unknown shape -> FAILS CLOSED to deep_link. We never promise an install
  *                      path we have not been told exists.
  *
@@ -138,53 +139,88 @@ function displayTitle(row: AgentInstallSubject): string {
 }
 
 /**
+ * qa1018 C09: phrase for a loop / personality from a FRESH agent. Same
+ * bootstrap as freshAgentPhrase; the verb is "load" because a loop or a
+ * personality is fetched and run, not unpacked into a skills directory.
+ */
+export function freshAgentLoadPhrase(kind: 'loop' | 'personality', slug: string): string {
+  return `${META_INSTALL_PHRASE}, then use it to load the "${slug}" ${kind}.`;
+}
+
+/**
  * The agent-shaped install text for one card. Returns '' when there is
- * nothing honest to say (no slug and no install_ref) — the caller then
- * renders no button at all rather than a button that copies nothing.
+ * nothing honest to COPY — no identity at all, or a deep-link federated row
+ * that LoopSkill cannot redistribute. The caller then renders no copy button;
+ * for deep-link rows it renders agentSourceUrl() as a "Get it from source ↗"
+ * link instead (qa1018 C09: a button that says "Copied ✓" over a refusal
+ * sentence is a lie the visitor only discovers after pasting it).
+ *
+ * qa1018 C09: every copyable string is a FRESH-AGENT phrase (bootstrap the
+ * loopskill skill, then name the target). The old MCP-call strings
+ * ("call loopskill_install(...)") only worked in an agent that already had
+ * LoopSkill connected with an API key — a first-time visitor's agent has no
+ * such tool. No key placeholder, no "please", shown == copied.
  */
 export function agentInstallText(type: AgentArtifactType | string, item: AgentInstallSubject | null | undefined): string {
   if (!item) return '';
-  const title = displayTitle(item);
   const slug = item.slug ? String(item.slug).trim() : '';
 
   if (isFederatedSubject(item)) {
     // Raw ref, NOT the lowercased canonical key — the agent has to send this
     // back to the API verbatim.
     const ref = String(item.install_ref || '').trim() || canonicalInstallRef(item);
-    if (federatedInstallPath(item) === 'fetch_origin') {
-      return `Install "${title}" from LoopSkill: call loopskill_install("${ref}") — or GET ${LOOPSKILL_ORIGIN}/api/skills/metasearch/install?install_ref=${ref}, then extract it to your skills directory.`;
-    }
-    if (isHttpUrl(item.origin_url)) {
-      return `"${title}" isn't redistributable through the registry (source license). Get it from ${item.origin_url}.`;
-    }
-    const src = item.source ? String(item.source).trim() : '';
-    return src
-      ? `"${title}" isn't redistributable through the registry (source license). Get it from its origin registry, ${src}.`
-      : `"${title}" isn't redistributable through the registry (source license). Get it from its origin — LoopSkill does not rehost it.`;
+    if (federatedInstallPath(item) === 'fetch_origin') return freshAgentPhrase('skill', ref);
+    return ''; // deep_link: never copyable — see agentSourceUrl()
   }
 
   if (!slug) return '';
   const t = String(type || '');
+  if (t === 'bundle' || t === 'bundles') return freshAgentPhrase('bundle', slug);
+  if (t === 'loop' || t === 'loops') return freshAgentLoadPhrase('loop', slug);
+  if (t === 'personality' || t === 'personalities') return freshAgentLoadPhrase('personality', slug);
+  return freshAgentPhrase('skill', slug);
+}
 
-  // Local catalog. These are NOT federated rows: /api/skills/metasearch/install
-  // does not resolve a bare local slug (probed 2026-09-08: 404 malformed_ref),
-  // so quoting the metasearch URL here would be a lie. Each type names the MCP
-  // tool that actually installs it.
-  if (t === 'bundle' || t === 'bundles') {
-    return `Install the "${title}" bundle from LoopSkill: call loopskill_bundle_install("${slug}").`;
+/**
+ * Where a NON-installable (deep-link) federated row actually lives. '' for
+ * anything installable, local, or without a real http(s) origin_url (the URL
+ * is upstream-controlled — a javascript: value never becomes a link).
+ */
+export function agentSourceUrl(item: AgentInstallSubject | null | undefined): string {
+  if (!item || !isFederatedSubject(item)) return '';
+  if (federatedInstallPath(item) === 'fetch_origin') return '';
+  return isHttpUrl(item.origin_url) ? String(item.origin_url) : '';
+}
+
+/**
+ * qa1018 C07: a short "owner/repo" (or host) label for a federated row, so
+ * five cards all titled "seo" can be told apart. Derived from origin_url
+ * (github.com/<owner>/<repo>, skills.sh/<owner>/<repo>/…, clawhub.ai/<owner>/…)
+ * or, failing that, the "Indexed by skills.sh from <owner>/<repo>" stub
+ * description. '' when nothing trustworthy is available.
+ */
+export function sourceOwnerRepo(item: { origin_url?: string | null; description?: string | null } | null | undefined): string {
+  if (!item) return '';
+  const u = item.origin_url;
+  if (isHttpUrl(u)) {
+    try {
+      const url = new URL(u);
+      const host = url.hostname.replace(/^www\./, '');
+      const parts = url.pathname.split('/').filter(Boolean);
+      if ((host === 'github.com' || host === 'skills.sh') && parts.length >= 2) return `${parts[0]}/${parts[1]}`;
+      if (host === 'clawhub.ai' && parts.length >= 1) return `${parts[0]} · clawhub`;
+      return parts.length ? `${host}/${parts[0]}` : host;
+    } catch { /* fall through to the description */ }
   }
-  if (t === 'loop' || t === 'loops') {
-    return `Load the "${title}" loop from LoopSkill: call loopskill_get_loop("${slug}").`;
-  }
-  if (t === 'personality' || t === 'personalities') {
-    return `Load the "${title}" personality from LoopSkill: call loopskill_get_personality("${slug}").`;
-  }
-  return `Install "${title}" from LoopSkill: call loopskill_install("${slug}") — or GET ${LOOPSKILL_ORIGIN}/api/skills/${slug}/install with your x-api-key header, then extract it to your skills directory.`;
+  const m = String(item.description || '').match(/from ([A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+)/);
+  return m ? m[1] : '';
 }
 
 /** The visible label. Pinned by scripts/assert-dist.sh and by the DoD grep. */
 export const COPY_FOR_AGENT_LABEL = 'Copy for agent';
 export const COPY_FOR_AGENT_DONE = 'Copied ✓';
+/** qa1018 C09: label for deep-link (non-redistributable) rows. */
+export const SOURCE_LINK_LABEL = 'Get it from source ↗';
 
 /**
  * The button markup. It is a SIBLING of the card <a> inside .artifact-slot,
@@ -199,11 +235,20 @@ export const COPY_FOR_AGENT_DONE = 'Copied ✓';
  */
 export function copyForAgentHTML(type: AgentArtifactType | string, item: AgentInstallSubject | null | undefined): string {
   const text = agentInstallText(type, item);
-  if (!text) return '';
-  const name = displayTitle(item as AgentInstallSubject);
+  const name = displayTitle((item || {}) as AgentInstallSubject);
+  if (!text) {
+    // qa1018 C09: deep-link rows get a plain outbound link, never a copy
+    // button. Class .artifact-source (NOT .artifact-copy) so the delegated
+    // copy controller never preventDefault()s the navigation.
+    const src = agentSourceUrl(item);
+    if (!src) return '';
+    return `<a class="artifact-source" href="${esc(src)}" target="_blank" rel="noopener nofollow"`
+      + ` aria-label="${esc(SOURCE_LINK_LABEL)}: ${esc(name)} is not hosted by LoopSkill (opens its source)">`
+      + `${esc(SOURCE_LINK_LABEL)}</a>`;
+  }
   return `<button type="button" class="artifact-copy" data-copy-text="${esc(text)}"`
-    + ` title="${esc(COPY_FOR_AGENT_LABEL)}"`
-    + ` aria-label="${esc(COPY_FOR_AGENT_LABEL)}: copy install instructions for ${esc(name)}">`
+    + ` title="${esc(text)}"`
+    + ` aria-label="${esc(COPY_FOR_AGENT_LABEL)}: copy the install phrase for ${esc(name)} to paste into your agent's chat">`
     + `<span class="artifact-copy-label" aria-live="polite">${esc(COPY_FOR_AGENT_LABEL)}</span></button>`;
 }
 

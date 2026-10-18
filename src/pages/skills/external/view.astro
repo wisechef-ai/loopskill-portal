@@ -104,32 +104,34 @@ const API_BASE = import.meta.env.PUBLIC_LOOPSKILL_API_BASE || import.meta.env.PU
            something an agent could act on, and it was the only copy
            affordance on the entire site before P3. -->
       <section id="install-fetch" hidden class="bg-bg-card border border-accent/40 rounded-2xl p-6 mb-6">
-        <h2 class="text-lg font-semibold mb-3">Install this skill</h2>
-        <pre class="bg-[#0d0d0d] border border-border rounded-xl p-4 text-sm text-accent overflow-x-auto"><code id="install-command"></code></pre>
+        <h2 class="text-lg font-semibold mb-2">Install this skill</h2>
+        <!-- qa1018 C09: the agent phrase is SHOWN, and the button copies exactly
+             what is shown. It works from a fresh agent (no LoopSkill tools yet). -->
+        <p class="text-sm text-muted mb-3">Paste this into your agent's chat (Claude Code, Codex, Cursor…) and press Enter.</p>
+        <pre class="ext-cmd bg-[#0d0d0d] border border-border rounded-xl p-4 text-sm text-text"><code id="agent-phrase"></code></pre>
         <div class="flex items-center gap-2 flex-wrap mt-3">
-          <button id="copy-install-btn" type="button" class="px-3 py-1.5 rounded-md bg-bg-elev border border-accent/40 text-xs text-accent hover:border-accent transition">Copy for agent</button>
-          <button id="copy-command-btn" type="button" class="px-3 py-1.5 rounded-md bg-bg-elev border border-border text-xs text-muted hover:text-accent hover:border-accent/40 transition">Copy shell command</button>
+          <button id="copy-install-btn" type="button" class="ext-btn px-4 rounded-md bg-bg-elev border border-accent/40 text-sm text-accent hover:border-accent transition">Copy for agent</button>
         </div>
         <textarea id="copy-fallback" hidden readonly aria-label="Install instructions — select and copy manually"
                   class="w-full mt-3 min-h-[72px] bg-[#0d0d0d] border border-border rounded-xl p-3 text-xs text-muted"></textarea>
-        <p class="text-xs text-muted-soft mt-3">"Copy for agent" hands your agent the install call. The command above is the same install, for a terminal.</p>
+        <h3 class="text-sm font-semibold mt-6 mb-2">Prefer a terminal?</h3>
+        <p class="text-xs text-muted-soft mb-2">Run this in a terminal, not in the agent chat. It downloads the skill from its source.</p>
+        <pre class="ext-cmd bg-[#0d0d0d] border border-border rounded-xl p-4 text-sm text-accent"><code id="install-command"></code></pre>
+        <div class="flex items-center gap-2 flex-wrap mt-3">
+          <button id="copy-command-btn" type="button" class="ext-btn px-4 rounded-md bg-bg-elev border border-border text-sm text-muted hover:text-accent hover:border-accent/40 transition">Copy shell command</button>
+        </div>
       </section>
 
       <!-- deep_link branch: not redistributable — origin only, no content.
-           It still gets a "Copy for agent" button, carrying the HONEST text
-           (locked decision #4): it says the registry cannot redistribute this
-           and where to actually get it. It never fakes an install call. -->
+           qa1018 C09: NO copy button here any more. It used to copy a refusal
+           sentence under a "Copied ✓", which a visitor only discovered after
+           pasting it into their agent. The one action is the source link. -->
       <section id="install-deeplink" hidden class="bg-bg-card border border-border rounded-2xl p-6 mb-6 text-center">
         <p id="deeplink-reason" class="text-sm text-muted mb-4"></p>
-        <a id="deeplink-btn" href="#" target="_blank" rel="noopener nofollow" class="inline-flex items-center gap-2 px-6 py-3 rounded-lg bg-accent text-bg font-semibold text-sm hover:bg-accent-soft transition">
-          View at origin →
+        <a id="deeplink-btn" href="#" target="_blank" rel="noopener nofollow" class="inline-flex items-center gap-2 px-6 py-3 min-h-[44px] rounded-lg bg-accent text-bg font-semibold text-sm hover:bg-accent-soft transition">
+          Get it from source ↗
         </a>
-        <div class="flex items-center justify-center gap-2 flex-wrap mt-4">
-          <button id="copy-deeplink-btn" type="button" class="px-3 py-1.5 rounded-md bg-bg-elev border border-border text-xs text-muted hover:text-accent hover:border-accent/40 transition">Copy for agent</button>
-        </div>
-        <textarea id="copy-fallback-deeplink" hidden readonly aria-label="Install instructions — select and copy manually"
-                  class="w-full mt-3 min-h-[72px] bg-[#0d0d0d] border border-border rounded-xl p-3 text-xs text-muted text-left"></textarea>
-        <p class="text-xs text-muted-soft mt-3">LoopSkill never rehosts this content — install it directly from where it actually lives.</p>
+        <p class="text-xs text-muted-soft mt-3">LoopSkill can't install this one for you (its license doesn't allow copies). Install it directly from where it lives.</p>
       </section>
     </article>
   </main>
@@ -138,6 +140,8 @@ const API_BASE = import.meta.env.PUBLIC_LOOPSKILL_API_BASE || import.meta.env.PU
 <style>
   .badge { display: inline-flex; align-items: center; gap: .25rem; font-size: 10px; text-transform: uppercase; letter-spacing: .04em; padding: .15rem .5rem; border-radius: 999px; border: 1px solid; }
   .badge-source { color: #5b9bf5; background: rgba(91,155,245,.1); border-color: rgba(91,155,245,.35); }
+  .ext-cmd { white-space: pre-wrap; overflow-wrap: anywhere; word-break: break-all; }
+  .ext-btn { min-height: 44px; }
   .badge-quality { color: var(--muted-soft, #9aa3b2); background: var(--bg-elev, #1b1f27); border-color: var(--border-soft, #2a2f3a); text-transform: none; letter-spacing: 0; }
 </style>
 
@@ -233,29 +237,51 @@ const API_BASE = import.meta.env.PUBLIC_LOOPSKILL_API_BASE || import.meta.env.PU
     const s2 = row && row.slug ? String(row.slug).trim() : '';
     return s2 || 'This skill';
   }
+  // qa1018 C09: every copyable string is a FRESH-AGENT phrase; deep-link
+  // rows copy NOTHING and get a "Get it from source ↗" link instead.
+  const META_INSTALL_PHRASE = `Install the loopskill skill from ${LOOPSKILL_ORIGIN}/skill`;
+  const SOURCE_LINK_LABEL = 'Get it from source ↗';
+  function freshAgentPhrase(kind, slug) {
+    return `${META_INSTALL_PHRASE}, then use it to install the "${slug}" ${kind}.`;
+  }
+  function freshAgentLoadPhrase(kind, slug) {
+    return `${META_INSTALL_PHRASE}, then use it to load the "${slug}" ${kind}.`;
+  }
   function agentInstallText(type, item) {
     if (!item) return '';
-    const title = agentDisplayTitle(item);
     const slug = item.slug ? String(item.slug).trim() : '';
     if (isFederatedSubject(item)) {
       const r = String(item.install_ref || '').trim() || canonicalInstallRef(item);
-      if (federatedInstallPath(item) === 'fetch_origin') {
-        return `Install "${title}" from LoopSkill: call loopskill_install("${r}") — or GET ${LOOPSKILL_ORIGIN}/api/skills/metasearch/install?install_ref=${r}, then extract it to your skills directory.`;
-      }
-      if (isHttpUrl(item.origin_url)) {
-        return `"${title}" isn't redistributable through the registry (source license). Get it from ${item.origin_url}.`;
-      }
-      const src = item.source ? String(item.source).trim() : '';
-      return src
-        ? `"${title}" isn't redistributable through the registry (source license). Get it from its origin registry, ${src}.`
-        : `"${title}" isn't redistributable through the registry (source license). Get it from its origin — LoopSkill does not rehost it.`;
+      if (federatedInstallPath(item) === 'fetch_origin') return freshAgentPhrase('skill', r);
+      return '';
     }
     if (!slug) return '';
     const t = String(type || '');
-    if (t === 'bundle' || t === 'bundles') return `Install the "${title}" bundle from LoopSkill: call loopskill_bundle_install("${slug}").`;
-    if (t === 'loop' || t === 'loops') return `Load the "${title}" loop from LoopSkill: call loopskill_get_loop("${slug}").`;
-    if (t === 'personality' || t === 'personalities') return `Load the "${title}" personality from LoopSkill: call loopskill_get_personality("${slug}").`;
-    return `Install "${title}" from LoopSkill: call loopskill_install("${slug}") — or GET ${LOOPSKILL_ORIGIN}/api/skills/${slug}/install with your x-api-key header, then extract it to your skills directory.`;
+    if (t === 'bundle' || t === 'bundles') return freshAgentPhrase('bundle', slug);
+    if (t === 'loop' || t === 'loops') return freshAgentLoadPhrase('loop', slug);
+    if (t === 'personality' || t === 'personalities') return freshAgentLoadPhrase('personality', slug);
+    return freshAgentPhrase('skill', slug);
+  }
+  function agentSourceUrl(item) {
+    if (!item || !isFederatedSubject(item)) return '';
+    if (federatedInstallPath(item) === 'fetch_origin') return '';
+    return isHttpUrl(item.origin_url) ? String(item.origin_url) : '';
+  }
+  function sourceOwnerRepo(item) {
+    if (!item) return '';
+    const u = item.origin_url;
+    if (isHttpUrl(u)) {
+      try {
+        const url = new URL(u);
+        const host = url.hostname.replace(/^www\./, '');
+        const parts = url.pathname.split('/').filter(Boolean);
+        if ((host === 'github.com' || host === 'skills.sh') && parts.length >= 2) return `${parts[0]}/${parts[1]}`;
+        if (host === 'clawhub.ai' && parts.length >= 1) return `${parts[0]} · clawhub`;
+        return parts.length ? `${host}/${parts[0]}` : host;
+      } catch { /* fall through to the description */ }
+    }
+    const m = String(item.description || '').match(/from ([A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+)/);
+    return m ? m[1] : '';
   }
 
   // NEVER a silent no-op: navigator.clipboard is undefined on insecure
@@ -382,8 +408,11 @@ const API_BASE = import.meta.env.PUBLIC_LOOPSKILL_API_BASE || import.meta.env.PU
       $('install-command').textContent = cmd || 'Install command unavailable.';
       show('install-fetch');
 
-      // ONE format across the site: the same string a browse card copies.
-      wireCopy('copy-install-btn', agentInstallText('skill', subject(d)), 'copy-fallback', COPY_FOR_AGENT_LABEL);
+      // ONE format across the site: the same string a browse card copies,
+      // shown verbatim above the button (qa1018: shown == copied).
+      const phrase = agentInstallText('skill', subject(d));
+      $('agent-phrase').textContent = phrase;
+      wireCopy('copy-install-btn', phrase, 'copy-fallback', COPY_FOR_AGENT_LABEL);
       // The shell command stays separately copyable — it is still the right
       // thing for a human at a terminal, it is just not agent-shaped.
       wireCopy('copy-command-btn', cmd, 'copy-fallback', 'Copy shell command');
@@ -393,12 +422,10 @@ const API_BASE = import.meta.env.PUBLIC_LOOPSKILL_API_BASE || import.meta.env.PU
       hide('sk-desc');
       $('deeplink-reason').textContent = d.reason
         ? `Not installable here: ${d.reason}.`
-        : 'This skill installs only from its origin.';
+        : 'This skill installs only from its source.';
       const btn = $('deeplink-btn');
       if (isHttpUrl(d.origin_url)) { btn.href = d.origin_url; btn.removeAttribute('aria-disabled'); }
       else { btn.removeAttribute('href'); btn.setAttribute('aria-disabled', 'true'); }
-      // Honest agent text (locked decision #4) — never a fake install call.
-      wireCopy('copy-deeplink-btn', agentInstallText('skill', subject(d)), 'copy-fallback-deeplink', COPY_FOR_AGENT_LABEL);
       show('install-deeplink');
     }
   }

@@ -138,28 +138,20 @@ export function RuntimePanel({ slug }: RuntimePanelProps) {
     return () => { cancelled = true; };
   }, [slug]);
 
-  if (loading) {
-    return (
-      <div className="animate-pulse flex flex-col gap-3" role="status" aria-label="Loading runtime info">
-        <div className="h-4 rounded bg-bg-elev w-1/2" />
-        <div className="h-4 rounded bg-bg-elev w-3/4" />
-        <div className="h-8 rounded bg-bg-elev w-full" />
-      </div>
-    );
-  }
-
-  if (error) {
-    return <p className="text-xs text-muted-soft" role="alert">{error}</p>;
-  }
+  // qa1018 C05: this panel owns its card + "Runtime" heading and renders
+  // NOTHING while loading, on error, or when there is no data. Both endpoints
+  // are key-gated (401 for anonymous visitors), so the old behaviour was an
+  // empty "RUNTIME" heading on every public skill page.
+  if (loading || error) return null;
 
   const hasRuntime = runtime && (runtime.runtimes?.length > 0 || runtime.tools_required?.length > 0);
   const hasInstalls = installs && installs.buckets && installs.buckets.length > 0;
 
-  if (!hasRuntime && !hasInstalls) {
-    return <p className="text-xs text-muted-soft">No runtime data available.</p>;
-  }
+  if (!hasRuntime && !hasInstalls) return null;
 
   return (
+    <div className="bg-bg-card border border-border rounded-2xl p-5" data-runtime-panel>
+    <h2 className="eyebrow mb-3">Runtime</h2>
     <div className="flex flex-col gap-4">
       {/* Install sparkline */}
       {hasInstalls && (
@@ -206,6 +198,7 @@ export function RuntimePanel({ slug }: RuntimePanelProps) {
           {runtime.frontmatter_present ? 'Frontmatter present' : 'No frontmatter detected'}
         </div>
       )}
+    </div>
     </div>
   );
 }
