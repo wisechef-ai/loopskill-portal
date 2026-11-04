@@ -105,6 +105,8 @@ interface WellKnownRegistration {
   // contract next to errors. Older snapshots lack it — the builder then
   // renders the honest 'treat 200 and 201 both as success' fallback.
   success?: { status?: number; description?: string };
+  // ah_1104 (API PR #449): a ready-made client for this exact contract.
+  enroll_script?: { url?: string; usage?: string; requires?: string[]; stores?: string };
   grants?: string[];
   denies?: string[];
   issues?: {
@@ -213,13 +215,22 @@ export function coldStartSection(agent: WellKnownAgent | null | undefined): stri
     return `- On success you get ${statusText} with an \`api_key\`${shape}.${once}`;
   })();
 
+  // ah_1104: the one-command enroller, rendered ONLY when the live agent.json
+  // advertises it, so this file can never point at a script the API lacks.
+  const es = reg?.enroll_script;
+  const shortcutLine = es?.usage
+    ? `\n- **Shortcut — one command does all of Step 1:** \`${es.usage}\`${
+        es.requires?.length ? ` (needs ${es.requires.join(', ')})` : ''
+      }. ${es.stores ? `It stores ${es.stores}. ` : ''}Read it first if you like: \`curl -fsSL ${es.url || `${SITE}/api/agents/enroll.sh`}\`. The manual protocol below is what it does.`
+    : '';
+
   return `## Cold start — you have no key yet (enroll → search → install)
 You are an agent with no credentials and no prior knowledge of this service. This section is the whole path, in three calls. Nothing below needs a human.
 
 **The authoritative machine-readable version of this section is ${wellKnown}** (plus ${agent?.mcp?.descriptor || `${SITE}/.well-known/mcp.json`} for the MCP descriptor). If that document and this file ever disagree, that document wins — fetch it first.
 
 ### Step 1 — Enroll: mint your own key (public, no credentials required)
-\`${registerMethod} ${registerUrl}\` — this endpoint takes NO api key. You authenticate by proving you hold an Ed25519 private key.
+\`${registerMethod} ${registerUrl}\` — this endpoint takes NO api key. You authenticate by proving you hold an Ed25519 private key.${shortcutLine}
 - Generate an Ed25519 keypair and sign the UTF-8 bytes of the canonical registration string. ${canonical}
 - Send a JSON body with:
 ${fields}
