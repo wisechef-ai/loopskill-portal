@@ -106,7 +106,14 @@ interface WellKnownRegistration {
   // renders the honest 'treat 200 and 201 both as success' fallback.
   success?: { status?: number; description?: string };
   // ah_1104 (API PR #449): a ready-made client for this exact contract.
-  enroll_script?: { url?: string; usage?: string; requires?: string[]; stores?: string };
+  enroll_script?: {
+    url?: string;
+    usage?: string;
+    requires?: string[];
+    stores?: string;
+    // ah_1106: what to run once enrolled (API #451). Optional: older snapshots lack it.
+    next_step?: { description?: string; bundle?: string; command?: string; requires_key?: boolean };
+  };
   grants?: string[];
   denies?: string[];
   issues?: {
@@ -224,6 +231,15 @@ export function coldStartSection(agent: WellKnownAgent | null | undefined): stri
       }. ${es.stores ? `It stores ${es.stores}. ` : ''}Read it first if you like: \`curl -fsSL ${es.url || `${SITE}/api/agents/enroll.sh`}\`. The manual protocol below is what it does.`
     : '';
 
+  // ah_1106: the first install, rendered ONLY when agent.json advertises it
+  // (same rule as the shortcut above: never point at a command the API lacks).
+  const ns = es?.next_step;
+  const firstInstallLine = ns?.command
+    ? `\n- **Fastest first install — a whole bundle, no key:** \`${ns.command}\`${
+        ns.bundle ? ` installs the \`${ns.bundle}\` starter bundle` : ''
+      }. Swap the slug for any public bundle from \`GET ${SITE}/api/bundles/discover\`. The enroller prints this same line when it finishes.`
+    : '';
+
   return `## Cold start — you have no key yet (enroll → search → install)
 You are an agent with no credentials and no prior knowledge of this service. This section is the whole path, in three calls. Nothing below needs a human.
 
@@ -245,7 +261,7 @@ ${issuedLine}${grantLine}${constraintLine}${errorLine}
 - A row with \`deployable: false\` / \`install_path: "deep_link"\` is a pointer, not a package: we cannot hand you its body (it is not redistributable or has no fetchable content). Go to its \`origin_url\`. Do not treat it as an install failure.
 
 ### Step 3 — Install: fetch the skill body
-Which route depends on which identifier you hold. The MCP tool \`loopskill_install\` (parameter named \`slug\`) accepts BOTH identifier kinds — curated slug and federated \`install_ref\` verbatim.
+Which route depends on which identifier you hold. The MCP tool \`loopskill_install\` (parameter named \`slug\`) accepts BOTH identifier kinds — curated slug and federated \`install_ref\` verbatim.${firstInstallLine}
 - Curated catalog skill (plain \`slug\` from \`/api/skills/search\` or the catalog pages): \`GET ${SITE}/api/skills/install?slug=<slug>\` — public, no key for public skills. Returns a signed tarball envelope \`{slug, version, tarball_url, checksum_sha256, size_bytes, expires_at, manifest}\`; download \`tarball_url\` and verify the sha256 of the downloaded bytes against \`checksum_sha256\` before unpacking. A locked/private skill answers \`401\`/\`403\` — that means the skill, not you, is gated; pick a free-tier \`slug\` (the funnel's Step-2 rows carry \`tier\`).
 - Federated skill (a source-qualified \`install_ref\` from metasearch): MCP \`loopskill_install\` (pass the \`install_ref\` as its \`slug\` param) or, without a key, \`GET ${SITE}/api/skills/metasearch/install?install_ref=<install_ref>\` — public, no key. Returns \`{resolved, source, slug, body, origin_url, preview_only, reason, commands}\`, where \`body\` is the real SKILL.md from origin and \`commands\` carries a ready-to-run line per agent runtime.
 - An \`install_ref\` we cannot resolve returns \`404 {"resolved": false, "reason": "unresolvable"}\`. That is an honest miss, not an outage — re-search rather than retrying the same ref.
