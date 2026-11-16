@@ -24,14 +24,17 @@
  *   3. THE DEMO IS LABELLED — the matrix's fleet state is simulated. An
  *      unlabelled simulation of a product surface is a capability claim.
  *
- * Source tests run on a fresh clone; dist tests self-skip without a build
- * (same convention as bootcamp-fallback-rot-guard.test.ts), so they only
- * carry meaning in CI's post-build step.
+ * Source tests run on a fresh clone. The dist tests self-skip WITHOUT a build
+ * (same convention as bootcamp-fallback-rot-guard.test.ts) and that is legal
+ * ONLY on a dev box: CI runs this file a second time AFTER `npm run build`
+ * with REQUIRE_ONRAMP_BUILT=1, where a missing dist is a hard failure instead
+ * of a silent return. See section 5 for the full self-skip policy — a dist
+ * guard that can never run enforces nothing (kanban t_44dc1600).
  */
 
 import { describe, it, expect } from 'vitest';
 import { readFileSync, existsSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { relative, resolve } from 'node:path';
 
 const ROOT = resolve(__dirname, '..');
 const INDEX = resolve(ROOT, 'src/pages/index.astro');
@@ -299,8 +302,34 @@ describe('feature-matrix coverage — the highest-value capabilities are ON the 
 });
 
 // ───────────────────────────────────────────────────────────────────────────
-// 5. Built output (self-skips without dist/)
+// 5. Built output — SELF-SKIP POLICY (kanban t_44dc1600, 2026-11-16)
+//
+// These cases read dist/index.html. Without a build they used to hit
+// `if (!built) return`, which is exactly what made them rot: CI's ONLY run of
+// this file was the PRE-build `npm test` step, where dist never exists, so all
+// six cases reported a green that executed ZERO assertions — while the matrix
+// assertions were, at that same moment, red on any machine that had actually
+// built the site. A guard that can never run enforces nothing.
+//
+// The environment now declares which world it is in:
+//   * REQUIRE_ONRAMP_BUILT=1  — set by CI's POST-build step. There, a missing
+//     dist is a hard failure, never a silent return. This is what makes the
+//     block non-decorative.
+//   * REQUIRE_ONRAMP_MATRIX=1 — set by CI on the unattended rebuilds
+//     (schedule / workflow_dispatch). Prod dist is built WITH catalog access,
+//     so a build that ships the honest omission there means the homepage's
+//     flagship section silently stopped shipping; when no human's PR is
+//     hostage to it, red is the right answer. On push/PR runs the omission
+//     stays the DESIGNED fail-closed branch (index.astro fails closed unless 5
+//     real slugs+versions resolve, so a transient catalog 429 must not block an
+//     unrelated portal deploy): those cases skip and the run emits a
+//     ::warning:: naming the degradation instead of hiding it.
+//   * Neither set (fresh clone, dev box whose catalog fetch 429s) — the cases
+//     may self-skip, and that is the only place they may.
 // ───────────────────────────────────────────────────────────────────────────
+const REQUIRE_BUILT = process.env.REQUIRE_ONRAMP_BUILT === '1';
+const REQUIRE_MATRIX = process.env.REQUIRE_ONRAMP_MATRIX === '1';
+
 describe('ON-RAMP — built output', () => {
   const built = existsSync(DIST_INDEX);
   const html = built ? readFileSync(DIST_INDEX, 'utf-8') : '';
@@ -314,8 +343,37 @@ describe('ON-RAMP — built output', () => {
   const matrixRendered = html.includes('data-component="fleet-drift-matrix"');
   const matrixOmitted = html.includes('could not be built against the live catalog');
 
+  /** true = run this case. false = there is no build to test and nothing demanded one. */
+  function canRun(): boolean {
+    if (built) return true;
+    if (REQUIRE_BUILT) {
+      throw new Error(
+        `REQUIRE_ONRAMP_BUILT=1 but ${relative(ROOT, DIST_INDEX)} is absent — this run ` +
+          `must happen AFTER \`npm run build\` (.github/workflows/ci.yml, "ON-RAMP ` +
+          `built-output gate"). A dist guard that self-skips enforces nothing ` +
+          `(kanban t_44dc1600).`,
+      );
+    }
+    return false;
+  }
+
+  /** true = the matrix branch rendered, so the three content cases have teeth. */
+  function matrixCaseRuns(): boolean {
+    if (matrixRendered) return true;
+    if (REQUIRE_MATRIX) {
+      throw new Error(
+        `REQUIRE_ONRAMP_MATRIX=1 but dist/index.html renders the honest omission ` +
+          `("could not be built against the live catalog") instead of the drift matrix ` +
+          `— the homepage's catalog-backed flagship section silently stopped shipping. ` +
+          `Check the build-time /api/skills/search fetch (429? catalog down?): ` +
+          `index.astro fails closed unless 5 real slugs with real versions resolve.`,
+      );
+    }
+    return false;
+  }
+
   it('ships the rail with all four stations rendered into static HTML', () => {
-    if (!built) return;
+    if (!canRun()) return;
     expect(html).toContain('data-component="journey-rail"');
     for (const id of STATIONS) {
       expect(html, `station ${id} missing from dist`).toContain(`id="station-${id}"`);
@@ -323,17 +381,41 @@ describe('ON-RAMP — built output', () => {
     }
   });
 
-  it('ships EITHER the drift matrix OR the honest omission — never invented skills', () => {
-    if (!built) return;
-    // The disjunction is the real invariant: whichever branch rendered, the
-    // homepage must say so — silence in BOTH branches is how fabricated
-    // catalog data sneaks back in (WIS-737 class). This is what keeps the
-    // conditional cases below from being vacuous greens.
-    expect(matrixRendered || matrixOmitted).toBe(true);
+  it('ships EITHER the drift matrix OR the honest omission — never both, never silence', () => {
+    if (!canRun()) return;
+    // The disjunction is the real invariant, and it is UNCONDITIONAL whenever a
+    // dist exists: whichever branch rendered, the homepage must say so. Silence
+    // in both branches is how fabricated catalog data sneaks back in (WIS-737
+    // class), and it is what would let the three conditional cases below rot
+    // into vacuous greens.
+    expect(
+      matrixRendered || matrixOmitted,
+      'dist/index.html renders NEITHER the drift matrix NOR the "could not be built ' +
+        'against the live catalog" sentence — catalog-backed content vanished silently ' +
+        'instead of failing closed and saying why',
+    ).toBe(true);
+    // Both at once is its own lie: a page that shows the matrix while telling the
+    // visitor it could not be built against the live catalog.
+    if (matrixRendered) {
+      expect(
+        matrixOmitted,
+        'dist/index.html renders BOTH the drift matrix and the "could not be built" ' +
+          'sentence — two contradictory claims about the same section',
+      ).toBe(false);
+    }
+    if (matrixOmitted && !REQUIRE_MATRIX) {
+      // The designed fail-closed branch, deliberately non-blocking on push/PR
+      // (see the policy header) — but never silent: this renders as a GitHub
+      // Actions warning annotation on the run.
+      console.warn(
+        '::warning:: ON-RAMP drift matrix omitted in this build (build-time catalog ' +
+          'fetch failed closed) — the 3 matrix content cases did not execute.',
+      );
+    }
   });
 
   it('ships a full matrix grid — every cell present before any JS runs', () => {
-    if (!built || matrixOmitted) return;
+    if (!canRun() || !matrixCaseRuns()) return;
     expect(html).toContain('data-component="fleet-drift-matrix"');
     const cells = html.match(/data-dm-cell/g) || [];
     // 5 agents × 5 skills. (The source attribute name also appears once in the
@@ -344,7 +426,7 @@ describe('ON-RAMP — built output', () => {
   });
 
   it('every matrix column links to a skill page the build actually emitted', () => {
-    if (!built || matrixOmitted) return;
+    if (!canRun() || !matrixCaseRuns()) return;
     const cols = [...html.matchAll(/href="\/skills\/([a-z0-9-]+)"\s+class="dm-col-link"/g)].map(
       (m) => m[1],
     );
@@ -358,13 +440,13 @@ describe('ON-RAMP — built output', () => {
   });
 
   it('ships the DEMO label with the simulated matrix', () => {
-    if (!built || matrixOmitted) return;
+    if (!canRun() || !matrixCaseRuns()) return;
     expect(html).toContain('DEMO');
     expect(html).toMatch(/simulated/i);
   });
 
   it('renders live numbers, not the build-time fallback floor', () => {
-    if (!built) return;
+    if (!canRun()) return;
     // 80,000+ is the last-verified honest FLOOR used only when the federation
     // fetch fails. Seeing it in a shipped build means the build ran degraded.
     expect(html).not.toContain('80,000+');
