@@ -144,13 +144,63 @@ Canonical architecture doc: `~/obsidian-vault/shared-knowledge/recipes/portal-ar
 the step between "tests pass" and `git commit`. Tests prove the code does what
 you told it to; this catches what you didn't think to tell it.
 
-`ocr` is Alibaba's open-source hybrid reviewer: a deterministic pipeline
-(file selection, rule resolution, line mapping) with an LLM agent on top. It
-reports **line-accurate** findings with `severity` and `category`, and it is
-tuned for precision over recall — it stays silent rather than guessing, so a
-finding is worth reading.
+`ocr` is Alibaba's open-source hybrid reviewer (Apache-2.0): a deterministic
+pipeline (file selection, rule resolution, line mapping) with an LLM agent on
+top. It reports **line-accurate** findings with `severity` and `category`, and
+it is tuned for precision over recall — it stays silent rather than guessing, so
+a finding is worth reading.
 
-Binary: `~/bin/ocr` (v1.12.0, Apache-2.0). `ocr --version` to confirm.
+### Run the gate, don't retype it
+
+```bash
+scripts/ocr-gate.sh                 # workspace diff
+scripts/ocr-gate.sh --from main     # branch against main
+scripts/ocr-gate.sh -c <sha>        # one commit
+```
+
+The script resolves the binary, runs `ocr delegate preview` +
+`ocr delegate rule`, and hands you the reviewable file list with its resolved
+rule set. **Read its exit code — that exit code is the whole point of the script:**
+
+| exit | meaning | commit allowed? |
+|---|---|---|
+| `0` | review material produced, or genuinely no diff | yes — after you do the review |
+| `2` | binary missing / not installed | **no** — install it, or use the declared degrade path (rule 3) |
+| `3` | `ocr` errored, or produced no usable material for a real diff | **no** — a failed invocation is not a skipped review |
+
+Before this script existed, "gate unrunnable" and "nothing to review" were
+indistinguishable, so an agent could read a missing binary as permission to
+commit unreviewed. `2` and `3` must never be read as "nothing to review".
+
+### Where the binary actually lives
+
+Verified 2026-11-16 on the fleet hosts; re-verify with `ls -l ~/bin/ocr` and
+`ocr --version` before trusting this table — it rots.
+
+| host | binary | real git clone of this repo | bare `ocr` on PATH |
+|---|---|---|---|
+| **wisechef-agents** | `~/bin/ocr` v1.13.10 | `~/repos/loopskill-portal-git` | yes |
+| **wisechef-hq** | `~/bin/ocr` v1.13.10 | none — `~/loopskill-portal` is a deploy dir with no `.git` | **no** — call `~/bin/ocr` explicitly |
+| CI runner | not installed | `_work/loopskill-portal/…` | n/a — CI has its own gates |
+
+Commits happen on **wisechef-agents**. hq carries a binary so the gate is
+runnable there too, but there is no working clone to commit from.
+
+Install (pinned + checksum-verified — never execute an unverified download):
+
+```bash
+VER=v1.13.10
+BASE=https://github.com/alibaba/open-code-review/releases/download/$VER
+curl -fsSLO $BASE/sha256sum.txt
+curl -fsSLO $BASE/opencodereview-linux-amd64   # pick your platform asset
+sha256sum -c sha256sum.txt --ignore-missing    # must print "...: OK" before running
+install -m 0755 opencodereview-linux-amd64 ~/bin/ocr
+```
+
+or `npm install -g @alibaba-group/open-code-review`. The pinned linux-amd64
+v1.13.10 asset is
+`sha256 8a0cbf6dfaa1d8681ad3d854971623e34b3f51c4585d2c4ae352f1ff5eee5cb8`.
+`ocr --version` confirms; `OCR_NO_UPDATE=1` suppresses the background update check.
 
 ### Default: delegate mode (no LLM endpoint, no cost, always available)
 
@@ -182,27 +232,58 @@ piping through `head`/`tail` silently drops earlier findings.
 
 ### Provider state (verify before trusting, do not assume)
 
-Configured provider lives in `~/.config/opencodereview/`. `ocr llm test` is the
-one-second truth check — run it before blaming the tool.
+Config lives in **`~/.opencodereview/config.json`** — *not*
+`~/.config/opencodereview/`. The env trio `OCR_LLM_URL` / `OCR_LLM_TOKEN` /
+`OCR_LLM_MODEL` (or `ANTHROPIC_BASE_URL` / `ANTHROPIC_AUTH_TOKEN` /
+`ANTHROPIC_MODEL`) satisfies it too.
 
-| lane | status |
-|---|---|
-| `qwen-local` (`http://100.106.27.136:8000/v1`, qwen3.8-27b-heretic) | free + unlimited, **slow** on large diffs — current default |
-| `z-ai-coding` (glm-5.1) | weekly cap exhausted, resets 2026-09-15 10:00 |
-| `openrouter` / `openai` | credit exhausted (HTTP 402 / `credit_balance_exhausted`) |
+Quota and provider availability change weekly, so there is no table here to go
+stale — `ocr llm test` is the one-second truth check and it is the only
+acceptable answer to "is the full lane up":
 
-A `402`/`429` from `ocr review` is a **billing** fact, not a broken tool — fall
-back to `ocr delegate`, never skip the review.
+```bash
+~/bin/ocr llm test
+```
+
+`no valid LLM endpoint configured` is a *configuration* fact, not a broken tool,
+and the delegate lane above still works. One lane worth trying (it answered
+`/v1/models` with `qwen3.8-27b-heretic` on 2026-11-16; free, slow on large
+diffs):
+
+```bash
+OCR_LLM_URL=http://100.106.27.136:8000/v1 \
+OCR_LLM_MODEL=qwen3.8-27b-heretic OCR_LLM_TOKEN=unused ~/bin/ocr llm test
+```
+
+A `402`/`429` is a **billing** fact, not a broken tool — fall back to
+`ocr delegate`, never skip the review.
+
+### Docs-only diffs are not empty diffs
+
+The deterministic filter drops non-code files as `unsupported_ext`, so a
+Markdown-only change reports `reviewable_count: 0` and is byte-for-byte as
+convincing as an empty diff. It is not empty. `ocr delegate rule <path>` resolves
+rules for any path you name explicitly, and `scripts/ocr-gate.sh` does exactly
+that when the filter swallows every changed file — so never conclude that a docs
+diff needs no review.
 
 ### Rules
 
 1. **A finding at `critical` or `high` blocks the commit.** Fix it or write down
    why it is a false positive — in the commit body, not in your head.
 2. **`low` severity is advisory.** Discard nitpicks; do not burn a cycle on style.
-3. **Never let a failed `ocr` invocation become a skipped review.** The delegate
-   path has no dependency that can fail. If `ocr review` errors, degrade to
-   `ocr delegate` — do not commit unreviewed.
-4. **This does not replace CI, tests, or human review.** It is the cheapest gate
+3. **Never let a failed `ocr` invocation become a skipped review.** A missing
+   binary, an exec failure, empty output, and "every file was filtered out" are
+   all *failed invocations* — none of them is an empty diff. The delegate path
+   has no dependency that can fail once installed, so install it. If you
+   genuinely cannot, review the diff yourself to the delegate standard —
+   adversarial self-review plus at least one negative control that goes red
+   against the pre-change code — and **declare it in the commit body**:
+   `ocr-review: degraded (binary absent); adversarial self-review + N controls`.
+   An undeclared skip is precisely the drift this gate exists to catch.
+4. **Stamp reviewed commits** so the gate is auditable after the fact:
+   `ocr-review: delegate (N file(s), mode=workspace)`.
+5. **This does not replace CI, tests, or human review.** It is the cheapest gate
    in the chain and it runs first, before the expensive ones have to.
 
 ---
