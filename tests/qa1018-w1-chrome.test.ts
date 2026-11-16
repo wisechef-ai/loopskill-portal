@@ -197,7 +197,7 @@ describe('C14 — Terms page + who runs this', () => {
     expect(TERMS).toContain("const lastUpdated = '2026-10-18';");
     expect(TERMS).toContain('Mozilla Public License 2.0 (MPL-2.0)');
     expect(TERMS).toMatch(/as-is, without warranty/);
-    expect(TERMS).toContain('hello@loopskill.io');
+    expect(TERMS).toContain('hello@wisechef.ai');
     expect(TERMS).toMatch(/Do not publish malware/);
     expect(TERMS).toMatch(/Cancel anytime/);
   });
@@ -215,7 +215,7 @@ describe('C14 — Terms page + who runs this', () => {
     expect(FOOTER).toContain('href="/privacy"');
     expect(FOOTER).toContain('Who runs this');
     expect(FOOTER).toMatch(/Built by <a href="https:\/\/wisechef\.ai"[^>]*>WiseChef<\/a>, Kraków, Poland\./);
-    expect(FOOTER).toContain('mailto:hello@loopskill.io');
+    expect(FOOTER).toContain('mailto:hello@wisechef.ai');
     expect(FOOTER).not.toContain('hi@wisechef.ai');
   });
   it('pricing links Terms + Privacy', () => {

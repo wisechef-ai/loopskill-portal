@@ -1,0 +1,122 @@
+// Proves the contact route is real, not asserted.
+//
+// Origin (kanban t_86bfeed5, 2026-11-16): the footer advertised
+// hello@loopskill.io and a code comment called it "(MX verified)". The domain
+// never had an MX record, so every customer message to it bounced — silently,
+// for months, because nobody had ever sent one. DNS was the only witness and
+// nobody had asked it. These tests ask it, in CI, forever.
+//
+// The address is also proven end-to-end outside CI: a real message sent to
+// hello@wisechef.ai is stored by wisechef-email-inbound with a readable body
+// (POST /api/inbound -> data/received.jsonl, verified 2026-11-16).
+import { describe, it, expect, vi } from 'vitest';
+import { readFileSync, readdirSync, statSync } from 'node:fs';
+import { join } from 'node:path';
+
+// node:dns is stubbed so the decision table is tested deterministically, with
+// no network and no dependence on any domain's live delegation.
+const { scanMailRoutes, advertisedMailAddresses, defaultResolveMx } = await import(
+  '../scripts/audit-claims.mjs'
+);
+
+const resolveMx = vi.fn();
+
+const OK_MX = [{ exchange: 'inbound-smtp.us-east-1.amazonaws.com', priority: 0 }];
+const noMx = () => Object.assign(new Error('no data'), { code: 'ENODATA' });
+const nxDomain = () => Object.assign(new Error('no such name'), { code: 'ENOTFOUND' });
+const resolverDown = () => Object.assign(new Error('refused'), { code: 'ECONNREFUSED' });
+
+describe('advertised mail address extraction', () => {
+  it('reads addresses out of href markup and bare mailto:', () => {
+    const html = '<a href="mailto:hello@wisechef.ai?subject=X">x</a> ping mailto:ops@example.org.';
+    expect(advertisedMailAddresses(html)).toEqual(['hello@wisechef.ai', 'ops@example.org']);
+  });
+  it('percent-decodes addresses', () => {
+    expect(advertisedMailAddresses('mailto:hello%40wisechef.ai')).toEqual(['hello@wisechef.ai']);
+  });
+});
+
+describe('the MX gate actually discriminates', () => {
+  it('passes a domain that accepts mail', async () => {
+    resolveMx.mockReset().mockResolvedValue(OK_MX);
+    expect(await scanMailRoutes('<a href="mailto:hello@wisechef.ai">x</a>', 'a.html', { resolveMx, cache: new Map() })).toEqual([]);
+    expect(resolveMx).toHaveBeenCalledWith('wisechef.ai');
+  });
+  it('FAILS a domain with no MX record — the loopskill.io defect', async () => {
+    resolveMx.mockReset().mockRejectedValue(noMx());
+    const v = await scanMailRoutes('<a href="mailto:hello@loopskill.io">x</a>', 'a.html', { resolveMx, cache: new Map() });
+    expect(v).toHaveLength(1);
+    expect(v[0].rule.id).toBe('contact-mail-no-mx');
+    expect(v[0].text).toContain('no MX for loopskill.io');
+  });
+  it('FAILS a domain that does not exist', async () => {
+    resolveMx.mockReset().mockRejectedValue(nxDomain());
+    const v = await scanMailRoutes('mailto:hi@nope-does-not-exist.example', 'a.html', { resolveMx, cache: new Map() });
+    expect(v[0].rule.id).toBe('contact-mail-no-mx');
+  });
+  it('FAILS on an empty MX answer', async () => {
+    resolveMx.mockReset().mockResolvedValue([]);
+    const v = await scanMailRoutes('mailto:x@zeromx.example', 'a.html', { resolveMx, cache: new Map() });
+    expect(v[0].rule.id).toBe('contact-mail-no-mx');
+  });
+  it('refuses to report OK when the resolver is unreachable', async () => {
+    resolveMx.mockReset().mockRejectedValue(resolverDown());
+    const v = await scanMailRoutes('mailto:hello@wisechef.ai', 'a.html', { resolveMx, cache: new Map() });
+    expect(v).toHaveLength(1);
+    expect(v[0].rule.id).toBe('contact-mail-unverifiable');
+    // The operator must be told WHICH domain and WHY it could not be verified,
+    // otherwise the build fails with nothing actionable in it.
+    expect(v[0].text).toContain('wisechef.ai');
+    expect(v[0].text).toContain('ECONNREFUSED');
+  });
+  it('caches per domain so a 500-page build does not do 500 lookups', async () => {
+    resolveMx.mockReset().mockResolvedValue(OK_MX);
+    const tag = Date.now();
+    const page = `<a href="mailto:a@cache${tag}.example">a</a><a href="mailto:b@cache${tag}.example">b</a>`;
+    // ONE cache shared by both pages — that is the behaviour under test.
+    const sharedCache = new Map();
+    await scanMailRoutes(page, 'a.html', { resolveMx, cache: sharedCache });
+    await scanMailRoutes(page, 'b.html', { resolveMx, cache: sharedCache });
+    expect(resolveMx).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('the shipped source advertises only reachable addresses', () => {
+  const files = [];
+  (function walk(dir) {
+    for (const e of readdirSync(dir, { withFileTypes: true })) {
+      const full = join(dir, e.name);
+      if (e.isDirectory()) walk(full);
+      else if (e.isFile()) files.push(full);
+    }
+  })('src');
+
+  it('contains no dead @loopskill.io mail address anywhere', () => {
+    const offenders = files.filter((f) =>
+      /[A-Za-z0-9._%+-]+@loopskill\.io/.test(readFileSync(f, 'utf8')) &&
+      // a historical reference in a comment is allowed; an advertised route is not
+      !/never had an MX|old hello@loopskill\.io/.test(readFileSync(f, 'utf8'))
+    );
+    expect(offenders).toEqual([]);
+  });
+
+  it('advertises only domains proven to receive mail', () => {
+    const PROVEN = new Set(['wisechef.ai']);
+    const seen = new Set();
+    for (const f of files) {
+      for (const addr of advertisedMailAddresses(readFileSync(f, 'utf8'))) {
+        const at = addr.lastIndexOf('@');
+        if (at > 0) seen.add(addr.slice(at + 1).toLowerCase());
+      }
+    }
+    for (const d of seen) expect(PROVEN.has(d)).toBe(true);
+    expect(seen.size).toBeGreaterThan(0); // a green test over zero addresses proves nothing
+  });
+
+  it('Footer still documents how delivery was proven', () => {
+    const footer = readFileSync('src/components/Footer.astro', 'utf8');
+    expect(footer).toContain('mailto:hello@wisechef.ai');
+    expect(footer).toContain('Delivery is PROVEN');
+    expect(footer).not.toMatch(/unified on hello@loopskill\.io/);
+  });
+});
