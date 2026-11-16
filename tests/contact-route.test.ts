@@ -91,17 +91,28 @@ describe('the shipped source advertises only reachable addresses', () => {
     }
   })('src');
 
-  it('contains no dead @loopskill.io mail address anywhere', () => {
-    const offenders = files.filter((f) =>
-      /[A-Za-z0-9._%+-]+@loopskill\.io/.test(readFileSync(f, 'utf8')) &&
-      // a historical reference in a comment is allowed; an advertised route is not
-      !/never had an MX|old hello@loopskill\.io/.test(readFileSync(f, 'utf8'))
-    );
-    expect(offenders).toEqual([]);
+  it('never asserts a claim it did not verify', () => {
+    // Regression against the exact wording that hid this defect for months:
+    // 'Contact is unified on hello@loopskill.io (MX verified)' — written when the
+    // domain had no MX record and had never received a single message.
+    for (const f of files) {
+      expect(readFileSync(f, 'utf8')).not.toMatch(/\(MX verified\)/);
+    }
   });
 
   it('advertises only domains proven to receive mail', () => {
-    const PROVEN = new Set(['wisechef.ai']);
+  // Every advertised domain, each proven by an actual DELIVERY rather than by a DNS
+  // lookup — the bar the card itself set ("a successful DNS change is not the
+  // acceptance criterion, delivery is"). Adding a domain here without a dated proof
+  // is how the last one slipped through:
+  //   loopskill.io  MX '10 mail.wisechef.ai' -> postfix :25 -> aiosmtpd :8025 ->
+  //                 /opt/mail-inbox; first message ever accepted 2026-11-16T13:22:48Z,
+  //                 row id=9, body intact. Before that: no MX at all, silent bounce.
+  //   wisechef.ai   MX -> Resend inbound -> wisechef-email-inbound :3345, body via
+  //                 GET /emails/receiving/{id}; 65+ real messages since 2026-06-15.
+  // A domain outside this set fails the build even when it HAS an MX, because an MX
+  // only promises that some server answers — not that a human reads the mailbox.
+    const PROVEN = new Set(['loopskill.io', 'wisechef.ai']);
     const seen = new Set();
     for (const f of files) {
       for (const addr of advertisedMailAddresses(readFileSync(f, 'utf8'))) {
@@ -113,10 +124,13 @@ describe('the shipped source advertises only reachable addresses', () => {
     expect(seen.size).toBeGreaterThan(0); // a green test over zero addresses proves nothing
   });
 
-  it('Footer still documents how delivery was proven', () => {
+  it('Footer states real provenance and never repeats the false "(MX verified)" claim', () => {
     const footer = readFileSync('src/components/Footer.astro', 'utf8');
-    expect(footer).toContain('mailto:hello@wisechef.ai');
-    expect(footer).toContain('Delivery is PROVEN');
-    expect(footer).not.toMatch(/unified on hello@loopskill\.io/);
+    // The sentence that let the defect survive review was an unverified "verified".
+    expect(footer).not.toMatch(/\(MX verified\)/);
+    // It must document the route it actually uses, with the dated delivery proof.
+    expect(footer).toContain('mailto:hello@loopskill.io');
+    expect(footer).toMatch(/2026-11-16T13:22:48Z/);
+    expect(footer).toMatch(/\/opt\/mail-inbox/);
   });
 });
