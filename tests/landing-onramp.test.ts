@@ -304,6 +304,15 @@ describe('feature-matrix coverage — the highest-value capabilities are ON the 
 describe('ON-RAMP — built output', () => {
   const built = existsSync(DIST_INDEX);
   const html = built ? readFileSync(DIST_INDEX, 'utf-8') : '';
+  // index.astro FAILS CLOSED: the drift matrix needs 5 real slugs with real
+  // versions from a build-time catalog fetch, and when that fetch cannot
+  // deliver, the matrix is omitted and an honest sentence is rendered instead
+  // ("could not be built against the live catalog"). So a dist built without
+  // catalog access legitimately has NO matrix — asserting it unconditionally
+  // reddens correct builds (kanban t_44dc1600, 2026-11-16: 3 false-red cases;
+  // the live catalog-built site verified to carry the matrix + DEMO chip).
+  const matrixRendered = html.includes('data-component="fleet-drift-matrix"');
+  const matrixOmitted = html.includes('could not be built against the live catalog');
 
   it('ships the rail with all four stations rendered into static HTML', () => {
     if (!built) return;
@@ -314,8 +323,17 @@ describe('ON-RAMP — built output', () => {
     }
   });
 
-  it('ships a full matrix grid — every cell present before any JS runs', () => {
+  it('ships EITHER the drift matrix OR the honest omission — never invented skills', () => {
     if (!built) return;
+    // The disjunction is the real invariant: whichever branch rendered, the
+    // homepage must say so — silence in BOTH branches is how fabricated
+    // catalog data sneaks back in (WIS-737 class). This is what keeps the
+    // conditional cases below from being vacuous greens.
+    expect(matrixRendered || matrixOmitted).toBe(true);
+  });
+
+  it('ships a full matrix grid — every cell present before any JS runs', () => {
+    if (!built || matrixOmitted) return;
     expect(html).toContain('data-component="fleet-drift-matrix"');
     const cells = html.match(/data-dm-cell/g) || [];
     // 5 agents × 5 skills. (The source attribute name also appears once in the
@@ -326,7 +344,7 @@ describe('ON-RAMP — built output', () => {
   });
 
   it('every matrix column links to a skill page the build actually emitted', () => {
-    if (!built) return;
+    if (!built || matrixOmitted) return;
     const cols = [...html.matchAll(/href="\/skills\/([a-z0-9-]+)"\s+class="dm-col-link"/g)].map(
       (m) => m[1],
     );
@@ -340,7 +358,7 @@ describe('ON-RAMP — built output', () => {
   });
 
   it('ships the DEMO label with the simulated matrix', () => {
-    if (!built) return;
+    if (!built || matrixOmitted) return;
     expect(html).toContain('DEMO');
     expect(html).toMatch(/simulated/i);
   });
