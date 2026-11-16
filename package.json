@@ -12,7 +12,8 @@
     "astro": "astro",
     "test": "vitest run",
     "test:watch": "vitest",
-    "audit:mobile": "python3 scripts/audit/assert-no-mobile-overflow.py"
+    "audit:mobile": "python3 scripts/audit/assert-no-mobile-overflow.py",
+    "verify:ocr": "bash scripts/ocr-gate.sh"
   },
   "dependencies": {
     "@astrojs/react": "^5.0.4",
