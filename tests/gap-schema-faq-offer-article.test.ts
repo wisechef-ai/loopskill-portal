@@ -15,6 +15,16 @@
  * type="application/ld+json"> blocks — not the .astro source, not a
  * hand-typed expectation of what the source "should" produce).
  *
+ * CI CONTRACT (kanban t_648b1f3d): because every case here hides behind a
+ * dist/ self-skip, a file that no post-build step runs enforces nothing —
+ * these 15 cases were skipped in every CI run since they were written. CI now
+ * runs this file post-build with REQUIRE_FAQ_SCHEMA_BUILT=1, where a missing
+ * dist/, a missing guarded page, or a build that emitted no blog posts is a
+ * hard failure rather than a silent skip. Pre-build (`npm test`, a fresh
+ * clone) the self-skip stays legitimate. tests/lib/dist-guard.ts is the
+ * contract; tests/dist-guard-coverage.test.ts fails CI if this file is ever
+ * un-wired from the post-build step again.
+ *
  * THE IMPORTANT ASSERTION: anti-drift. Every FAQPage test re-extracts the
  * VISIBLE <summary>/<h3> question text from the SAME rendered HTML and
  * diffs it against the JSON-LD mainEntity[].name array. A schema that says
@@ -25,19 +35,27 @@
 
 import { existsSync, readFileSync, readdirSync } from 'fs';
 import { join } from 'path';
+import { distAssert, distDescribe, requireBuiltCases, ciWarn } from './lib/dist-guard';
+
+/** Set by the post-build CI step; makes a missing build fatal, never skippable. */
+const REQUIRE = 'REQUIRE_FAQ_SCHEMA_BUILT';
 
 const ROOT = join(new URL(import.meta.url).pathname, '../../');
 const DIST = join(ROOT, 'dist');
 
 const built = existsSync(DIST);
-const describeBuilt = built ? describe : describe.skip;
+// Runs when the build exists OR the contract demands it (then each case throws
+// with a named error instead of the whole file self-skipping into decorative).
+const describeBuilt = distDescribe(REQUIRE, DIST);
 if (!built) {
-  // eslint-disable-next-line no-console
-  console.warn('dist/ absent — skipping schema.org gates. Run `npm run build` first.');
+  ciWarn('dist/ absent — skipping schema.org gates (legitimate pre-build). Run `npm run build` first.');
 }
 
 /** All application/ld+json blocks on a rendered page, parsed. */
 function ldJsonBlocks(relPath: string): any[] {
+  // Under the contract a guarded page the build stopped emitting is a red
+  // case with a reason, not an ENOENT stack trace and not a silent skip.
+  distAssert(`built page dist/${relPath} (schema.org source)`, join(DIST, relPath));
   const html = readFileSync(join(DIST, relPath), 'utf-8');
   const out: any[] = [];
   const re = /<script type="application\/ld\+json">([\s\S]*?)<\/script>/g;
@@ -69,6 +87,7 @@ function decodeEntities(s: string): string {
  * docs/referrals). Order-preserving, matches DOM order.
  */
 function visibleSummaryQuestions(relPath: string): string[] {
+  distAssert(`built page dist/${relPath} (visible FAQ source)`, join(DIST, relPath));
   const html = readFileSync(join(DIST, relPath), 'utf-8');
   const out: string[] = [];
   const re = /<summary[^>]*>\s*<span>([\s\S]*?)<\/span>/g;
@@ -81,6 +100,7 @@ function visibleSummaryQuestions(relPath: string): string[] {
 
 /** Visible <h3>question</h3> text (docs/publishing's h3/p FAQ shape). */
 function visibleH3Questions(relPath: string, startMarker: string): string[] {
+  distAssert(`built page dist/${relPath} (visible FAQ source)`, join(DIST, relPath));
   const html = readFileSync(join(DIST, relPath), 'utf-8');
   const startIdx = html.indexOf(startMarker);
   const scope = startIdx >= 0 ? html.slice(startIdx) : html;
@@ -227,13 +247,23 @@ describeBuilt('/docs/publishing — FAQPage JSON-LD, anti-drift (h3 shape)', () 
 
 describeBuilt('blog posts — BlogPosting JSON-LD from real frontmatter', () => {
   const CONTENT_DIR = join(ROOT, 'src/content/blog');
-  const slugs = built
-    ? readdirSync(join(DIST, 'blog'), { withFileTypes: true })
-        .filter((d) => d.isDirectory())
-        .map((d) => d.name)
-    : [];
+  // Collection-safe: a missing dist/blog must not throw while vitest collects
+  // the file. The emptiness is reported by the case below, which THROWS under
+  // REQUIRE_FAQ_SCHEMA_BUILT — otherwise it.each([]) registers no cases and
+  // this whole block silently gates nothing.
+  let slugs: string[] = [];
+  try {
+    if (built) {
+      slugs = readdirSync(join(DIST, 'blog'), { withFileTypes: true })
+        .filter((d: { isDirectory(): boolean }) => d.isDirectory())
+        .map((d: { name: string }) => d.name);
+    }
+  } catch {
+    slugs = [];
+  }
 
   it('found at least one blog post to check', () => {
+    requireBuiltCases(REQUIRE, 'dist/blog/<dir>/ for BlogPosting JSON-LD', slugs);
     expect(slugs.length).toBeGreaterThan(0);
   });
 

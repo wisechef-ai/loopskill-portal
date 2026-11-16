@@ -26,6 +26,7 @@
 import { existsSync, mkdtempSync, mkdirSync, writeFileSync, rmSync, readFileSync } from 'fs';
 import { join, dirname } from 'path';
 import { tmpdir } from 'os';
+import { ciWarn } from './lib/dist-guard';
 
 import {
   normalizeLink,
@@ -402,8 +403,11 @@ describe('audit-claims · defect-routing-unconditional', () => {
 const built = existsSync(DIST);
 const describeBuilt = built ? describe : describe.skip;
 if (!built) {
-  // eslint-disable-next-line no-console
-  console.warn('dist/ absent — skipping the built-surface guards. Run `npm run build` first.');
+  // ciWarn, not console.warn — console.* is suppressed under vitest's
+  // --reporter=json (measured; see the ciWarn doc comment in
+  // tests/lib/dist-guard.ts), so this skip notice silently vanished depending
+  // on the reporter. stderr reaches the log under every reporter.
+  ciWarn('dist/ absent — skipping the built-surface guards (legitimate pre-build). Run `npm run build` first.');
 }
 
 describeBuilt('built surface · every internal link resolves', () => {

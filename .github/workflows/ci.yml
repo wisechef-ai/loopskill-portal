@@ -165,6 +165,66 @@ jobs:
           REQUIRE_ONRAMP_MATRIX: ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && '1' || '' }}
         run: npx vitest run tests/landing-onramp.test.ts
 
+      - name: Built-output gate — /api/pv beacon on blog posts (vitest, dist)
+        # kanban t_648b1f3d. Same rot class as the ON-RAMP gate above, found by
+        # grepping tests/ for the shape after #140 landed. This file parses the
+        # EMITTED HTML of every dist/blog/<slug>/index.html to assert exactly
+        # one navigator.sendBeacon('/api/pv') per post, the full utm_* payload,
+        # and that non-blog pages do NOT fire it — the gate that keeps API #402
+        # (stranger arrival during a 29-day zero-human drought) observable.
+        #
+        # No post-build step ever ran it, and pre-build the whole block sat
+        # behind `existsSync(DIST) ? describe : describe.skip`, so in CI it
+        # reported a healthy file whose 2 cases executed ZERO assertions — and
+        # the `test.each(blogPosts())` over an empty list registered no cases at
+        # all. Measured with an assertion counter, not inferred.
+        #
+        # REQUIRE_PV_BEACON_BUILT=1 turns a missing dist/, an empty blog list,
+        # or a missing scoping page into a red CASE here (never a skip), while
+        # leaving the self-skip intact for `npm test` and fresh clones. Nothing
+        # in this file depends on the catalog, so unlike the on-ramp matrix it
+        # is safe to hard-require on every event — a blog post that silently
+        # stopped counting page views should block the deploy.
+        env:
+          REQUIRE_PV_BEACON_BUILT: '1'
+        run: npx vitest run tests/blog-pv-beacon.test.ts
+
+      - name: Built-output gate — FAQPage / Offer / Article JSON-LD (vitest, dist)
+        # kanban t_648b1f3d. The GEO audit 2026-08-20 found every sampled page
+        # shipping ONLY generic Organization JSON-LD, so this file pins the
+        # FAQPage / AggregateOffer / BlogPosting blocks on /pricing,
+        # /docs/referrals, /cookbook, /docs/publishing and every blog post —
+        # including the anti-drift invariant that each schema question must
+        # match a VISIBLE question on the same rendered page (a schema claiming
+        # what the page does not ask is the claim-drift class audit-claims.mjs
+        # already fights, extended to structured data).
+        #
+        # All 15 cases sat behind `built ? describe : describe.skip` and no
+        # post-build step ran the file: skipped in every CI run since writing,
+        # i.e. the entire GEO schema guarantee was unenforced. It also guarded
+        # the public price ladder ($0 / $9.95, never the invite-only tier) on
+        # the rendered bytes.
+        env:
+          REQUIRE_FAQ_SCHEMA_BUILT: '1'
+        run: npx vitest run tests/gap-schema-faq-offer-article.test.ts
+
+      - name: Built-output gate — issue#277 federated viewer + browse (vitest, dist)
+        # kanban t_648b1f3d. The 27 source-string cases in this file always ran
+        # and looked like a healthy green file; the 12 built-output cases around
+        # them were `it.runIf(viewerBuilt|browseBuilt)`, which SKIPS — so the
+        # jsdom state-machine coverage of /skills/external/view (install-command
+        # XSS guards, colon-vs-double-dash ref splitting, the 404 / network /
+        # 500 / malformed-JSON branches that must never render a blank page)
+        # and the /browse zero-regression-on-old-API-shape case had never
+        # executed in CI.
+        #
+        # REQUIRE_PORTAL277_BUILT=1 opens those gates in this position: the
+        # cases run, and a build that stopped emitting either page fails the
+        # case naming the page instead of disappearing as a skip.
+        env:
+          REQUIRE_PORTAL277_BUILT: '1'
+        run: npx vitest run tests/portal-277-federated.test.ts
+
       - name: Executable-docs gate — run every documented llms.txt / docs/* command
         # bundles_0811 P0. tests/p0-docs-commands-execute.test.ts consumes
         # tests/lib/doc-command-extract.ts (PR #52) and EXECUTES every

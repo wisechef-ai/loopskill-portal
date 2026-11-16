@@ -35,6 +35,7 @@
 import { describe, it, expect } from 'vitest';
 import { readFileSync, existsSync } from 'node:fs';
 import { relative, resolve } from 'node:path';
+import { ciWarn } from './lib/dist-guard';
 
 const ROOT = resolve(__dirname, '..');
 const INDEX = resolve(ROOT, 'src/pages/index.astro');
@@ -407,7 +408,13 @@ describe('ON-RAMP — built output', () => {
       // The designed fail-closed branch, deliberately non-blocking on push/PR
       // (see the policy header) — but never silent: this renders as a GitHub
       // Actions warning annotation on the run.
-      console.warn(
+      //
+      // ciWarn, not console.warn: console.* is dropped entirely under vitest's
+      // --reporter=json (measured — see the ciWarn doc comment in
+      // tests/lib/dist-guard.ts), so an annotation emitted that way vanishes
+      // from any machine-readable run of this file. stderr survives every
+      // reporter, which is what makes the degradation actually visible.
+      ciWarn(
         '::warning:: ON-RAMP drift matrix omitted in this build (build-time catalog ' +
           'fetch failed closed) — the 3 matrix content cases did not execute.',
       );
