@@ -505,6 +505,29 @@ function walk(dir, out = []) {
 const MAILTO_RE = /mailto:\s*([^"'?\s<>#]+)/gi;
 const NO_SUCH_NAME = new Set(['ENODATA', 'ENOTFOUND', 'ENXDOMAIN']);
 
+/**
+ * RFC 7505 null MX. `IN MX 0 .` is the standards-track way for a domain to
+ * declare that it accepts NO mail at all, and it is what a DNS UI writes when
+ * someone "turns mail off" for a subdomain (Cloudflare Email Routing and
+ * Google Workspace both publish it).
+ *
+ * dns.resolveMx() reports it as a NON-EMPTY answer carrying an empty (or '.')
+ * exchange, so the `mx.length === 0` test below never sees it: the gate would
+ * wave through precisely the domain that has published "do not send mail here"
+ * — the exact defect this rule exists to catch. Verified empirically on
+ * 2026-11-16: example.com / example.org / example.net all answer `MX 0 .`, so
+ * this is not a hypothetical shape.
+ *
+ * A response that MIXES null and real records is invalid configuration; treat
+ * any null record as no-mail rather than passing on the strength of the others.
+ * Failing loud on a misconfiguration is the correct side to err on for a
+ * contact route.
+ */
+function isNullMxExchange(rec) {
+  const ex = String((rec && (rec.exchange ?? rec.value)) || '').trim().toLowerCase();
+  return ex === '' || ex === '.';
+}
+
 // Domains deliberately exempted, each with a reason. Empty on purpose: adding a
 // row here is a decision to publish an address we are not proving receives mail.
 export const MAIL_DOMAIN_EXEMPTIONS = new Map();
@@ -520,8 +543,8 @@ async function mxRecords(domain, resolveMx = defaultResolveMx, cache = MX_CACHE)
   if (cache.has(domain)) return cache.get(domain);
   let result;
   try {
-    const answers = await resolveMx(domain);
-    result = { ok: true, mx: answers || [] };
+    const answers = (await resolveMx(domain)) || [];
+    result = { ok: true, mx: answers, nullMx: answers.some(isNullMxExchange) };
   } catch (err) {
     const code = err?.code || 'EUNKNOWN';
     result = NO_SUCH_NAME.has(code)
@@ -577,6 +600,12 @@ export async function scanMailRoutes(text, path, opts = {}) {
       out.push({ rule: MAIL_UNVERIFIABLE_RULE, text: `${addr} (${domain}: ${res.code})`, path });
     } else if (res.mx.length === 0) {
       out.push({ rule: MAIL_NO_MX_RULE, text: `${addr} (no MX for ${domain})`, path });
+    } else if (res.nullMx) {
+      out.push({
+        rule: MAIL_NO_MX_RULE,
+        text: `${addr} (${domain} publishes a RFC 7505 null MX 'MX 0 .' — it accepts no mail)`,
+        path,
+      });
     }
   }
   return out;
