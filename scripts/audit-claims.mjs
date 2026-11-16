@@ -39,6 +39,7 @@
  */
 
 import { readdirSync, readFileSync, existsSync, statSync } from 'node:fs';
+import { promises as dnsPromises } from 'node:dns';
 import { join, relative } from 'node:path';
 
 /**
@@ -485,7 +486,103 @@ function walk(dir, out = []) {
   return out;
 }
 
-function main() {
+
+// ── Contact routes ─────────────────────────────────────────────────────────
+// A published contact address is a promise, not copy. The footer used to read
+// "Contact is unified on hello@loopskill.io (MX verified)" while that domain had
+// NO MX record at all: every message sent to it bounced, silently, for months
+// (kanban t_86bfeed5, 2026-11-16). Nobody had ever sent one, so nobody knew.
+//
+// Prose rules cannot catch this — an address lives in markup, and a sentence
+// asserting "we are reachable" is exactly the kind of claim a reader trusts. So
+// ask the only witness that matters: DNS. Every mailto: rendered onto a public
+// surface must resolve to a domain that actually accepts mail.
+//
+// A definitive "no MX" (ENODATA / ENOTFOUND) is a hard violation. A resolver we
+// cannot reach is NOT a pass — same logic as BUNDLE_LIMITS.unavailable below: a
+// guard that enforces nothing while printing OK is the failure this file exists
+// to prevent, so it aborts the build instead.
+const MAILTO_RE = /mailto:\s*([^"'?\s<>#]+)/gi;
+const NO_SUCH_NAME = new Set(['ENODATA', 'ENOTFOUND', 'ENXDOMAIN']);
+
+// Domains deliberately exempted, each with a reason. Empty on purpose: adding a
+// row here is a decision to publish an address we are not proving receives mail.
+export const MAIL_DOMAIN_EXEMPTIONS = new Map();
+
+const MX_CACHE = new Map();
+
+/** The only DNS call this gate makes. Injectable so tests are deterministic. */
+export async function defaultResolveMx(domain) {
+  return dnsPromises.resolveMx(domain);
+}
+
+async function mxRecords(domain, resolveMx = defaultResolveMx, cache = MX_CACHE) {
+  if (cache.has(domain)) return cache.get(domain);
+  let result;
+  try {
+    const answers = await resolveMx(domain);
+    result = { ok: true, mx: answers || [] };
+  } catch (err) {
+    const code = err?.code || 'EUNKNOWN';
+    result = NO_SUCH_NAME.has(code)
+      ? { ok: true, mx: [] }                     // definitively no MX
+      : { ok: false, code };                     // cannot tell — never a pass
+  }
+  cache.set(domain, result); // caller-owned cache; tests pass their own
+  return result;
+}
+
+export const MAIL_NO_MX_RULE = {
+  id: 'contact-mail-no-mx',
+  claim: 'an advertised contact address must be able to receive mail',
+  why: 'the mailto: domain has no MX record, so mail to it bounces at the sender',
+};
+
+export const MAIL_UNVERIFIABLE_RULE = {
+  id: 'contact-mail-unverifiable',
+  claim: 'an advertised contact address must be able to receive mail',
+  why: 'the MX lookup could not be completed; a guard that cannot run must not report OK',
+};
+
+/** Pull every advertised mail address out of RAW markup (before renderedText strips it). */
+export function advertisedMailAddresses(text) {
+  const found = [];
+  for (const m of text.matchAll(MAILTO_RE)) {
+    let addr;
+    try { addr = decodeURIComponent(m[1].trim()); } catch { addr = m[1].trim(); }
+    // A bare mailto: in prose ends at the sentence period, not at the TLD.
+    addr = addr.replace(/[.,;:]+$/, '');
+    if (addr) found.push(addr);
+  }
+  return found;
+}
+
+/** Verify advertised mail addresses. Returns violations in { rule, text, path } shape. */
+/** @param {(domain: string) => Promise<Array<{exchange: string}>>} [opts.resolveMx] test seam */
+export async function scanMailRoutes(text, path, opts = {}) {
+  const resolveMx = opts.resolveMx || defaultResolveMx;
+  // Per-call cache so one test's answer cannot make another's go vacuously green.
+  const cache = opts.cache || MX_CACHE;
+  const out = [];
+  for (const addr of advertisedMailAddresses(text)) {
+    const at = addr.lastIndexOf('@');
+    if (at <= 0 || at === addr.length - 1) {
+      out.push({ rule: MAIL_NO_MX_RULE, text: `mailto:${addr}`, path });
+      continue;
+    }
+    const domain = addr.slice(at + 1).toLowerCase().replace(/\.$/, '');
+    if (MAIL_DOMAIN_EXEMPTIONS.has(domain)) continue;
+    const res = await mxRecords(domain, resolveMx, cache);
+    if (!res.ok) {
+      out.push({ rule: MAIL_UNVERIFIABLE_RULE, text: `${addr} (${domain}: ${res.code})`, path });
+    } else if (res.mx.length === 0) {
+      out.push({ rule: MAIL_NO_MX_RULE, text: `${addr} (no MX for ${domain})`, path });
+    }
+  }
+  return out;
+}
+
+async function main() {
   const distDir = process.argv[2] || 'dist';
   if (!existsSync(distDir) || !statSync(distDir).isDirectory()) {
     console.error(`audit-claims: ${distDir}/ does not exist — run the build first.`);
@@ -521,6 +618,8 @@ function main() {
     const raw = readFileSync(file, 'utf8');
     const text = rel.endsWith('.html') ? renderedText(raw) : raw;
     violations.push(...scanText(text, rel));
+    // Mail routes live in markup, so this pass reads RAW, not renderedText(raw).
+    violations.push(...(await scanMailRoutes(raw, rel)));
   }
 
   if (violations.length === 0) {
@@ -551,5 +650,10 @@ function main() {
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {
-  process.exit(main());
+  main()
+    .then((code) => process.exit(code))
+    .catch((err) => {
+      console.error(`audit-claims: crashed — ${err?.message || err}`);
+      process.exit(1); // a crashed gate never reports OK
+    });
 }
