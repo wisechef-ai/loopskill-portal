@@ -15,6 +15,15 @@
  *     mesh0408-t3b-mesh-view.test.ts pattern) for the viewer page's state
  *     machine, so a broken render path fails here even if the source looks
  *     right.
+ *
+ * CI CONTRACT (kanban t_648b1f3d): the 12 `it.runIf(*Built)` cases below are
+ * the built-output half of this file, and no post-build CI step ever ran it —
+ * `runIf(false)` SKIPS, so those 12 cases have executed zero assertions in
+ * every CI run since issue#277 shipped, while looking like a healthy green
+ * file (the 27 source-string cases around them really do run). CI now runs
+ * this file post-build with REQUIRE_PORTAL277_BUILT=1, which un-skips them and
+ * turns a missing built page into a red case naming the page. Pre-build the
+ * self-skip stays legitimate. See tests/lib/dist-guard.ts.
  */
 
 import { describe, it, expect } from 'vitest';
@@ -22,6 +31,10 @@ import { readFileSync, existsSync, readdirSync, statSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { JSDOM } from 'jsdom';
 import { FALLBACK_SOURCE_SLUGS } from '../src/lib/federation';
+import { distAssert, requiresBuilt } from './lib/dist-guard';
+
+/** Set by the post-build CI step; makes a missing built page fatal, never skippable. */
+const REQUIRE = 'REQUIRE_PORTAL277_BUILT';
 
 const ROOT = resolve(__dirname, '..');
 const VIEWER_SRC_PATH = resolve(ROOT, 'src/pages/skills/external/view.astro');
@@ -38,6 +51,17 @@ const BROWSE_DIST = resolve(DIST, 'browse/index.html');
 const built = existsSync(DIST);
 const viewerBuilt = existsSync(VIEWER_DIST);
 const browseBuilt = existsSync(BROWSE_DIST);
+
+// `runIf(false)` SKIPS, and a skipped built-output case enforces exactly as
+// much as a deleted one. Two things open these gates: the post-build contract,
+// and the mere presence of a build. That second one matters — if `dist/` was
+// produced but this specific page is missing, that is a broken build, not a
+// pre-build dev box, and the case must land as a red naming the page
+// (distAssert below) instead of vanishing as a skip. With no dist at all
+// (`npm test`, a fresh clone) the self-skip stays legitimate.
+const REQUIRED = requiresBuilt(REQUIRE);
+const runViewer = it.runIf(viewerBuilt || REQUIRED || built);
+const runBrowse = it.runIf(browseBuilt || REQUIRED || built);
 
 // ──────────────────────────────────────────────────────────────────────
 // FIX 1 — federation.ts fallback source list
@@ -179,8 +203,26 @@ describe('issue#277 FIX 2 — /skills/external/view renders both install branche
     quality: 'community · as-is',
   };
 
-  function stubFetch(mode: 'fetch_origin' | 'deep_link' | '404' | '500' | 'network' | 'malformed-json') {
-    return (_url: string) => {
+  function stubFetch(
+    mode: 'fetch_origin' | 'deep_link' | '404' | '500' | 'network' | 'malformed-json',
+    requested?: string[],
+  ) {
+    return (url: string) => {
+      if (requested) {
+        // The install endpoint is built from parseRef()'s source/slug, so the
+        // requested URL is the ONLY place the ref split is observable: the
+        // payloads below hand the page its own `source`, which means
+        // `d.source || ref.source` always takes the stub's value and a
+        // mis-split would otherwise render identically. Recording the URL is
+        // what turns "splits on the FIRST colon" from a caption into a check.
+        let path = String(url);
+        try {
+          path = new URL(path, 'https://app.loopskill.io').pathname;
+        } catch {
+          /* keep raw */
+        }
+        requested.push(path);
+      }
       if (mode === 'network') return Promise.reject(new Error('network down'));
       if (mode === '404') return Promise.resolve({ ok: false, status: 404, json: () => Promise.resolve({}) });
       if (mode === '500') return Promise.resolve({ ok: false, status: 500, json: () => Promise.resolve({}) });
@@ -200,13 +242,15 @@ describe('issue#277 FIX 2 — /skills/external/view renders both install branche
     ref: string | null,
     mode: 'fetch_origin' | 'deep_link' | '404' | '500' | 'network' | 'malformed-json',
   ) {
+    distAssert('built page dist/skills/external/view/index.html', VIEWER_DIST);
     const html = readFileSync(VIEWER_DIST, 'utf-8');
+    const requested: string[] = [];
     const url = ref
       ? `https://app.loopskill.io/skills/external/view?ref=${encodeURIComponent(ref)}`
       : 'https://app.loopskill.io/skills/external/view';
     const dom = new JSDOM(html, { url, runScripts: 'outside-only', pretendToBeVisual: true });
     const win = dom.window as any;
-    win.fetch = stubFetch(mode);
+    win.fetch = stubFetch(mode, requested);
     win.navigator.clipboard = { writeText: async () => {} };
 
     const JS_TYPES = new Set(['', 'text/javascript', 'application/javascript', 'module']);
@@ -233,15 +277,15 @@ describe('issue#277 FIX 2 — /skills/external/view renders both install branche
     while (Date.now() < deadline && !settled()) {
       await new Promise((r) => setTimeout(r, 5));
     }
-    return { dom, errors };
+    return { dom, errors, requested };
   }
 
-  it.runIf(viewerBuilt)('ships at least one inline script that executes without throwing', async () => {
+  runViewer('ships at least one inline script that executes without throwing', async () => {
     const { errors } = await renderViewer('github-marketing:github-marketing--co-marketing', 'fetch_origin');
     expect(errors, `inline script threw: ${errors.join(' | ')}`).toEqual([]);
   });
 
-  it.runIf(viewerBuilt)('renders the fetch_origin branch with a real install command, hides deep-link', async () => {
+  runViewer('renders the fetch_origin branch with a real install command, hides deep-link', async () => {
     const { dom } = await renderViewer('github-marketing:github-marketing--co-marketing', 'fetch_origin');
     const doc = dom.window.document;
     expect(doc.getElementById('install-fetch')!.hasAttribute('hidden')).toBe(false);
@@ -249,7 +293,7 @@ describe('issue#277 FIX 2 — /skills/external/view renders both install branche
     expect(doc.getElementById('install-command')!.textContent).toContain('curl -fsSL');
   });
 
-  it.runIf(viewerBuilt)('renders the deep_link branch with a real "View at origin" href, hides fetch_origin', async () => {
+  runViewer('renders the deep_link branch with a real "View at origin" href, hides fetch_origin', async () => {
     const { dom } = await renderViewer('hermes-hub:marketing-os', 'deep_link');
     const doc = dom.window.document;
     expect(doc.getElementById('install-deeplink')!.hasAttribute('hidden')).toBe(false);
@@ -257,45 +301,55 @@ describe('issue#277 FIX 2 — /skills/external/view renders both install branche
     expect(doc.getElementById('deeplink-btn')!.getAttribute('href')).toBe(DEEP_LINK_PAYLOAD.origin_url);
   });
 
-  it.runIf(viewerBuilt)('splits the colon-form ref on the FIRST colon (slug may legitimately contain "--")', async () => {
-    const { dom } = await renderViewer('github-marketing:github-marketing--co-marketing', 'fetch_origin');
+  runViewer('splits the colon-form ref on the FIRST colon (slug may legitimately contain "--")', async () => {
+    const { dom, requested } = await renderViewer('github-marketing:github-marketing--co-marketing', 'fetch_origin');
     const doc = dom.window.document;
     expect(doc.getElementById('source-badge')!.textContent).toBe('github-marketing');
+    // The badge alone cannot prove the split (the stub supplies `source`, and
+    // the page renders `d.source || ref.source`), so assert the URL the page
+    // actually asked for: everything after the FIRST colon is the slug. Prefer
+    // the "--" branch instead and this is what goes red.
+    expect(requested).toContain(
+      '/api/skills/external/github-marketing/github-marketing--co-marketing/install',
+    );
   });
 
-  it.runIf(viewerBuilt)('accepts the legacy double-dash ref form defensively', async () => {
-    const { dom } = await renderViewer('hermes-hub--marketing-os', 'deep_link');
+  runViewer('accepts the legacy double-dash ref form defensively', async () => {
+    const { dom, requested } = await renderViewer('hermes-hub--marketing-os', 'deep_link');
     const doc = dom.window.document;
     expect(doc.getElementById('install-deeplink')!.hasAttribute('hidden')).toBe(false);
+    // Same observability fix: the legacy form must reach the API as
+    // source=hermes-hub, slug=marketing-os.
+    expect(requested).toContain('/api/skills/external/hermes-hub/marketing-os/install');
   });
 
-  it.runIf(viewerBuilt)('a 404 from the install endpoint renders the not-found state, never a blank page', async () => {
+  runViewer('a 404 from the install endpoint renders the not-found state, never a blank page', async () => {
     const { dom } = await renderViewer('hermes-hub:does-not-exist', '404');
     const doc = dom.window.document;
     expect(doc.getElementById('state-notfound')!.hasAttribute('hidden')).toBe(false);
     expect(doc.getElementById('skill-body')!.hasAttribute('hidden')).toBe(true);
   });
 
-  it.runIf(viewerBuilt)('a missing ?ref renders the not-found state', async () => {
+  runViewer('a missing ?ref renders the not-found state', async () => {
     const { dom } = await renderViewer(null, 'fetch_origin');
     const doc = dom.window.document;
     expect(doc.getElementById('state-notfound')!.hasAttribute('hidden')).toBe(false);
   });
 
-  it.runIf(viewerBuilt)('a network failure renders the VISIBLE error state, never a blank page', async () => {
+  runViewer('a network failure renders the VISIBLE error state, never a blank page', async () => {
     const { dom } = await renderViewer('hermes-hub:marketing-os', 'network');
     const doc = dom.window.document;
     expect(doc.getElementById('state-error')!.hasAttribute('hidden')).toBe(false);
     expect(doc.getElementById('error-detail')!.textContent!.length).toBeGreaterThan(0);
   });
 
-  it.runIf(viewerBuilt)('a 500 renders the visible error state', async () => {
+  runViewer('a 500 renders the visible error state', async () => {
     const { dom } = await renderViewer('hermes-hub:marketing-os', '500');
     const doc = dom.window.document;
     expect(doc.getElementById('state-error')!.hasAttribute('hidden')).toBe(false);
   });
 
-  it.runIf(viewerBuilt)('a 200 with malformed (non-JSON) body renders the visible error state, never throws uncaught', async () => {
+  runViewer('a 200 with malformed (non-JSON) body renders the visible error state, never throws uncaught', async () => {
     const { dom, errors } = await renderViewer('hermes-hub:marketing-os', 'malformed-json');
     expect(errors).toEqual([]);
     const doc = dom.window.document;
@@ -399,6 +453,7 @@ describe('issue#277 FIX 3 — browse.astro zero-regression when federated key is
   }
 
   async function renderBrowse(q: string | null) {
+    distAssert('built page dist/browse/index.html', BROWSE_DIST);
     const html = readFileSync(BROWSE_DIST, 'utf-8');
     const url = q ? `https://app.loopskill.io/browse?q=${encodeURIComponent(q)}` : 'https://app.loopskill.io/browse';
     const dom = new JSDOM(html, { url, runScripts: 'outside-only', pretendToBeVisual: true });
@@ -435,7 +490,7 @@ describe('issue#277 FIX 3 — browse.astro zero-regression when federated key is
     return { dom, errors };
   }
 
-  it.runIf(browseBuilt)('a query search against the OLD /api/search shape (no federated key) renders no throw and no "Federated results" group', async () => {
+  runBrowse('a query search against the OLD /api/search shape (no federated key) renders no throw and no "Federated results" group', async () => {
     const { dom, errors } = await renderBrowse('alpha');
     expect(errors, `inline script threw: ${errors.join(' | ')}`).toEqual([]);
     const results = dom.window.document.getElementById('browse-results')!;
@@ -464,7 +519,8 @@ describe('issue#277 — no light-theme classes in new files', () => {
     expect(chunk).not.toMatch(LIGHT_THEME_CLASSES);
   });
 
-  it.runIf(viewerBuilt)('dist/skills/external/view/index.html ships no light-theme utility classes', () => {
+  runViewer('dist/skills/external/view/index.html ships no light-theme utility classes', () => {
+    distAssert('built page dist/skills/external/view/index.html', VIEWER_DIST);
     const html = readFileSync(VIEWER_DIST, 'utf-8');
     expect(html).not.toMatch(LIGHT_THEME_CLASSES);
   });
