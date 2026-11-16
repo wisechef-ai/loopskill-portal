@@ -567,6 +567,229 @@ export const MAIL_UNVERIFIABLE_RULE = {
   why: 'the MX lookup could not be completed; a guard that cannot run must not report OK',
 };
 
+// ── Prose (non-mailto) advertised addresses ──────────────────────────────
+// kanban t_cb262438, 2026-11-16. The gate above only ever saw the `mailto:`
+// attribute; "Email us at support@dead.io" written as bare prose is advertised
+// to a human just as loudly and escaped the MX check entirely. A gate is only
+// as wide as the attribute it parses.
+//
+// Why this could not land without the exemption below: the live dist census
+// (221 surfaces, 2026-11-16) found bare prose addresses that are legitimate
+// fixtures — `you@example.com` in an input placeholder on a line that says
+// "Contact", `client@acme.com` inside a CLI code sample prefixed `email:` —
+// and example.com publishes a RFC 7505 null MX while acme.com has no MX at
+// all. Widening extraction without the exemption red-builds the portal on
+// fixtures, someone concludes the gate is broken, and the revert loses the
+// real protection. The two halves MUST ship together.
+
+/**
+ * Domains reserved by the standards for documentation and local use (RFC 2606
+ * §3: example.com/.org/.net; RFC 6761 §6.3: example.edu, .test, .invalid,
+ * .localhost; RFC 6762: .local). Nothing in the real world can route mail to
+ * them, and docs copy uses them precisely because nothing can. An address on
+ * this list is a fixture, not a contact route — checking its MX would fail the
+ * build for writing documentation correctly.
+ */
+export const RESERVED_MAIL_DOMAINS = new Set([
+  'example.com',
+  'example.org',
+  'example.net',
+  'example.edu',
+  'localhost',
+]);
+
+/** Dot-prefixed so 'foo.test' matches but 'fooNtest' and 'nottest' never do. */
+export const RESERVED_MAIL_DOMAIN_SUFFIXES = ['.test', '.invalid', '.local', '.localhost'];
+
+/**
+ * Placeholder domains that conventions put in tutorials and UI samples. They
+ * are NOT standards-reserved — acme.com and email.com are real, owned
+ * domains — but in copy they are never a live contact route, and none of them
+ * accepts mail for the mailbox the sample shows (verified 2026-11-16: acme.com
+ * publishes no MX). Like the reserved set, every entry here is the decision
+ * to publish an address whose delivery nobody proves, which is why it is a
+ * named constant with a review trail and not an inline regex.
+ */
+export const PLACEHOLDER_MAIL_DOMAINS = new Set([
+  'acme.com',
+  'domain.com',
+  'yourdomain.com',
+  'email.com',
+]);
+
+/**
+ * Identity-based exemption, consulted BEFORE any DNS lookup. That ordering is
+ * the load-bearing property: an exempt domain never reaches the resolver, so
+ * this path cannot be used to dodge a `contact-mail-unverifiable` — you can
+ * only be exempted by being a documented fixture, never by DNS being down.
+ */
+export function isExemptMailDomain(domain) {
+  const d = String(domain || '')
+    .toLowerCase()
+    .replace(/\.$/, '');
+  if (!d) return false;
+  if (RESERVED_MAIL_DOMAINS.has(d) || PLACEHOLDER_MAIL_DOMAINS.has(d)) return true;
+  return RESERVED_MAIL_DOMAIN_SUFFIXES.some((s) => d.endsWith(s));
+}
+
+/**
+ * The bounded contact-context definition. A bare address is only "advertised"
+ * when it sits in a footer/<address> element, or on a line (or the line after
+ * one) that asks the reader to get in touch. Vocabulary is enumerated
+ * per-term on purpose: the failure mode of an over-wide list is a blog
+ * anecdote quoting a customer's mailbox and red-building the portal; the
+ * failure mode of an over-narrow list is a missed contact address, which is
+ * the defect this whole section exists to catch — so the list is generous but
+ * every term must be a phrase a human writes WHEN pointing at a mailbox.
+ * Deliberately absent: bare "help" ("this helps you…"), "user", "customer".
+ */
+export const CONTACT_CONTEXT_RE =
+  /\b(contact|support|reach|e-?mail|questions?|get in touch|write to|write us|reply|replying|inbox|feedback|talk to|hit us|ping us|enquir\w*|inquir\w*|helpline|help desk)\b/i;
+
+/**
+ * Bare address matcher. Stricter than RFC 5322 where prose needs it: the
+ * domain must contain a dot (kills `user@hostname` shell prompts in prose) and
+ * every label must start and end alphanumeric. Stricter is wrong for
+ * validation and right for extraction — a real advertised contact always looks
+ * like this, and every candidate still faces the full MX verdict.
+ */
+const BARE_ADDRESS_RE =
+  /[A-Za-z0-9!#$%&'*+/=?^_`{|}~.-]+@[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?(?:\.[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?)+/g;
+
+/** Code is not copy — same doctrine as renderedText()'s script/style strip,
+ *  extended: a CLI sample prefixed `email:` is not a contact route. */
+const NONPROSE_BLOCK_RE = /<(script|style|pre|code|kbd|samp|textarea)\b[^>]*>[\s\S]*?<\/\1>/gi;
+const COMMENT_RE = /<!--[\s\S]*?-->/g;
+/** Footer/<address> regions count as contact context without any keyword. */
+const FOOTER_REGION_RE = /<(footer|address)\b[^>]*>[\s\S]*?<\/\1>/gi;
+
+/** Replace a matched span with a space plus the same number of newlines, so
+ *  every later pass keeps the ORIGINAL line numbers — the escape hatch matches
+ *  findings to directive lines, and that mapping must survive every strip.
+ *  The SPACE is load-bearing, not cosmetic: blanking to '' welds adjacent
+ *  inline text together, and the live dist census (2026-11-16) produced the
+ *  fabricated candidate `termsprivacysecurityhello@loopskill.io` from nav
+ *  links touching a footer address (Terms|Privacy|Security</a><a>…hello@…).
+ *  A space can only ever SPLIT a fabricated candidate — a real address
+ *  contains no space — so this side is the safe one to err on. */
+function blankKeepingLines(match) {
+  return ' ' + '\n'.repeat((match.match(/\n/g) || []).length);
+}
+
+/**
+ * The prose surface: markup with code, comments and attributes blanked and
+ * entities decoded, at EXACTLY the same line numbers as the input. Line
+ * stability is what lets one directive convention cover both the raw-markup
+ * (mailto) and rendered (prose) passes.
+ */
+function mailProseView(html) {
+  const v2 = html.replace(NONPROSE_BLOCK_RE, blankKeepingLines).replace(COMMENT_RE, blankKeepingLines);
+  // Footer/<address> regions are located in v2, while tags are still visible.
+  const regionLines = new Set();
+  for (const m of v2.matchAll(FOOTER_REGION_RE)) {
+    const start = v2.slice(0, m.index).split('\n').length;
+    const end = v2.slice(0, m.index + m[0].length).split('\n').length;
+    for (let l = start; l <= end; l++) regionLines.add(l);
+  }
+  // Remaining tags → nothing, preserving any newline they contain.
+  let v3 = v2.replace(/<[^>]+>/g, blankKeepingLines);
+  for (const [ent, ch] of Object.entries(ENTITIES)) v3 = v3.split(ent).join(ch);
+  v3 = v3.replace(/&#(\d+|x[0-9a-f]+);/gi, (_m, d) => {
+    const cp = /^x/i.test(d) ? parseInt(d.slice(1), 16) : Number(d);
+    // A decoded newline/CR would shift every following line number — a
+    // numeric entity must never smuggle one in.
+    if (!Number.isFinite(cp) || cp < 32 || cp === 0x85 || cp === 0x2028 || cp === 0x2029) return ' ';
+    try { return String.fromCodePoint(cp); } catch { return ' '; }
+  });
+  return { view: v3, regionLines };
+}
+
+/** Trim the punctuation a sentence leaves on an address: "Email support@x.io." */
+function normalizeProseAddress(raw) {
+  let a = raw.trim().replace(/[.,;:!?"'“”’')\]]+$/, '');
+  const at = a.lastIndexOf('@');
+  if (at <= 0 || at === a.length - 1) return null;
+  if (a.slice(at + 1).replace(/\.$/, '').indexOf('.') === -1) return null; // prose guard: domain needs a dot
+  return a;
+}
+
+/**
+ * Bare advertised addresses with the line they sit on (1-based). Regions come
+ * from <footer>/<address>; keywords from the line itself or the line above
+ * (prose wraps: "Contact us.\n support@dead.io"). The matcher runs on the
+ * attribute-free view, so `<img src="/logo@2x.png">` and the hashed
+ * `/_astro/index@_@astro.Cc1biyfE.css` filename seen in the live dist are
+ * markup, not prose, and never surface here.
+ */
+export function advertisedProseAddresses(html) {
+  const { view, regionLines } = mailProseView(html);
+  const lines = view.split('\n');
+  const found = [];
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    if (!line.includes('@')) continue;
+    const inRegion = regionLines.has(i + 1);
+    if (!inRegion && !CONTACT_CONTEXT_RE.test(line) && !(i > 0 && CONTACT_CONTEXT_RE.test(lines[i - 1]))) continue;
+    for (const m of line.matchAll(BARE_ADDRESS_RE)) {
+      const addr = normalizeProseAddress(m[0]);
+      if (addr) found.push({ addr, line: i + 1 });
+    }
+  }
+  return found;
+}
+
+/**
+ * The escape hatch (the card assumed one existed; it did not — this is it).
+ * `<!-- audit-claims-disable-next-line <rule-id> reason=... -->` on the line
+ * of, or the line above, a finding suppresses that rule's finding there.
+ * Requiring `reason=` is deliberate: a suppression without a stated reason is
+ * a silent hole, and a silent hole in a hard-fail gate is how the hello@loopskill.io
+ * bounce class survived months. An unrecognised rule id simply suppresses
+ * nothing, which fails loud — the violation still fires.
+ * Only contact-mail-no-mx is ever suppressible: see SUPPRESSIBLE_RULE_IDS.
+ */
+const DISABLE_RE = /^\s*(?:<!--\s*)?audit-claims-disable-next-line\s+([a-z][a-z0-9-]*)\b[^\S\n]*(?:reason\s*[=:]\s*\S[^\n]*)?/i;
+const REQUIRES_REASON = /\breason\s*[=:]\s*\S/i;
+
+/** line (1-based) -> rule id it suppresses. Directive applies to its own line or the next. */
+export function disableDirectives(text) {
+  const map = new Map();
+  const lines = String(text || '').split('\n');
+  for (let i = 0; i < lines.length; i++) {
+    const m = lines[i].match(DISABLE_RE);
+    if (!m) continue;
+    if (!REQUIRES_REASON.test(lines[i])) continue; // no reason, no suppression — and it fails loud
+    map.set(i + 1, m[1].toLowerCase());
+  }
+  return map;
+}
+
+/** Which rules a directive may silence. contact-mail-unverifiable is NOT in
+ *  this set: an unreachable resolver is an infrastructure outage, never a
+ *  content decision, and an escape hatch that could silence it is a way to
+ *  ship a build whose contact gate enforced nothing. */
+export const SUPPRESSIBLE_RULE_IDS = new Set([MAIL_NO_MX_RULE.id]);
+
+function suppressedAt(directives, line, ruleId) {
+  if (!SUPPRESSIBLE_RULE_IDS.has(ruleId)) return false;
+  const named = directives.get(line) || directives.get(line - 1);
+  return named === ruleId;
+}
+
+/** Every address this gate must verify, from BOTH passes, with its line. */
+export function mailCandidates(text) {
+  const out = [];
+  for (const m of text.matchAll(MAILTO_RE)) {
+    let addr;
+    try { addr = decodeURIComponent(m[1].trim()); } catch { addr = m[1].trim(); }
+    addr = addr.replace(/[.,;:]+$/, '');
+    if (!addr) continue;
+    out.push({ addr, line: text.slice(0, m.index).split('\n').length, kind: 'mailto' });
+  }
+  for (const p of advertisedProseAddresses(text)) out.push({ ...p, kind: 'prose' });
+  return out;
+}
+
 /** Pull every advertised mail address out of RAW markup (before renderedText strips it). */
 export function advertisedMailAddresses(text) {
   const found = [];
@@ -580,32 +803,47 @@ export function advertisedMailAddresses(text) {
   return found;
 }
 
-/** Verify advertised mail addresses. Returns violations in { rule, text, path } shape. */
+/** Verify advertised mail addresses — from mailto: AND bare contact-context
+ *  prose. Returns violations in { rule, text, path } shape. */
 /** @param {(domain: string) => Promise<Array<{exchange: string}>>} [opts.resolveMx] test seam */
 export async function scanMailRoutes(text, path, opts = {}) {
   const resolveMx = opts.resolveMx || defaultResolveMx;
   // Per-call cache so one test's answer cannot make another's go vacuously green.
   const cache = opts.cache || MX_CACHE;
+  const directives = disableDirectives(text);
   const out = [];
-  for (const addr of advertisedMailAddresses(text)) {
-    const at = addr.lastIndexOf('@');
-    if (at <= 0 || at === addr.length - 1) {
-      out.push({ rule: MAIL_NO_MX_RULE, text: `mailto:${addr}`, path });
+  const checked = new Set(); // same address as mailto AND prose = one finding, one lookup
+  for (const cand of mailCandidates(text)) {
+    const key = cand.addr.toLowerCase();
+    if (checked.has(key)) continue;
+    checked.add(key);
+    const at = cand.addr.lastIndexOf('@');
+    if (cand.kind === 'mailto' && (at <= 0 || at === cand.addr.length - 1)) {
+      out.push({ rule: MAIL_NO_MX_RULE, text: `mailto:${cand.addr}`, path });
       continue;
     }
-    const domain = addr.slice(at + 1).toLowerCase().replace(/\.$/, '');
-    if (MAIL_DOMAIN_EXEMPTIONS.has(domain)) continue;
+    const domain = cand.addr.slice(at + 1).toLowerCase().replace(/\.$/, '');
+    // Exemptions are identity-based and consulted BEFORE the resolver — see
+    // isExemptMailDomain: a fixture never reaches DNS, so no exemption here
+    // can mask an unverifiable real domain.
+    if (MAIL_DOMAIN_EXEMPTIONS.has(domain) || isExemptMailDomain(domain)) continue;
     const res = await mxRecords(domain, resolveMx, cache);
     if (!res.ok) {
-      out.push({ rule: MAIL_UNVERIFIABLE_RULE, text: `${addr} (${domain}: ${res.code})`, path });
+      // Never suppressible (SUPPRESSIBLE_RULE_IDS): a resolver we cannot reach
+      // is an outage, not a content decision.
+      out.push({ rule: MAIL_UNVERIFIABLE_RULE, text: `${cand.addr} (${domain}: ${res.code})`, path });
     } else if (res.mx.length === 0) {
-      out.push({ rule: MAIL_NO_MX_RULE, text: `${addr} (no MX for ${domain})`, path });
+      if (!suppressedAt(directives, cand.line, MAIL_NO_MX_RULE.id)) {
+        out.push({ rule: MAIL_NO_MX_RULE, text: `${cand.addr} (no MX for ${domain})`, path });
+      }
     } else if (res.nullMx) {
-      out.push({
-        rule: MAIL_NO_MX_RULE,
-        text: `${addr} (${domain} publishes a RFC 7505 null MX 'MX 0 .' — it accepts no mail)`,
-        path,
-      });
+      if (!suppressedAt(directives, cand.line, MAIL_NO_MX_RULE.id)) {
+        out.push({
+          rule: MAIL_NO_MX_RULE,
+          text: `${cand.addr} (${domain} publishes a RFC 7505 null MX 'MX 0 .' — it accepts no mail)`,
+          path,
+        });
+      }
     }
   }
   return out;
