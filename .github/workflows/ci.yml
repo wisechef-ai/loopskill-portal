@@ -130,6 +130,41 @@ jobs:
           npx vitest run tests/mesh0408-t1d-llms-txt-groups.test.ts
           npx vitest run tests/perclient-1110-review-fixes.test.ts
 
+      - name: ON-RAMP built-output gate (vitest, dist)
+        # kanban t_44dc1600. tests/landing-onramp.test.ts is the guard for the
+        # homepage on-ramp: server-rendered stations, the catalog-grounded
+        # fleet drift matrix, and the labelled-DEMO truthfulness rule. Its
+        # built-output block reads dist/index.html, and its own file header has
+        # ALWAYS said those cases "only carry meaning in CI's post-build step" —
+        # but no post-build step ever ran this file. CI's only run of it was the
+        # pre-build `npm test` step, where dist never exists, so all six cases
+        # hit `if (!built) return` and reported a green that executed ZERO
+        # assertions, while the same assertions were red on any machine that had
+        # actually built the site. That is the self-skipping-guard rot class:
+        # a guard that can never run enforces nothing, and nothing here noticed
+        # because a self-skip and a pass look identical in the report.
+        #
+        # REQUIRE_ONRAMP_BUILT=1 makes that impossible in this position: a
+        # missing dist here is a hard error, not a return. If someone ever
+        # re-parents this step above the Build step, it fails loudly instead of
+        # quietly going decorative again.
+        #
+        # REQUIRE_ONRAMP_MATRIX=1 goes further on the UNATTENDED rebuilds only
+        # (schedule / workflow_dispatch): prod dist is built with catalog
+        # access, so a nightly whose build shipped the honest "could not be
+        # built against the live catalog" omission means the homepage's
+        # flagship section silently stopped shipping — red is the right answer
+        # when no human's deploy is waiting on it. On push/PR runs the omission
+        # stays the DESIGNED fail-closed branch (index.astro omits the matrix
+        # unless 5 real slugs with real versions resolve; a transient catalog
+        # 429 from this runner's contended anonymous bucket must not block an
+        # unrelated portal deploy), so those three cases skip and the test emits
+        # a ::warning:: annotation naming the degradation instead of hiding it.
+        env:
+          REQUIRE_ONRAMP_BUILT: '1'
+          REQUIRE_ONRAMP_MATRIX: ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && '1' || '' }}
+        run: npx vitest run tests/landing-onramp.test.ts
+
       - name: Executable-docs gate — run every documented llms.txt / docs/* command
         # bundles_0811 P0. tests/p0-docs-commands-execute.test.ts consumes
         # tests/lib/doc-command-extract.ts (PR #52) and EXECUTES every
