@@ -59,6 +59,42 @@ describe('the MX gate actually discriminates', () => {
     const v = await scanMailRoutes('mailto:x@zeromx.example', 'a.html', { resolveMx, cache: new Map() });
     expect(v[0].rule.id).toBe('contact-mail-no-mx');
   });
+  // RFC 7505 null MX: the shape that `mx.length === 0` cannot see, because
+  // dns.resolveMx() answers NON-EMPTY with an empty/'.' exchange. Found by
+  // review on 2026-11-16 while verifying this gate; example.com/.org/.net all
+  // publish `MX 0 .`, and any domain that "turned mail off" in a DNS UI does.
+  // Without these cases the gate passes the one domain that publicly said it
+  // accepts no mail — i.e. it fails at the exact job it was written for.
+  it('reports a hard violation for a RFC 7505 null MX (empty exchange)', async () => {
+    resolveMx.mockReset().mockResolvedValue([{ exchange: '', priority: 0 }]);
+    const v = await scanMailRoutes('mailto:hello@loopskill.io', 'a.html', { resolveMx, cache: new Map() });
+    expect(v).toHaveLength(1);
+    expect(v[0].rule.id).toBe('contact-mail-no-mx');
+    expect(v[0].text).toContain('null MX');
+    expect(v[0].text).toContain('loopskill.io');
+  });
+  it('reports a hard violation for a null MX written as a root exchange "."', async () => {
+    resolveMx.mockReset().mockResolvedValue([{ exchange: '.', priority: 0 }]);
+    const v = await scanMailRoutes('mailto:hello@loopskill.io', 'a.html', { resolveMx, cache: new Map() });
+    expect(v).toHaveLength(1);
+    expect(v[0].rule.id).toBe('contact-mail-no-mx');
+  });
+  it('fails loud, not pass, when a null MX is mixed with a real one', async () => {
+    // Mixed null/real records are invalid configuration. Passing on the
+    // strength of the real record is the optimistic read; a contact route must
+    // take the pessimistic one.
+    resolveMx.mockReset().mockResolvedValue([OK_MX[0], { exchange: '.', priority: 0 }]);
+    const v = await scanMailRoutes('mailto:hello@loopskill.io', 'a.html', { resolveMx, cache: new Map() });
+    expect(v).toHaveLength(1);
+    expect(v[0].rule.id).toBe('contact-mail-no-mx');
+  });
+  it('still passes a real MX that merely looks adjacent to a null one', async () => {
+    // Guard against the fix over-reaching: 'mail.' is a real host, not a null MX.
+    resolveMx.mockReset().mockResolvedValue([{ exchange: 'mail.example.io', priority: 10 }]);
+    const v = await scanMailRoutes('mailto:hello@loopskill.io', 'a.html', { resolveMx, cache: new Map() });
+    expect(v).toEqual([]);
+  });
+
   it('refuses to report OK when the resolver is unreachable', async () => {
     resolveMx.mockReset().mockRejectedValue(resolverDown());
     const v = await scanMailRoutes('mailto:hello@wisechef.ai', 'a.html', { resolveMx, cache: new Map() });
