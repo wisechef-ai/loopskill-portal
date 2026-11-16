@@ -11,13 +11,20 @@
 //     time, i.e. it claimed an audit every time CI rebuilt the site. It is now
 //     labelled for what it is: the build date.
 //   * C21 — every footer link is a >=44px tap target on phones.
-//   * Contact is unified on hello@wisechef.ai. Delivery is PROVEN, not assumed:
-//     wisechef.ai MX -> Resend inbound -> wisechef-email-inbound (POST /api/inbound),
-//     verified end-to-end 2026-11-16 (kanban t_86bfeed5): a real message sent to
-//     hello@wisechef.ai was stored with a readable body. The sentence this replaced
-//     claimed "(MX verified)" about the old hello@loopskill.io address, which never had an MX record
-//     — a false "verified" in a code comment is how a dead contact route shipped for
-//     months. audit-claims.mjs now fails the build on any mailto whose domain has no MX.
+//   * Contact is unified on hello@loopskill.io — the product's own domain.
+//     Delivery is PROVEN, not assumed. Chain: MX "10 mail.wisechef.ai" ->
+//     postfix :25 (STARTTLS) -> aiosmtpd 127.0.0.1:8025 -> /opt/mail-inbox
+//     (index.db + data/eml), read with ~/.hermes/scripts/inbox-read.py.
+//     First message the address ever accepted: 2026-11-16T13:22:48Z,
+//     row id=9, body retrieved intact. Before that date the domain had NO MX
+//     for its entire existence, so every message sent here bounced at the
+//     sender and we never saw an attempt. The sentence this replaced stated that
+//     MX had been verified. It had not been, and never was, which is why the
+//     defect survived review; audit-claims.mjs now fails the build on any
+//     advertised mailto whose domain has no MX record. The verbatim wording of
+//     that false claim is deliberately not reproduced here — tests forbid the
+//     phrase in src/ so no page can ever assert it again. Full text in git and
+//     in kanban card t_86bfeed5.
 interface Props {
   /** Minimal one-row variant for focused pages (sign-in). */
   compact?: boolean;
@@ -36,7 +43,7 @@ const linkCls = 'inline-flex items-center min-h-[44px] md:min-h-0 md:py-0.5 hove
       <a href="/terms" class={linkCls}>Terms</a>
       <a href="/privacy" class={linkCls}>Privacy</a>
       <a href="/security" class={linkCls}>Security</a>
-      <a href="mailto:hello@wisechef.ai" class={linkCls}>hello@wisechef.ai</a>
+      <a href="mailto:hello@loopskill.io" class={linkCls}>hello@loopskill.io</a>
       <span class="inline-flex items-center min-h-[44px] md:min-h-0">© 2026 WiseChef · Kraków, Poland</span>
     </div>
   </footer>
@@ -47,7 +54,7 @@ const linkCls = 'inline-flex items-center min-h-[44px] md:min-h-0 md:py-0.5 hove
         <span class="text-text font-semibold">LoopSkill</span>
         <span class="text-xs uppercase tracking-wider text-muted-soft mt-1">Who runs this</span>
         <span class="text-sm text-muted">Built by <a href="https://wisechef.ai" class="text-muted hover:text-accent transition underline underline-offset-2">WiseChef</a>, Kraków, Poland.</span>
-        <span class="text-sm text-muted">Contact: <a href="mailto:hello@wisechef.ai" class="text-muted hover:text-accent transition underline underline-offset-2" data-footer-contact>hello@wisechef.ai</a></span>
+        <span class="text-sm text-muted">Contact: <a href="mailto:hello@loopskill.io" class="text-muted hover:text-accent transition underline underline-offset-2" data-footer-contact>hello@loopskill.io</a></span>
         <span class="text-xs text-muted-soft mt-1">© 2026 WiseChef</span>
       </div>
       <div class="flex flex-col md:gap-2">
@@ -79,7 +86,7 @@ const linkCls = 'inline-flex items-center min-h-[44px] md:min-h-0 md:py-0.5 hove
         <a href="https://github.com/wisechef-ai/loopskill-api" target="_blank" rel="noopener" class={linkCls}>GitHub repo</a>
         <a href="https://github.com/wisechef-ai/loopskill-api/blob/main/docs/SELF_HOST.md" target="_blank" rel="noopener" class={linkCls}>Self-host it</a>
         <a href="/creators" class={linkCls}>Publish a loop</a>
-        <a href="mailto:hello@wisechef.ai?subject=LoopSkill" class={linkCls}>Contact</a>
+        <a href="mailto:hello@loopskill.io?subject=LoopSkill" class={linkCls}>Contact</a>
       </div>
     </div>
     <div class="border-t border-border-soft">
