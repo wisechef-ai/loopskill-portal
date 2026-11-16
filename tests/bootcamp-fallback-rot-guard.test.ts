@@ -72,6 +72,10 @@ const KNOWN_DEAD = [
  * slug absent from this fixture is exactly the rot class this guard exists
  * to catch, so a live re-audit (scripts/audit-curriculum.mjs) should refresh
  * this list whenever the fallback curriculum changes.
+ *
+ * AMENDED 2026-11-16: `humanizer` was archived (API 404, search 0) and is no
+ * longer a live slug, so it was dropped; `jev-decision-router` (live, tier=free,
+ * HTTP 200 on 2026-11-16) takes its place so the fixture holds live slugs only.
  */
 const LIVE_CATALOG_FIXTURE_20260829 = new Set([
   'agent-browser', 'agentic-os', 'architecture-diagram', 'arxiv', 'ascii-video',
@@ -81,8 +85,8 @@ const LIVE_CATALOG_FIXTURE_20260829 = new Set([
   'creative-ideation', 'critical-code-reviewer', 'design-md',
   'domain-driven-design', 'elevenlabs-pro', 'excalidraw', 'faster-whisper',
   'frontend-design', 'gif-search', 'github-issues', 'grok-search',
-  'hub-search-claude-code', 'humanizer', 'hundred-million-offers',
-  'hyperspace-matrix', 'llama-cpp', 'llm-wiki-hermes', 'local-tts-kokoro',
+  'hub-search-claude-code', 'hundred-million-offers',
+  'hyperspace-matrix', 'jev-decision-router', 'llama-cpp', 'llm-wiki-hermes', 'local-tts-kokoro',
   'loopskill', 'manim-video', 'minto', 'multi-agent-discord-coordination',
   'musk-5-step-algorithm', 'nano-banana-pro', 'nano-pdf',
   'ocr-and-documents', 'ollama-low-vram-model-pick', 'p5js', 'plan-for-goal',
