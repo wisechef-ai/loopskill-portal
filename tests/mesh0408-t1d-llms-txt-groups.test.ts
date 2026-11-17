@@ -23,6 +23,7 @@
  */
 
 import { readFileSync, existsSync } from 'fs';
+import { distAssert, distDescribe } from './lib/dist-guard';
 import { join } from 'path';
 
 const ROOT = join(new URL(import.meta.url).pathname, '../../');
@@ -30,6 +31,17 @@ const LLMS_DIST = join(ROOT, 'dist/llms.txt');
 const LLMS_SRC = join(ROOT, 'src/pages/llms.txt.ts');
 
 const built = existsSync(LLMS_DIST);
+
+// CI contract (kanban t_eb25ceb0, stretch of the t_648b1f3d rot class): the
+// batched post-build step sets REQUIRE_T1D_LLMS_BUILT=1 — a build that drops
+// llms.txt then goes RED instead of skipping the only test that reads it.
+const REQUIRE = 'REQUIRE_T1D_LLMS_BUILT';
+
+/** Read the built doc, failing (never skipping) if the contract is on. */
+function llmsText(): string {
+  distAssert('built dist/llms.txt (post-build contract)', LLMS_DIST);
+  return readFileSync(LLMS_DIST, 'utf-8');
+}
 
 describe('llms.txt.ts source — five-group fetch + render wiring', () => {
   const src = readFileSync(LLMS_SRC, 'utf-8');
@@ -55,10 +67,9 @@ describe('llms.txt.ts source — five-group fetch + render wiring', () => {
   });
 });
 
-(built ? describe : describe.skip)('llms.txt (built dist) — five explicit per-type sections', () => {
-  const txt = built ? readFileSync(LLMS_DIST, 'utf-8') : '';
-
+distDescribe(REQUIRE, join(ROOT, 'dist'))('llms.txt (built dist) — five explicit per-type sections', () => {
   it('has a Bundles heading naming the discover + detail endpoints', () => {
+    const txt = llmsText();
     expect(txt).toContain('## Bundles');
     // 260901: PR #92 (cookbook->bundle rename P2) renamed the DOCUMENTED
     // endpoints in this section from /api/cookbooks/* to /api/bundles/*
@@ -76,18 +87,21 @@ describe('llms.txt.ts source — five-group fetch + render wiring', () => {
   });
 
   it('has a Personalities heading naming the list + detail endpoints', () => {
+    const txt = llmsText();
     expect(txt).toContain('## Personalities');
     expect(txt).toContain('GET https://app.loopskill.io/api/personalities`');
     expect(txt).toContain('/api/personalities/{slug}');
   });
 
   it('has a Connectors heading naming the list + detail endpoints (empty table OK)', () => {
+    const txt = llmsText();
     expect(txt).toContain('## Connectors');
     expect(txt).toContain('GET https://app.loopskill.io/api/connectors`');
     expect(txt).toContain('/api/connectors/{slug}');
   });
 
   it('the five type sections appear in catalog order after the skill install line', () => {
+    const txt = llmsText();
     const idx = {
       // coldstart_1003: label extended to cross-reference the funnel — the
       // pin's intent (locate the REST install line as the anchor for the

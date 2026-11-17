@@ -29,9 +29,28 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { readFileSync, existsSync, readdirSync, statSync } from 'node:fs';
+import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { FALLBACK_SOURCE_SLUGS } from '../src/lib/federation';
+import { ciWarn, distAssert, distDescribe, requiresBuilt } from './lib/dist-guard';
+
+/**
+ * CI CONTRACT (kanban t_eb25ceb0): the post-build step in
+ * .github/workflows/ci.yml runs this file AFTER `npm run build` with
+ * REQUIRE_FEDERATION_BUILT=1 — there, a missing dist/federation page is a
+ * THROWN error (distAssert), never the silent `if (!existsSync(indexHtml))
+ * return` this block used.
+ *
+ * REQUIRE_FEDERATION_CONTENT=1 (schedule / workflow_dispatch ONLY, the #140
+ * split) additionally demands the per-source pages a prod build with catalog
+ * access must emit. On push/PR a transient 429 on the anonymous catalog
+ * bucket makes zero source pages the DESIGNED fail-closed branch, so those
+ * cases degrade to a ciWarn annotation instead of holding an unrelated deploy
+ * hostage. ciWarn writes to stderr, not console: console.* is dropped under
+ * `--reporter=json` (measured — see tests/lib/dist-guard.ts).
+ */
+const REQUIRE = 'REQUIRE_FEDERATION_BUILT';
+const REQUIRE_CONTENT = 'REQUIRE_FEDERATION_CONTENT';
 
 const ROOT = resolve(__dirname, '..');
 const FEDERATION_LIB = resolve(ROOT, 'src/lib/federation.ts');
@@ -128,13 +147,23 @@ describe('federation rot guard — source shape', () => {
   });
 });
 
-describe('federation rot guard — built output', () => {
-  const dist = resolve(ROOT, 'dist');
-  const indexHtml = resolve(dist, 'federation/index.html');
+const DIST = resolve(ROOT, 'dist');
+const FED_INDEX_HTML = resolve(DIST, 'federation/index.html');
+const FED_SOURCES_DIR = resolve(DIST, 'federation');
+const REQUIRE_CONTENT_ON = requiresBuilt(REQUIRE_CONTENT);
 
+// distDescribe keys on dist/ EXISTING (not on each page): if the build ran but
+// this page vanished, the block still runs and each case naming the page goes
+// RED via distAssert. With no build and no contract, the block self-skips —
+// the only legitimate place for one.
+const describeBuilt = distDescribe(REQUIRE, DIST);
+describeBuilt('federation rot guard — built output', () => {
   it('dist/federation/index.html: never ships a fabricated "91k" style claim', () => {
-    if (!existsSync(indexHtml)) return; // source tests above still cover the invariant pre-build
-    const html = readFileSync(indexHtml, 'utf-8');
+    // distAssert, not `if (!existsSync(indexHtml)) return`: once chosen to
+    // run, a missing page is a defect, and returning would report a green
+    // that executed zero assertions — the exact rot this class exists to kill.
+    distAssert('built page dist/federation/index.html (91k-claim check)', FED_INDEX_HTML);
+    const html = readFileSync(FED_INDEX_HTML, 'utf-8');
     // Any real live total that happens to be ~91k is fine (it's real); what
     // must never appear is the exact historical rounded marketing figure
     // "91k+" as a symbol distinct from a live-rendered thousands-grouped
@@ -143,32 +172,72 @@ describe('federation rot guard — built output', () => {
   });
 
   it('dist/federation/index.html: if present, renders either a live count or the honest unavailable copy — never both silently omitted', () => {
-    if (!existsSync(indexHtml)) return;
-    const html = readFileSync(indexHtml, 'utf-8');
+    // Content-agnostic: the fail-closed branch renders the honest-unavailable
+    // copy, the success branch renders the live count. Whichever ran, the
+    // disjunction must hold — so this is hard-required on every event, and it
+    // is the case that catches a build that omitted BOTH (silence = the
+    // fabricated-data sneaks-back door, WIS-737 class).
+    distAssert('built page dist/federation/index.html (count-or-honest-copy check)', FED_INDEX_HTML);
+    const html = readFileSync(FED_INDEX_HTML, 'utf-8');
     const hasLiveCount = /externally indexed skills/i.test(html);
     const hasUnavailableCopy = /temporarily unavailable|could not be reached/i.test(html);
     expect(hasLiveCount || hasUnavailableCopy).toBe(true);
   });
 
   it('issue#277: dist/federation/ emits pages for previously-invisible sources (e.g. a github-* tap), when the build succeeded', () => {
-    const sourcesDir = resolve(dist, 'federation');
-    if (!existsSync(sourcesDir)) return;
+    distAssert('built dir dist/federation/ (source-page check)', FED_SOURCES_DIR);
     // We don't assert a SPECIFIC slug (the live catalog can legitimately
-    // drop a source between builds) — just that more than the old 8-slug
-    // ceiling can be emitted, proving the source list is no longer capped
-    // by the stale hardcode. Best-effort: skip quietly if dist/federation
-    // has no subdirectories (build-time API was down for this run).
-    const entries = readdirSync(sourcesDir).filter((e: string) => {
+    // drop a source between builds) — the load-bearing numbers are the old
+    // 8-source hardcode ceiling and zero (API fully down at build time).
+    const entries = readdirSync(FED_SOURCES_DIR).filter((e: string) => {
       try {
-        return statSync(resolve(sourcesDir, e)).isDirectory();
+        return statSync(resolve(FED_SOURCES_DIR, e)).isDirectory();
       } catch {
         return false;
       }
     });
-    if (entries.length === 0) return;
-    // No assertion beyond "this ran without throwing" when the build
-    // legitimately produced zero pages (API down at build time) — the
-    // source-shape tests above already pin the fallback-list invariant.
+    if (entries.length === 0) {
+      // Zero source pages is the DESIGNED fail-closed branch when the
+      // build-time source-list + sample fetches all failed (429 on the
+      // anonymous bucket). On push/PR that must not block an unrelated
+      // deploy — degrade loudly (stderr, survives --reporter=json). On the
+      // unattended rebuilds (REQUIRE_FEDERATION_CONTENT=1) nobody's deploy is
+      // hostage, and a prod nightly silently shipping an empty federation
+      // section is precisely what red is for.
+      if (REQUIRE_CONTENT_ON) {
+        throw new Error(
+          `${REQUIRE_CONTENT}=1 but dist/federation/ emits ZERO per-source pages — the ` +
+            `build-time GET /api/skills/external (and every per-source sample call) failed ` +
+            `closed, so the whole federated index silently stopped shipping. Check catalog ` +
+            `health (429? API down?) and re-run; this is the #140 split: content is red on ` +
+            `schedule/dispatch precisely so nobody has to watch the green.`,
+        );
+      }
+      ciWarn(
+        '::warning:: dist/federation/ emitted zero per-source pages (build-time catalog ' +
+          'fetch failed closed) — the issue#277 source-page guarantee was not exercised ' +
+          'in this run; REQUIRE_FEDERATION_CONTENT=1 (schedule/dispatch) enforces it.',
+      );
+      return;
+    }
+    if (REQUIRE_CONTENT_ON && entries.length <= 8) {
+      // THE regression this case exists for: the stale 8-source hardcode cap.
+      // A prod-catalog build emitting ≤8 source pages means enumeration fell
+      // back to (or was re-capped at) the old hardcode — red on the unattended
+      // rebuilds, warning-visible elsewhere.
+      throw new Error(
+        `${REQUIRE_CONTENT}=1 but dist/federation/ emits only ${entries.length} source page(s) ` +
+          `(≤ the old stale 8-source hardcode ceiling). Live enumeration should yield 28+; ` +
+          `check getFederationOverview's GET /api/skills/external path and the ` +
+          `FALLBACK_SOURCE_SLUGS fallback in src/lib/federation.ts.`,
+      );
+    }
+    if (!REQUIRE_CONTENT_ON && entries.length <= 8) {
+      ciWarn(
+        `::warning:: dist/federation/ emitted only ${entries.length} source page(s) (≤ the old ` +
+          `8-source hardcode ceiling) — legitimate on a partial catalog 429, red on the nightly.`,
+      );
+    }
     expect(Array.isArray(entries)).toBe(true);
   });
 });

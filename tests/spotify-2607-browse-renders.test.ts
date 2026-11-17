@@ -32,13 +32,29 @@
 import { readFileSync, existsSync } from 'fs';
 import { join } from 'path';
 import { JSDOM } from 'jsdom';
+import { distAssert, requiresBuilt } from './lib/dist-guard';
 
 const ROOT = join(new URL(import.meta.url).pathname, '../../');
 const BROWSE_DIST = join(ROOT, 'dist/browse/index.html');
 const HOME_DIST = join(ROOT, 'dist/index.html');
 const BROWSE_SRC = join(ROOT, 'src/pages/browse.astro');
 
+// CI contract (kanban t_eb25ceb0, stretch of the t_648b1f3d rot class): the
+// post-build step sets REQUIRE_SPOTIFY_BUILT=1 and runs this file AFTER
+// `npm run build`; a missing built page there goes RED via distAssert. The
+// self-skip survives only for the pre-build/fresh-clone run.
+const REQUIRE = 'REQUIRE_SPOTIFY_BUILT';
+
 const built = existsSync(BROWSE_DIST);
+const DIST_EXISTS = existsSync(join(ROOT, 'dist'));
+const runBuilt = it.runIf(built || requiresBuilt(REQUIRE) || DIST_EXISTS);
+
+/** Every dist read goes through here: a missing page under a post-build
+ *  contract THROWS — never a silent '' that a not.toContain passes trivially. */
+function readBrowse(): string {
+  distAssert('built /browse page (post-build contract)', BROWSE_DIST);
+  return readFileSync(BROWSE_DIST, 'utf-8');
+}
 
 /** Stub payloads shaped like the real API responses browse.astro consumes. */
 const SKILLS_PAYLOAD = {
@@ -118,7 +134,7 @@ function stubFetch(unmatched: string[], requested: string[]) {
 }
 
 async function renderBrowse() {
-  const html = readFileSync(BROWSE_DIST, 'utf-8');
+  const html = readBrowse();
   const unmatched: string[] = [];
   const requested: string[] = [];
 
@@ -207,26 +223,26 @@ describe('/browse ships real content in its RAW served HTML (no-JS / curl reader
     return noScript.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
   }
 
-  it.runIf(built)('does not contain the literal error-placeholder text "Couldn\'t load results"', () => {
-    const visible = stripTags(readFileSync(BROWSE_DIST, 'utf-8'));
+  runBuilt('does not contain the literal error-placeholder text "Couldn\'t load results"', () => {
+    const visible = stripTags(readBrowse());
     expect(visible).not.toContain("Couldn't load results");
   });
 
-  it.runIf(built)('does not contain the literal loading-placeholder text as page content', () => {
-    const visible = stripTags(readFileSync(BROWSE_DIST, 'utf-8'));
+  runBuilt('does not contain the literal loading-placeholder text as page content', () => {
+    const visible = stripTags(readBrowse());
     expect(visible).not.toContain('Loading…');
   });
 
-  it.runIf(built)('contains at least one real prerendered catalog card (title text) with no JS executed', () => {
-    const visible = stripTags(readFileSync(BROWSE_DIST, 'utf-8'));
+  runBuilt('contains at least one real prerendered catalog card (title text) with no JS executed', () => {
+    const visible = stripTags(readBrowse());
     // Any of the four artifact-type group headers is proof real catalog
     // sections were baked into the static HTML, not just chrome/nav copy.
     const hasGroupHeader = /Popular loops|Curated skills|Public bundles|Personalities/.test(visible);
     expect(hasGroupHeader, `no prerendered catalog group found in raw HTML — visible text was: ${visible.slice(0, 500)}`).toBe(true);
   });
 
-  it.runIf(built)('#browse-results is non-empty in the RAW (unexecuted) served HTML', () => {
-    const html = readFileSync(BROWSE_DIST, 'utf-8');
+  runBuilt('#browse-results is non-empty in the RAW (unexecuted) served HTML', () => {
+    const html = readBrowse();
     const m = html.match(/<div id="browse-results"[^>]*>([\s\S]*?)<\/div>\s*<\/main>/);
     // The results container itself may have nested content; a coarse but
     // reliable proxy is that its innerHTML (as shipped, before any JS runs)
@@ -236,13 +252,13 @@ describe('/browse ships real content in its RAW served HTML (no-JS / curl reader
 });
 
 describe('/browse renders its catalog (not just references the endpoint)', () => {
-  it.runIf(built)('ships at least one inline script that executes without throwing', async () => {
+  runBuilt('ships at least one inline script that executes without throwing', async () => {
     const { scriptCount, errors } = await renderBrowse();
     expect(scriptCount).toBeGreaterThan(0);
     expect(errors, `inline script threw: ${errors.join(' | ')}`).toEqual([]);
   });
 
-  it.runIf(built)('paints real skill cards into #browse-results from the stubbed API', async () => {
+  runBuilt('paints real skill cards into #browse-results from the stubbed API', async () => {
     const { dom } = await renderBrowse();
     const results = dom.window.document.getElementById('browse-results');
     expect(results, '#browse-results missing from built page').toBeTruthy();
@@ -256,7 +272,7 @@ describe('/browse renders its catalog (not just references the endpoint)', () =>
     expect(rendered).toContain('stub-beta');
   });
 
-  it.runIf(built)('renders every artifact type, so a single broken endpoint cannot silently empty a shelf', async () => {
+  runBuilt('renders every artifact type, so a single broken endpoint cannot silently empty a shelf', async () => {
     const { dom } = await renderBrowse();
     const rendered = dom.window.document.getElementById('browse-results')!.innerHTML;
     expect(rendered, 'bundles shelf empty').toContain('stub-bundle');
@@ -265,7 +281,7 @@ describe('/browse renders its catalog (not just references the endpoint)', () =>
     expect(rendered, 'federated/community shelf empty').toContain('stub-community');
   });
 
-  it.runIf(built)('binds the Community-skills header to the LIVE feed envelope, not a hardcoded literal (issue #82)', async () => {
+  runBuilt('binds the Community-skills header to the LIVE feed envelope, not a hardcoded literal (issue #82)', async () => {
     const { dom } = await renderBrowse();
     const rendered = dom.window.document.getElementById('browse-results')!.innerHTML;
     // The stub feeds 3 enabled_sources and 1234 installable — the header
@@ -276,7 +292,7 @@ describe('/browse renders its catalog (not just references the endpoint)', () =>
     expect(rendered).not.toContain('7 registries');
   });
 
-  it.runIf(built)('leaves the loading state and does NOT show the error state', async () => {
+  runBuilt('leaves the loading state and does NOT show the error state', async () => {
     const { dom } = await renderBrowse();
     const doc = dom.window.document;
     const loading = doc.getElementById('browse-loading');
@@ -286,19 +302,19 @@ describe('/browse renders its catalog (not just references the endpoint)', () =>
     expect(error?.hasAttribute('hidden'), 'rendered the error state on a healthy API').toBe(true);
   });
 
-  it.runIf(built)('reports a non-zero live item count', async () => {
+  runBuilt('reports a non-zero live item count', async () => {
     const { dom } = await renderBrowse();
     const count = dom.window.document.getElementById('browse-live-count')?.textContent || '';
     expect(count).toMatch(/\d+\s+items?/);
     expect(count).not.toMatch(/^0 items/);
   });
 
-  it.runIf(built)('settles into a terminal render state within the timeout', async () => {
+  runBuilt('settles into a terminal render state within the timeout', async () => {
     const { settled } = await renderBrowse();
     expect(settled, 'load() never reached a terminal state — the loading element stayed visible').toBe(true);
   });
 
-  it.runIf(built)('requests the exact endpoints its shelves depend on', async () => {
+  runBuilt('requests the exact endpoints its shelves depend on', async () => {
     // Pins the call graph explicitly rather than inferring it from rendered
     // output. Codex's round-2 review asserted from a static read that
     // /api/composite-loops would not be called (claiming /api/loops instead)
@@ -323,17 +339,19 @@ describe('/browse renders its catalog (not just references the endpoint)', () =>
     expect(requested, '/api/loops was called despite a healthy /api/composite-loops response').not.toContain('/api/loops');
   });
 
-  it.runIf(built)('called no unrouted API path (catches a silently renamed endpoint)', async () => {
+  runBuilt('called no unrouted API path (catches a silently renamed endpoint)', async () => {
     const { unmatched } = await renderBrowse();
     expect(unmatched, `browse called endpoints this test does not know about: ${unmatched.join(', ')}`).toEqual([]);
   });
 
-  it.runIf(built)('is not an SPA-fallback copy of the homepage', () => {
+  runBuilt('is not an SPA-fallback copy of the homepage', () => {
     // Byte-count equality was the old, weak form of this check. Compare the
     // actual documents — a fallback that differs by one byte of injected
     // metadata would slip past a size comparison.
+    distAssert('built home page (post-build contract)', HOME_DIST);
+    distAssert('built /browse page (post-build contract)', BROWSE_DIST);
     const home = readFileSync(HOME_DIST, 'utf-8');
-    const browse = readFileSync(BROWSE_DIST, 'utf-8');
+    const browse = readBrowse();
     expect(browse).not.toEqual(home);
     expect(browse).toContain('browse-results');
   });

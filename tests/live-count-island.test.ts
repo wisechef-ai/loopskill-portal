@@ -27,6 +27,26 @@ import { describe, it, expect } from 'vitest';
 import { readFileSync, existsSync, readdirSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { extractLiveValue, formatCount, getByPath } from '../src/lib/liveCount';
+import { ciWarn, distAssert, distDescribe, requiresBuilt } from './lib/dist-guard';
+
+/**
+ * CI CONTRACT (kanban t_eb25ceb0): the post-build step in
+ * .github/workflows/ci.yml runs this file AFTER `npm run build` with
+ * REQUIRE_LIVECOUNT_BUILT=1 — there, a missing built page is a THROWN error
+ * (distAssert), never the silent `if (!existsSync(…)) return` this block used.
+ *
+ * REQUIRE_LIVECOUNT_CONTENT=1 (schedule / workflow_dispatch ONLY — the #140
+ * split): the federation headline island is only RENDERED when the build-time
+ * /api/skills/external fetch succeeded (fallback={overview.total}); a
+ * transient 429 legitimately ships the honest-unavailable branch with no
+ * island. Hard-requiring the island on push/PR would couple every portal
+ * deploy to a contended anonymous bucket, so there the case degrades to a
+ * ciWarn annotation (stderr — console.* dies under --reporter=json). On the
+ * unattended rebuilds nobody's deploy is hostage and a silently vanished
+ * headline count is exactly what red is for.
+ */
+const REQUIRE = 'REQUIRE_LIVECOUNT_BUILT';
+const REQUIRE_CONTENT = 'REQUIRE_LIVECOUNT_CONTENT';
 
 const ROOT = resolve(__dirname, '..');
 const COMPONENT = resolve(ROOT, 'src/components/LiveCount.astro');
@@ -167,12 +187,15 @@ describe('LiveCount call sites — wired to the REAL public snapshot/federation 
 });
 
 // ─────────────────────────────────────────────────────────────────────────
-// (b) BUILT DIST — only runs meaningfully after `npm run build`; skipped
-// (not failed) pre-build so `vitest run` on a clean checkout doesn't need a
-// build first, matching this repo's other dist-gated tests (federation-rot-
-// guard.test.ts). CI always builds before `npx vitest run` (see AGENTS.md).
+// (b) BUILT DIST — wired into CI's post-build step (kanban t_eb25ceb0).
+// distDescribe keys on dist/ EXISTING so a build that dropped one of these
+// pages lands as a RED case naming the page (distAssert), never a vanished
+// skip. Pre-build (`npm test`, fresh clone) the block self-skips — the only
+// legitimate place for one.
 // ─────────────────────────────────────────────────────────────────────────
-describe('LiveCount — built dist output', () => {
+const REQUIRE_CONTENT_ON = requiresBuilt(REQUIRE_CONTENT);
+const describeBuilt = distDescribe(REQUIRE, DIST);
+describeBuilt('LiveCount — built dist output', () => {
   const indexHtml = resolve(DIST, 'index.html');
   const federationHtml = resolve(DIST, 'federation/index.html');
   const astroDir = resolve(DIST, '_astro');
@@ -193,7 +216,12 @@ describe('LiveCount — built dist output', () => {
   }
 
   it('dist/index.html contains the static fallback number for the federation stat (pre-JS honesty)', () => {
-    if (!existsSync(indexHtml)) return; // pre-build checkout — source tests above cover the invariant
+    // Hard-required on every event: index.astro's fallbacks are honest
+    // NUMBERS even when the build-time fetch 429s (`let liveSkillCount = 57`,
+    // federatedSkillCount degrades to the verified 80,000+ floor), so the
+    // spans always render with real digits. A blank/NaN span is a defect here,
+    // never a fail-closed branch.
+    distAssert('built page dist/index.html (live-count fallback check)', indexHtml);
     const html = readFileSync(indexHtml, 'utf-8');
     // The fallback renders as data-live-count spans with a floor1k-plus or
     // plain number inside — assert the marker attribute + at least one
@@ -207,10 +235,30 @@ describe('LiveCount — built dist output', () => {
   });
 
   it('dist/federation/index.html contains a non-empty static fallback for the headline total', () => {
-    if (!existsSync(federationHtml)) return;
+    distAssert('built page dist/federation/index.html (headline fallback check)', federationHtml);
     const html = readFileSync(federationHtml, 'utf-8');
     const spans = [...html.matchAll(/<span[^>]*data-live-count[^>]*>([^<]*)<\/span>/g)];
-    if (spans.length === 0) return; // build-time federation fetch was down this run — honest-unavailable branch, no island rendered; covered by federation-rot-guard.test.ts
+    if (spans.length === 0) {
+      // The honest-unavailable branch: overview.ok was false at build time
+      // (fallback={overview.total} is null → LiveCount not rendered). Legit on
+      // a transient 429 during a push/PR build — but never silent, and RED on
+      // the unattended rebuilds where the headline count silently vanished.
+      if (REQUIRE_CONTENT_ON) {
+        throw new Error(
+          `${REQUIRE_CONTENT}=1 but dist/federation/index.html renders NO data-live-count span — ` +
+            `the build-time GET /api/skills/external failed closed, so the page's headline ` +
+            `total silently stopped shipping on an unattended rebuild. Check catalog health ` +
+            `(429? API down?) and re-run. (The honest-unavailable copy itself is pinned by ` +
+            `federation-rot-guard.test.ts — this case guards the SUCCESS branch.)`,
+        );
+      }
+      ciWarn(
+        '::warning:: dist/federation/index.html has no data-live-count island (build-time ' +
+          '/api/skills/external failed closed) — headline-fallback assertions did not execute ' +
+          'this run; REQUIRE_LIVECOUNT_CONTENT=1 (schedule/dispatch) enforces them.',
+      );
+      return; // covered by federation-rot-guard.test.ts's disjunction for this build
+    }
     for (const [, text] of spans) {
       expect(text.trim().length).toBeGreaterThan(0);
       expect(text).not.toMatch(/undefined|NaN|null/i);
@@ -218,16 +266,20 @@ describe('LiveCount — built dist output', () => {
   });
 
   it('the shipped JS (inline or externalized to dist/_astro/) targets the real snapshot/federation endpoints', () => {
+    distAssert('built output for island script corpus', [indexHtml, astroDir]);
     const corpus = scriptCorpus();
-    if (!corpus) return; // pre-build
+    // Post-distAssert the corpus cannot be empty (index.html exists); an empty
+    // string here would mean _astro/ shipped zero .js AND index.html is blank.
+    expect(corpus.length, 'script corpus built from dist/index.html + dist/_astro/*.js is empty').toBeGreaterThan(0);
     const targetsRealEndpoint =
       corpus.includes('/api/marketing/snapshot') || corpus.includes('/api/skills/external');
     expect(targetsRealEndpoint, 'no reference to a real snapshot endpoint found in dist/index.html or dist/_astro/*.js').toBe(true);
   });
 
   it('the shipped JS still carries the fail-closed swap contract (data-live-count wiring), not a stripped-down copy', () => {
+    distAssert('built output for island script corpus', [indexHtml, astroDir]);
     const corpus = scriptCorpus();
-    if (!corpus) return;
+    expect(corpus.length, 'script corpus built from dist/index.html + dist/_astro/*.js is empty').toBeGreaterThan(0);
     // Minified output renames locals but keeps string/attribute literals —
     // data-live-count and data-endpoint are DOM attribute names, immune to
     // minification, so this survives a real production build.
