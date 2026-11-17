@@ -24,12 +24,26 @@
 import { readFileSync, existsSync } from 'fs';
 import { join } from 'path';
 import { JSDOM } from 'jsdom';
+import { distAssert, requiresBuilt } from './lib/dist-guard';
+
+/**
+ * CI CONTRACT (kanban t_eb25ceb0): the post-build step in
+ * .github/workflows/ci.yml runs this file AFTER `npm run build` with
+ * REQUIRE_MESH_VIEW_BUILT=1. `it.runIf(false)` SKIPS — 14 cases here were
+ * skipping in every CI run since writing (t_648b1f3d's rot class). The gate
+ * now opens three ways: the page exists; the post-build contract demands it;
+ * or dist/ merely exists (build ran but dropped THIS page = broken build, red
+ * naming the page via distAssert — t_648b1f3d correction #3). Pre-build
+ * `npm test` with no dist keeps the self-skip, the only legitimate place.
+ */
+const REQUIRE = 'REQUIRE_MESH_VIEW_BUILT';
 
 const ROOT = join(new URL(import.meta.url).pathname, '../../');
 const MESH_DIST = join(ROOT, 'dist/mesh/index.html');
 const MESH_SRC = join(ROOT, 'src/pages/mesh.astro');
 
 const built = existsSync(MESH_DIST);
+const runBuilt = it.runIf(built || requiresBuilt(REQUIRE) || existsSync(join(ROOT, 'dist')));
 
 const FLEET_ID = '11111111-1111-1111-1111-111111111111';
 
@@ -97,6 +111,9 @@ function stubFetch(mode: 'ok' | 'unauthorized' | 'partitioned-5xx' | 'partitione
 }
 
 async function renderMesh(mode: 'ok' | 'unauthorized' | 'partitioned-5xx' | 'partitioned-network' | 'empty' = 'ok') {
+  // Inside a case chosen to RUN, so a missing built page is a defect (throws),
+  // never a return that would report a zero-assertion green.
+  distAssert('built page dist/mesh/index.html (jsdom render input)', MESH_DIST);
   const html = readFileSync(MESH_DIST, 'utf-8');
   const requested: string[] = [];
 
@@ -140,7 +157,11 @@ async function renderMesh(mode: 'ok' | 'unauthorized' | 'partitioned-5xx' | 'par
   }
   for (const s of localBundledScripts) {
     const bundlePath = join(ROOT, 'dist', (s as any).getAttribute('src'));
-    if (!existsSync(bundlePath)) { errors.push(`bundle not found on disk: ${bundlePath}`); continue; }
+    // The HTML REFERENCES this bundle, so a build that dropped the file is a
+    // broken build — throw naming it (a pushed error string would only be
+    // asserted by ONE of the 14 cases; the other 13 would merely time out in
+    // waitFor, a red that blames the wrong thing).
+    distAssert(`bundle referenced by dist/mesh/index.html (${(s as any).getAttribute('src')})`, bundlePath);
     const code = readFileSync(bundlePath, 'utf-8');
     try { win.eval(code); executedCount++; } catch (err) { errors.push(String(err)); }
   }
@@ -173,24 +194,24 @@ async function waitFor(win: any, cond: () => boolean, timeoutMs: number): Promis
 }
 
 describe('/mesh renders per-assignment convergence (not just references the endpoint)', () => {
-  it.runIf(built)('ships at least one inline script that executes without throwing', async () => {
+  runBuilt('ships at least one inline script that executes without throwing', async () => {
     const { scriptCount, errors } = await renderMesh('ok');
     expect(scriptCount).toBeGreaterThan(0);
     expect(errors, `inline script threw: ${errors.join(' | ')}`).toEqual([]);
   });
 
-  it.runIf(built)('settles into a terminal render state within the timeout', async () => {
+  runBuilt('settles into a terminal render state within the timeout', async () => {
     const { settled } = await renderMesh('ok');
     expect(settled, 'page never reached a terminal state').toBe(true);
   });
 
-  it.runIf(built)('requests /api/fleets and the fleet-scoped /convergence endpoint', async () => {
+  runBuilt('requests /api/fleets and the fleet-scoped /convergence endpoint', async () => {
     const { requested } = await renderMesh('ok');
     expect(requested).toContain('/api/fleets');
     expect(requested).toContain(`/api/fleets/${FLEET_ID}/convergence`);
   });
 
-  it.runIf(built)('paints one row per assignment into the table', async () => {
+  runBuilt('paints one row per assignment into the table', async () => {
     const { dom } = await renderMesh('ok');
     const tbody = dom.window.document.getElementById('mesh-tbody');
     expect(tbody, '#mesh-tbody missing from built page').toBeTruthy();
@@ -202,7 +223,7 @@ describe('/mesh renders per-assignment convergence (not just references the endp
     }
   });
 
-  it.runIf(built)('renders loop_key, desired vs observed revision, consecutive failures, and age per row', async () => {
+  runBuilt('renders loop_key, desired vs observed revision, consecutive failures, and age per row', async () => {
     const { dom } = await renderMesh('ok');
     const tbody = dom.window.document.getElementById('mesh-tbody')!;
     const row = tbody.querySelector('tr[data-loop="p4-loop-proof"]')!;
@@ -215,14 +236,14 @@ describe('/mesh renders per-assignment convergence (not just references the endp
 });
 
 describe('/mesh — the four-state freshness contract (THE POINT of this phase)', () => {
-  it.runIf(built)('dead (failing) renders with data-freshness="dead", distinct from every other state', async () => {
+  runBuilt('dead (failing) renders with data-freshness="dead", distinct from every other state', async () => {
     const { dom } = await renderMesh('ok');
     const row = dom.window.document.querySelector('tr[data-loop="broken-sync"]');
     expect(row, 'broken-sync (failing) row missing').toBeTruthy();
     expect(row!.getAttribute('data-freshness')).toBe('dead');
   });
 
-  it.runIf(built)('stale (converged past threshold) renders with data-freshness="stale", distinct from a fresh converged row', async () => {
+  runBuilt('stale (converged past threshold) renders with data-freshness="stale", distinct from a fresh converged row', async () => {
     const { dom } = await renderMesh('ok');
     const staleRow = dom.window.document.querySelector('tr[data-loop="weekly-report"]');
     const freshRow = dom.window.document.querySelector('tr[data-loop="p4-loop-proof"]');
@@ -231,7 +252,7 @@ describe('/mesh — the four-state freshness contract (THE POINT of this phase)'
     expect(staleRow!.getAttribute('data-freshness')).not.toBe(freshRow!.getAttribute('data-freshness'));
   });
 
-  it.runIf(built)('unauthorized (401) renders the sign-in path, never the broken-fleet path', async () => {
+  runBuilt('unauthorized (401) renders the sign-in path, never the broken-fleet path', async () => {
     const { dom } = await renderMesh('unauthorized');
     const doc = dom.window.document;
     expect(doc.getElementById('mesh-unauthorized')!.hasAttribute('hidden'), 'unauthorized panel not shown on 401').toBe(false);
@@ -241,7 +262,7 @@ describe('/mesh — the four-state freshness contract (THE POINT of this phase)'
     expect(text.toLowerCase()).toContain('sign in');
   });
 
-  it.runIf(built)('partitioned (5xx) renders the visibility-gap path, never claims the fleet is down', async () => {
+  runBuilt('partitioned (5xx) renders the visibility-gap path, never claims the fleet is down', async () => {
     const { dom } = await renderMesh('partitioned-5xx');
     const doc = dom.window.document;
     expect(doc.getElementById('mesh-partitioned')!.hasAttribute('hidden'), 'partitioned panel not shown on 5xx').toBe(false);
@@ -252,13 +273,13 @@ describe('/mesh — the four-state freshness contract (THE POINT of this phase)'
     expect(text).not.toMatch(/fleet is down|fleet is unhealthy|fleet failed/);
   });
 
-  it.runIf(built)('partitioned (network failure) renders the same visibility-gap path as a 5xx', async () => {
+  runBuilt('partitioned (network failure) renders the same visibility-gap path as a 5xx', async () => {
     const { dom } = await renderMesh('partitioned-network');
     const doc = dom.window.document;
     expect(doc.getElementById('mesh-partitioned')!.hasAttribute('hidden'), 'partitioned panel not shown on network failure').toBe(false);
   });
 
-  it.runIf(built)('all four freshness states use pairwise-distinct badge treatments', async () => {
+  runBuilt('all four freshness states use pairwise-distinct badge treatments', async () => {
     const { dom } = await renderMesh('ok');
     const tbody = dom.window.document.getElementById('mesh-tbody')!;
     const byLoop = (k: string) => tbody.querySelector(`tr[data-loop="${k}"] span`)!.className;
@@ -273,7 +294,7 @@ describe('/mesh — the four-state freshness contract (THE POINT of this phase)'
 });
 
 describe('/mesh — never_attempted is distinct from failing (dead)', () => {
-  it.runIf(built)('never_attempted rows carry data-freshness="never_attempted", not "dead"', async () => {
+  runBuilt('never_attempted rows carry data-freshness="never_attempted", not "dead"', async () => {
     const { dom } = await renderMesh('ok');
     for (const key of ['atomic-habits', 'cron-watchdog', 'dreaming']) {
       const row = dom.window.document.querySelector(`tr[data-loop="${key}"]`);
@@ -282,7 +303,7 @@ describe('/mesh — never_attempted is distinct from failing (dead)', () => {
     }
   });
 
-  it.runIf(built)('never_attempted badge text differs from the dead/failing badge text', async () => {
+  runBuilt('never_attempted badge text differs from the dead/failing badge text', async () => {
     const { dom } = await renderMesh('ok');
     const tbody = dom.window.document.getElementById('mesh-tbody')!;
     const neverText = (tbody.querySelector('tr[data-loop="atomic-habits"] span')!.textContent || '').toLowerCase();
@@ -294,7 +315,7 @@ describe('/mesh — never_attempted is distinct from failing (dead)', () => {
 });
 
 describe('/mesh — honest empty state (not a spinner forever)', () => {
-  it.runIf(built)('zero assignments renders an explicit empty message, not the loading spinner', async () => {
+  runBuilt('zero assignments renders an explicit empty message, not the loading spinner', async () => {
     const { dom } = await renderMesh('empty');
     const doc = dom.window.document;
     expect(doc.getElementById('mesh-loading')!.hasAttribute('hidden'), 'stuck on loading spinner with zero assignments').toBe(true);
@@ -350,7 +371,7 @@ describe('/mesh source contract', () => {
   // differ keys on it — so an unguarded attribute can silently drift until
   // "unauthorized" is styled as "dead". Verified: swapping
   // data-state="unauthorized" to "dead" passed 20/20 before this test existed.
-  it.runIf(built)('each freshness block carries its OWN data-state (RED-proof gap)', async () => {
+  runBuilt('each freshness block carries its OWN data-state (RED-proof gap)', async () => {
     const { dom } = await renderMesh('ok');
     const doc = dom.window.document;
     const expected: Record<string, string> = {

@@ -12,6 +12,17 @@ import { readFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { JSDOM } from 'jsdom';
 import { META_INSTALL_PHRASE } from '../src/lib/agentInstall';
+import { distAssert, requiresBuilt } from './lib/dist-guard';
+
+/**
+ * CI CONTRACT (kanban t_eb25ceb0): CI's post-build step runs this file AFTER
+ * `npm run build` with REQUIRE_QA1018W1_BUILT=1. `(dist ? it : it.skip)`
+ * SKIPPED the anon-chrome case in every CI run since writing — a leak of the
+ * member rail into the anonymous DOM was unenforced (t_648b1f3d's rot class).
+ * The gate now opens on the page, the contract, or dist/ existing (partial
+ * build → distAssert RED naming the page); pre-build self-skip stays.
+ */
+const REQUIRE = 'REQUIRE_QA1018W1_BUILT';
 
 const ROOT = join(__dirname, '..');
 const read = (...p: string[]) => readFileSync(join(ROOT, ...p), 'utf-8');
@@ -131,9 +142,17 @@ describe('C13 — signed-in chrome is not in the anonymous DOM', () => {
     const i = SHELL.indexOf("t.replaceWith(t.content.cloneNode(true))");
     expect(i).toBeGreaterThan(SHELL.indexOf('if (!user) {'));
   });
+  const DIST_INDEX_HTML = join(ROOT, 'dist', 'index.html');
   const dist = readIf('dist', 'index.html');
-  (dist ? it : it.skip)('built home: no Sign out / member Library / Account outside a template', () => {
-    const outside = dist.replace(/<template data-shell-member-tpl>[\s\S]*?<\/template>/g, '');
+  const distDirExists = existsSync(join(ROOT, 'dist'));
+  const runDist = Boolean(dist) || requiresBuilt(REQUIRE) || distDirExists;
+  (runDist ? it : it.skip)('built home: no Sign out / member Library / Account outside a template', () => {
+    // Re-read INSIDE the case (the collection-time `dist` snapshot predates
+    // any mid-run dist swap) and distAssert: chosen to run, so a missing page
+    // must throw, never pass on an empty string — `outside` of '' matches
+    // nothing and would be another zero-teeth green.
+    distAssert('built anon home dist/index.html (member-leak check)', DIST_INDEX_HTML);
+    const outside = readFileSync(DIST_INDEX_HTML, 'utf-8').replace(/<template data-shell-member-tpl>[\s\S]*?<\/template>/g, '');
     expect(outside).not.toMatch(/>\s*Sign out\s*</);
     expect(outside).not.toMatch(/<[^>]+id="rail-signout(-mobile)?"/);
     expect(outside).not.toMatch(/<a href="\/library"[^>]*data-shell-member/);

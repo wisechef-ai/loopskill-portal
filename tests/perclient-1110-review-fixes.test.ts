@@ -15,6 +15,7 @@
  *      at the right pages for keys.
  */
 import { existsSync, readFileSync } from 'fs';
+import { distAssert, distDescribe } from './lib/dist-guard';
 import { join } from 'path';
 import { JSDOM } from 'jsdom';
 import { describe, expect, it } from 'vitest';
@@ -104,11 +105,22 @@ describe('A. /signin forwards utm_* nested inside next=', () => {
 
 // ── B. rendered attribution on the built page ───────────────────────────
 const built = existsSync(DIST_PAGE) && existsSync(DIST_SIGNIN);
+
+// CI contract (kanban t_eb25ceb0, stretch of the t_648b1f3d rot class): the
+// batched post-build step sets REQUIRE_PERCLIENT1110_BUILT=1. Both built pages
+// are then REQUIRED (distAssert) — this block's `read()` helper returns '' on
+// a missing page, exactly how a not.toContain-style case would pass with zero
+// teeth.
+const REQUIRE = 'REQUIRE_PERCLIENT1110_BUILT';
+const requireBuiltPages = () => {
+  distAssert('built use-case page (post-build contract)', DIST_PAGE);
+  distAssert('built signin page (post-build contract)', DIST_SIGNIN);
+};
 // AppShell's public-mode rewrite of [data-signin-next] CTAs, as it appears in
 // the built page. Pinned verbatim so the simulation below cannot drift from it.
 const SHELL_REWRITE = 'signin?next=${encodeURIComponent(window.location.pathname+window.location.search)}';
 
-(built ? describe : describe.skip)('B. built use-case page: every sign-in/checkout link keeps uc-per-client', () => {
+distDescribe(REQUIRE, join(ROOT, 'dist'))('B. built use-case page: every sign-in/checkout link keeps uc-per-client', () => {
   const html = read(DIST_PAGE);
   // describe.skip still RUNS this body at collection time — never touch dist/
   // unless it exists (CI's unit step runs before `npm run build`).
@@ -122,15 +134,18 @@ const SHELL_REWRITE = 'signin?next=${encodeURIComponent(window.location.pathname
   const landing = new URL(`${ORIGIN}/use-cases/one-private-bundle-per-client/?${LANDING_QS}`);
 
   it('the built page carries the AppShell next= rewrite this test simulates', () => {
+    requireBuiltPages();
     expect(html).toContain(SHELL_REWRITE);
   });
 
   it('finds the shell CTAs and the page CTAs', () => {
+    requireBuiltPages();
     expect(anchors.filter((a) => a.hasAttribute('data-signin-next')).length).toBeGreaterThanOrEqual(1);
     expect(anchors.filter((a) => !a.hasAttribute('data-signin-next')).length).toBeGreaterThanOrEqual(2);
   });
 
   it('every link reaches the OAuth links with utm_campaign=uc-per-client', () => {
+    requireBuiltPages();
     const failures: string[] = [];
     for (const a of anchors) {
       const effective = a.hasAttribute('data-signin-next')
@@ -149,6 +164,7 @@ const SHELL_REWRITE = 'signin?next=${encodeURIComponent(window.location.pathname
   });
 
   it("the page's own CTAs carry the campaign even for a visitor who arrived without utm", () => {
+    requireBuiltPages();
     for (const a of anchors.filter((x) => !x.hasAttribute('data-signin-next'))) {
       const q = new URL(a.getAttribute('href') as string, ORIGIN).searchParams;
       expect(q.get('utm_campaign'), a.getAttribute('href') ?? '').toBe('uc-per-client');

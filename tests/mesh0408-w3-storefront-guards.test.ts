@@ -26,7 +26,7 @@
 import { existsSync, mkdtempSync, mkdirSync, writeFileSync, rmSync, readFileSync } from 'fs';
 import { join, dirname } from 'path';
 import { tmpdir } from 'os';
-import { ciWarn } from './lib/dist-guard';
+import { ciWarn, distAssert, distDescribe, requiresBuilt } from './lib/dist-guard';
 
 import {
   normalizeLink,
@@ -400,8 +400,13 @@ describe('audit-claims · defect-routing-unconditional', () => {
 // have caught the apex's dead links and the bundle-deployment copy.
 // ─────────────────────────────────────────────────────────────────────────
 
+// CI contract (kanban t_eb25ceb0, stretch of the t_648b1f3d rot class): the
+// batched post-build step sets REQUIRE_W3_STOREFRONT_BUILT=1; there a missing
+// dist/ goes RED (distAssert in each case), never a silent skip.
+const REQUIRE = 'REQUIRE_W3_STOREFRONT_BUILT';
+
 const built = existsSync(DIST);
-const describeBuilt = built ? describe : describe.skip;
+const describeBuilt = distDescribe(REQUIRE, DIST);
 if (!built) {
   // ciWarn, not console.warn — console.* is suppressed under vitest's
   // --reporter=json (measured; see the ciWarn doc comment in
@@ -412,6 +417,7 @@ if (!built) {
 
 describeBuilt('built surface · every internal link resolves', () => {
   it('audit-links passes on dist/', async () => {
+    distAssert('built dist/ (post-build contract)', DIST);
     const { execFileSync } = await import('child_process');
     execFileSync('node', [join(ROOT, 'scripts/audit-links.mjs'), DIST], { stdio: 'pipe' });
   });
@@ -419,6 +425,7 @@ describeBuilt('built surface · every internal link resolves', () => {
 
 describeBuilt('built surface · no false claim survives to a rendered page', () => {
   it('audit-claims passes on dist/', async () => {
+    distAssert('built dist/ (post-build contract)', DIST);
     const { execFileSync } = await import('child_process');
     execFileSync('node', [join(ROOT, 'scripts/audit-claims.mjs'), DIST], { stdio: 'pipe' });
   });
