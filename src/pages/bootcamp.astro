@@ -48,7 +48,7 @@ let fetchError: string | null = null;
 // search total, honest non-numeric fallback (never an invented number) if
 // the build-time fetch fails.
 const skillCountResult = await fetchApi<{ total: number }>('/api/skills/search?page_size=1', {
-  authed: false,
+  authed: false, sendKeyEvenIfPublic: true,
 });
 const liveSkillCount: number | null =
   skillCountResult.ok && typeof skillCountResult.data?.total === 'number' && skillCountResult.data.total > 0
@@ -58,7 +58,7 @@ const skillCountLabel = liveSkillCount !== null ? `all ${liveSkillCount} skills`
 
 const list = await fetchApi<{ version: number; tracks: TrackSummary[] }>(
   '/api/bootcamp',
-  { authed: false, maxAttempts: 7, timeoutMs: 15000 },
+  { authed: false, sendKeyEvenIfPublic: true, maxAttempts: 7, timeoutMs: 15000 },
 );
 
 if (list.error || !list.data) {
@@ -67,7 +67,7 @@ if (list.error || !list.data) {
   // Fetch each track's full steps in parallel.
   const details = await Promise.all(
     list.data.tracks.map((t) =>
-      fetchApi<Track>(`/api/bootcamp/${t.id}`, { authed: false, maxAttempts: 7, timeoutMs: 15000 }),
+      fetchApi<Track>(`/api/bootcamp/${t.id}`, { authed: false, sendKeyEvenIfPublic: true, maxAttempts: 7, timeoutMs: 15000 }),
     ),
   );
   tracks = details
@@ -168,7 +168,7 @@ const catalogTiers = new Map<string, string | null>();
 try {
   const cat = await fetchApi<{ results?: { slug?: string; tier?: string | null }[] }>(
     '/api/skills/search?page_size=100',
-    { authed: false, maxAttempts: 2, timeoutMs: 8000 },
+    { authed: false, sendKeyEvenIfPublic: true, maxAttempts: 2, timeoutMs: 8000 },
   );
   for (const s of cat.data?.results ?? []) if (s?.slug) catalogTiers.set(s.slug, s.tier ?? null);
 } catch {

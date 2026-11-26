@@ -60,14 +60,14 @@ const API_BASE = import.meta.env.PUBLIC_LOOPSKILL_API_BASE || import.meta.env.PU
 type RawItem = Record<string, any>;
 
 async function fetchLoopsPrebuilt(): Promise<RawItem[]> {
-  const composite = await fetchApi<any>('/api/composite-loops', { authed: false });
+  const composite = await fetchApi<any>('/api/composite-loops', { authed: false, sendKeyEvenIfPublic: true });
   if (composite.ok && composite.data) {
     const rows = Array.isArray(composite.data)
       ? composite.data
       : (composite.data.composite_loops || composite.data.loops || composite.data.results || []);
     if (rows.length) return rows;
   }
-  const verifiers = await fetchApi<any>('/api/loops', { authed: false });
+  const verifiers = await fetchApi<any>('/api/loops', { authed: false, sendKeyEvenIfPublic: true });
   if (verifiers.ok && verifiers.data) {
     const rows = Array.isArray(verifiers.data) ? verifiers.data : (verifiers.data.loops || verifiers.data.results || []);
     return rows.map((v: RawItem) => ({ ...v, is_fallback_verifier: true }));
@@ -79,9 +79,9 @@ let byType: Record<string, RawItem[]> = { loops: [], skills: [], bundles: [], pe
 try {
   const [loopsRows, skillsR, bundlesR, persR] = await Promise.all([
     fetchLoopsPrebuilt(),
-    fetchApi<any>('/api/skills/search?page_size=24', { authed: false }),
-    fetchApi<any>('/api/bundles/discover?sort=installs&limit=6', { authed: false }),
-    fetchApi<any>('/api/personalities', { authed: false }),
+    fetchApi<any>('/api/skills/search?page_size=24', { authed: false, sendKeyEvenIfPublic: true }),
+    fetchApi<any>('/api/bundles/discover?sort=installs&limit=6', { authed: false, sendKeyEvenIfPublic: true }),
+    fetchApi<any>('/api/personalities', { authed: false, sendKeyEvenIfPublic: true }),
   ]);
   byType = {
     loops: loopsRows,

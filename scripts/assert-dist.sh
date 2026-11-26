@@ -557,6 +557,78 @@ fi
 
 echo "OK:   no light-theme utilities in any emitted page"
 
+# ─────────────────────────────────────────────────────────────────────────────
+# No secret may reach the artifact. HARD GATE — unlike the catalog-health note
+# below, this one is allowed to stop a deploy: a build-time API key inlined into
+# a shipped chunk is not a degradation, it is an exposure. See the script.
+# ─────────────────────────────────────────────────────────────────────────────
+if [ -f "scripts/assert-no-secret-in-dist.sh" ]; then
+  bash scripts/assert-no-secret-in-dist.sh "$DIST_DIR" || {
+    echo "FAIL: refusing to call this dist deployable — a key-shaped literal is in the artifact."
+    exit 1
+  }
+fi
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Homepage catalog-health note (kanban t_c50df5cd) — INFORMATIONAL, never a gate
+#
+# The homepage's fleet drift matrix resolves 5 real catalog slugs with real
+# versions at build time and is OMITTED when it can't. That is the designed
+# fail-closed branch (an unreachable catalog must never produce invented skill
+# names), and a transient 429 must not block an unrelated deploy — so this
+# script must NOT fail here. What it CAN do is refuse to let the omission be
+# invisible: assert-dist.sh runs unconditionally at the end of every
+# `npm run build`, in the same shell as the build, so it can also say whether
+# this build had a key. Those two facts together separate "the catalog was
+# unreachable" from "the homepage regressed", which is the distinction five
+# red vitest cases force a human to reconstruct today.
+#
+# Detection mirrors tests/landing-onramp.test.ts (same markers, same words).
+# ─────────────────────────────────────────────────────────────────────────────
+homepage="$DIST_DIR/index.html"
+if [ -f "$homepage" ]; then
+  # The build stamps its own catalog health into index.html (index.astro,
+  # `<div id="catalog-health" data-key data-matrix data-degraded>`). Prefer it:
+  # it states what was true WHEN THE BUILD RAN, which is the only fact that
+  # explains a degraded dist. The environment is a fallback for builds
+  # predating the stamp. It is a DIV, not an HTML comment, because Astro's
+  # build strips comments containing template expressions (measured 2026-11-16)
+  # — a comment-based stamp would silently never exist, and "no stamp" is
+  # indistinguishable from "build predates the stamp".
+  stamp=$(grep -o 'id="catalog-health"[^>]*' "$homepage" 2>/dev/null | head -1 || true)
+  had_key=""
+  case "$stamp" in
+    *'data-key="1"'*) had_key="yes" ;;
+    *'data-key="0"'*) had_key="no" ;;
+  esac
+  if [ -z "$had_key" ]; then
+    if [ -n "${LOOPSKILL_API_KEY:-}" ] || [ -n "${RECIPES_API_KEY:-}" ]; then
+      had_key="yes"
+    else
+      had_key="no (inferred from this shell — the dist carries no catalog-health stamp)"
+    fi
+  fi
+  if grep -q 'data-component="fleet-drift-matrix"' "$homepage"; then
+    echo "OK:   $homepage ships the fleet drift matrix (the build reached the live catalog)"
+  elif grep -q 'could not be built against the live catalog' "$homepage"; then
+    echo "NOTE: $homepage OMITS the fleet drift matrix (designed fail-closed branch — not a deploy blocker)."
+    if [ "$had_key" = "yes" ]; then
+      echo "      A build-time API key WAS in the environment, so this is not the anonymous rate"
+      echo "      bucket: the catalog was unreachable or returned nothing usable. Worth a look —"
+      echo "      on a schedule/workflow_dispatch run the ON-RAMP gate turns this red."
+    else
+      echo "      No build-time API key in the environment, so every catalog call used the"
+      echo "      60/min-per-IP anonymous bucket. Expected for a local build; in CI the Build"
+      echo "      step exports RECIPES_API_KEY precisely so this branch is not the common case."
+    fi
+  else
+    echo "NOTE: $homepage renders NEITHER the drift matrix NOR the 'could not be built against"
+    echo "      the live catalog' honesty sentence — one of the two must be present. The"
+    echo "      ON-RAMP built-output gate (tests/landing-onramp.test.ts) treats this as red."
+  fi
+fi
+
+echo ""
 echo "All Spotify-IA kill-tests passed (rail link count, redirect stubs, skill detail pages)."
 echo ""
 echo "Safe to deploy."

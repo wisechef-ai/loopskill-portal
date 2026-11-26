@@ -53,7 +53,7 @@ export async function getStaticPaths() {
     { slug: 'research-analyst', title: 'Research Analyst', description: 'A methodical research persona. Cross-references multiple sources, flags uncertainty, and cites everything. Great for due-diligence, competitive analysis, and literature review tasks.', category: 'research', tier: 'free' },
     { slug: 'focused-dev-agent', title: 'Focused Dev Agent', description: 'A disciplined software engineer persona. Ships clean, tested code, asks clarifying questions before writing, and never hallucinates library APIs. Ideal for code-generation and refactor tasks.', category: 'engineering', tier: 'free' },
   ];
-  const result = await fetchApi<Personality[]>('/api/personalities', { authed: false });
+  const result = await fetchApi<Personality[]>('/api/personalities', { authed: false, sendKeyEvenIfPublic: true });
   let personalities: Personality[] = (result.ok && Array.isArray(result.data)) ? result.data : [];
 
   personalities = personalities.filter((p) => p.is_public !== false);
@@ -72,7 +72,7 @@ export async function getStaticPaths() {
 const { slug } = Astro.params;
 const { initialPersonality } = Astro.props as { initialPersonality: Personality };
 
-const detail = await fetchApi<Personality>(`/api/personalities/${slug}`, { authed: false });
+const detail = await fetchApi<Personality>(`/api/personalities/${slug}`, { authed: false, sendKeyEvenIfPublic: true });
 const personality: Personality = detail.ok && detail.data ? { ...initialPersonality, ...detail.data } : initialPersonality;
 
 const display = {

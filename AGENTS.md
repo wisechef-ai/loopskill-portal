@@ -84,6 +84,101 @@ build-time fetch couples the build to API uptime (WIS-737 incident class;
 island over `src/lib/api.ts` (`API_BASE = https://app.loopskill.io`; the legacy
 `recipes.wisechef.ai` 301s here as of 2026-07-10).
 
+### A build-time catalog fetch must PRESENT the key (kanban t_c50df5cd)
+
+A "public" endpoint means no key is *required* — it does **not** mean the call
+should go out keyless. `app/middleware/rate_limit.py` buckets by client IP at
+60/min and skips that bucket only when `auth_ctx.scope != "anonymous"`, so a
+keyless build call queues behind every other anonymous visitor from the runner's
+own IP. One `astro build` fires dozens of them in seconds. Measured 2026-11-16:
+anonymous `GET /api/skills/search?page_size=12` → **429 on 8 of 8 attempts**
+(retries included) from both fleet hosts; the identical request with a
+`rec_live_*` key → 200, **byte-identical body**. The homepage's flagship fleet
+drift matrix, its MCP/connector stats and its live federation count all fall
+back silently when that happens.
+
+Reproduced live the same day from a single stable IPv4 egress: 90 rapid keyless
+calls → **61×429 / 29×200**, then the same URL keyless → 429 (50-byte envelope)
+while the keyed call → 200 (7,538 bytes), seconds apart. The same loop over
+dual-stack curl got **90×200**: this host egresses IPv6 from a rotating
+temporary address, so every request got its own fresh bucket. That is why the
+outage is intermittent — a build escapes the bucket on Node's happy-eyeballs
+luck, not by design. `evidence/live-429-differential.txt` in the kanban
+workspace has both runs.
+
+So: `{ authed: false, sendKeyEvenIfPublic: true }` — the call keeps public
+semantics (no key, or a bad key, degrades to anonymous; never a 401, never a
+different page) while the header moves it out of the anonymous bucket.
+
+**The key buys the rate bucket and NOTHING ELSE — prove that before adding a
+row.** If an endpoint's response varies with the caller, a keyed build bakes
+caller-scoped bytes into a public, indexable static page: that is a content
+leak, not a rate fix. `/api/skills/{slug}` is the canonical trap —
+`get_skill_detail` opens its readme body for paid callers
+(`skill_routes.py:1136-1146`, `body_visible = skill_is_free or caller_is_paid`),
+so it must stay keyless. `tests/p0-build-time-catalog-auth.test.ts` holds the
+ledger (`KEY_ON_PUBLIC_VERIFIED` / `KEEP_ANONYMOUS`), demands a written reason
+per row, reddens any unclassified `authed: false` call site, and refuses to go
+vacuous if its own scanner stops parsing calls.
+
+Two rules that follow from it:
+
+- A handler with **no `request` parameter cannot read the caller at all** — that
+  is the cheapest possible safety proof, and most catalog handlers qualify.
+- Never pass `?refresh=1` on `/api/skills/external`: it is master-only and
+  forces a live federated re-walk + cache write. A build triggering an admin
+  re-index is a defect; the test forbids it.
+
+### Where the build key may live (kanban t_c50df5cd, second finding)
+
+Widening key presence to ~15 catalog call sites made the key load-bearing in
+every build, which exposed two things that were latent before:
+
+- **Read it from `process.env`, never `import.meta.env`.** Vite substitutes
+  `import.meta.env.FOO` with the *literal value* at build time, so reading the
+  secret that way writes it verbatim into the shipped artifact — measured
+  2026-11-16: `dist/.prerender/chunks/api_*.mjs` contained the live `rec_live_*`
+  string. Nothing was exposed (the deployed dist carries no `.prerender`, and
+  the live web root grepped clean the same day over SSH), which is configuration
+  luck, not a control — that directory sat in a web root ready to ship on the
+  next rsync tweak. `buildTimeApiKey()` in `src/lib/api.ts` reads `process.env`
+  via `globalThis` (no `@types/node` in this repo, so a bare `process` is a
+  TS2591 error), and `scripts/assert-no-secret-in-dist.sh` — called as a HARD
+  gate by `scripts/assert-dist.sh` — fails the build if any key-shaped literal
+  appears in `dist/`. This is the one catalog-adjacent rule allowed to block a
+  deploy: a degraded homepage is a designed branch, a secret in the artifact is
+  not. Treat that red as a reason to rotate the key, not to re-run the build.
+- **The key may only go to allowlisted hosts.** `PUBLIC_LOOPSKILL_API_BASE` is
+  a `PUBLIC_*` variable, i.e. one any PR may set, and it decides where every
+  build-time call goes. Without `KEY_TRUSTED_HOSTS` a one-line base-url change
+  would exfiltrate the CI secret on the next build. Unknown host ⇒ no header ⇒
+  the ordinary fail-closed path. `index.astro` stamps from
+  `buildTimeKeyForCatalog()` (what the fetch layer really sent), never from
+  `buildTimeApiKey() !== null`, and warns when a key exists but is withheld.
+
+### Reading a degraded build
+
+`astro build` exits 0 whether or not the catalog answered — every omission is a
+designed fail-closed branch, and a transient 429 must never block an unrelated
+deploy. Loudness, not fatality, is the contract:
+
+- the build prints `[catalog-degraded] …` (or `[catalog] …` when clean) naming
+  every omitted section and whether a key was available; with a key it also
+  emits a `::warning::` GitHub annotation, because then the anonymous bucket is
+  NOT the excuse;
+- `dist/index.html` carries `<div id="catalog-health" hidden data-key data-matrix
+  data-degraded>` — the fact belongs to the BUILD, so it travels in the artifact.
+  It is a DIV on purpose: Astro's build strips HTML comments that contain
+  template expressions (measured — the page's static comments survive, an
+  expression-bearing one does not). A comment-based stamp silently never exists;
+- `scripts/assert-dist.sh` reads the stamp and prints which case shipped. It
+  must keep exiting 0 — the built-output case in
+  `tests/p0-build-time-catalog-auth.test.ts` asserts exactly that.
+
+The hard gate is `REQUIRE_ONRAMP_MATRIX=1`, on the unattended rebuilds
+(schedule / `workflow_dispatch`) only, in `tests/landing-onramp.test.ts`.
+
+
 ## Build, CI, deploy (CI DEPLOYS — this is not manual)
 
 - `npm run build` = `astro build && bash scripts/assert-dist.sh`.

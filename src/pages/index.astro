@@ -38,8 +38,40 @@ import JourneyRail from '../components/JourneyRail.astro';
 import FleetDriftMatrix from '../components/FleetDriftMatrix.astro';
 import LiveCount from '../components/LiveCount.astro';
 import FoundingBanner from '../components/FoundingBanner.astro';
-import { fetchApi } from '../lib/api';
+import { fetchApi, buildTimeApiKey, buildTimeKeyForCatalog } from '../lib/api';
 import type { CountFormat } from '../lib/liveCount';
+
+// ─── Build-time catalog health (kanban t_c50df5cd) ─────────────────────────
+// Every number and catalog row on this page is bound to a live endpoint at
+// build time and FAILS CLOSED. Failing closed is correct; failing SILENTLY is
+// not. A build that ships without the drift matrix looks exactly like a build
+// whose matrix regressed, unless somebody reads five test failures to find out
+// which one it was — and on a Saturday nightly, nobody does.
+//
+// So each fetch below records what it lost, and the block at the end of
+// frontmatter prints it. The distinction that matters is printed too: whether
+// this build HAD a key. With one, every catalog call rides past the API's
+// 60/min-per-IP anonymous bucket (`sendKeyEvenIfPublic` in src/lib/api.ts), so
+// a missing matrix means the catalog was genuinely unreachable or returned
+// nothing usable — a different, louder problem than "the bucket was busy".
+//
+// buildTimeKeyForCatalog, not `buildTimeApiKey() !== null`: the stamp must
+// report what the fetch layer ACTUALLY sent. A key sitting in the environment
+// while the trusted-host guard withholds it is its own loud condition, warned
+// about below, and must never be stamped as key=1.
+const CATALOG_KEY_ENV = Boolean(buildTimeApiKey());
+const CATALOG_KEY_AVAILABLE = buildTimeKeyForCatalog();
+if (CATALOG_KEY_ENV && !CATALOG_KEY_AVAILABLE) {
+  // Fail-closed and LOUD: a key exists but will not be sent, so every catalog
+  // call is back in the 60/min anonymous bucket this whole card exists to
+  // escape. Almost always PUBLIC_LOOPSKILL_API_BASE pointing somewhere odd.
+  console.warn(
+    '[catalog] a build-time API key is present but NOT being sent: the API base host ' +
+      'is not in the trusted-host allowlist in src/lib/api.ts. Catalog calls will run ' +
+      'anonymous and may be rate-limited. Fix PUBLIC_LOOPSKILL_API_BASE or the allowlist.',
+  );
+}
+const catalogDegradations: string[] = [];
 // qa1018 C04: the ONE install phrase, shown == copied (src/lib/agentInstall.ts).
 import { META_INSTALL_PHRASE } from '../lib/agentInstall';
 
@@ -57,8 +89,12 @@ try {
   const result = await fetchApi<{ total: number }>('/api/skills/search?page_size=1');
   if (result.ok && result.data && typeof result.data.total === 'number' && result.data.total > 0) {
     liveSkillCount = result.data.total;
+  } else {
+    catalogDegradations.push(`catalog count → hardcoded 57 (${result.error ?? 'no data'})`);
   }
-} catch {}
+} catch {
+  catalogDegradations.push('catalog count → hardcoded 57 (threw)');
+}
 
 // first-impression fix (5): the hero/stats-strip/spotlight copy hardcoded
 // "80,000+" in five places while the live federation count
@@ -72,12 +108,27 @@ try {
 // skills that are "ours". Every string that renders it says so.
 let federatedSkillCount = 80000;
 try {
-  const result = await fetchApi<{ counts?: { external_indexed?: number } }>('/api/skills/external', { authed: false });
+  // Public endpoint (PUBLIC_PREFIXES). The key is NOT a credential here — it
+  // only moves this request out of the 60/min-per-IP anonymous bucket that a
+  // full static build saturates on its own. Verified content-neutral: the
+  // handler's two auth-derived lines are `force_refresh` (needs ?refresh=1,
+  // which a build must NEVER send — it is a master-only live re-walk + cache
+  // write; tests/p0-build-time-catalog-auth.test.ts forbids it) and
+  // zero-result demand telemetry (needs ?q= + enabled sources, also never
+  // sent). Payloads fetched anonymously and keyed are byte-identical.
+  const result = await fetchApi<{ counts?: { external_indexed?: number } }>('/api/skills/external', {
+    authed: false,
+    sendKeyEvenIfPublic: true,
+  });
   const indexed = result.ok ? result.data?.counts?.external_indexed : undefined;
   if (typeof indexed === 'number' && indexed >= 80000) {
     federatedSkillCount = Math.floor(indexed / 1000) * 1000;
+  } else {
+    catalogDegradations.push(`federation headline → honest 80,000+ floor (${result.error ?? `indexed=${String(indexed)}`})`);
   }
-} catch {}
+} catch {
+  catalogDegradations.push('federation headline → honest 80,000+ floor (threw)');
+}
 const federatedSkillLabel = `${federatedSkillCount.toLocaleString()}+`;
 
 // Agent-proof bar (landing_0821): the numbers that prove machine-readiness,
@@ -87,11 +138,21 @@ const federatedSkillLabel = `${federatedSkillCount.toLocaleString()}+`;
 // healthz the #216 re-rot guard audits, so this can never drift from live.
 let mcpToolCount: number | null = null;
 try {
-  const r = await fetchApi<{ tools?: string[] }>('/api/mcp/healthz', { authed: false });
+  // Public (PUBLIC_PREFIXES `/api/mcp/healthz`); the handler `mcp_healthz`
+  // reads no caller state at all, so a key cannot change the answer — only
+  // whether the bucket lets the request through.
+  const r = await fetchApi<{ tools?: string[] }>('/api/mcp/healthz', {
+    authed: false,
+    sendKeyEvenIfPublic: true,
+  });
   if (r.ok && Array.isArray(r.data?.tools) && r.data.tools.length > 0) {
     mcpToolCount = r.data.tools.length;
+  } else {
+    catalogDegradations.push(`MCP tool-count stat omitted (${r.error ?? 'no tools array'})`);
   }
-} catch {}
+} catch {
+  catalogDegradations.push('MCP tool-count stat omitted (threw)');
+}
 // qa1018 C12 (skeptic + mobile): the curated count used to come from THREE
 // sources with three labels (/api/stats "hosted here, versioned + signed",
 // /api/marketing/snapshot "Curated & signed", /api/skills/search). It is now
@@ -105,11 +166,20 @@ try {
 // browsable catalog: /docs/scope states plainly that staging is not publishing.
 let stagedConnectorCount: number | null = null;
 try {
-  const r = await fetchApi<{ external_total?: number }>('/api/connectors?include_external=true&limit=1', { authed: false });
+  // Public browse (`browse_connectors`) — filters on `is_public` unconditionally
+  // and never reads the caller, so the key is rate-bucket only.
+  const r = await fetchApi<{ external_total?: number }>('/api/connectors?include_external=true&limit=1', {
+    authed: false,
+    sendKeyEvenIfPublic: true,
+  });
   if (r.ok && typeof r.data?.external_total === 'number' && r.data.external_total > 0) {
     stagedConnectorCount = r.data.external_total;
+  } else {
+    catalogDegradations.push(`staged-connector stat omitted (${r.error ?? 'no external_total'})`);
   }
-} catch {}
+} catch {
+  catalogDegradations.push('staged-connector stat omitted (threw)');
+}
 
 // live_count_island: `live` opts into the client-side LiveCount swap
 // (src/components/LiveCount.astro) instead of a plain build-time string —
@@ -150,7 +220,10 @@ let spotlight: SpotlightSkill[] = [];
 try {
   const result = await fetchApi<{ results: SpotlightSkill[] }>('/api/skills/search?tier=pro&is_public=true&page_size=4');
   if (result.ok && result.data?.results) spotlight = result.data.results;
-} catch {} // Rationale: offline build or API down — section below is omitted, no invented fallback
+  else catalogDegradations.push(`hero spotlight omitted (${result.error ?? 'no results'})`);
+} catch {
+  catalogDegradations.push('hero spotlight omitted (threw)');
+} // Rationale: offline build or API down — section below is omitted, no invented fallback
 
 // ─── Popular-skills rail (content-led, Spotify-shelf style) ────────────────
 // Build-time fetch: mixed tiers, sorted by install_count. When the fetch
@@ -161,7 +234,10 @@ let popularSkills: RailSkill[] = [];
 try {
   const result = await fetchApi<{ results: RailSkill[] }>('/api/skills/search?page_size=12');
   if (result.ok && result.data?.results) popularSkills = result.data.results;
-} catch {}
+  else catalogDegradations.push(`popular-skills rail omitted (${result.error ?? 'no results'})`);
+} catch {
+  catalogDegradations.push('popular-skills rail omitted (threw)');
+}
 
 // ─── Public-bundles rail (the shareable client stacks) ────────────────────
 // GET /api/bundles/discover is public + ranked by real installs (/api/cookbooks/discover is the legacy alias).
@@ -181,7 +257,12 @@ try {
   const result = await fetchApi<{ bundles?: DiscoverCb[]; cookbooks?: DiscoverCb[]; items?: DiscoverCb[] }>('/api/bundles/discover?sort=installs&limit=8');
   const rows = result.ok && result.data ? (result.data.bundles || result.data.cookbooks || result.data.items || []) : [];
   publicBundles = rows.filter(c => c.slug);
-} catch {} // Rationale: offline build — rail simply omits
+  if (publicBundles.length === 0) {
+    catalogDegradations.push(`public-bundles rail omitted (${result.error ?? 'no rows with a slug'})`);
+  }
+} catch {
+  catalogDegradations.push('public-bundles rail omitted (threw)');
+} // Rationale: offline build — rail simply omits
 
 // ─── Drift-matrix columns — REAL catalog slugs + REAL versions ───────────
 // The matrix's fleet STATE is simulated (labelled DEMO in three places inside
@@ -198,9 +279,24 @@ try {
 type MatrixCol = { slug: string; title: string; declared: string };
 let matrixSkills: MatrixCol[] = [];
 try {
+  // WHY THIS SENDS THE KEY (kanban t_c50df5cd). This is the homepage's
+  // flagship section, and until now it declared itself anonymous — i.e. it
+  // queued behind the API's 60/min-per-IP anonymous bucket, which a full
+  // static build saturates by itself. Measured from wisechef-agents on
+  // 2026-11-16: anonymous `GET /api/skills/search?page_size=12` -> 429 on 8
+  // of 8 attempts (every retry included), the identical call with a
+  // `rec_live_*` key -> 200, byte-identical body (sha256 bd32659877cfa9c5…).
+  // `search_skills` reads the caller only to attribute ZERO-RESULT queries to
+  // a key for demand telemetry (`q` is absent here, so nothing is written);
+  // the catalog filter `is_public == True` is unconditional, so a key cannot
+  // widen what this page is allowed to print.
+  //
+  // The key changes the ODDS of shipping the matrix. It must never change the
+  // HONESTY of the page: with no key, or with the catalog down, this still
+  // fails CLOSED to the omission below. Never an invented slug or version.
   const r = await fetchApi<{ results?: { slug?: string; title?: string; name?: string; latest_version?: string | null }[] }>(
     '/api/skills/search?page_size=12',
-    { authed: false },
+    { authed: false, sendKeyEvenIfPublic: true },
   );
   const rows = (r.ok && r.data?.results) || [];
   matrixSkills = rows
@@ -211,7 +307,15 @@ try {
       title: (s.title || s.name || s.slug) as string,
       declared: s.latest_version as string,
     }));
-} catch {}
+  if (matrixSkills.length !== 5) {
+    catalogDegradations.push(
+      `FLEET DRIFT MATRIX omitted — resolved ${matrixSkills.length}/5 real slugs with real ` +
+        `(fetch ${r.error ?? 'ok'}; ${rows.length} rows returned)`,
+    );
+  }
+} catch (e) {
+  catalogDegradations.push(`FLEET DRIFT MATRIX omitted — fetch threw (${(e as Error)?.message ?? 'unknown'})`);
+}
 const showMatrix = matrixSkills.length === 5;
 
 // ─── Agent Bootcamp — live fetch at build time ───────────────────────────────
@@ -303,18 +407,28 @@ const bootcampFallback: BootcampTrackDetail[] = [
 let bootcampTracks: BootcampTrackDetail[] = [];
 try {
   // Step 1: fetch the track list
-  const listResult = await fetchApi<BootcampTrackResponse>('/api/bootcamp', { authed: false });
+  // Public curriculum (`list_bootcamp_tracks` / `get_bootcamp_track` read no
+  // caller state). Key = rate bucket only.
+  const listResult = await fetchApi<BootcampTrackResponse>('/api/bootcamp', {
+    authed: false,
+    sendKeyEvenIfPublic: true,
+  });
   if (listResult.ok && listResult.data?.tracks?.length) {
     // Step 2: fetch each track detail in parallel
     const trackIds = listResult.data.tracks.map((t: BootcampTrack) => t.id);
     const detailResults = await Promise.all(
-      trackIds.map((id: string) => fetchApi<BootcampTrackDetail>(`/api/bootcamp/${id}`, { authed: false }))
+      trackIds.map((id: string) =>
+        fetchApi<BootcampTrackDetail>(`/api/bootcamp/${id}`, { authed: false, sendKeyEvenIfPublic: true }),
+      )
     );
     const resolved = detailResults.filter(r => r.ok && r.data).map(r => r.data as BootcampTrackDetail);
     if (resolved.length > 0) bootcampTracks = resolved;
   }
 } catch {}
-if (bootcampTracks.length === 0) bootcampTracks = bootcampFallback;
+if (bootcampTracks.length === 0) {
+  bootcampTracks = bootcampFallback;
+  catalogDegradations.push('bootcamp tracks → pinned fallback (live /api/bootcamp unusable)');
+}
 
 // ROT GUARD (2026-08-20, hardened 2026-08-29) — see the same fix in
 // bootcamp.astro. `bootcampFallback` hardcodes `available: true` under a
@@ -339,11 +453,15 @@ if (bootcampTracks.length === 0) bootcampTracks = bootcampFallback;
   try {
     const cat = await fetchApi<{ results?: { slug?: string; tier?: string | null }[] }>(
       '/api/skills/search?page_size=100',
-      { authed: false, maxAttempts: 2, timeoutMs: 8000 },
+      { authed: false, sendKeyEvenIfPublic: true, maxAttempts: 2, timeoutMs: 8000 },
     );
     for (const s of cat.data?.results ?? []) if (s?.slug) catalogTiers.set(s.slug, s.tier ?? null);
+    if (catalogTiers.size === 0) {
+      catalogDegradations.push(`bootcamp step links unresolved (${cat.error ?? 'empty catalog'}) — every step renders as plain text`);
+    }
   } catch {
     /* Rationale: fail closed — empty map means nothing links, never a 404 */
+    catalogDegradations.push('bootcamp step links unresolved (catalog fetch threw)');
   }
   // API tier wins on disagreement, mirroring bootcamp.astro's resolution.
   bootcampTracks = bootcampTracks.map((t) => ({
@@ -378,12 +496,58 @@ const stations = [
 // (qa1018 C12: the bottom stats strip that repeated both counts under two
 // more labels — "Curated & signed", "Skills indexed" — was removed; each
 // number now appears with the same label everywhere on the page.)
+
+// ─── Print what this build lost, and why nobody has to guess ───────────────
+// kanban t_c50df5cd. `astro build` exits 0 whether or not the catalog was
+// reachable — every omission above is a DESIGNED branch, and it must stay
+// that way: a transient catalog 429 must never block an unrelated deploy.
+// Silent, though, is what let the flagship matrix ship absent for a whole
+// nightly nobody read. So: the omission stays non-fatal, the LOUDNESS is free.
+//
+//   * key was available  → GitHub Actions annotation (::warning::). With a key
+//     every catalog call bypassed the anonymous bucket, so a missing matrix is
+//     the catalog being genuinely unreachable — worth a human's attention.
+//   * no key available   → a plain log line. This is the documented dev/CI
+//     branch (a local `npx astro build` with no RECIPES_API_KEY exported), so
+//     it must inform without crying wolf or failing anything.
+//
+// Never throws: a diagnostics block that can break a build is worse than no
+// diagnostics block.
+try {
+  const keyNote = CATALOG_KEY_AVAILABLE
+    ? 'a build-time API key WAS available (catalog calls bypassed the 60/min anonymous bucket)'
+    : 'no build-time API key was available (catalog calls ran through the 60/min-per-IP anonymous bucket)';
+  if (catalogDegradations.length > 0) {
+    const detail = catalogDegradations.join(' | ');
+    if (CATALOG_KEY_AVAILABLE) {
+      const safe = detail.replace(/%/g, '%25').replace(/\r?\n/g, '%0A');
+      console.warn(`::warning title=Homepage shipped degraded (catalog unreachable despite a key)::${safe} — ${keyNote}`);
+    }
+    console.log(
+      `[catalog-degraded] dist/index.html omitted ${catalogDegradations.length} live section(s) ` +
+        `— ${keyNote}\n                   ${catalogDegradations.join('\n                   ')}`,
+    );
+  } else {
+    console.log(`[catalog] homepage built fully from the live catalog — ${keyNote}`);
+  }
+} catch {
+  /* diagnostics must never be the reason a build fails */
+}
 ---
 <AppShell
   mode="public"
   title="LoopSkill — the toolkit for deploying AI agents for clients"
   description="Free, open-source skills for AI agents like Claude Code, Codex and Cursor. Find a skill, paste one line into your agent's chat, and it installs — free skills need no account and no key. Bundles for client work, fleet checks, open source (MPL-2.0), self-hostable."
 >
+  <!-- catalog-health: the machine-readable stamp is the <div id="catalog-health">
+       below, NOT an HTML comment. Measured 2026-11-16: Astro's build strips an
+       HTML comment that contains a template expression (`{showMatrix ? 1 : 0}`),
+       while the 19 static comments in this same page survive. A stamp that gets
+       optimised away is worse than no stamp — scripts/assert-dist.sh and the
+       built-output case in tests/p0-build-time-catalog-auth.test.ts both read
+       it, and a missing stamp silently becomes "this build predates the stamp".
+       No secrets, no user data: three integers. -->
+  <div id="catalog-health" hidden data-key={CATALOG_KEY_AVAILABLE ? '1' : '0'} data-matrix={showMatrix ? '1' : '0'} data-degraded={String(catalogDegradations.length)}></div>
   <!-- launch/hidden-levers-0901: hidden-by-default founding-member banner.
        Ships no price in static HTML; see FoundingBanner.astro header comment. -->
   <FoundingBanner />

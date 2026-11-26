@@ -78,7 +78,7 @@ const STATIC_ROUTES: { path: string; priority: string; changefreq: string }[] = 
 async function fetchAllSkillSlugs(): Promise<{ slug: string; updatedAt: string }[]> {
   const first = await fetchApi<{ results: { slug: string; updated_at?: string }[]; total: number }>(
     '/api/skills/search?page_size=100',
-    { authed: false, maxAttempts: 8, initialDelayMs: 600, maxDelayMs: 12000 },
+    { authed: false, sendKeyEvenIfPublic: true, maxAttempts: 8, initialDelayMs: 600, maxDelayMs: 12000 },
   );
 
   if (!first.ok || !first.data) {
@@ -97,7 +97,7 @@ async function fetchAllSkillSlugs(): Promise<{ slug: string; updatedAt: string }
     for (let p = 2; p <= lastPage; p++) {
       const r = await fetchApi<{ results: { slug: string; updated_at?: string }[] }>(
         `/api/skills/search?page_size=100&page=${p}`,
-        { authed: false, maxAttempts: 8, initialDelayMs: 600, maxDelayMs: 12000 },
+        { authed: false, sendKeyEvenIfPublic: true, maxAttempts: 8, initialDelayMs: 600, maxDelayMs: 12000 },
       );
       if (r.ok && r.data?.results) {
         all = all.concat(
@@ -121,7 +121,7 @@ async function fetchAllSkillSlugs(): Promise<{ slug: string; updatedAt: string }
 // still ship (same no-hard-500 contract as fetchAllSkillSlugs above).
 async function fetchAllLoopSlugs(): Promise<{ slug: string; updatedAt: string }[]> {
   const res = await fetchApi<{ slug: string; updated_at?: string }[]>('/api/loops', {
-    authed: false,
+    authed: false, sendKeyEvenIfPublic: true,
     maxAttempts: 8,
     initialDelayMs: 600,
     maxDelayMs: 12000,
@@ -140,7 +140,7 @@ async function fetchAllLoopSlugs(): Promise<{ slug: string; updatedAt: string }[
 // Same no-hard-500 contract — empty list on API failure, everything else ships.
 async function fetchAllCompositeLoopSlugs(): Promise<{ slug: string; updatedAt: string }[]> {
   const res = await fetchApi<{ slug: string; updated_at?: string }[]>('/api/composite-loops', {
-    authed: false,
+    authed: false, sendKeyEvenIfPublic: true,
     maxAttempts: 8,
     initialDelayMs: 600,
     maxDelayMs: 12000,
@@ -159,7 +159,7 @@ async function fetchAllCompositeLoopSlugs(): Promise<{ slug: string; updatedAt: 
 async function fetchAllBundleSlugs(): Promise<{ slug: string; updatedAt: string }[]> {
   const res = await fetchApi<{ bundles: { slug: string; visibility?: string; created_at?: string }[] }>(
     '/api/bundles/discover',
-    { authed: false, maxAttempts: 8, initialDelayMs: 600, maxDelayMs: 12000 },
+    { authed: false, sendKeyEvenIfPublic: true, maxAttempts: 8, initialDelayMs: 600, maxDelayMs: 12000 },
   );
   if (!res.ok || !Array.isArray(res.data?.bundles)) return [];
   return res.data.bundles
@@ -177,7 +177,7 @@ async function fetchAllBundleSlugs(): Promise<{ slug: string; updatedAt: string 
 async function fetchAllPersonalitySlugs(): Promise<{ slug: string; updatedAt: string }[]> {
   const res = await fetchApi<{ slug: string; is_public?: boolean; updated_at?: string }[]>(
     '/api/personalities',
-    { authed: false, maxAttempts: 8, initialDelayMs: 600, maxDelayMs: 12000 },
+    { authed: false, sendKeyEvenIfPublic: true, maxAttempts: 8, initialDelayMs: 600, maxDelayMs: 12000 },
   );
   if (!res.ok || !Array.isArray(res.data)) return [];
   return res.data

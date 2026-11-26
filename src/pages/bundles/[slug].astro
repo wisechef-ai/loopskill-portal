@@ -80,7 +80,7 @@ export async function getStaticPaths() {
     { slug: 'terraform-and-kubernetes-ops', name: 'Terraform & Kubernetes Infra Ops', description: 'Provision and run infrastructure without leaving the agent loop.', skill_count: 8, requires_pro: false },
     { slug: 'proactive-and-autonomous-agent-ops', name: 'Proactive & Autonomous Agent Ops', description: 'Agents that act before you ask, and improve on their own runs.', skill_count: 8, requires_pro: false },
   ];
-  const result = await fetchApi<{ bundles: Bundle[] }>('/api/bundles/discover', { authed: false });
+  const result = await fetchApi<{ bundles: Bundle[] }>('/api/bundles/discover', { authed: false, sendKeyEvenIfPublic: true });
   let bundles: Bundle[] = (result.ok && Array.isArray(result.data?.bundles)) ? result.data!.bundles : [];
 
   // Only public bundles get a page — discover already filters to
@@ -108,7 +108,7 @@ const { initialBundle } = Astro.props as { initialBundle: Bundle };
 // no auth, same trust boundary as skills/[slug].astro's per-page detail
 // fetch. Falls back to the discover-summary props if this 404s/errors so
 // the page still renders something real rather than a blank shell.
-const detail = await fetchApi<Bundle>(`/api/bundles/public/${slug}`, { authed: false });
+const detail = await fetchApi<Bundle>(`/api/bundles/public/${slug}`, { authed: false, sendKeyEvenIfPublic: true });
 const bundle: Bundle = detail.ok && detail.data ? { ...initialBundle, ...detail.data } : initialBundle;
 
 // Which member skills actually HAVE a /skills/{slug} page?
@@ -133,7 +133,7 @@ const publicSkillSlugs = new Set<string>();
   for (;;) {
     const r = await fetchApi<{ results?: { slug?: string }[]; total?: number }>(
       `/api/skills/search?page_size=100&page=${page}`,
-      { authed: false },
+      { authed: false, sendKeyEvenIfPublic: true },
     );
     const rows = (r.ok && r.data?.results) || [];
     for (const s of rows) if (s?.slug) publicSkillSlugs.add(s.slug);

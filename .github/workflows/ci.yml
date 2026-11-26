@@ -225,6 +225,42 @@ jobs:
           REQUIRE_PORTAL277_BUILT: '1'
         run: npx vitest run tests/portal-277-federated.test.ts
 
+      - name: Built-output gate — build-time catalog auth + degradation honesty (vitest, dist)
+        # kanban t_c50df5cd. The homepage's flagship fleet drift matrix and its
+        # live counts are fetched at BUILD time from PUBLIC catalog endpoints.
+        # Public means no key is required — but it also means the request lands
+        # in loopskill-api's 60/min-per-IP ANONYMOUS bucket
+        # (app/middleware/rate_limit.py skips that bucket only when
+        # auth_ctx.scope != "anonymous"), and a whole `astro build` fires
+        # dozens of those from one IP in seconds. Measured from
+        # wisechef-hq / wisechef-agents on 2026-11-16: anonymous
+        # /api/skills/search?page_size=12 → 429 on 8 of 8 attempts; the same
+        # request with a key → 200, byte-identical body. A build that loses
+        # that call ships a homepage with the matrix silently missing.
+        #
+        # The fix is in src/lib/api.ts (`sendKeyEvenIfPublic`) + the call sites
+        # in src/, and this file is what keeps it fixed: it pins WHICH public
+        # endpoints may carry the build key (each with the handler + payload
+        # proof that the key cannot change what is rendered), pins which ones
+        # must NEVER carry it (skill detail opens its body for paid callers —
+        # a key there would bake paywalled text into a public static page),
+        # fails on any unclassified `authed: false` call site, and refuses to
+        # go vacuous if its own scanner stops parsing calls.
+        #
+        # REQUIRE_CATALOG_DIST=1 opens the two built-output cases here. They
+        # are hard-required on EVERY event — unlike REQUIRE_ONRAMP_MATRIX above,
+        # nothing in them can fail a legitimately degraded build: they assert
+        # the catalog-health stamp AGREES with what rendered (a stamp claiming
+        # a matrix on a page without one is its own lie), that a missing matrix
+        # always comes with the honest "could not be built against the live
+        # catalog" sentence and zero matrix markup, and that assert-dist.sh
+        # still EXITS 0 — the degradation must be loud, never a deploy blocker
+        # for an unrelated change. When the build had a key and still shipped
+        # without the matrix, the case emits a ::warning:: annotation.
+        env:
+          REQUIRE_CATALOG_DIST: '1'
+        run: npx vitest run tests/p0-build-time-catalog-auth.test.ts
+
       - name: Executable-docs gate — run every documented llms.txt / docs/* command
         # bundles_0811 P0. tests/p0-docs-commands-execute.test.ts consumes
         # tests/lib/doc-command-extract.ts (PR #52) and EXECUTES every

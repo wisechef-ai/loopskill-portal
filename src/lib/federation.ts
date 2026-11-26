@@ -391,7 +391,7 @@ async function fetchSourceSummary(): Promise<{
     available_sources?: unknown;
     per_source?: Record<string, { indexed?: unknown } | undefined>;
     counts?: { external_indexed?: unknown };
-  }>('/api/skills/external', { authed: false, maxAttempts: 6, initialDelayMs: 500, maxDelayMs: 8000 });
+  }>('/api/skills/external', { authed: false, sendKeyEvenIfPublic: true, maxAttempts: 6, initialDelayMs: 500, maxDelayMs: 8000 });
 
   if (!res.ok || !res.data || !Array.isArray(res.data.available_sources) || res.data.available_sources.length === 0) {
     return null;
@@ -425,7 +425,7 @@ async function fetchAllSamples(slugs: string[]): Promise<Record<string, RawExter
   if (slugs.length === 0) return {};
   const res = await fetchApi<{ external?: unknown }>(
     `/api/skills/external?sources=${slugs.join(',')}&limit=100`,
-    { authed: false, maxAttempts: 6, initialDelayMs: 500, maxDelayMs: 8000 },
+    { authed: false, sendKeyEvenIfPublic: true, maxAttempts: 6, initialDelayMs: 500, maxDelayMs: 8000 },
   );
   if (!res.ok || !res.data || !Array.isArray(res.data.external)) return {};
 

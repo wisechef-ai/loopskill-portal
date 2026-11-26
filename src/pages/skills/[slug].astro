@@ -44,7 +44,7 @@ export async function getStaticPaths() {
   const graphRes = await fetchApi<{
     nodes: { slug: string; title: string; category: string; tier: string; install_count: number }[];
     edges: { source: string; target: string; weight: number }[];
-  }>('/api/skills/graph', { authed: false });
+  }>('/api/skills/graph', { authed: false, sendKeyEvenIfPublic: true });
   const nodesBySlug = new Map<string, any>();
   if (graphRes.ok && graphRes.data) {
     for (const n of graphRes.data.nodes) nodesBySlug.set(n.slug, n);
@@ -82,6 +82,10 @@ let skill: any = initialSkill;
 // We deliberately fetch WITHOUT the master API key so the static HTML never
 // bakes the readme body into the page. The body is fetched client-side via
 // the user's session token if they are Pro/Pro+.
+// This call must stay keyless: the detail handler opens its body for paid
+// callers (skill_routes.py:1136-1146), so `sendKeyEvenIfPublic` here would
+// bake paywalled text into a public, indexable page. Enforced by
+// tests/p0-build-time-catalog-auth.test.ts (KEEP_ANONYMOUS).
 const detail = await fetchApi<any>(`/api/skills/${slug}`, { authed: false });
 if (detail.ok && detail.data) {
   skill = { ...initialSkill, ...detail.data };
