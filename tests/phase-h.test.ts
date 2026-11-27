@@ -184,7 +184,14 @@ describe('test_hero_spotlight_falls_back_when_api_down [REVISED 2026-07-05]', ()
     // The try/catch around the live fetch leaves `spotlight` empty on
     // failure instead of substituting invented data.
     expect(src).toMatch(/let spotlight: SpotlightSkill\[\] = \[\];/);
-    expect(src).toContain("} catch {} // Rationale: offline build or API down");
+    // t_c50df5cd (ship child t_165be3fd, 2026-11-27): the bare `catch {}`
+    // became a degradation-recording catch — spotlight still stays EMPTY on
+    // failure (never fabricated), and the omission is now also pushed into
+    // catalogDegradations for the loud build log. Pin the new shape.
+    expect(src).toContain("catalogDegradations.push('hero spotlight omitted (threw)');");
+    expect(src).toContain(
+      '} // Rationale: offline build or API down — section below is omitted, no invented fallback',
+    );
   });
 
   it('the spotlight section itself is gated on spotlight.length so it is omitted, not faked, when empty', () => {
