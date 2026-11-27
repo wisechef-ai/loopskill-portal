@@ -44,7 +44,16 @@ const DEFAULTS: Record<Props['type'], number> = {
   pro_plus_exclusive: 14,
 };
 
-const res = await fetchApi<MarketingCounts>('/api/marketing/counts', { authed: false });
+// Public endpoint (it is what the anonymous visitor sees) that still lives in
+// the 60/min-per-IP anonymous bucket — and a build fires one of these per
+// <SkillCount> tag, so it saturates faster than any other. `marketing_counts`
+// reads no caller state and the payload was byte-identical anonymous vs keyed,
+// so presenting the build key buys the bucket and nothing else. No key in CI →
+// byte-identical anonymous request → the honest DEFAULTS below.
+const res = await fetchApi<MarketingCounts>('/api/marketing/counts', {
+  authed: false,
+  sendKeyEvenIfPublic: true,
+});
 const value = res.ok && res.data
   ? res.data[type]
   : (fallback ?? DEFAULTS[type]);

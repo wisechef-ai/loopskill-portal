@@ -203,7 +203,12 @@ describe('coldStartSection — honest degradation when /.well-known is unreachab
 
 describe('llms.txt.ts wiring', () => {
   it('fetches the agent-discovery document at build time, unauthenticated', () => {
-    expect(SRC).toContain("fetchApi<WellKnownAgent>('/.well-known/agent.json', { authed: false })");
+    // t_c50df5cd (ship child t_165be3fd, 2026-11-27): the call gained
+    // sendKeyEvenIfPublic: true — rate-bucket only. authed: false is unchanged:
+    // the endpoint is public and the key never changes WHAT is fetched.
+    expect(SRC).toContain(
+      "fetchApi<WellKnownAgent>('/.well-known/agent.json', { authed: false, sendKeyEvenIfPublic: true })",
+    );
   });
 
   it('renders the cold-start section into the body unconditionally', () => {

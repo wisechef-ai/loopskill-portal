@@ -374,31 +374,39 @@ export const GET: APIRoute = async () => {
   // install-based trending is too thin to be representative (only a couple
   // of skills have install traction yet), whereas an empty-query search
   // returns a broad, current catalog slice across categories.
+  // Every endpoint below is PUBLIC — "no key" in the notes means no key is
+  // REQUIRED, which is still true. They now still PASS one (`sendKeyEvenIfPublic`,
+  // src/lib/api.ts) because this manifest is generated during `astro build`, and
+  // a public call without a key queues in the API's 60/min-per-IP anonymous
+  // bucket that a whole build saturates on its own. The key is never a
+  // credential here: no key in the environment, or a rejected one, means the
+  // request goes out exactly as before and the honest-degradation branches below
+  // do their job. Proof per endpoint: tests/p0-build-time-catalog-auth.test.ts.
   const [snapRes, catRes, fedRes, loopsRes, compositeRes, bundlesRes, personalitiesRes, statsRes, agentRes] = await Promise.all([
-    fetchApi<Snapshot>('/api/marketing/snapshot', { authed: false }),
+    fetchApi<Snapshot>('/api/marketing/snapshot', { authed: false, sendKeyEvenIfPublic: true }),
     fetchApi<{ results?: CatalogSkill[] }>(
       '/api/skills/search?q=&limit=24',
-      { authed: false },
+      { authed: false, sendKeyEvenIfPublic: true },
     ),
     // superset_0606 Phase F — the federation surface is the superset story.
     // Grounded at build time from the public cache-backed counts (no key).
     fetchApi<{
       counts?: { external_indexed?: number; external_installable?: number };
       available_sources?: string[];
-    }>('/api/skills/external', { authed: false }),
+    }>('/api/skills/external', { authed: false, sendKeyEvenIfPublic: true }),
     // ah_0706 rank-1 (external floor): the runnable-loop registry is the star
     // wedge, but it had ZERO machine-discovery presence — an agent reading this
     // manifest could not learn a single loop slug or how to run one. Ground the
     // Loops section in live /api/loops (public, no key); if unreachable at build
     // time the section is simply omitted (honest degradation, never fabricated).
-    fetchApi<CatalogLoop[]>('/api/loops', { authed: false }),
+    fetchApi<CatalogLoop[]>('/api/loops', { authed: false, sendKeyEvenIfPublic: true }),
     // ah_0730 rank-2: composite loops are the SCHEDULED, multi-step tier of the
     // registry (a composition + a verifier + a cadence). Six of last week's
     // ★feats poured value_tagline / agent_instructions / deploy hints into this
     // exact surface, yet llms.txt never fetched it. Public, no key; if the fetch
     // fails at build time the section is omitted entirely (honest degradation,
     // never a fabricated slug).
-    fetchApi<CompositeLoop[]>('/api/composite-loops', { authed: false }),
+    fetchApi<CompositeLoop[]>('/api/composite-loops', { authed: false, sendKeyEvenIfPublic: true }),
     // mesh0408 T1-D: bundles (public bundle catalog) — public, no key.
     // 260901 fix: /api/cookbooks/discover returns { bundles: [...] } post
     // cookbook→bundle rename (P2, #92) — this still read the pre-rename
@@ -407,10 +415,10 @@ export const GET: APIRoute = async () => {
     // 10 live public bundles existing. Caught by loopskill-identity-canary.
     fetchApi<{ bundles?: CatalogBundle[]; cookbooks?: CatalogBundle[] }>(
       '/api/bundles/discover?limit=24',
-      { authed: false }
+      { authed: false, sendKeyEvenIfPublic: true }
     ),
     // mesh0408 T1-D: personalities — public, no key.
-    fetchApi<CatalogPersonality[]>('/api/personalities', { authed: false }),
+    fetchApi<CatalogPersonality[]>('/api/personalities', { authed: false, sendKeyEvenIfPublic: true }),
     // first-impression fix (2): the free-skill COUNT below used to be derived
     // from the `/api/skills/search?limit=24` slice above — a hard page_size
     // cap, so the count silently tracked "free skills within the first 24
@@ -421,7 +429,7 @@ export const GET: APIRoute = async () => {
     // page-size changes; the free-skill LISTING below still samples from the
     // 24-item catalog fetch (a full 56-line listing would balloon the file),
     // but the number quoted in prose is now the honest total.
-    fetchApi<{ by_tier?: Record<string, number> }>('/api/stats', { authed: false }),
+    fetchApi<{ by_tier?: Record<string, number> }>('/api/stats', { authed: false, sendKeyEvenIfPublic: true }),
     // unisearch_0709/P4 — the agent-discovery document. Public, no key. This is
     // the ONE source for the register-first cold-start details (canonical
     // signing string, request fields, rate-limit constraints, granted scopes,
@@ -432,7 +440,7 @@ export const GET: APIRoute = async () => {
     // fails at build time the cold-start section still renders with its
     // endpoints and header intact and points the reader at /.well-known/
     // for the detail, so an agent is never left without a path.
-    fetchApi<WellKnownAgent>('/.well-known/agent.json', { authed: false }),
+    fetchApi<WellKnownAgent>('/.well-known/agent.json', { authed: false, sendKeyEvenIfPublic: true }),
   ]);
 
   // Honest degradation: only trust counts we actually fetched. No invented

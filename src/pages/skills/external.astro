@@ -20,7 +20,7 @@ import AddToCookbookScript from '../../components/AddToCookbookScript.astro';
 const teaser = await fetchApi<{
   per_source: Record<string, { enabled: boolean; indexed: number | null; installable: number | null }>;
   available_sources: string[];
-}>('/api/skills/external', { authed: false });
+}>('/api/skills/external', { authed: false, sendKeyEvenIfPublic: true });
 
 const perSource = teaser.ok && teaser.data ? teaser.data.per_source : {};
 const availableSources = (teaser.ok && teaser.data?.available_sources) ||

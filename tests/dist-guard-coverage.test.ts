@@ -68,6 +68,18 @@ const CI_FILE = join(ROOT, '.github/workflows/ci.yml');
  */
 const UNWIRED_DEBT: Array<{ file: string; reason: string; card: string }> = [];
 
+// Teeth vars that are NOT *_BUILT-suffixed, each with its reason on record.
+// kanban t_c50df5cd (ship child t_165be3fd, 2026-11-27): REQUIRE_CATALOG_DIST
+// is tests/p0-build-time-catalog-auth.test.ts's contract var. The teeth are the
+// same ones tests/lib/dist-guard.ts implements — distDescribe(...) chooses to
+// RUN the block under the env, and distAssert(...) throws when dist is missing
+// — but what its cases REQUIRE is agreement between the catalog-health stamp
+// and the rendered page, which must stay GREEN on a legitimately degraded
+// build. A *_BUILT name would claim a content requirement this gate
+// deliberately does not have (REQUIRE_ONRAMP_MATRIX is the content-hard one,
+// unattended rebuilds only, per PR #140). Same teeth, different suffix.
+const TEETH_VAR_EXCEPTIONS = new Set(['REQUIRE_CATALOG_DIST']);
+
 // ─────────────────────────────────────────────────────────────────────────
 // Detection
 // ─────────────────────────────────────────────────────────────────────────
@@ -330,7 +342,12 @@ describe('dist-guard coverage — no built-output guard may be decorative', () =
     for (const f of wired) {
       if (!flagged.has(f)) continue;
       const env = stepEnvFor(ciText, f);
-      if (!Object.keys(env).some((k) => /^REQUIRE_[A-Z0-9_]*BUILT$/.test(k))) naked.push(f);
+      if (
+        !Object.keys(env).some(
+          (k) => /^REQUIRE_[A-Z0-9_]*BUILT$/.test(k) || TEETH_VAR_EXCEPTIONS.has(k),
+        )
+      )
+        naked.push(f);
     }
     // HARD failure since kanban t_eb25ceb0 (2026-11-17): the four files that
     // were naked under t_648b1f3d (spotify-2607-browse-renders,

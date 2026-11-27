@@ -56,8 +56,8 @@ interface Loop {
 // instead of the "Run this loop" CTA that only applies to verifier loops.
 export async function getStaticPaths() {
   const [loopsResult, compositeResult] = await Promise.all([
-    fetchApi<Loop[]>("/api/loops", { authed: false }),
-    fetchApi<Loop[]>("/api/composite-loops", { authed: false }),
+    fetchApi<Loop[]>("/api/loops", { authed: false, sendKeyEvenIfPublic: true }),
+    fetchApi<Loop[]>("/api/composite-loops", { authed: false, sendKeyEvenIfPublic: true }),
   ]);
 
   let loops: Loop[] = (loopsResult.ok && Array.isArray(loopsResult.data))
@@ -100,8 +100,8 @@ const isComposite = initialLoop.kind === "composite";
 // Composite loops hit /api/composite-loops/{slug} instead — different route,
 // different response shape (versions[], prompt, subagents_config etc).
 const detail = isComposite
-  ? await fetchApi<Loop>(`/api/composite-loops/${slug}`, { authed: false })
-  : await fetchApi<Loop>(`/api/loops/${slug}`, { authed: false });
+  ? await fetchApi<Loop>(`/api/composite-loops/${slug}`, { authed: false, sendKeyEvenIfPublic: true })
+  : await fetchApi<Loop>(`/api/loops/${slug}`, { authed: false, sendKeyEvenIfPublic: true });
 const loop: Loop = detail.ok && detail.data ? { ...initialLoop, ...detail.data } : initialLoop;
 
 const display = {
