@@ -124,6 +124,15 @@ jobs:
         # mesh0408 W3 adds the storefront guards for the same reason: their
         # dist-dependent cases (audit-links / audit-claims over the real build)
         # self-skip when dist/ is absent, so they only mean something here.
+        # kanban t_eb25ceb0 (stretch): all four files now carry their own
+        # REQUIRE_<X>_BUILT contracts, which is what lets
+        # tests/dist-guard-coverage.test.ts promote "wired but naked" from
+        # annotation to hard failure.
+        env:
+          REQUIRE_SPOTIFY_BUILT: '1'
+          REQUIRE_W3_STOREFRONT_BUILT: '1'
+          REQUIRE_T1D_LLMS_BUILT: '1'
+          REQUIRE_PERCLIENT1110_BUILT: '1'
         run: |
           npx vitest run tests/spotify-2607-browse-renders.test.ts
           npx vitest run tests/mesh0408-w3-storefront-guards.test.ts
@@ -225,6 +234,93 @@ jobs:
           REQUIRE_PORTAL277_BUILT: '1'
         run: npx vitest run tests/portal-277-federated.test.ts
 
+      - name: Built-output gate — bootcamp dead-curriculum links (vitest, dist)
+        # kanban t_eb25ceb0. Same rot class: 4 built-output cases hid behind
+        # `if (!existsSync(file)) return` over dist/bootcamp + dist/index, so
+        # the "no hardcoded `available: true` may ship a link to a 404 slug"
+        # invariant — the bug that converted DEGRADED builds into NO builds
+        # (three dies on /skills/scrapling-official — 404 before the 2026-08
+        # fix) — was unenforced in CI. REQUIRE_BOOTCAMP_BUILT=1 turns a missing
+        # page into a red case naming the page here.
+        env:
+          REQUIRE_BOOTCAMP_BUILT: '1'
+        run: npx vitest run tests/bootcamp-fallback-rot-guard.test.ts
+
+      - name: Built-output gate — federation fabricated claims (vitest, dist)
+        # kanban t_eb25ceb0. The 3 built cases behind
+        # `if (!existsSync(indexHtml)) return` never ran in CI: the fabricated
+        # "91k+" ban and the live-count-OR-honest-copy disjunction (WIS-737
+        # fabricated-data class) were decorative. Both are content-AGNOSTIC
+        # (either branch of the fail-closed design satisfies them), so BUILT is
+        # hard-required on every event. The per-source-page count is the only
+        # catalog-dependent assertion: REQUIRE_FEDERATION_CONTENT=1 opens its
+        # teeth on the UNATTENDED rebuilds only (#140 split) — a transient 429
+        # on the anonymous bucket must not hold an unrelated deploy hostage;
+        # there the case degrades to a stderr ::warning:: instead.
+        env:
+          REQUIRE_FEDERATION_BUILT: '1'
+          REQUIRE_FEDERATION_CONTENT: ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && '1' || '' }}
+        run: npx vitest run tests/federation-rot-guard.test.ts
+
+      - name: Built-output gate — LiveCount island (vitest, dist)
+        # kanban t_eb25ceb0. 4 built cases behind `if (!existsSync(…)) return`
+        # never ran: the static-fallback-number contract (pre-JS honesty) and
+        # the shipped-JS endpoint/wiring checks were decorative. The homepage
+        # spans are hard-required (index.astro's fallbacks are honest NUMBERS
+        # even on 429 — 57 / the 80,000+ verified floor — so the spans always
+        # render digits). The federation HEADLINE island only renders when the
+        # build-time /api/skills/external fetch succeeded, so that one case
+        # follows the #140 split: CONTENT on schedule/dispatch only, ::warning::
+        # elsewhere.
+        env:
+          REQUIRE_LIVECOUNT_BUILT: '1'
+          REQUIRE_LIVECOUNT_CONTENT: ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && '1' || '' }}
+        run: npx vitest run tests/live-count-island.test.ts
+
+      - name: Built-output gate — /mesh four-state freshness render (vitest, dist)
+        # kanban t_eb25ceb0. 15 `it.runIf(built)` cases jsdom-executed the
+        # REAL built /mesh page against stubbed API responses — the four-state
+        # freshness contract (dead / stale / partitioned / unauthorized never
+        # collapsing into one "offline" bucket), the honest empty state, and
+        # the per-row revision rendering. runIf(false) SKIPS: all 15 executed
+        # ZERO assertions in CI since writing. The gate now also opens on
+        # dist/ existing, and renderMesh distAsserts the page and every
+        # referenced /_astro bundle, so a partial build is red naming the file.
+        env:
+          REQUIRE_MESH_VIEW_BUILT: '1'
+        run: npx vitest run tests/mesh0408-t3b-mesh-view.test.ts
+
+      - name: Built-output gate — skill page canonical install phrase (vitest, dist)
+        # kanban t_eb25ceb0. qa1018 C02's built-output case (the exact
+        # canonical fresh-agent phrase on the REAL /skills/copywriting bytes,
+        # and no resurrected "Signed install URL" / MCP-first block) was
+        # `it.runIf(skillBuilt)` — skipped in every CI run.
+        env:
+          REQUIRE_QA1018W2_BUILT: '1'
+        run: npx vitest run tests/qa1018-w2-catalog.test.ts
+
+      - name: Built-output gate — anon chrome leaks no member rail (vitest, dist)
+        # kanban t_eb25ceb0. qa1018 C13's built case asserted the shipped
+        # dist/index.html keeps "Sign out" / member /library / /account nodes
+        # INSIDE <template data-shell-member-tpl> only — `(dist ? it : it.skip)`
+        # skipped it in every CI run, so a member-rail leak into the anonymous
+        # DOM (the trap-B auth-state class) was unenforced at ship time.
+        env:
+          REQUIRE_QA1018W1_BUILT: '1'
+        run: npx vitest run tests/qa1018-w1-chrome.test.ts
+
+      - name: Built-output gate — /browse single federated group (vitest, dist)
+        # kanban t_eb25ceb0. 12 `it.runIf(browseBuilt)` cases jsdom-executed
+        # the REAL built /browse page against stubbed /api/search +
+        # /api/skills/external payloads — exactly one federated section, one
+        # card per canonical install_ref (case-insensitive dedupe), /api/search
+        # authority on collision, announced count == visible cards, and
+        # native-before-federated ordering. All 12 skipped in every CI run:
+        # the double-count defect P3 fixed was unguarded against return.
+        env:
+          REQUIRE_UNISEARCH_BUILT: '1'
+        run: npx vitest run tests/unisearch-0709-agent-install.test.ts
+
       - name: Built-output gate — build-time catalog auth + degradation honesty (vitest, dist)
         # kanban t_c50df5cd. The homepage's flagship fleet drift matrix and its
         # live counts are fetched at BUILD time from PUBLIC catalog endpoints.
@@ -260,7 +356,6 @@ jobs:
         env:
           REQUIRE_CATALOG_DIST: '1'
         run: npx vitest run tests/p0-build-time-catalog-auth.test.ts
-
       - name: Executable-docs gate — run every documented llms.txt / docs/* command
         # bundles_0811 P0. tests/p0-docs-commands-execute.test.ts consumes
         # tests/lib/doc-command-extract.ts (PR #52) and EXECUTES every

@@ -33,6 +33,7 @@ import { describe, it, expect } from 'vitest';
 import { readFileSync, existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { JSDOM } from 'jsdom';
+import { distAssert, requiresBuilt } from './lib/dist-guard';
 import {
   agentInstallText,
   canonicalInstallRef,
@@ -57,8 +58,21 @@ const HOME_SRC = readFileSync(resolve(ROOT, 'src/pages/home.astro'), 'utf-8');
 const CSS_SRC = readFileSync(resolve(ROOT, 'src/styles/global.css'), 'utf-8');
 const ASSERT_DIST = readFileSync(resolve(ROOT, 'scripts/assert-dist.sh'), 'utf-8');
 
+/**
+ * CI CONTRACT (kanban t_eb25ceb0): CI's post-build step runs this file AFTER
+ * `npm run build` with REQUIRE_UNISEARCH_BUILT=1. `it.runIf(false)` SKIPS, so
+ * all 12 built-output cases below executed ZERO assertions in every CI run
+ * since writing (t_648b1f3d's rot class — the single-federated-group,
+ * canonical-ref dedupe, /api/search-authority, honest-count and ordering
+ * guarantees were unenforced). The gate opens on the page, the contract, or
+ * dist/ existing (a build that dropped THIS page goes RED via distAssert);
+ * pre-build self-skip stays.
+ */
+const REQUIRE = 'REQUIRE_UNISEARCH_BUILT';
+
 const BROWSE_DIST = resolve(ROOT, 'dist/browse/index.html');
 const browseBuilt = existsSync(BROWSE_DIST);
+const runBrowse = it.runIf(browseBuilt || requiresBuilt(REQUIRE) || existsSync(resolve(ROOT, 'dist')));
 
 // ──────────────────────────────────────────────────────────────────────────
 // The text itself
@@ -456,6 +470,8 @@ const EXTERNAL_PAYLOAD = {
 };
 
 async function renderBrowseQuery(q: string) {
+  // Chosen to run → missing built page is a defect, not a return.
+  distAssert('built page dist/browse/index.html (jsdom render input)', BROWSE_DIST);
   const html = readFileSync(BROWSE_DIST, 'utf-8');
   const dom = new JSDOM(html, {
     url: `https://app.loopskill.io/browse?q=${encodeURIComponent(q)}`,
@@ -496,18 +512,18 @@ async function renderBrowseQuery(q: string) {
 }
 
 describe('unisearch_0709/P3 — Browse renders ONE federated group (built output)', () => {
-  it.runIf(browseBuilt)('executes without throwing', async () => {
+  runBrowse('executes without throwing', async () => {
     const { errors } = await renderBrowseQuery('graft');
     expect(errors, `inline script threw: ${errors.join(' | ')}`).toEqual([]);
   });
 
-  it.runIf(browseBuilt)('renders exactly ONE federated section, not one per pipeline', async () => {
+  runBrowse('renders exactly ONE federated section, not one per pipeline', async () => {
     const { dom } = await renderBrowseQuery('graft');
     const groups = dom.window.document.querySelectorAll('#browse-results [data-federated-group]');
     expect(groups.length, 'expected a single federated group section').toBe(1);
   });
 
-  it.runIf(browseBuilt)('emits ONE card per canonical install_ref, case-insensitively deduped', async () => {
+  runBrowse('emits ONE card per canonical install_ref, case-insensitively deduped', async () => {
     const { dom } = await renderBrowseQuery('graft');
     const group = dom.window.document.querySelector('#browse-results [data-federated-group]')!;
     const cards = group.querySelectorAll('.artifact-card');
@@ -518,14 +534,14 @@ describe('unisearch_0709/P3 — Browse renders ONE federated group (built output
     expect(slugs).toContain('ext-only');
   });
 
-  it.runIf(browseBuilt)('/api/search is the AUTHORITY: on a collision its row wins', async () => {
+  runBrowse('/api/search is the AUTHORITY: on a collision its row wins', async () => {
     const { dom } = await renderBrowseQuery('graft');
     const group = dom.window.document.querySelector('#browse-results [data-federated-group]')!;
     expect(group.innerHTML).toContain('Shared Skill');
     expect(group.innerHTML, 'the external duplicate won the collision').not.toContain('external copy');
   });
 
-  it.runIf(browseBuilt)('the announced count equals the number of cards a visitor can actually see', async () => {
+  runBrowse('the announced count equals the number of cards a visitor can actually see', async () => {
     const { dom } = await renderBrowseQuery('graft');
     const doc = dom.window.document;
     const rendered = doc.querySelectorAll('#browse-results .artifact-card').length;
@@ -537,7 +553,7 @@ describe('unisearch_0709/P3 — Browse renders ONE federated group (built output
     expect(count).toContain('(3 community)');
   });
 
-  it.runIf(browseBuilt)('curated/native cards render BEFORE federated ones, never interleaved', async () => {
+  runBrowse('curated/native cards render BEFORE federated ones, never interleaved', async () => {
     const { dom } = await renderBrowseQuery('graft');
     const results = dom.window.document.getElementById('browse-results')!;
     const nodes = Array.from(results.querySelectorAll('.artifact-card'));
@@ -548,7 +564,7 @@ describe('unisearch_0709/P3 — Browse renders ONE federated group (built output
     expect(lastNative).toBeLessThan(firstFederated);
   });
 
-  it.runIf(browseBuilt)('installable federated cards copy the fresh phrase; deep-link cards link to source (qa1018 C09)', async () => {
+  runBrowse('installable federated cards copy the fresh phrase; deep-link cards link to source (qa1018 C09)', async () => {
     const { dom } = await renderBrowseQuery('graft');
     const group = dom.window.document.querySelector('#browse-results [data-federated-group]')!;
     const buttons = Array.from(group.querySelectorAll('button.artifact-copy'));
@@ -565,7 +581,7 @@ describe('unisearch_0709/P3 — Browse renders ONE federated group (built output
     expect(group.innerHTML).not.toContain("isn't redistributable");
   });
 
-  it.runIf(browseBuilt)('federated cards show their source as a subtitle (qa1018 C07)', async () => {
+  runBrowse('federated cards show their source as a subtitle (qa1018 C07)', async () => {
     const { dom } = await renderBrowseQuery('graft');
     const group = dom.window.document.querySelector('#browse-results [data-federated-group]')!;
     const metas = Array.from(group.querySelectorAll('.artifact-meta')).map((m) => m.textContent || '');
@@ -573,7 +589,7 @@ describe('unisearch_0709/P3 — Browse renders ONE federated group (built output
     for (const m of metas) expect(m).toMatch(/^from example\.invalid\//);
   });
 
-  it.runIf(browseBuilt)('native cards get a Copy for agent button too', async () => {
+  runBrowse('native cards get a Copy for agent button too', async () => {
     const { dom } = await renderBrowseQuery('graft');
     const results = dom.window.document.getElementById('browse-results')!;
     const nativeCard = Array.from(results.querySelectorAll('.artifact-slot'))
@@ -583,7 +599,7 @@ describe('unisearch_0709/P3 — Browse renders ONE federated group (built output
     expect(btn.getAttribute('data-copy-text')).toBe(freshAgentPhrase('skill', 'native-graft'));
   });
 
-  it.runIf(browseBuilt)('both pipelines are still queried — neither subsumes the other', async () => {
+  runBrowse('both pipelines are still queried — neither subsumes the other', async () => {
     const { requested } = await renderBrowseQuery('graft');
     expect(requested).toContain('/api/search');
     expect(requested).toContain('/api/skills/external');
@@ -603,14 +619,16 @@ describe('unisearch_0709/P3 — assert-dist guards exist and the built page sati
     expect(ASSERT_DIST).toContain('skills/external/view/index.html');
   });
 
-  it.runIf(browseBuilt)('dist/browse/index.html ships the Copy for agent affordance (DoD grep)', () => {
+  runBrowse('dist/browse/index.html ships the Copy for agent affordance (DoD grep)', () => {
+    distAssert('built page dist/browse/index.html (DoD grep)', BROWSE_DIST);
     const html = readFileSync(BROWSE_DIST, 'utf-8');
     expect(html.split('Copy for agent').length - 1).toBeGreaterThanOrEqual(1);
     expect(html).toContain('class="artifact-copy"');
     expect(html).toContain('data-federated-group');
   });
 
-  it.runIf(browseBuilt)('no hardcoded inventory literal survives into the rendered search surface', () => {
+  runBrowse('no hardcoded inventory literal survives into the rendered search surface', () => {
+    distAssert('built page dist/browse/index.html (inventory-literal check)', BROWSE_DIST);
     const html = readFileSync(BROWSE_DIST, 'utf-8');
     const offenders = html.match(/([0-9]{1,3},[0-9]{3}|[0-9]{2,4}k)\+?\s*(skills?|entries|results|registries|sources|installable)/g);
     expect(offenders, `hardcoded inventory literal(s): ${offenders?.join(', ')}`).toBeNull();

@@ -57,61 +57,16 @@ const CI_FILE = join(ROOT, '.github/workflows/ci.yml');
  * Wired files were verified with an assertion counter (see the case at the
  * bottom): a dist case that reports "passed" while executing zero expect()
  * calls is the failure this ledger exists to make impossible.
+ *
+ * kanban t_eb25ceb0 (2026-11-17): the seven rows this ledger held when
+ * t_648b1f3d closed its three are now wired into post-build CI steps with
+ * their own REQUIRE_<X>_BUILT contracts, per case with a negative control
+ * (sabotage → that case RED). The ledger is EMPTY — and it must stay that
+ * way: the cases below fail CI on any new dist-gated file (rule 1) and on any
+ * row that goes stale (rule 2), so returning here means re-discovering the
+ * rot class by hand, which is what happened for months, three times.
  */
-const UNWIRED_DEBT: Array<{ file: string; reason: string; card: string }> = [
-  {
-    file: 'tests/bootcamp-fallback-rot-guard.test.ts',
-    reason:
-      "'built output' block guards dist/bootcamp + dist/index.html behind `if (!existsSync(file)) return` " +
-      '(dead-curriculum-slug links). Wired position needs a REQUIRE_*_BUILT contract like #140.',
-    card: 't_eb25ceb0',
-  },
-  {
-    file: 'tests/federation-rot-guard.test.ts',
-    reason:
-      "'built output' block guards dist/federation/index.html behind `if (!existsSync(indexHtml)) return` " +
-      '(fabricated "91k+" claim, live-count-or-honest-copy disjunction).',
-    card: 't_eb25ceb0',
-  },
-  {
-    file: 'tests/live-count-island.test.ts',
-    reason:
-      'three `if (!existsSync(...)) return` guards over dist/index.html, dist/federation/index.html and ' +
-      'dist/_astro. NOTE: also catalog-dependent, so a naive REQUIRE_* on push/PR would couple deploys to a ' +
-      'transient 429 — needs the #140 split (BUILT always, CONTENT on schedule/dispatch only).',
-    card: 't_eb25ceb0',
-  },
-  {
-    file: 'tests/mesh0408-t3b-mesh-view.test.ts',
-    reason:
-      '14 `it.runIf(built)` cases jsdom-executing dist/mesh/index.html plus its /_astro bundles. runIf(false) ' +
-      'SKIPS, so all 14 have never run in CI.',
-    card: 't_eb25ceb0',
-  },
-  {
-    file: 'tests/qa1018-w2-catalog.test.ts',
-    reason:
-      '`it.runIf(skillBuilt)` over dist/skills/copywriting/index.html (canonical install phrase, no MCP-first ' +
-      'block). Skips in every CI run.',
-    card: 't_eb25ceb0',
-  },
-  {
-    file: 'tests/qa1018-w1-chrome.test.ts',
-    reason:
-      '`(dist ? it : it.skip)` over dist/index.html (anon chrome must not leak Sign out / member rail). ' +
-      'Skips in every CI run.',
-    card: 't_eb25ceb0',
-  },
-  {
-    file: 'tests/unisearch-0709-agent-install.test.ts',
-    reason:
-      '12 `it.runIf(browseBuilt)` cases jsdom-executing dist/browse/index.html: exactly one federated section, ' +
-      'one card per canonical install_ref (case-insensitive dedupe), /api/search authority on collision, the ' +
-      'announced count equal to the cards a visitor can actually see, and native-before-federated ordering. ' +
-      'Skips in every CI run.',
-    card: 't_eb25ceb0',
-  },
-];
+const UNWIRED_DEBT: Array<{ file: string; reason: string; card: string }> = [];
 
 // ─────────────────────────────────────────────────────────────────────────
 // Detection
@@ -369,7 +324,7 @@ describe('dist-guard coverage — no built-output guard may be decorative', () =
     expect(UNWIRED_DEBT.every((d) => /^t_[0-9a-f]{6,}$/.test(d.card))).toBe(true);
   });
 
-  it('wired dist files have a REQUIRE_*_BUILT teeth contract (advisory)', () => {
+  it('wired dist files have a REQUIRE_*_BUILT teeth contract', () => {
     const flagged = new Set(distGated.map((d) => d.file));
     const naked: string[] = [];
     for (const f of wired) {
@@ -377,17 +332,19 @@ describe('dist-guard coverage — no built-output guard may be decorative', () =
       const env = stepEnvFor(ciText, f);
       if (!Object.keys(env).some((k) => /^REQUIRE_[A-Z0-9_]*BUILT$/.test(k))) naked.push(f);
     }
-    // Advisory, not blocking: these DO run post-build today, so they are not
-    // decorative — they are only unprotected against being re-parented above
-    // Build. Surfaced so the next person sees it instead of rediscovering it.
-    for (const f of naked) {
-      ciWarn(
-        `::warning title=dist guard without a REQUIRE_*_BUILT contract::${f} runs post-build but has no ` +
-          `REQUIRE_*_BUILT env — if this step is ever re-parented above Build it goes decorative silently. ` +
-          `tests/lib/dist-guard.ts is the contract.`,
-      );
-    }
-    expect(naked.every((f) => wired.has(f))).toBe(true);
+    // HARD failure since kanban t_eb25ceb0 (2026-11-17): the four files that
+    // were naked under t_648b1f3d (spotify-2607-browse-renders,
+    // mesh0408-w3-storefront-guards, mesh0408-t1d-llms-txt-groups,
+    // perclient-1110-review-fixes) got their REQUIRE_<X>_BUILT contracts in
+    // that card's stretch goal, so nothing legitimate lands here anymore.
+    // "Wired but unprotected against re-parenting above Build" is exactly the
+    // rot this suite exists to make un-shippable.
+    expect(
+      naked,
+      `these dist-gated files run post-build with no REQUIRE_*_BUILT contract — ` +
+        `if their step is ever re-parented above Build they go decorative silently: ` +
+        `${JSON.stringify(naked)}. tests/lib/dist-guard.ts is the contract.`,
+    ).toEqual([]);
   });
 });
 

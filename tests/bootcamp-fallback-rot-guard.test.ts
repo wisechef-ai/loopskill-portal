@@ -42,8 +42,21 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { readFileSync, existsSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { distAssert, distDescribe } from './lib/dist-guard';
+
+/**
+ * CI CONTRACT (kanban t_eb25ceb0): the post-build step in
+ * .github/workflows/ci.yml sets REQUIRE_BOOTCAMP_BUILT=1 and runs this file
+ * AFTER `npm run build`. There, a missing built page is a THROWN error
+ * (distAssert), never a silent return — the `if (!existsSync(file)) return`
+ * shape this block used is exactly the rot that made 29 built-output cases
+ * decorative for months (t_648b1f3d). With no env and no dist (fresh clone,
+ * CI's pre-build `npm test`) the block self-skips via distDescribe, which is
+ * the only place a self-skip is legitimate.
+ */
+const REQUIRE = 'REQUIRE_BOOTCAMP_BUILT';
 
 const ROOT = resolve(__dirname, '..');
 const PAGES: [string, string][] = [
@@ -224,19 +237,28 @@ describe('bootcamp fallback rot guard — source shape', () => {
   }
 });
 
-describe('bootcamp fallback rot guard — built output', () => {
-  const dist = resolve(ROOT, 'dist');
+// dist/ chosen once at module level (collection-safe: path maths only, no fs
+// throw). distDescribe keys on dist/ EXISTING, not on each page — if the build
+// ran but a page vanished, the block still runs and the case naming that page
+// goes RED via distAssert (t_648b1f3d correction #3: a case that skips on a
+// partial build enforces as little as one that was deleted).
+const DIST = resolve(ROOT, 'dist');
+const BOOTCAMP_HTML = resolve(DIST, 'bootcamp/index.html');
+const HOME_HTML = resolve(DIST, 'index.html');
+
+const describeBuilt = distDescribe(REQUIRE, DIST);
+describeBuilt('bootcamp fallback rot guard — built output', () => {
   const targets = [
-    ['dist/bootcamp/index.html', resolve(dist, 'bootcamp/index.html')],
-    ['dist/index.html', resolve(dist, 'index.html')],
+    ['dist/bootcamp/index.html', BOOTCAMP_HTML],
+    ['dist/index.html', HOME_HTML],
   ] as const;
 
   for (const [label, file] of targets) {
     it(`${label}: ships no link to a known-dead curriculum slug`, () => {
-      if (!existsSync(file)) {
-        // Source tests above still cover the invariant when dist/ is absent.
-        return;
-      }
+      // distAssert, not `if (!existsSync(file)) return`: this block was chosen
+      // to RUN, so a missing page is a defect — returning here would report a
+      // green that executed zero assertions (the rot class itself).
+      distAssert(`built page ${label} (dead-slug link check)`, file);
       const html = readFileSync(file, 'utf-8');
       const offenders = KNOWN_DEAD.filter((slug) =>
         new RegExp(`href="/skills/${slug}(\\?|")`).test(html),
@@ -245,7 +267,7 @@ describe('bootcamp fallback rot guard — built output', () => {
     });
 
     it(`${label}: still renders the curriculum copy (guard degrades links, not content)`, () => {
-      if (!existsSync(file)) return;
+      distAssert(`built page ${label} (curriculum copy check)`, file);
       const html = readFileSync(file, 'utf-8');
       // A dead step must still appear by NAME — failing closed means plain
       // text, not a disappeared step.

@@ -10,6 +10,17 @@ import { describe, it, expect } from 'vitest';
 import { readFileSync, existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { freshAgentPhrase } from '../src/lib/agentInstall';
+import { distAssert, requiresBuilt } from './lib/dist-guard';
+
+/**
+ * CI CONTRACT (kanban t_eb25ceb0): CI's post-build step runs this file AFTER
+ * `npm run build` with REQUIRE_QA1018W2_BUILT=1. `it.runIf(false)` SKIPS, so
+ * the one built-output case below executed ZERO assertions in every CI run
+ * since writing (t_648b1f3d's rot class). The gate opens on the page, the
+ * contract, or the mere existence of dist/ (partial build = red via
+ * distAssert, not a skip); pre-build self-skip stays.
+ */
+const REQUIRE = 'REQUIRE_QA1018W2_BUILT';
 
 const ROOT = resolve(__dirname, '..');
 const read = (p: string) => readFileSync(resolve(ROOT, p), 'utf-8');
@@ -28,6 +39,7 @@ const CSS = read('src/styles/global.css');
 
 const SKILL_DIST = resolve(ROOT, 'dist/skills/copywriting/index.html');
 const skillBuilt = existsSync(SKILL_DIST);
+const runSkill = it.runIf(skillBuilt || requiresBuilt(REQUIRE) || existsSync(resolve(ROOT, 'dist')));
 
 describe('C02 — skill page install: one fresh-agent phrase, shown == copied', () => {
   it('"Install free" is no longer a link to the generic /docs/install guide', () => {
@@ -57,7 +69,10 @@ describe('C02 — skill page install: one fresh-agent phrase, shown == copied', 
     expect(QUICK_MARKUP).not.toMatch(/>Quick install</);
   });
 
-  it.runIf(skillBuilt)('built /skills/copywriting shows the exact canonical phrase and no MCP-first block', () => {
+  runSkill('built /skills/copywriting shows the exact canonical phrase and no MCP-first block', () => {
+    // distAssert, not a return: a case chosen to run must never pass silently
+    // on a missing built page (the rot class itself).
+    distAssert('built page dist/skills/copywriting/index.html (install-phrase check)', SKILL_DIST);
     const html = readFileSync(SKILL_DIST, 'utf-8');
     const phrase = freshAgentPhrase('skill', 'copywriting').replace(/"/g, '&quot;');
     expect(html).toContain(phrase);
